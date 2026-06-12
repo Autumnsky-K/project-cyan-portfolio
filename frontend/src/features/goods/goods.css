@@ -206,6 +206,12 @@
   font-size: 14px;
 }
 
+.goods-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .goods-card-body {
   display: grid;
   gap: 12px;
@@ -261,6 +267,27 @@
 .card-footer div {
   display: flex;
   gap: 6px;
+}
+
+.goods-state {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  min-height: 240px;
+  padding: 32px;
+  border: 1px dashed var(--goods-line);
+  border-radius: 6px;
+  color: var(--goods-muted);
+  background: var(--goods-soft);
+  text-align: center;
+}
+
+.goods-state strong {
+  color: var(--goods-ink);
+}
+
+.error-state {
+  border-style: solid;
 }
 
 @media (max-width: 900px) {

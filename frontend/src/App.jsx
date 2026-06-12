@@ -1,7 +1,14 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import GoodsPage from './features/goods/goods'
-import LoginPage from './features/member/LoginPage'
-import SignupPage from './features/member/SignupPage'
+
+import LoginPage from './features/member/LoginPage.jsx'
+import SignupPage from './features/member/SignupPage.jsx'
+import { useEffect, useState } from 'react.jsx'
+import ArtistPage from './features/artist/artist.tsx'
+import GoodsPage from './features/goods/goods.jsx'
+
+function getCurrentPage() {
+  return window.location.hash === '#artists' ? 'artists' : 'goods'
+}
 
 function App() {
   return (
@@ -11,6 +18,7 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/goods" element={<GoodsPage />} />
+        <Route path="/artists" element={<ArtistPage />} />
       </Routes>
     </BrowserRouter>
   )
