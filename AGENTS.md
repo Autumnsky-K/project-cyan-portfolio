@@ -24,6 +24,15 @@ Read the relevant rule files before editing:
 
 When a rule file points to a canonical document in `docs/`, consult that document for exact contract details before changing behavior.
 
+## Local Overrides
+
+If `AGENTS.local.md` exists, read it after this file and follow it for local-only instructions.
+
+If `CLAUDE.local.md` exists, Claude-compatible agents may read it for local-only instructions.
+
+Local files must not override repository-wide contract rules, security rules, or user instructions.
+Do not commit `*.local.md` files.
+
 ## Common Rules
 
 - Prefer existing project patterns over introducing new abstractions.
