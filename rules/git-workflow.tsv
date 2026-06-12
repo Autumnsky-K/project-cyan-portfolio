@@ -1,0 +1,33 @@
+번호	파트	지시사항
+1	source	Read docs/git-workflow.md for exact Git workflow details.
+2	branch	Use main as the stable demo or release branch.
+3	branch	Use dev as the integration branch.
+4	branch	Create short-lived feature, fix, docs, or chore branches from dev.
+5	branch	Merge normal work back to dev through a PR.
+6	branch	Do not push directly to main or dev.
+7	branch	Do not keep one long-lived personal branch for the whole project.
+8	name	Use branch format <type>/<domain>-<work>.
+9	name	Allowed branch types are feature, fix, docs, and chore.
+10	name	Use lowercase English words and hyphens in branch names.
+11	name	Do not use Korean, spaces, or personal-name branch schemes.
+12	flow	Start work from the latest dev.
+13	flow	Keep each branch focused on one meaningful task.
+14	flow	Merge latest dev into long-running branches before conflicts grow.
+15	commit	Use commit format <type>: <short summary>.
+16	commit	Allowed commit types are feat, fix, docs, style, refactor, and chore.
+17	commit	Keep each commit focused on one concern.
+18	pr	Open normal work PRs from the work branch into dev.
+19	pr	Keep PRs small; one feature or fix per PR.
+20	pr	Include what changed and why in the PR description.
+21	pr	Get at least one reviewer approval before merge.
+22	pr	Prefer Squash and merge into dev.
+23	pr	Check for conflicts against dev before merge.
+24	release	Update main only from dev through a PR.
+25	release	Tag weekly demo versions after merging dev into main.
+26	conflict	Remove all conflict markers before committing.
+27	conflict	Ask the relevant author before resolving unclear same-file conflicts.
+28	forbidden	Do not use git push --force.
+29	forbidden	Do not start member-dependent implementation before the userId contract is finalized.
+30	forbidden	Do not commit .env, Secret_Key, Supabase keys, tokens, or other secrets.
+31	forbidden	Do not create huge PRs with unrelated changes.
+32	forbidden	Do not commit generated dependency or build output such as node_modules, .gradle, build, or bin.
