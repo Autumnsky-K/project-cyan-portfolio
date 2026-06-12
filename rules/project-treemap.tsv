@@ -1,0 +1,76 @@
+depth	path	kind	status	area	purpose	add_here	avoid	notes
+0	.	directory	current	repository	Monorepo root for frontend, backend, AI, docs, and agent rules.	Root-level coordination files only.	Do not add feature code at the root.	Depth is capped at 5 from the repository root.
+1	AGENTS.md	file	current	agents	Primary agent instruction entrypoint.	Update when rule routing or project map changes.	Do not duplicate long rules here.	Point to rules/* and docs/* instead.
+1	CLAUDE.md	file	current	agents	Claude-facing pointer to AGENTS.md.	Keep as a short redirect.	Do not maintain separate Claude-only rules.	Single source of truth stays in AGENTS.md and rules/*.
+1	frontend	directory	current	frontend	React + Vite client application.	Frontend application code and frontend config.	Do not place backend or AI code here.	Uses React 19, React Router, Vite, ESLint.
+2	frontend/package.json	file	current	frontend	Frontend scripts and dependencies.	Add frontend npm scripts or package dependencies.	Do not hand-edit package-lock without npm.	Run frontend commands from frontend/.
+2	frontend/vite.config.js	file	current	frontend	Vite build and dev-server configuration.	Frontend build/dev configuration.	Do not add app runtime logic here.	Keep config minimal.
+2	frontend/eslint.config.js	file	current	frontend	Frontend lint configuration.	ESLint rule changes.	Do not use this for formatting-only preferences unless agreed.	Run npm run lint after JS/JSX changes when feasible.
+2	frontend/index.html	file	current	frontend	Vite HTML entry.	App shell and root mount element.	Do not add page-specific markup here.	React renders from src/main.jsx.
+2	frontend/public	directory	current	frontend	Static public assets served as-is.	Static icons, Live2D assets, and files requiring stable URLs.	Do not import module-bundled assets from here.	Use src/assets for bundled assets.
+3	frontend/public/live2d	directory	current	frontend	Live2D or character island public assets.	Add model/static runtime assets that must be served directly.	Do not add React components here.	Keep large assets organized by model or character.
+2	frontend/src	directory	current	frontend	Frontend source root.	Application code, routes, features, shared UI, store, styles.	Do not add generated files here.	Feature code should usually live under src/features.
+3	frontend/src/main.jsx	file	current	frontend	React application bootstrap.	Providers and root rendering.	Do not add page or business logic here.	Keep root setup small.
+3	frontend/src/App.jsx	file	current	frontend	Top-level app composition.	Router/layout wiring when appropriate.	Do not grow into a feature implementation file.	Move domain UI into src/features/*.
+3	frontend/src/App.css	file	current	frontend	App-level CSS.	App shell styles only.	Do not put large feature-specific CSS here.	Prefer feature or shared styles.
+3	frontend/src/index.css	file	current	frontend	Global CSS.	Reset, tokens, global typography, base styles.	Do not add component-specific rules here.	Keep global selectors intentional.
+3	frontend/src/assets	directory	current	frontend	Bundled frontend assets.	Images and static assets imported by React code.	Do not store files needing stable public URLs here.	Current sample assets include hero and Vite/React SVGs.
+3	frontend/src/features	directory	current	frontend	Feature-based frontend modules.	Add domain-specific pages, APIs, components, and types under a feature folder.	Do not place shared primitives here.	Use one feature folder per domain.
+4	frontend/src/features/member	directory	current	frontend	Member/auth frontend feature.	Member pages, forms, and member-specific client code.	Do not implement member-dependent API behavior before userId contract is finalized.	Follow rules/api-contract.md.
+5	frontend/src/features/member/pages	directory	current	frontend	Member route pages.	Member page components.	Do not place reusable shared UI here.	Extract reusable UI to src/shared/components.
+4	frontend/src/features/goods	directory	current	frontend	Goods browsing frontend feature.	Goods pages, goods cards, goods API client code.	Do not rename goodsId or remove data-goods-id DOM hooks.	Follow frozen goods contract.
+5	frontend/src/features/goods/components	directory	current	frontend	Goods-specific UI components.	Goods cards, filters, and goods-only widgets.	Do not add cross-domain UI here.	Reusable UI belongs in src/shared/components.
+5	frontend/src/features/goods/pages	directory	current	frontend	Goods route pages.	Goods list/detail pages.	Do not hardcode API shapes outside the contract.	Use docs/api-contract.md for frozen fields.
+4	frontend/src/features/artist	directory	current	frontend	Artist frontend feature.	Artist pages and artist-specific UI/API code.	Do not remove data-artist-id DOM hooks when adding cards.	Artist IDs connect goods and AI explanations.
+5	frontend/src/features/artist/pages	directory	current	frontend	Artist route pages.	Artist list/detail pages.	Do not put unrelated goods/order pages here.	Keep domain boundaries clear.
+4	frontend/src/features/cart	directory	current	frontend	Cart frontend feature.	Cart state, cart UI, add-to-cart interactions.	Do not break data-add-to-cart DOM contract.	Connects to ACTION addToCart.
+4	frontend/src/features/order	directory	current	frontend	Order and checkout frontend feature.	Order pages, checkout flow, payment redirects.	Do not invent status values outside the contract.	Use frozen order/payment status values.
+5	frontend/src/features/order/pages	directory	current	frontend	Order route pages.	Order history, checkout, payment pages.	Do not store payment secrets in frontend.	KakaoPay Secret_Key stays server-only.
+4	frontend/src/features/vtuber	directory	current	frontend	Character island and AI action frontend feature.	VTuber UI, action parsing, action execution.	Do not replace #vtuber during page transitions.	Follow ACTION and DOM contract.
+5	frontend/src/features/vtuber/actions	directory	current	frontend	AI action handlers.	navigate, highlight, addToCart handlers.	Do not add new action names without updating docs/api-contract.md.	MVP actions are frozen in rules/api-contract.md.
+3	frontend/src/layout	directory	current	frontend	Application layout components.	Shell layout, navigation, persistent regions.	Do not put domain business logic here.	Preserve #content and #vtuber contracts where implemented.
+3	frontend/src/shared	directory	current	frontend	Shared frontend utilities and primitives.	Cross-feature API helpers, components, styles, and types.	Do not add domain-only code here.	Use only for genuinely reusable code.
+4	frontend/src/shared/api	directory	current	frontend	Shared API client utilities.	Base client, fetch helpers, error handling.	Do not hardcode domain-specific endpoint details here unless shared.	Base URL follows API contract.
+4	frontend/src/shared/components	directory	current	frontend	Reusable UI components.	Buttons, modals, layout primitives, common controls.	Do not add page components here.	Feature pages belong in src/features/*/pages.
+4	frontend/src/shared/styles	directory	current	frontend	Shared frontend style modules.	Tokens, mixins, reusable style files.	Do not scatter global overrides here without intent.	Global base styles stay in src/index.css.
+4	frontend/src/shared/types	directory	current	frontend	Shared frontend type definitions.	Cross-feature contract and UI types.	Do not define backend-only DTOs here unless consumed by frontend.	Keep contract types aligned with docs/api-contract.md.
+3	frontend/src/store	directory	current	frontend	Frontend state management.	Shared client state if local component state is insufficient.	Do not add state here by default.	Prefer local state unless shared state is needed.
+1	backend	directory	current	backend	Spring Boot server application.	Backend API, domain logic, persistence, server-rendered admin if needed.	Do not place frontend React code here.	Uses Java 21 and Spring Boot 4.1.0.
+2	backend/build.gradle	file	current	backend	Backend Gradle build configuration.	Spring dependencies, plugins, test settings.	Do not add application logic here.	Keep dependencies justified.
+2	backend/settings.gradle	file	current	backend	Gradle project settings.	Project naming/settings.	Do not add dependency declarations here.	Dependencies belong in build.gradle.
+2	backend/gradlew	file	current	backend	Unix Gradle wrapper.	Run backend Gradle tasks.	Do not edit manually.	Use wrapper rather than system Gradle.
+2	backend/gradlew.bat	file	current	backend	Windows Gradle wrapper.	Run backend Gradle tasks on Windows.	Do not edit manually.	Generated wrapper script.
+2	backend/gradle	directory	current	backend	Gradle wrapper files.	Wrapper jar and properties.	Do not add source code here.	Generated/tooling area.
+3	backend/gradle/wrapper	directory	current	backend	Gradle wrapper implementation.	Wrapper jar/properties.	Do not edit unless intentionally updating Gradle wrapper.	Tooling only.
+2	backend/src	directory	current	backend	Backend source root.	Main and test source sets.	Do not add build outputs here.	Follow Gradle source layout.
+3	backend/src/main	directory	current	backend	Main backend source set.	Application source and resources.	Do not place tests here.	Tests belong in src/test.
+4	backend/src/main/java	directory	current	backend	Java package root.	Spring Boot application and domain packages under com.projectcyan.	Do not use default package.	Create domain packages below this path.
+5	backend/src/main/java/com	directory	current	backend	Java reverse-domain package segment.	Continue package path to com.projectcyan.*.	Do not place classes directly here if package root continues deeper.	Full package path is deeper than depth cap.
+4	backend/src/main/resources	directory	current	backend	Runtime resources.	Spring configuration, static assets, templates.	Do not store secrets in committed properties.	Use environment variables for secrets.
+5	backend/src/main/resources/static	directory	current	backend	Spring static resources.	Server-served static assets if needed.	Do not duplicate React build artifacts unless deployment requires it.	Frontend source remains in frontend/.
+5	backend/src/main/resources/templates	directory	current	backend	Thymeleaf templates.	Server-rendered admin/templates if used.	Do not place React components here.	Keep admin/server pages separate from React app.
+3	backend/src/test	directory	current	backend	Backend test source set.	Unit and integration tests.	Do not place production code here.	Run Gradle tests when backend changes.
+4	backend/src/test/java	directory	current	backend	Java test package root.	Spring/JUnit tests under com.projectcyan.	Do not use production resources as tests.	Match package structure to main code.
+5	backend/src/test/java/com	directory	current	backend	Java test reverse-domain package segment.	Continue package path to com.projectcyan.*.	Do not place tests directly here if package root continues deeper.	Full package path is deeper than depth cap.
+2	backend/HELP.md	file	current	backend	Spring Initializr generated help.	Reference only.	Do not treat as project rules.	Prefer docs/* and rules/*.
+1	ai	directory	current	ai	FastAPI/OLV AI service area.	AI service code, WebSocket integration, AI-specific config.	Do not place frontend UI or Spring code here.	Python package is project_cyan_ai.
+2	ai/pyproject.toml	file	current	ai	Python project metadata and dependencies.	AI dependencies and test extras.	Do not add runtime code here.	Use Python package files under ai/src.
+2	ai/src	directory	current	ai	Python source root.	Importable AI package code.	Do not place virtual environments here.	Package is project_cyan_ai.
+3	ai/src/project_cyan_ai	directory	current	ai	AI application package.	FastAPI app, OLV integration, websocket handlers.	Do not commit generated cache files.	Import path is project_cyan_ai.
+4	ai/src/project_cyan_ai/main.py	file	current	ai	AI service entrypoint.	FastAPI app setup and top-level routes if small.	Do not grow into all business logic as service expands.	Split modules when behavior grows.
+4	ai/src/project_cyan_ai/__init__.py	file	current	ai	Python package marker.	Package exports if needed.	Do not put runtime logic here by default.	Keep lightweight.
+3	ai/src/project_cyan_ai.egg-info	directory	generated	ai	Python packaging metadata.	No source changes.	Do not edit or rely on manually.	Should usually be ignored/generated.
+3	ai/src/project_cyan_ai/__pycache__	directory	generated	ai	Python bytecode cache.	No source changes.	Do not commit new files here.	Generated by Python.
+1	docs	directory	current	docs	Human-readable canonical project documents.	API contract, git workflow, plans, wireframes.	Do not put agent-only checklists here.	Canonical docs feed rules/*.
+2	docs/api-contract.md	file	current	docs	Canonical API and cross-domain contract.	Update for endpoint, DTO, status, WebSocket, ACTION, or DOM contract changes.	Do not make breaking changes without team agreement.	rules/api-contract.md is the agent checklist.
+2	docs/git-workflow.md	file	current	docs	Canonical team Git collaboration workflow.	Update when team process changes.	Do not duplicate local-only preferences here.	rules/git-workflow.md is the agent checklist.
+1	rules	directory	current	agents	Agent-readable operational rules.	Add concise rule files and machine-friendly indexes.	Do not make this the canonical product spec when docs/* exists.	Keep files short and action-oriented.
+2	rules/api-contract.md	file	current	agents	Agent checklist distilled from docs/api-contract.md.	Update when API contract rules change.	Do not diverge from docs/api-contract.md.	Canonical details stay in docs/api-contract.md.
+2	rules/git-workflow.md	file	current	agents	Agent checklist distilled from docs/git-workflow.md.	Update when Git workflow rules change.	Do not diverge from docs/git-workflow.md.	Canonical details stay in docs/git-workflow.md.
+2	rules/project-treemap.tsv	file	current	agents	Depth-limited project structure map for agents and teammates.	Update when top-level architecture changes.	Do not list noisy generated dependency trees.	TSV columns support spreadsheet filtering.
+1	.gitignore	file	current	repository	Ignored files and generated output policy.	Add generated outputs, local env files, secrets, caches.	Do not ignore source files required by teammates.	Should include env and build artifacts.
+1	.DS_Store	file	generated	local	macOS metadata.	No source changes.	Do not commit.	Should be ignored if tracked accidentally.
+2	frontend/node_modules	directory	generated	frontend	Installed npm dependencies.	No source changes.	Do not edit or commit.	Excluded from depth analysis.
+2	backend/.gradle	directory	generated	backend	Gradle cache.	No source changes.	Do not edit or commit.	Excluded from depth analysis.
+2	backend/build	directory	generated	backend	Gradle build output.	No source changes.	Do not edit or commit.	Excluded from depth analysis.
+2	backend/bin	directory	generated	backend	Compiled or IDE output.	No source changes.	Do not edit or commit.	Excluded from depth analysis.
