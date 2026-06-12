@@ -1,4 +1,4 @@
-import GoodsPage from './page/goods.jsx'
+import GoodsPage from './features/goods/goods.jsx'
 
 function App() {
   return <GoodsPage />
