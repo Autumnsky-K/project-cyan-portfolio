@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { loginMember } from './member'
 import './LoginPage.css'
 
@@ -123,7 +124,7 @@ function LoginPage() {
         </div>
 
         <p className="login-signup">
-          계정이 없으신가요? <a href="/signup">회원가입</a>
+          계정이 없으신가요? <Link to="/signup">회원가입</Link>
         </p>
       </section>
     </main>
