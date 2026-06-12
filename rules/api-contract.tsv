@@ -1,0 +1,37 @@
+번호	파트	지시사항
+1	source	Read docs/api-contract.md for exact API contract details before changing API behavior.
+2	source	Treat docs/api-contract.md as canonical when code and contract disagree.
+3	change	Additive API changes must update the docs/api-contract.md change log.
+4	change	Breaking API changes require team agreement, Slack notice, version update, and change log entry.
+5	change	Do not silently delete, rename, retype, or change frozen fields, statuses, DOM hooks, or actions.
+6	member	Do not implement member-dependent APIs until authentication method and userId type are finalized.
+7	global	Use http://localhost:8080/api as the Spring development API base URL unless instructed otherwise.
+8	global	Use Content-Type: application/json; charset=utf-8 for API requests and responses.
+9	auth	Use Authorization: Bearer <token> for authenticated APIs after auth is finalized.
+10	response	Return resources directly on success; do not add unnecessary response envelopes.
+11	response	Use 201 for create, 200 for read, and 204 for no-content success.
+12	error	Return errors as {code,message,status}.
+13	error	Use uppercase snake case error codes with domain prefixes when possible.
+14	pagination	Use page, size, and sort query parameters for list pagination.
+15	pagination	Use page responses with content, page, size, totalElements, and totalPages.
+16	types	Use English camelCase JSON keys.
+17	types	Represent money as integer KRW in price without decimals or currency symbols.
+18	types	Represent date-time values as ISO 8601 UTC strings.
+19	types	Use bigint(int8) for domain primary keys unless specified otherwise.
+20	status	Use only the frozen order status values from docs/api-contract.md.
+21	status	Use only the frozen payment status values from docs/api-contract.md.
+22	payment	Keep KakaoPay Secret_Key only on the Spring server.
+23	payment	Do not expose payment secrets to frontend code or commits.
+24	payment	Do not use KakaoPay legacy Admin_Key for the documented flow.
+25	goods	Preserve frozen goods fields goodsId, name, price, imageUrl, and tags.
+26	goods	Do not rename or retype goodsId.
+27	goods	Add goods fields only when additive and documented.
+28	ai	Preserve WebSocket endpoint /client-ws.
+29	ai	Preserve client message shape with type text-input and text.
+30	ai	Preserve server message shape with type, text, and actions array.
+31	ai	Keep actions as an array; empty actions are allowed for MVP.
+32	action	Use [ACTION:actionName key="value"] syntax for AI actions.
+33	action	Support MVP actions navigate, highlight, and addToCart.
+34	dom	Preserve #content as the main content container.
+35	dom	Preserve #vtuber and do not replace it during page transitions.
+36	dom	Preserve data-goods-id, data-artist-id, and data-add-to-cart hooks.
