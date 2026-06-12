@@ -224,6 +224,26 @@
 > AI가 "왜 이 굿즈가 의미 있나"를 설명하는 근거 공급. 추천이 `artistId`로 연결되므로 그 필드는 동결.
 
 ```
+#### [GET] /api/artists
+- 설명: 아티스트 목록 (이름/컬렉션 검색 가능)
+- 인증 필요: N
+- 요청 query: ?q=aespa&page=0&size=20&sort=name,asc
+- 응답 (동결 필드): 페이지 객체(§1.5), content = artist 요약 배열
+- 추가 가능 필드: { lore, debutDate, collections[] }
+- 상태: [x] 동결
+```
+
+`artist` 요약 객체 (아티스트 카드·굿즈 상세·AI 추천 설명이 의존 → **동결**):
+
+```json
+{
+  "artistId": 7,
+  "name": "aespa",
+  "imageUrl": "https://cdn.example.com/artists/7.jpg"
+}
+```
+
+```
 #### [GET] /api/artists/{artistId}
 - 설명: 아티스트 상세 (lore 포함)
 - 인증 필요: N
@@ -317,6 +337,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 날짜 | 버전 | 도메인 | 종류 | 변경 내용 | 합의자 |
 |------|------|--------|------|-----------|--------|
 | 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
+| 2026-06-12 | v0.1.0 | artists | additive | `GET /api/artists` 목록 계약 및 artist 요약 객체 추가 | 아티스트 |
 | 2026-06-1X | v0.1.1 | (예) goods | additive | `discountRate` 필드 추가 | 굿즈 |
 | 2026-06-1X | v0.2.0 | (예) goods | breaking | `price` 타입 String→int 변경 | 전원 |
 |  |  |  |  |  |  |
