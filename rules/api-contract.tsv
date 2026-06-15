@@ -32,6 +32,8 @@
 31	ai	Keep actions as an array; empty actions are allowed for MVP.
 32	action	Use [ACTION:actionName key="value"] syntax for AI actions.
 33	action	Support MVP actions navigate, highlight, and addToCart.
-34	dom	Preserve #content as the main content container.
-35	dom	Preserve #vtuber and do not replace it during page transitions.
-36	dom	Preserve data-goods-id, data-artist-id, and data-add-to-cart hooks.
+34	action	Represent WebSocket actions as JSON objects derived from [ACTION] tags.
+35	action	Use type plus the documented action field: navigate.path, highlight.selector, or addToCart.goodsId.
+36	dom	Preserve #content as the main content container.
+37	dom	Preserve #vtuber and do not replace it during page transitions.
+38	dom	Preserve data-goods-id, data-artist-id, and data-add-to-cart hooks.
