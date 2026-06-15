@@ -1,0 +1,14 @@
+{
+  "name": "project-cyan",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "concurrently -k -n frontend,backend,ai -c cyan,green,magenta \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ai\"",
+    "dev:frontend": "npm --prefix frontend run dev --",
+    "dev:backend": "cd backend && ./gradlew bootRun",
+    "dev:ai": "cd ai && uv run fastapi dev src/project_cyan_ai/main.py --host 127.0.0.1 --port 8000"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
