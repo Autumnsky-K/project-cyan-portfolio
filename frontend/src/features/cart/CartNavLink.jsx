@@ -1,0 +1,46 @@
+import { Link } from 'react-router-dom'
+import { useCart } from './useCart'
+import './cart-nav.css'
+
+function formatPrice(value) {
+  return `KRW ${Number(value ?? 0).toLocaleString()}`
+}
+
+function CartNavLink({ current = false }) {
+  const { items } = useCart()
+  const previewItems = items.slice(0, 3)
+  const hiddenItemCount = Math.max(items.length - previewItems.length, 0)
+  const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
+
+  return (
+    <span className="cart-nav">
+      <Link aria-current={current ? 'page' : undefined} className="cart-nav-link" to="/cart">
+        Cart{items.length > 0 ? ` ${items.length}` : ''}
+      </Link>
+      <span className="cart-preview" role="status">
+        <strong>Cart</strong>
+        {items.length === 0 ? (
+          <span className="cart-preview-empty">Cart is empty</span>
+        ) : (
+          <>
+            <span className="cart-preview-list">
+              {previewItems.map((item) => (
+                <span className="cart-preview-item" key={item.goodsId}>
+                  <span>{item.name}</span>
+                  <span>x {item.quantity}</span>
+                </span>
+              ))}
+              {hiddenItemCount > 0 && <span className="cart-preview-more">+{hiddenItemCount} more</span>}
+            </span>
+            <span className="cart-preview-total">
+              <span>Total</span>
+              <strong>{formatPrice(subtotal)}</strong>
+            </span>
+          </>
+        )}
+      </span>
+    </span>
+  )
+}
+
+export default CartNavLink

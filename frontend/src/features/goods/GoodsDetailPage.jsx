@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchGoodsDetail } from '../../api/goods'
+import CartNavLink from '../cart/CartNavLink'
+import { useCart } from '../cart/useCart'
 import './goods.css'
 import './goods-detail.css'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams()
+  const { addCartItem } = useCart()
   const [goods, setGoods] = useState(null)
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
+  const [addFeedback, setAddFeedback] = useState(false)
+  const [quantity, setQuantity] = useState(1)
+  const addFeedbackTimerRef = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -37,6 +43,26 @@ function GoodsDetailPage() {
     }
   }, [goodsId])
 
+  useEffect(
+    () => () => {
+      window.clearTimeout(addFeedbackTimerRef.current)
+    },
+    [],
+  )
+
+  function handleAddCartItem() {
+    addCartItem(goods, quantity)
+    setAddFeedback(true)
+    window.clearTimeout(addFeedbackTimerRef.current)
+    addFeedbackTimerRef.current = window.setTimeout(() => {
+      setAddFeedback(false)
+    }, 1800)
+  }
+
+  function updateQuantity(nextQuantity) {
+    setQuantity(Math.max(1, Math.min(nextQuantity, 99)))
+  }
+
   return (
     <main className="goods-page goods-detail-page">
       <header className="store-header">
@@ -50,7 +76,7 @@ function GoodsDetailPage() {
           <Link to="/goods" aria-current="page">
             Goods
           </Link>
-          <a href="#cart">Cart</a>
+          <CartNavLink />
         </nav>
       </header>
 
@@ -97,7 +123,29 @@ function GoodsDetailPage() {
                 ))}
               </div>
               <div className="detail-actions">
-                <button type="button">Add</button>
+                <div className="detail-quantity" aria-label="Quantity">
+                  <input
+                    min="1"
+                    max="99"
+                    type="number"
+                    value={quantity}
+                    onChange={(event) => updateQuantity(Number(event.target.value))}
+                  />
+                  <div className="detail-quantity-stepper">
+                    <button aria-label="Increase quantity" type="button" onClick={() => updateQuantity(quantity + 1)}>
+                      +
+                    </button>
+                    <button aria-label="Decrease quantity" type="button" onClick={() => updateQuantity(quantity - 1)}>
+                      -
+                    </button>
+                  </div>
+                </div>
+                <span className="add-action-wrap">
+                  <button type="button" data-add-to-cart={goods.goodsId} onClick={handleAddCartItem}>
+                    Add
+                  </button>
+                  {addFeedback && <span className="add-feedback-popover">Added to cart</span>}
+                </span>
                 <Link className="detail-action" to="/goods">
                   Back
                 </Link>

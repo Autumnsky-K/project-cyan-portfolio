@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchGoods, fetchGoodsFilters } from '../../api/goods'
+import CartNavLink from '../cart/CartNavLink'
+import { useCart } from '../cart/useCart'
 import './goods.css'
 
 function GoodsPage() {
+  const { addCartItem } = useCart()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
   const [selectedFilters, setSelectedFilters] = useState({ categoryIds: [], artistIds: [], tags: [] })
@@ -12,7 +15,9 @@ function GoodsPage() {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState('loading')
+  const [addedGoodsId, setAddedGoodsId] = useState(null)
   const hasLoadedGoodsRef = useRef(false)
+  const cartToastTimerRef = useRef(null)
 
   const requestParams = useMemo(
     () => {
@@ -101,6 +106,13 @@ function GoodsPage() {
     }
   }, [requestParams])
 
+  useEffect(
+    () => () => {
+      window.clearTimeout(cartToastTimerRef.current)
+    },
+    [],
+  )
+
   function updateFilter(param, value) {
     setSelectedFilters((current) => {
       const currentValues = current[param] ?? []
@@ -125,6 +137,15 @@ function GoodsPage() {
     return (selectedFilters[param] ?? []).includes(value)
   }
 
+  function handleAddCartItem(item) {
+    addCartItem(item)
+    setAddedGoodsId(item.goodsId)
+    window.clearTimeout(cartToastTimerRef.current)
+    cartToastTimerRef.current = window.setTimeout(() => {
+      setAddedGoodsId(null)
+    }, 1600)
+  }
+
   const goods = goodsPage?.content ?? []
   const totalElements = goodsPage?.totalElements ?? 0
   const hasGoods = goods.length > 0
@@ -137,12 +158,12 @@ function GoodsPage() {
           <h1>Goods</h1>
         </div>
         <nav className="store-nav" aria-label="Store navigation">
-          <a href="#home">Home</a>
-          <a href="#artists">Artists</a>
+          <Link to="/">Home</Link>
+          <Link to="/artists">Artists</Link>
           <a href="#goods" aria-current="page">
             Goods
           </a>
-          <a href="#cart">Cart</a>
+          <CartNavLink />
         </nav>
       </header>
 
@@ -256,7 +277,14 @@ function GoodsPage() {
                         <Link className="card-action" to={`/goods/${item.goodsId}`}>
                           View
                         </Link>
-                        <button type="button">Add</button>
+                        <span className="add-action-wrap">
+                          <button type="button" data-add-to-cart={item.goodsId} onClick={() => handleAddCartItem(item)}>
+                            Add
+                          </button>
+                          {addedGoodsId === item.goodsId && (
+                            <span className="add-feedback-popover">Added to cart</span>
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
