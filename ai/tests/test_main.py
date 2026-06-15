@@ -3,7 +3,13 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
-from project_cyan_ai.schemas.ws import ClientTextInput, FullTextMessage
+from project_cyan_ai.schemas.ws import (
+    AddToCartAction,
+    ClientTextInput,
+    FullTextMessage,
+    HighlightAction,
+    NavigateAction,
+)
 
 client = TestClient(app)
 
@@ -27,6 +33,62 @@ def test_full_text_message_preserves_server_contract_shape():
         "text": "안녕",
         "actions": [],
     }
+
+
+def test_full_text_message_accepts_mvp_action_payloads():
+    message = FullTextMessage(
+        text="추천 상품을 보여드릴게요",
+        actions=[
+            NavigateAction(path="/goods/42"),
+            HighlightAction(selector="[data-goods-id='42']"),
+            AddToCartAction(goodsId="42"),
+        ],
+    )
+
+    assert message.model_dump() == {
+        "type": "full-text",
+        "text": "추천 상품을 보여드릴게요",
+        "actions": [
+            {"type": "navigate", "path": "/goods/42"},
+            {"type": "highlight", "selector": "[data-goods-id='42']"},
+            {"type": "addToCart", "goodsId": "42"},
+        ],
+    }
+
+
+def test_full_text_message_rejects_unknown_action_payload():
+    with pytest.raises(ValidationError):
+        FullTextMessage.model_validate(
+            {
+                "type": "full-text",
+                "text": "안녕",
+                "actions": [{"type": "unknown", "value": "42"}],
+            }
+        )
+
+
+def test_full_text_message_rejects_action_missing_required_field():
+    with pytest.raises(ValidationError):
+        FullTextMessage.model_validate(
+            {
+                "type": "full-text",
+                "text": "안녕",
+                "actions": [{"type": "navigate"}],
+            }
+        )
+
+
+def test_full_text_message_rejects_extra_action_field():
+    with pytest.raises(ValidationError):
+        FullTextMessage.model_validate(
+            {
+                "type": "full-text",
+                "text": "안녕",
+                "actions": [
+                    {"type": "addToCart", "goodsId": "42", "path": "/goods/42"}
+                ],
+            }
+        )
 
 
 def test_client_ws_sends_initial_messages():
