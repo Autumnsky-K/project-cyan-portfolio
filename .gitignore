@@ -60,6 +60,7 @@ out/
 .env.*
 !.env.example
 **/application-local.yml
+**/application-local.properties
 
 # 개인 오버라이드
 *.local.md
