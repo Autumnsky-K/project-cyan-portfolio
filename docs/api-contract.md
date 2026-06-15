@@ -356,5 +356,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 |------|------|--------|------|-----------|--------|
 | 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
 | 2026-06-12 | v0.1.1 | ai | additive | ai websocket 입/출력 계약 추가 | 강승민 |
+| 2026-06-15 | v0.1.2 | goods | additive | `GET /api/goods`에 다중 선택 필터용 `categoryIds`, `artistIds`, `tags` query 추가. 기존 `categoryId`, `artistId`, `tag` query는 호환 유지 | Codex |
 | 2026-06-15 | v0.1.2 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
 |  |  |  |  |  |  |
