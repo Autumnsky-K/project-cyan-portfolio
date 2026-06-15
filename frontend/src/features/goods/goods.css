@@ -47,7 +47,9 @@
 .store-toolbar select,
 .filter-panel button,
 .view-toggle button,
-.goods-card button {
+.goods-card button,
+.card-action,
+.detail-action {
   border: 1px solid var(--goods-line);
   border-radius: 4px;
   background: #ffffff;
@@ -128,10 +130,21 @@
 
 .panel-heading button,
 .view-toggle button,
-.goods-card button {
+.goods-card button,
+.card-action,
+.detail-action {
   min-height: 36px;
   padding: 6px 10px;
   cursor: pointer;
+}
+
+.card-action,
+.detail-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
 }
 
 .filter-group {

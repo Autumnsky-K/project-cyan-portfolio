@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchGoods } from '../../api/goods'
 import './goods.css'
 
@@ -220,7 +221,9 @@ function GoodsPage() {
                     <div className="card-footer">
                       <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
                       <div>
-                        <button type="button">View</button>
+                        <Link className="card-action" to={`/goods/${item.goodsId}`}>
+                          View
+                        </Link>
                         <button type="button">Add</button>
                       </div>
                     </div>
