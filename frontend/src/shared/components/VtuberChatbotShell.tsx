@@ -2,11 +2,30 @@ import { type FormEvent, type ReactElement, useState } from 'react'
 
 import './VtuberChatbot.css'
 
-function VtuberChatbot(): ReactElement {
+type VtuberChatbotProps = {
+  actionsCount: number
+  bubbleText: string
+  isSendDisabled: boolean
+  onSendMessage: (message: string) => boolean
+  statusLabel: string
+}
+
+function VtuberChatbotShell({
+  actionsCount,
+  bubbleText,
+  isSendDisabled,
+  onSendMessage,
+  statusLabel,
+}: VtuberChatbotProps): ReactElement {
   const [message, setMessage] = useState('')
+  const trimmedMessage = message.trim()
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (onSendMessage(trimmedMessage)) {
+      setMessage('')
+    }
   }
 
   return (
@@ -15,13 +34,16 @@ function VtuberChatbot(): ReactElement {
         <div className="vtuber-avatar" aria-hidden="true">
           <span className="vtuber-avatar-face" />
         </div>
-        <span className="vtuber-status">Standby</span>
+        <span className="vtuber-status">{statusLabel}</span>
       </div>
 
       <section className="vtuber-panel" aria-label="Chatbot conversation">
         <div className="vtuber-bubble" aria-live="polite">
           <strong>Cyan Assistant</strong>
-          <p>필요한 굿즈를 찾을 때 여기에서 도와드릴게요.</p>
+          <p>{bubbleText}</p>
+          <span className="vtuber-sr-only" aria-live="polite">
+            Prepared actions: {actionsCount}
+          </span>
         </div>
 
         <form className="vtuber-form" onSubmit={handleSubmit}>
@@ -36,7 +58,11 @@ function VtuberChatbot(): ReactElement {
             autoComplete="off"
             onChange={(event) => setMessage(event.target.value)}
           />
-          <button type="submit" disabled aria-label="Send message">
+          <button
+            type="submit"
+            disabled={isSendDisabled || trimmedMessage.length === 0}
+            aria-label="Send message"
+          >
             Send
           </button>
         </form>
@@ -45,4 +71,4 @@ function VtuberChatbot(): ReactElement {
   )
 }
 
-export default VtuberChatbot
+export default VtuberChatbotShell

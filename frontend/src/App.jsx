@@ -5,7 +5,7 @@ import GoodsDetailPage from './features/goods/GoodsDetailPage.jsx'
 import GoodsPage from './features/goods/goods.jsx'
 import LoginPage from './features/member/LoginPage.jsx'
 import SignupPage from './features/member/SignupPage.jsx'
-import VtuberChatbot from './shared/components/VtuberChatbot.tsx'
+import VtuberChatbot from './features/vtuber/VtuberChatbot.tsx'
 
 function AppShell() {
   const { pathname } = useLocation()

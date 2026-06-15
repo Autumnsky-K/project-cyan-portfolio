@@ -1,16 +1,54 @@
-# React + Vite
+# project-cyan frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+project-cyan의 React + Vite 프론트엔드 애플리케이션입니다.
 
-Currently, two official plugins are available:
+## 실행
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+기본 개발 서버는 Vite 설정을 따릅니다. 로컬에서는 보통 `http://localhost:5173`에서 확인할 수 있습니다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 빌드
 
-## Expanding the ESLint configuration
+```bash
+npm run build
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Live2D 챗봇 WebSocket 테스트
+
+챗봇은 `/client-ws` WebSocket 엔드포인트에 연결합니다. AI WebSocket 서버가 실행 중이 아니면 챗봇 상태가 `오류`로 표시됩니다. 프론트엔드만 실행하는 테스트에서는 정상 동작입니다.
+
+### 프론트엔드만 실행하는 경우
+
+```bash
+npm run dev
+```
+
+### 로컬 AI WebSocket 서버와 함께 실행하는 경우
+
+커밋되는 문서에는 로컬 개발용 URL 예시까지만 적습니다.
+
+```bash
+VITE_VTUBER_WS_URL=ws://localhost:8000/client-ws npm run dev
+```
+
+로컬이 아닌 환경에서는 문서에 실제 주소를 적지 말고 placeholder를 사용합니다.
+
+```bash
+VITE_VTUBER_WS_URL=ws://<ai-server-host>/client-ws
+```
+
+실제 팀 개발용 값은 `.env.local`에 넣어 사용합니다. `.env.local`, API 키, 토큰, 비밀번호, private server URL, 배포 secret은 커밋하지 마세요. 실제 값은 팀 메신저나 팀원만 접근 가능한 드라이브처럼 비공개 팀 채널에서 공유합니다.
+
+### 테스트 메시지
+
+```text
+안녕
+추천 상품 보여줘
+추천 상품을 장바구니에 담아줘
+```
+
+현재 프론트엔드는 서버 메시지의 `text`를 챗봇 말풍선에 표시하고, `actions`는 수신해서 보관만 합니다. `navigate`, `highlight`, `addToCart` ACTION 실행은 아직 구현하지 않았습니다.
