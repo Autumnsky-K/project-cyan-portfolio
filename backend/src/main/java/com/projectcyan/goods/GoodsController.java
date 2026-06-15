@@ -20,13 +20,21 @@ public class GoodsController {
 	public PageResponse<GoodsSummaryResponse> findGoods(
 		@RequestParam(required = false) String q,
 		@RequestParam(required = false) Long artistId,
+		@RequestParam(required = false) String artistIds,
 		@RequestParam(required = false) Long categoryId,
+		@RequestParam(required = false) String categoryIds,
 		@RequestParam(required = false) String tag,
+		@RequestParam(required = false) String tags,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size,
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
-		return goodsService.findGoods(q, artistId, categoryId, tag, page, size, sort);
+		return goodsService.findGoods(q, artistId, artistIds, categoryId, categoryIds, tag, tags, page, size, sort);
+	}
+
+	@GetMapping("/filters")
+	public GoodsFiltersResponse findGoodsFilters() {
+		return goodsService.findGoodsFilters();
 	}
 
 	@GetMapping("/{goodsId}")

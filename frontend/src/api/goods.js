@@ -29,3 +29,14 @@ export async function fetchGoodsDetail(goodsId, options = {}) {
 
   return response.json()
 }
+
+export async function fetchGoodsFilters(options = {}) {
+  const response = await fetch(`${API_BASE_URL}/goods/filters`, options)
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null)
+    throw new Error(error?.message ?? 'Failed to load goods filters.')
+  }
+
+  return response.json()
+}
