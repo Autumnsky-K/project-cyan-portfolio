@@ -3,6 +3,10 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
+from project_cyan_ai.providers import (
+    MockChatResponseProvider,
+    get_chat_response_provider,
+)
 from project_cyan_ai.schemas.ws import (
     AddToCartAction,
     ClientTextInput,
@@ -12,6 +16,8 @@ from project_cyan_ai.schemas.ws import (
 )
 
 client = TestClient(app)
+mock_provider = MockChatResponseProvider()
+
 
 def test_health_returns_ok():
     response = client.get("/health")
@@ -89,6 +95,59 @@ def test_full_text_message_rejects_extra_action_field():
                 ],
             }
         )
+
+
+def test_chat_response_provider_factory_returns_mock_provider_by_default():
+    assert isinstance(get_chat_response_provider(), MockChatResponseProvider)
+
+
+def test_mock_provider_echoes_plain_text_input():
+    response = mock_provider.build_response("안녕")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "받은 메시지: 안녕",
+        "actions": [],
+    }
+
+
+def test_mock_provider_returns_recommendation_actions():
+    response = mock_provider.build_response("상품 추천 보여줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/42"},
+            {"type": "highlight", "selector": "[data-goods-id='42']"},
+        ],
+    }
+
+
+def test_mock_provider_returns_add_to_cart_action():
+    response = mock_provider.build_response("장바구니에 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "42"},
+        ],
+    }
+
+
+def test_mock_provider_combines_actions_when_keywords_overlap():
+    response = mock_provider.build_response("추천 상품을 장바구니에 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/42"},
+            {"type": "highlight", "selector": "[data-goods-id='42']"},
+            {"type": "addToCart", "goodsId": "42"},
+        ],
+    }
 
 
 def test_client_ws_sends_initial_messages():
