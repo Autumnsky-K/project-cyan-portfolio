@@ -125,6 +125,62 @@ def test_client_ws_echoes_valid_text_input():
     }
 
 
+def test_client_ws_returns_recommendation_mock_actions():
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "상품 추천 보여줘"})
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/42"},
+            {"type": "highlight", "selector": "[data-goods-id='42']"},
+        ],
+    }
+
+
+def test_client_ws_returns_add_to_cart_mock_action():
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "장바구니에 담아줘"})
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "42"},
+        ],
+    }
+
+
+def test_client_ws_combines_mock_actions_when_keywords_overlap():
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "추천 상품을 장바구니에 담아줘"}
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/42"},
+            {"type": "highlight", "selector": "[data-goods-id='42']"},
+            {"type": "addToCart", "goodsId": "42"},
+        ],
+    }
+
+
 def test_client_ws_rejects_unsupported_message_type():
     with client.websocket_connect("/client-ws") as websocket:
         websocket.receive_json()
