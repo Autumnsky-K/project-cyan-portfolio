@@ -96,18 +96,84 @@
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
-.detail-actions button {
+.detail-actions button,
+.detail-quantity input {
   min-height: 40px;
   padding: 8px 14px;
   border: 1px solid var(--goods-ink);
   border-radius: 4px;
+  font: inherit;
+}
+
+.detail-actions > button {
   background: var(--goods-ink);
   color: #ffffff;
-  font: inherit;
   cursor: pointer;
+}
+
+.detail-quantity {
+  display: grid;
+  grid-template-columns: 64px 28px;
+  align-items: center;
+}
+
+.detail-quantity input {
+  border-color: var(--goods-line);
+  background: #ffffff;
+  color: var(--goods-text);
+  text-align: center;
+}
+
+.detail-quantity button {
+  border: 1px solid var(--goods-line);
+  background: #ffffff;
+  color: var(--goods-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.detail-quantity input {
+  width: 100%;
+  box-sizing: border-box;
+  border-right: 0;
+  border-radius: 4px 0 0 4px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.detail-quantity input::-webkit-inner-spin-button,
+.detail-quantity input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.detail-quantity-stepper {
+  display: grid;
+  grid-template-rows: 20px 20px;
+}
+
+.detail-quantity-stepper button {
+  display: grid;
+  place-items: center;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.detail-quantity-stepper button:first-child {
+  border-radius: 0 4px 0 0;
+}
+
+.detail-quantity-stepper button:last-child {
+  border-top: 0;
+  border-radius: 0 0 4px;
 }
 
 .detail-section {

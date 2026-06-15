@@ -1,6 +1,8 @@
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 import ArtistPage from './features/artist/artist.tsx'
+import CartPage from './features/cart/CartPage.jsx'
+import { CartProvider } from './features/cart/cartStore.jsx'
 import GoodsDetailPage from './features/goods/GoodsDetailPage.jsx'
 import GoodsPage from './features/goods/goods.jsx'
 import LoginPage from './features/member/LoginPage.jsx'
@@ -18,6 +20,7 @@ function AppShell() {
           <Route path="/" element={<GoodsPage />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -31,7 +34,9 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <CartProvider>
+        <AppShell />
+      </CartProvider>
     </BrowserRouter>
   )
 }
