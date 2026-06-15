@@ -1,70 +1,88 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchGoods } from '../../api/goods'
+import { fetchGoods, fetchGoodsFilters } from '../../api/goods'
 import './goods.css'
-
-const filters = [
-  {
-    title: 'Artist',
-    param: 'artistId',
-    options: [
-      { label: 'aespa', value: '1' },
-      { label: 'NCT', value: '2' },
-      { label: 'RIIZE', value: '3' },
-      { label: 'Red Velvet', value: '4' },
-    ],
-  },
-  {
-    title: 'Category',
-    param: 'categoryId',
-    options: [
-      { label: 'Photo Card', value: '1' },
-      { label: 'Apparel', value: '2' },
-      { label: 'Album Goods', value: '3' },
-      { label: 'Light Stick', value: '4' },
-      { label: 'Stationery', value: '5' },
-    ],
-  },
-  {
-    title: 'Tag',
-    param: 'tag',
-    options: [
-      { label: 'New', value: 'NEW' },
-      { label: 'Best', value: 'BEST' },
-      { label: 'Limited', value: 'LIMITED' },
-      { label: 'Pre-order', value: 'PRE_ORDER' },
-    ],
-  },
-]
 
 function GoodsPage() {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
-  const [selectedFilters, setSelectedFilters] = useState({})
+  const [selectedFilters, setSelectedFilters] = useState({ categoryIds: [], artistIds: [], tags: [] })
+  const [filters, setFilters] = useState([])
   const [goodsPage, setGoodsPage] = useState(null)
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
+  const [filterStatus, setFilterStatus] = useState('loading')
+  const hasLoadedGoodsRef = useRef(false)
 
   const requestParams = useMemo(
-    () => ({
-      q: query,
-      sort,
-      page: 0,
-      size: 20,
-      ...selectedFilters,
-    }),
+    () => {
+      const params = {
+        q: query,
+        sort,
+        page: 0,
+        size: 20,
+        categoryIds: selectedFilters.categoryIds.join(','),
+        artistIds: selectedFilters.artistIds.join(','),
+        tags: selectedFilters.tags.join(','),
+      }
+
+      if (selectedFilters.categoryIds.length === 1) {
+        params.categoryId = selectedFilters.categoryIds[0]
+      }
+      if (selectedFilters.artistIds.length === 1) {
+        params.artistId = selectedFilters.artistIds[0]
+      }
+      if (selectedFilters.tags.length === 1) {
+        params.tag = selectedFilters.tags[0]
+      }
+
+      return params
+    },
     [query, selectedFilters, sort],
   )
 
   useEffect(() => {
     const controller = new AbortController()
 
+    async function loadFilters() {
+      setFilterStatus('loading')
+
+      try {
+        const data = await fetchGoodsFilters({ signal: controller.signal })
+        setFilters([
+          { title: 'Category', param: 'categoryIds', options: data.categories ?? [] },
+          { title: 'Artist', param: 'artistIds', options: data.artists ?? [] },
+          { title: 'Tag', param: 'tags', options: data.tags ?? [] },
+        ])
+        setFilterStatus('data')
+      } catch (loadError) {
+        if (loadError.name === 'AbortError') {
+          return
+        }
+        setFilters([])
+        setFilterStatus('error')
+      }
+    }
+
+    loadFilters()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
     async function loadGoods() {
-      setStatus('loading')
+      setStatus((currentStatus) =>
+        hasLoadedGoodsRef.current && currentStatus !== 'empty' ? 'refreshing' : 'loading',
+      )
       setError('')
 
       try {
         const data = await fetchGoods(requestParams, { signal: controller.signal })
+        hasLoadedGoodsRef.current = true
         setGoodsPage(data)
         setStatus(data.content?.length ? 'data' : 'empty')
       } catch (loadError) {
@@ -85,23 +103,31 @@ function GoodsPage() {
 
   function updateFilter(param, value) {
     setSelectedFilters((current) => {
-      if (current[param] === value) {
-        const next = { ...current }
-        delete next[param]
-        return next
+      const currentValues = current[param] ?? []
+      const nextValues = currentValues.includes(value)
+        ? currentValues.filter((currentValue) => currentValue !== value)
+        : [...currentValues, value]
+
+      return {
+        ...current,
+        [param]: nextValues,
       }
-      return { ...current, [param]: value }
     })
   }
 
   function resetFilters() {
     setQuery('')
     setSort('createdAt,desc')
-    setSelectedFilters({})
+    setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
+  }
+
+  function isFilterSelected(param, value) {
+    return (selectedFilters[param] ?? []).includes(value)
   }
 
   const goods = goodsPage?.content ?? []
   const totalElements = goodsPage?.totalElements ?? 0
+  const hasGoods = goods.length > 0
 
   return (
     <main className="goods-page">
@@ -149,19 +175,23 @@ function GoodsPage() {
               Reset
             </button>
           </div>
+          {filterStatus === 'loading' && <p className="filter-note">Loading filters...</p>}
+          {filterStatus === 'error' && <p className="filter-note">Unable to load filters.</p>}
           {filters.map((group) => (
             <fieldset className="filter-group" key={group.title}>
               <legend>{group.title}</legend>
-              {group.options.map((option) => (
-                <label key={option.value}>
-                  <input
-                    type="checkbox"
-                    checked={selectedFilters[group.param] === option.value}
-                    onChange={() => updateFilter(group.param, option.value)}
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
+              <div className="filter-options">
+                {group.options.map((option) => (
+                  <label key={option.value}>
+                    <input
+                      type="checkbox"
+                      checked={isFilterSelected(group.param, option.value)}
+                      onChange={() => updateFilter(group.param, option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
             </fieldset>
           ))}
         </aside>
@@ -173,6 +203,8 @@ function GoodsPage() {
               <p>
                 {status === 'loading'
                   ? 'Loading store items'
+                  : status === 'refreshing'
+                    ? `Updating ${goods.length} of ${totalElements} store items`
                   : `Showing ${goods.length} of ${totalElements} store items`}
               </p>
             </div>
@@ -184,7 +216,7 @@ function GoodsPage() {
             </div>
           </div>
 
-          {status === 'loading' && <div className="goods-state">Loading goods...</div>}
+          {status === 'loading' && !hasGoods && <div className="goods-state">Loading goods...</div>}
 
           {status === 'error' && (
             <div className="goods-state error-state">
@@ -193,10 +225,10 @@ function GoodsPage() {
             </div>
           )}
 
-          {status === 'empty' && <div className="goods-state">No goods match these filters.</div>}
+          {status === 'empty' && !hasGoods && <div className="goods-state">No goods match these filters.</div>}
 
-          {status === 'data' && (
-            <div className="goods-grid">
+          {hasGoods && (
+            <div className="goods-grid" data-refreshing={status === 'refreshing'}>
               {goods.map((item) => (
                 <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
                   <div className="goods-image" aria-label={`${item.name} image`}>
