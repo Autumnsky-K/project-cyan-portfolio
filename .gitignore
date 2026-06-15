@@ -59,6 +59,7 @@ out/
 .env
 .env.*
 !.env.example
+!frontend/.env.development
 **/application-local.yml
 **/application-local.properties
 

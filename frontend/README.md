@@ -29,10 +29,10 @@ npm run dev
 
 ### 로컬 AI WebSocket 서버와 함께 실행하는 경우
 
-커밋되는 문서에는 로컬 개발용 URL 예시까지만 적습니다.
+커밋 가능한 기본 개발 URL은 `frontend/.env.development`에 있습니다.
 
-```bash
-VITE_VTUBER_WS_URL=ws://localhost:8000/client-ws npm run dev
+```env
+VITE_VTUBER_WS_URL=ws://localhost:8000/client-ws
 ```
 
 로컬이 아닌 환경에서는 문서에 실제 주소를 적지 말고 placeholder를 사용합니다.
@@ -41,7 +41,7 @@ VITE_VTUBER_WS_URL=ws://localhost:8000/client-ws npm run dev
 VITE_VTUBER_WS_URL=ws://<ai-server-host>/client-ws
 ```
 
-실제 팀 개발용 값은 `.env.local`에 넣어 사용합니다. `.env.local`, API 키, 토큰, 비밀번호, private server URL, 배포 secret은 커밋하지 마세요. 실제 값은 팀 메신저나 팀원만 접근 가능한 드라이브처럼 비공개 팀 채널에서 공유합니다.
+실제 팀 개발용 값이나 개인 override는 `.env.local`에 넣어 사용합니다. 루트에서 `npm run dev`를 실행해도 Vite는 `frontend/.env.local`을 읽습니다. `.env.local`, API 키, 토큰, 비밀번호, private server URL, 배포 secret은 커밋하지 마세요. 실제 값은 팀 메신저나 팀원만 접근 가능한 드라이브처럼 비공개 팀 채널에서 공유합니다.
 
 ### 테스트 메시지
 
