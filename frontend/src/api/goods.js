@@ -18,3 +18,14 @@ export async function fetchGoods(params = {}, options = {}) {
 
   return response.json()
 }
+
+export async function fetchGoodsDetail(goodsId, options = {}) {
+  const response = await fetch(`${API_BASE_URL}/goods/${goodsId}`, options)
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null)
+    throw new Error(error?.message ?? 'Failed to load goods detail.')
+  }
+
+  return response.json()
+}
