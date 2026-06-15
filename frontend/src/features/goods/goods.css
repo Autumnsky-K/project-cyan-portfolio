@@ -49,7 +49,8 @@
 .view-toggle button,
 .goods-card button,
 .card-action,
-.detail-action {
+.detail-action,
+.goods-pagination button {
   border: 1px solid var(--goods-line);
   border-radius: 4px;
   background: #ffffff;
@@ -131,7 +132,8 @@
 .view-toggle button,
 .goods-card button,
 .card-action,
-.detail-action {
+.detail-action,
+.goods-pagination button {
   min-height: 36px;
   padding: 6px 10px;
   cursor: pointer;
@@ -353,6 +355,32 @@
   border-style: solid;
 }
 
+.goods-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  color: var(--goods-muted);
+  font-size: 14px;
+}
+
+.goods-pagination button[aria-current='page'] {
+  border-color: var(--goods-ink);
+  background: var(--goods-ink);
+  color: #ffffff;
+}
+
+.goods-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.page-number-list {
+  display: inline-flex;
+  gap: 6px;
+}
+
 @media (max-width: 900px) {
   .store-header,
   .store-toolbar,
@@ -387,7 +415,8 @@
 
   .store-nav,
   .result-summary,
-  .card-footer {
+  .card-footer,
+  .goods-pagination {
     align-items: stretch;
     flex-direction: column;
   }
@@ -401,6 +430,11 @@
   .view-toggle button,
   .card-footer button {
     flex: 1;
+  }
+
+  .page-number-list {
+    justify-content: center;
+    width: 100%;
   }
 
   .goods-grid {

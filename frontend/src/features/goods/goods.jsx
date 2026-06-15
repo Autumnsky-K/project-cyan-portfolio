@@ -9,6 +9,7 @@ function GoodsPage() {
   const { addCartItem } = useCart()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
+  const [page, setPage] = useState(0)
   const [selectedFilters, setSelectedFilters] = useState({ categoryIds: [], artistIds: [], tags: [] })
   const [filters, setFilters] = useState([])
   const [goodsPage, setGoodsPage] = useState(null)
@@ -24,8 +25,8 @@ function GoodsPage() {
       const params = {
         q: query,
         sort,
-        page: 0,
-        size: 20,
+        page,
+        size: 12,
         categoryIds: selectedFilters.categoryIds.join(','),
         artistIds: selectedFilters.artistIds.join(','),
         tags: selectedFilters.tags.join(','),
@@ -43,7 +44,7 @@ function GoodsPage() {
 
       return params
     },
-    [query, selectedFilters, sort],
+    [page, query, selectedFilters, sort],
   )
 
   useEffect(() => {
@@ -114,6 +115,7 @@ function GoodsPage() {
   )
 
   function updateFilter(param, value) {
+    setPage(0)
     setSelectedFilters((current) => {
       const currentValues = current[param] ?? []
       const nextValues = currentValues.includes(value)
@@ -130,6 +132,7 @@ function GoodsPage() {
   function resetFilters() {
     setQuery('')
     setSort('createdAt,desc')
+    setPage(0)
     setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
   }
 
@@ -148,7 +151,37 @@ function GoodsPage() {
 
   const goods = goodsPage?.content ?? []
   const totalElements = goodsPage?.totalElements ?? 0
+  const totalPages = goodsPage?.totalPages ?? 0
+  const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
+  const hasPreviousPage = currentPage > 0
+  const hasNextPage = totalPages > 0 && currentPage < totalPages - 1
   const hasGoods = goods.length > 0
+  const pageNumbers = useMemo(() => {
+    if (totalPages < 1) {
+      return []
+    }
+
+    const maxVisiblePages = 5
+    const halfWindow = Math.floor(maxVisiblePages / 2)
+    const startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages))
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages)
+
+    return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
+  }, [currentPage, totalPages])
+
+  function handleQueryChange(event) {
+    setPage(0)
+    setQuery(event.target.value)
+  }
+
+  function handleSortChange(event) {
+    setPage(0)
+    setSort(event.target.value)
+  }
+
+  function goToPage(nextPage) {
+    setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
+  }
 
   return (
     <main className="goods-page">
@@ -174,12 +207,12 @@ function GoodsPage() {
             type="search"
             placeholder="Search goods, artist, category"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={handleQueryChange}
           />
         </label>
         <label className="sort-field">
           <span>Sort</span>
-          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+          <select value={sort} onChange={handleSortChange}>
             <option value="createdAt,desc">Newest</option>
             <option value="price,asc">Price low to high</option>
             <option value="price,desc">Price high to low</option>
@@ -291,6 +324,32 @@ function GoodsPage() {
                 </article>
               ))}
             </div>
+          )}
+
+          {totalPages > 0 && (
+            <nav className="goods-pagination" aria-label="Goods pagination">
+              <button type="button" disabled={!hasPreviousPage} onClick={() => goToPage(currentPage - 1)}>
+                Previous
+              </button>
+              <div className="page-number-list">
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    aria-current={pageNumber === currentPage ? 'page' : undefined}
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => goToPage(pageNumber)}
+                  >
+                    {pageNumber + 1}
+                  </button>
+                ))}
+              </div>
+              <button type="button" disabled={!hasNextPage} onClick={() => goToPage(currentPage + 1)}>
+                Next
+              </button>
+              <span>
+                Page {currentPage + 1} of {totalPages}
+              </span>
+            </nav>
           )}
         </div>
       </section>
