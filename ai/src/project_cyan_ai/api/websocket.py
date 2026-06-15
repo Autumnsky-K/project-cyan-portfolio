@@ -3,7 +3,13 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
-from project_cyan_ai.schemas.ws import ClientTextInput, ErrorMessage, ServerMessage
+from project_cyan_ai.schemas.ws import (
+    CLIENT_TEXT_INPUT_TYPE,
+    ClientTextInput,
+    ErrorMessage,
+    FullTextMessage,
+    ModelConfigMessage,
+)
 
 router = APIRouter()
 
@@ -12,24 +18,22 @@ async def client_ws(websocket: WebSocket):
     await websocket.accept()
     client_uid = str(uuid4())
 
-    await websocket.send_json({
-        "type": "full-text",
-        "text": "Connection established",
-        "actions": [],
-    })
-    await websocket.send_json({
-        "type": "set-model-and-conf",
-        "model_info": {},
-        "conf_name": "project-cyan-ai",
-        "conf_uid": "default",
-        "client_uid": client_uid,
-    })
+    await websocket.send_json(
+        FullTextMessage(text="Connection established").model_dump()
+    )
+    await websocket.send_json(
+        ModelConfigMessage(
+            conf_name="project-cyan-ai",
+            conf_uid="default",
+            client_uid=client_uid,
+        ).model_dump()
+    )
 
     try:
         while True:
             data = await websocket.receive_json()
 
-            if data.get("type") != "text-input":
+            if data.get("type") != CLIENT_TEXT_INPUT_TYPE:
                 await websocket.send_json(
                     ErrorMessage(message="Unsupported message type.").model_dump()
                 )
@@ -43,8 +47,7 @@ async def client_ws(websocket: WebSocket):
                 )
                 continue
 
-            response = ServerMessage(
-                type="full-text",
+            response = FullTextMessage(
                 text=f"받은 메시지: {message.text}",
                 actions=[],
             )
