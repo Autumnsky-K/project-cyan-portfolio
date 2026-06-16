@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${mode == 'create' ? 'New Goods' : 'Edit Goods'}">Goods Form</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside class="admin-sidebar" aria-label="Admin navigation">
+    <div>
+      <p class="admin-eyebrow">Project Cyan</p>
+      <h1>Admin</h1>
+    </div>
+    <nav>
+      <a aria-current="page" th:href="@{/admin/goods}">Goods</a>
+      <span>Orders</span>
+      <span>Members</span>
+    </nav>
+  </aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Store Management</p>
+        <h2 th:text="${mode == 'create' ? 'New Goods' : 'Edit Goods'}">Goods</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/goods}">Back to List</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+
+    <form class="admin-form" method="post"
+          th:object="${form}"
+          th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}">
+      <section class="admin-form-grid">
+        <label>
+          <span>Goods ID</span>
+          <input type="number" th:field="*{goodsId}" th:readonly="${mode != 'create'}" placeholder="Auto when empty">
+        </label>
+
+        <label>
+          <span>Name</span>
+          <input type="text" th:field="*{name}" required>
+          <small th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
+        </label>
+
+        <label>
+          <span>Price</span>
+          <input type="number" min="0" th:field="*{price}" required>
+          <small th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></small>
+        </label>
+
+        <label>
+          <span>Sales Status</span>
+          <select th:field="*{salesStatus}" required>
+            <option th:each="status : ${salesStatuses}" th:value="${status}" th:text="${status}"></option>
+          </select>
+          <small th:if="${#fields.hasErrors('salesStatus')}" th:errors="*{salesStatus}"></small>
+        </label>
+
+        <label>
+          <span>Artist</span>
+          <select th:field="*{artistId}">
+            <option value="">No artist</option>
+            <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
+          </select>
+        </label>
+
+        <label>
+          <span>Category</span>
+          <select th:field="*{categoryId}">
+            <option value="">No category</option>
+            <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
+          </select>
+        </label>
+
+        <label>
+          <span>Stock</span>
+          <input type="number" min="0" th:field="*{stockCount}">
+          <small th:if="${#fields.hasErrors('stockCount')}" th:errors="*{stockCount}"></small>
+        </label>
+
+        <label>
+          <span>Image URL</span>
+          <input type="url" th:field="*{imageUrl}" placeholder="https://example.com/goods.jpg">
+        </label>
+      </section>
+
+      <label class="admin-wide-field">
+        <span>Description</span>
+        <textarea rows="5" th:field="*{description}"></textarea>
+      </label>
+
+      <section class="admin-checks" aria-label="Goods flags">
+        <label>
+          <input type="checkbox" th:field="*{bestSeller}">
+          <span>Best seller</span>
+        </label>
+        <label>
+          <input type="checkbox" th:field="*{aiPickDefault}">
+          <span>AI pick default</span>
+        </label>
+      </section>
+
+      <section class="admin-tag-options" aria-label="Goods tags">
+        <span>Tags</span>
+        <div>
+          <label th:each="tag : ${filters.tags()}">
+            <input type="checkbox" th:field="*{tags}" th:value="${tag.value()}">
+            <span th:text="${tag.label()}">TAG</span>
+          </label>
+        </div>
+      </section>
+
+      <div class="admin-form-actions">
+        <button class="admin-primary" type="submit" th:text="${mode == 'create' ? 'Create Goods' : 'Save Goods'}">Save</button>
+        <a th:href="@{/admin/goods}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</main>
+</body>
+</html>

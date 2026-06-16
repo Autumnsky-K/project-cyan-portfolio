@@ -1,6 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 
-import AdminGoodsPage from './features/admin/AdminGoodsPage.jsx'
 import ArtistPage from './features/artist/artist.tsx'
 import CartPage from './features/cart/CartPage.jsx'
 import { CartProvider } from './features/cart/cartStore.jsx'
@@ -12,7 +11,7 @@ import VtuberChatbot from './features/vtuber/VtuberChatbot.tsx'
 
 function AppShell() {
   const { pathname } = useLocation()
-  const hideVtuber = pathname === '/login' || pathname === '/signup' || pathname.startsWith('/admin')
+  const hideVtuber = pathname === '/login' || pathname === '/signup'
 
   return (
     <>
@@ -23,8 +22,6 @@ function AppShell() {
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/artists" element={<ArtistPage />} />
-          <Route path="/admin" element={<Navigate to="/admin/goods" replace />} />
-          <Route path="/admin/goods" element={<AdminGoodsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Routes>
