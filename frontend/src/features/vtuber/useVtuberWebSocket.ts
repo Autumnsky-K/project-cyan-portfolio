@@ -10,6 +10,7 @@ import {
 const VTUBER_WS_PATH = '/client-ws'
 
 type UseVtuberWebSocketResult = {
+  actionBatchId: number
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
   latestText: string
@@ -67,6 +68,7 @@ export function useVtuberWebSocket(initialText: string): UseVtuberWebSocketResul
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
   const [latestText, setLatestText] = useState(initialText)
   const [actions, setActions] = useState<VtuberAction[]>([])
+  const [actionBatchId, setActionBatchId] = useState(0)
 
   useEffect(() => {
     closedByHookRef.current = false
@@ -90,6 +92,7 @@ export function useVtuberWebSocket(initialText: string): UseVtuberWebSocketResul
 
         setLatestText(message.text)
         setActions(message.actions)
+        setActionBatchId((currentId) => currentId + 1)
       } catch {
         return
       }
@@ -133,6 +136,7 @@ export function useVtuberWebSocket(initialText: string): UseVtuberWebSocketResul
   }, [])
 
   return {
+    actionBatchId,
     actions,
     connectionStatus,
     latestText,

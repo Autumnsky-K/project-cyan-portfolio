@@ -71,6 +71,15 @@ body {
   min-width: 0;
 }
 
+.vtuber-action-highlight {
+  outline: 3px solid #2f6f64;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px rgb(47 111 100 / 16%);
+  transition:
+    box-shadow 180ms ease,
+    outline-color 180ms ease;
+}
+
 h1,
 h2 {
   font-family: var(--heading);

@@ -45,9 +45,9 @@ def test_full_text_message_accepts_mvp_action_payloads():
     message = FullTextMessage(
         text="추천 상품을 보여드릴게요",
         actions=[
-            NavigateAction(path="/goods/42"),
-            HighlightAction(selector="[data-goods-id='42']"),
-            AddToCartAction(goodsId="42"),
+            NavigateAction(path="/goods/1002"),
+            HighlightAction(selector="[data-goods-id='1002']"),
+            AddToCartAction(goodsId="1002"),
         ],
     )
 
@@ -55,9 +55,9 @@ def test_full_text_message_accepts_mvp_action_payloads():
         "type": "full-text",
         "text": "추천 상품을 보여드릴게요",
         "actions": [
-            {"type": "navigate", "path": "/goods/42"},
-            {"type": "highlight", "selector": "[data-goods-id='42']"},
-            {"type": "addToCart", "goodsId": "42"},
+            {"type": "navigate", "path": "/goods/1002"},
+            {"type": "highlight", "selector": "[data-goods-id='1002']"},
+            {"type": "addToCart", "goodsId": "1002"},
         ],
     }
 
@@ -68,7 +68,7 @@ def test_full_text_message_rejects_unknown_action_payload():
             {
                 "type": "full-text",
                 "text": "안녕",
-                "actions": [{"type": "unknown", "value": "42"}],
+                "actions": [{"type": "unknown", "value": "1002"}],
             }
         )
 
@@ -91,7 +91,7 @@ def test_full_text_message_rejects_extra_action_field():
                 "type": "full-text",
                 "text": "안녕",
                 "actions": [
-                    {"type": "addToCart", "goodsId": "42", "path": "/goods/42"}
+                    {"type": "addToCart", "goodsId": "1002", "path": "/goods/1002"}
                 ],
             }
         )
@@ -118,8 +118,8 @@ def test_mock_provider_returns_recommendation_actions():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/42"},
-            {"type": "highlight", "selector": "[data-goods-id='42']"},
+            {"type": "navigate", "path": "/goods/1002"},
+            {"type": "highlight", "selector": "[data-goods-id='1002']"},
         ],
     }
 
@@ -131,7 +131,7 @@ def test_mock_provider_returns_add_to_cart_action():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "addToCart", "goodsId": "42"},
+            {"type": "addToCart", "goodsId": "1002"},
         ],
     }
 
@@ -143,9 +143,9 @@ def test_mock_provider_combines_actions_when_keywords_overlap():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/42"},
-            {"type": "highlight", "selector": "[data-goods-id='42']"},
-            {"type": "addToCart", "goodsId": "42"},
+            {"type": "navigate", "path": "/goods/1002"},
+            {"type": "highlight", "selector": "[data-goods-id='1002']"},
+            {"type": "addToCart", "goodsId": "1002"},
         ],
     }
 
@@ -196,8 +196,8 @@ def test_client_ws_returns_recommendation_mock_actions():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/42"},
-            {"type": "highlight", "selector": "[data-goods-id='42']"},
+            {"type": "navigate", "path": "/goods/1002"},
+            {"type": "highlight", "selector": "[data-goods-id='1002']"},
         ],
     }
 
@@ -214,7 +214,7 @@ def test_client_ws_returns_add_to_cart_mock_action():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "addToCart", "goodsId": "42"},
+            {"type": "addToCart", "goodsId": "1002"},
         ],
     }
 
@@ -233,9 +233,9 @@ def test_client_ws_combines_mock_actions_when_keywords_overlap():
         "type": "full-text",
         "text": "추천 mock 응답입니다. 조건에 맞는 상품 액션을 준비했어요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/42"},
-            {"type": "highlight", "selector": "[data-goods-id='42']"},
-            {"type": "addToCart", "goodsId": "42"},
+            {"type": "navigate", "path": "/goods/1002"},
+            {"type": "highlight", "selector": "[data-goods-id='1002']"},
+            {"type": "addToCart", "goodsId": "1002"},
         ],
     }
 
