@@ -1,0 +1,99 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "cyan.moc3",
+    "Textures": [
+      "textures/texture_00.png",
+      "textures/texture_01.png",
+      "textures/texture_02.png",
+      "textures/texture_03.png"
+    ],
+    "Physics": "cyan.physics3.json",
+    "DisplayInfo": "cyan.cdi3.json",
+    "Expressions": [
+      {
+        "Name": "smirk_left",
+        "File": "smirk_left.exp3.json"
+      },
+      {
+        "Name": "smirk_right",
+        "File": "smirk_right.exp3.json"
+      },
+      {
+        "Name": "blush",
+        "File": "blush.exp3.json"
+      },
+      {
+        "Name": "black_face",
+        "File": "black_face.exp3.json"
+      },
+      {
+        "Name": "question",
+        "File": "question.exp3.json"
+      },
+      {
+        "Name": "anger",
+        "File": "anger.exp3.json"
+      },
+      {
+        "Name": "love_eyes",
+        "File": "love_eyes.exp3.json"
+      },
+      {
+        "Name": "star_eyes",
+        "File": "star_eyes.exp3.json"
+      },
+      {
+        "Name": "money_eyes",
+        "File": "money_eyes.exp3.json"
+      },
+      {
+        "Name": "surprise",
+        "File": "surprise.exp3.json"
+      },
+      {
+        "Name": "tears",
+        "File": "tears.exp3.json"
+      }
+    ],
+    "Motions": {
+      "Idle": [
+        {
+          "File": "DaiJi.motion3.json"
+        }
+      ],
+      "TapBody": [
+        {
+          "File": "HuiShou.motion3.json"
+        }
+      ],
+      "MenuClick": [
+        {
+          "File": "HuiShou.motion3.json"
+        }
+      ]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    },
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": []
+    }
+  ],
+  "HitAreas": [
+    {
+      "Id": "HitAreaHead",
+      "Name": "Head"
+    },
+    {
+      "Id": "HitAreaBody",
+      "Name": "Body"
+    }
+  ]
+}

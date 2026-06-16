@@ -19,7 +19,9 @@ npm run build
 
 ## Live2D 챗봇 WebSocket 테스트
 
-챗봇은 `/client-ws` WebSocket 엔드포인트에 연결합니다. AI WebSocket 서버가 실행 중이 아니면 챗봇 상태가 `오류`로 표시됩니다. 프론트엔드만 실행하는 테스트에서는 정상 동작입니다.
+챗봇은 `/client-ws` WebSocket 엔드포인트에 연결합니다. AI WebSocket 서버가 실행 중이 아니면 챗봇 상태가 `연결 대기`로 표시됩니다. 프론트엔드만 실행하는 테스트에서는 정상 동작입니다.
+
+Live2D 자산은 허용된 캐릭터 config에서만 선택하며, 기본 경로는 `/live2d/{characterId}/model.model3.json` 형식입니다. 현재 기본 캐릭터는 `cyan`이고, 실제 런타임 로딩 전까지는 placeholder avatar가 `idle`, `connecting`, `ready`, `thinking`, `speaking`, `error` 표시 상태를 시각적으로 표현합니다.
 
 ### 프론트엔드만 실행하는 경우
 
