@@ -4,7 +4,7 @@ import './cart.css'
 
 const SHIPPING_FEE = 3000
 
-function formatPrice(value) {
+function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
 }
 
