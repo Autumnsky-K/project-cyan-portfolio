@@ -15,6 +15,15 @@ Before making changes, inspect the relevant code, follow the applicable rule fil
 
 For a depth-limited structure map, use `rules/project-treemap.tsv`.
 
+## Local Development
+
+- From the repository root, use `npm run dev` to start the frontend, backend, and AI development servers together.
+- Individual root commands are available when only one service is needed:
+  - `npm run dev:frontend`
+  - `npm run dev:backend`
+  - `npm run dev:ai`
+- The frontend reads Vite env files from `frontend/`; `frontend/.env.development` provides the shared local default, and `frontend/.env.local` is for personal overrides and must not be committed.
+
 ## Required Rules
 
 Read the relevant rule files before editing:
