@@ -1,10 +1,16 @@
 import { type FormEvent, type ReactElement, useState } from 'react'
 
+import {
+  type VtuberCharacterConfig,
+  type VtuberDisplayState,
+} from '../../features/vtuber/types'
 import './VtuberChatbot.css'
 
 type VtuberChatbotProps = {
   actionsCount: number
   bubbleText: string
+  character: VtuberCharacterConfig
+  displayState: VtuberDisplayState
   isSendDisabled: boolean
   onSendMessage: (message: string) => boolean
   statusLabel: string
@@ -13,6 +19,8 @@ type VtuberChatbotProps = {
 function VtuberChatbotShell({
   actionsCount,
   bubbleText,
+  character,
+  displayState,
   isSendDisabled,
   onSendMessage,
   statusLabel,
@@ -29,20 +37,37 @@ function VtuberChatbotShell({
   }
 
   return (
-    <aside id="vtuber" className="vtuber-chatbot" aria-label="Live2D chatbot">
-      <div className="vtuber-stage" aria-label="Live2D character placeholder">
-        <div className="vtuber-avatar" aria-hidden="true">
+    <aside
+      id="vtuber"
+      className="vtuber-chatbot"
+      aria-label="Live2D chatbot"
+      data-character-id={character.id}
+      data-display-state={displayState}
+      data-model-url={character.modelUrl}
+    >
+      <div
+        className="vtuber-stage"
+        aria-label={`${character.name} Live2D character placeholder`}
+      >
+        <div className="vtuber-avatar" data-display-state={displayState} aria-hidden="true">
           <span className="vtuber-avatar-face" />
+          {displayState === 'thinking' ? (
+            <span className="vtuber-thinking-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          ) : null}
         </div>
         <span className="vtuber-status">{statusLabel}</span>
       </div>
 
       <section className="vtuber-panel" aria-label="Chatbot conversation">
-        <div className="vtuber-bubble" aria-live="polite">
-          <strong>Cyan Assistant</strong>
+        <div className="vtuber-bubble" data-display-state={displayState} aria-live="polite">
+          <strong>{character.name}</strong>
           <p>{bubbleText}</p>
           <span className="vtuber-sr-only" aria-live="polite">
-            Prepared actions: {actionsCount}
+            Display state: {statusLabel}. Prepared actions: {actionsCount}.
           </span>
         </div>
 
@@ -56,6 +81,7 @@ function VtuberChatbotShell({
             value={message}
             placeholder="굿즈를 물어보세요"
             autoComplete="off"
+            disabled={isSendDisabled}
             onChange={(event) => setMessage(event.target.value)}
           />
           <button

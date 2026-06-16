@@ -1,5 +1,19 @@
 export type VtuberConnectionStatus = 'idle' | 'connecting' | 'open' | 'closed' | 'error'
 
+export type VtuberDisplayState =
+  | 'idle'
+  | 'connecting'
+  | 'ready'
+  | 'thinking'
+  | 'speaking'
+  | 'error'
+
+export type VtuberCharacterConfig = {
+  id: string
+  name: string
+  modelUrl: string
+}
+
 export type VtuberClientTextInputMessage = {
   type: 'text-input'
   text: string
