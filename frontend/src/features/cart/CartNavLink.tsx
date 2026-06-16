@@ -2,11 +2,15 @@ import { Link } from 'react-router-dom'
 import { useCart } from './useCart'
 import './cart-nav.css'
 
-function formatPrice(value) {
+type CartNavLinkProps = {
+  current?: boolean
+}
+
+function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
 }
 
-function CartNavLink({ current = false }) {
+function CartNavLink({ current = false }: CartNavLinkProps) {
   const { items } = useCart()
   const previewItems = items.slice(0, 3)
   const hiddenItemCount = Math.max(items.length - previewItems.length, 0)
