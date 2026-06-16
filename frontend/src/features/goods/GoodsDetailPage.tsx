@@ -1,25 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchGoodsDetail } from '../../api/goods'
+import { fetchGoodsDetail, type GoodsDetail } from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
 import { useCart } from '../cart/useCart'
 import './goods.css'
 import './goods-detail.css'
 
+type DetailStatus = 'loading' | 'data' | 'error'
+
 function GoodsDetailPage() {
-  const { goodsId } = useParams()
+  const { goodsId } = useParams<{ goodsId: string }>()
   const { addCartItem } = useCart()
-  const [goods, setGoods] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [goods, setGoods] = useState<GoodsDetail | null>(null)
+  const [status, setStatus] = useState<DetailStatus>('loading')
   const [error, setError] = useState('')
   const [addFeedback, setAddFeedback] = useState(false)
   const [quantity, setQuantity] = useState(1)
-  const addFeedbackTimerRef = useRef(null)
+  const addFeedbackTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
 
     async function loadGoodsDetail() {
+      if (!goodsId) {
+        setError('Goods ID is missing.')
+        setStatus('error')
+        return
+      }
+
       setStatus('loading')
       setError('')
 
@@ -31,7 +39,7 @@ function GoodsDetailPage() {
         if (loadError.name === 'AbortError') {
           return
         }
-        setError(loadError.message)
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load goods detail.')
         setStatus('error')
       }
     }
@@ -45,22 +53,34 @@ function GoodsDetailPage() {
 
   useEffect(
     () => () => {
-      window.clearTimeout(addFeedbackTimerRef.current)
+      if (addFeedbackTimerRef.current !== null) {
+        window.clearTimeout(addFeedbackTimerRef.current)
+      }
     },
     [],
   )
 
   function handleAddCartItem() {
+    if (!goods) {
+      return
+    }
+
     addCartItem(goods, quantity)
     setAddFeedback(true)
-    window.clearTimeout(addFeedbackTimerRef.current)
+    if (addFeedbackTimerRef.current !== null) {
+      window.clearTimeout(addFeedbackTimerRef.current)
+    }
     addFeedbackTimerRef.current = window.setTimeout(() => {
       setAddFeedback(false)
     }, 1800)
   }
 
-  function updateQuantity(nextQuantity) {
+  function updateQuantity(nextQuantity: number) {
     setQuantity(Math.max(1, Math.min(nextQuantity, 99)))
+  }
+
+  function handleQuantityChange(event: ChangeEvent<HTMLInputElement>) {
+    updateQuantity(Number(event.target.value))
   }
 
   return (
@@ -129,7 +149,7 @@ function GoodsDetailPage() {
                     max="99"
                     type="number"
                     value={quantity}
-                    onChange={(event) => updateQuantity(Number(event.target.value))}
+                    onChange={handleQuantityChange}
                   />
                   <div className="detail-quantity-stepper">
                     <button aria-label="Increase quantity" type="button" onClick={() => updateQuantity(quantity + 1)}>

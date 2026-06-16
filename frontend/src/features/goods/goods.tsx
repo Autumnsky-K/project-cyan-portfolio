@@ -1,26 +1,36 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchGoods, fetchGoodsFilters } from '../../api/goods'
+import { fetchGoods, fetchGoodsFilters, type GoodsFilterOption, type GoodsQueryParams, type GoodsSummary, type PageResponse } from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
 import { useCart } from '../cart/useCart'
 import './goods.css'
+
+type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
+type FilterStatus = 'loading' | 'data' | 'error'
+type FilterParam = 'categoryIds' | 'artistIds' | 'tags'
+type SelectedFilters = Record<FilterParam, string[]>
+type FilterGroup = {
+  title: string
+  param: FilterParam
+  options: GoodsFilterOption[]
+}
 
 function GoodsPage() {
   const { addCartItem } = useCart()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
   const [page, setPage] = useState(0)
-  const [selectedFilters, setSelectedFilters] = useState({ categoryIds: [], artistIds: [], tags: [] })
-  const [filters, setFilters] = useState([])
-  const [goodsPage, setGoodsPage] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({ categoryIds: [], artistIds: [], tags: [] })
+  const [filters, setFilters] = useState<FilterGroup[]>([])
+  const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
+  const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState('')
-  const [filterStatus, setFilterStatus] = useState('loading')
-  const [addedGoodsId, setAddedGoodsId] = useState(null)
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
+  const [addedGoodsId, setAddedGoodsId] = useState<number | null>(null)
   const hasLoadedGoodsRef = useRef(false)
-  const cartToastTimerRef = useRef(null)
+  const cartToastTimerRef = useRef<number | null>(null)
 
-  const requestParams = useMemo(
+  const requestParams = useMemo<GoodsQueryParams>(
     () => {
       const params = {
         q: query,
@@ -95,7 +105,7 @@ function GoodsPage() {
         if (loadError.name === 'AbortError') {
           return
         }
-        setError(loadError.message)
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load goods.')
         setStatus('error')
       }
     }
@@ -109,12 +119,14 @@ function GoodsPage() {
 
   useEffect(
     () => () => {
-      window.clearTimeout(cartToastTimerRef.current)
+      if (cartToastTimerRef.current !== null) {
+        window.clearTimeout(cartToastTimerRef.current)
+      }
     },
     [],
   )
 
-  function updateFilter(param, value) {
+  function updateFilter(param: FilterParam, value: string) {
     setPage(0)
     setSelectedFilters((current) => {
       const currentValues = current[param] ?? []
@@ -136,14 +148,16 @@ function GoodsPage() {
     setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
   }
 
-  function isFilterSelected(param, value) {
+  function isFilterSelected(param: FilterParam, value: string) {
     return (selectedFilters[param] ?? []).includes(value)
   }
 
-  function handleAddCartItem(item) {
+  function handleAddCartItem(item: GoodsSummary) {
     addCartItem(item)
     setAddedGoodsId(item.goodsId)
-    window.clearTimeout(cartToastTimerRef.current)
+    if (cartToastTimerRef.current !== null) {
+      window.clearTimeout(cartToastTimerRef.current)
+    }
     cartToastTimerRef.current = window.setTimeout(() => {
       setAddedGoodsId(null)
     }, 1600)
@@ -169,17 +183,17 @@ function GoodsPage() {
     return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
   }, [currentPage, totalPages])
 
-  function handleQueryChange(event) {
+  function handleQueryChange(event: ChangeEvent<HTMLInputElement>) {
     setPage(0)
     setQuery(event.target.value)
   }
 
-  function handleSortChange(event) {
+  function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
   }
 
-  function goToPage(nextPage) {
+  function goToPage(nextPage: number) {
     setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
   }
 
