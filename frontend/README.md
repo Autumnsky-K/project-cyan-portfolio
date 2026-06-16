@@ -51,4 +51,15 @@ VITE_VTUBER_WS_URL=ws://<ai-server-host>/client-ws
 추천 상품을 장바구니에 담아줘
 ```
 
-현재 프론트엔드는 서버 메시지의 `text`를 챗봇 말풍선에 표시하고, `actions`는 수신해서 보관만 합니다. `navigate`, `highlight`, `addToCart` ACTION 실행은 아직 구현하지 않았습니다.
+프론트엔드는 서버 메시지의 `text`를 챗봇 말풍선에 표시하고, `actions` 배열의 MVP ACTION을 실행합니다.
+
+- `navigate`: `{ "type": "navigate", "path": "/goods/42" }` 형태를 수신하면 React Router로 이동합니다.
+- `highlight`: `{ "type": "highlight", "selector": "[data-goods-id='42']" }` 형태를 수신하면 대상 DOM을 잠시 강조합니다.
+- `addToCart`: `{ "type": "addToCart", "goodsId": "42" }` 형태를 수신하면 기존 `data-add-to-cart` 버튼을 우선 실행하고, 버튼이 없으면 상품 상세 API를 읽어 장바구니 상태에 추가합니다.
+
+mock AI 서버 응답 예시는 다음처럼 확인할 수 있습니다.
+
+```json
+{ "type": "assistant", "text": "추천 상품을 보여드릴게요.", "actions": [{ "type": "navigate", "path": "/goods" }, { "type": "highlight", "selector": "[data-goods-id='42']" }] }
+{ "type": "assistant", "text": "장바구니에 담았어요.", "actions": [{ "type": "addToCart", "goodsId": "42" }] }
+```
