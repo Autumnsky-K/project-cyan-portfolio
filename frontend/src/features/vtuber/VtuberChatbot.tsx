@@ -1,6 +1,9 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import VtuberChatbotShell from '../../shared/components/VtuberChatbotShell'
+import { useCart } from '../cart/useCart'
+import { executeVtuberActions } from './actions/executeVtuberActions'
 import { useVtuberWebSocket } from './useVtuberWebSocket'
 import { type VtuberConnectionStatus } from './types'
 
@@ -15,8 +18,25 @@ const CONNECTION_STATUS_LABELS: Record<VtuberConnectionStatus, string> = {
 }
 
 function VtuberChatbot(): ReactElement {
-  const { actions, connectionStatus, latestText, sendText } =
+  const navigate = useNavigate()
+  const { addCartItem } = useCart()
+  const executedActionBatchRef = useRef(0)
+  const { actionBatchId, actions, connectionStatus, latestText, sendText } =
     useVtuberWebSocket(INITIAL_BUBBLE_TEXT)
+
+  useEffect(() => {
+    if (actionBatchId === 0 || executedActionBatchRef.current === actionBatchId) {
+      return
+    }
+
+    executedActionBatchRef.current = actionBatchId
+
+    if (actions.length === 0) {
+      return
+    }
+
+    void executeVtuberActions({ actions, addCartItem, navigate })
+  }, [actionBatchId, actions, addCartItem, navigate])
 
   return (
     <VtuberChatbotShell

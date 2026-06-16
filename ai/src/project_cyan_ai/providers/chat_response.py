@@ -9,7 +9,7 @@ from project_cyan_ai.schemas.ws import (
 
 RECOMMENDATION_KEYWORDS = ("추천", "보여줘", "상품")
 CART_KEYWORDS = ("장바구니", "담아줘")
-MOCK_GOODS_ID = "42"
+MOCK_GOODS_ID = "1002"
 DEFAULT_CHAT_RESPONSE_PROVIDER = "mock"
 
 
