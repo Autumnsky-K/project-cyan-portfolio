@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.projectcyan.admin.SupabaseUsageCounter;
+
 @Service
 @Transactional
 public class AdminGoodsService {
@@ -22,19 +24,25 @@ public class AdminGoodsService {
 	private final GoodsCategoryRepository goodsCategoryRepository;
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
+	private final GoodsDescriptionSanitizer goodsDescriptionSanitizer;
+	private final SupabaseUsageCounter supabaseUsageCounter;
 
 	public AdminGoodsService(
 		GoodsRepository goodsRepository,
 		ArtistRepository artistRepository,
 		GoodsCategoryRepository goodsCategoryRepository,
 		TagRepository tagRepository,
-		GoodsStockRepository goodsStockRepository
+		GoodsStockRepository goodsStockRepository,
+		GoodsDescriptionSanitizer goodsDescriptionSanitizer,
+		SupabaseUsageCounter supabaseUsageCounter
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
 		this.goodsCategoryRepository = goodsCategoryRepository;
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
+		this.goodsDescriptionSanitizer = goodsDescriptionSanitizer;
+		this.supabaseUsageCounter = supabaseUsageCounter;
 	}
 
 	public GoodsDetailResponse createGoods(AdminGoodsRequest request) {
@@ -49,6 +57,7 @@ public class AdminGoodsService {
 		GoodsStock stock = new GoodsStock(savedGoods, normalizeStockCount(request.stockCount()));
 		goodsStockRepository.save(stock);
 		savedGoods.setStockCount(stock.getCurrentStock());
+		supabaseUsageCounter.recordWrite("상품 등록");
 		return GoodsDetailResponse.from(savedGoods);
 	}
 
@@ -57,6 +66,7 @@ public class AdminGoodsService {
 		applyGoodsRequest(goods, request);
 		GoodsStock stock = upsertStock(goods, request.stockCount());
 		goods.setStockCount(stock.getCurrentStock());
+		supabaseUsageCounter.recordWrite("상품 수정");
 		return GoodsDetailResponse.from(goods);
 	}
 
@@ -64,6 +74,7 @@ public class AdminGoodsService {
 		Goods goods = findGoods(goodsId);
 		goods.updateSalesStatus(request.salesStatus().trim());
 		attachStock(goods);
+		supabaseUsageCounter.recordWrite("상품 판매 상태 변경");
 		return GoodsDetailResponse.from(goods);
 	}
 
@@ -71,19 +82,21 @@ public class AdminGoodsService {
 		Goods goods = findGoods(goodsId);
 		GoodsStock stock = upsertStock(goods, request.stockCount());
 		goods.setStockCount(stock.getCurrentStock());
+		supabaseUsageCounter.recordWrite("상품 재고 변경");
 		return GoodsDetailResponse.from(goods);
 	}
 
 	public void deleteGoods(Long goodsId) {
 		Goods goods = findGoods(goodsId);
 		goods.updateSalesStatus(DELETED_STATUS);
+		supabaseUsageCounter.recordWrite("상품 비공개 처리");
 	}
 
 	private void applyGoodsRequest(Goods goods, AdminGoodsRequest request) {
 		goods.update(
 			request.name().trim(),
 			request.price(),
-			blankToNull(request.description()),
+			goodsDescriptionSanitizer.sanitize(request.description()),
 			blankToNull(request.imageUrl()),
 			findArtist(request.artistId()),
 			findCategory(request.categoryId()),

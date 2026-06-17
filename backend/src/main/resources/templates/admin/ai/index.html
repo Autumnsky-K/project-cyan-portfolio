@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Admin</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Chatbot Control</p>
+        <h2>AI</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/}">Open Store</a>
+      </div>
+    </header>
+
+    <section class="admin-stats" aria-label="AI status">
+      <article>
+        <span>Provider</span>
+        <strong>Local</strong>
+      </article>
+      <article>
+        <span>Endpoint</span>
+        <strong>8000</strong>
+      </article>
+      <article>
+        <span>Mode</span>
+        <strong>Dev</strong>
+      </article>
+    </section>
+
+    <section class="admin-table-panel" aria-label="AI admin tasks">
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table admin-ai-table">
+          <thead>
+          <tr>
+            <th>Area</th>
+            <th>Status</th>
+            <th>Target</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td><strong>Chatbot</strong></td>
+            <td>Ready</td>
+            <td>Conversation response flow</td>
+          </tr>
+          <tr>
+            <td><strong>Actions</strong></td>
+            <td>Ready</td>
+            <td>Navigate, highlight, cart actions</td>
+          </tr>
+          <tr>
+            <td><strong>Prompts</strong></td>
+            <td>Planned</td>
+            <td>Scenario and tone presets</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

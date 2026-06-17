@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자 대시보드</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('dashboard', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Admin Dashboard</p>
+        <h2>관리자 대시보드</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/ui}" class="admin-primary">일괄 UI 미리보기</a>
+      </div>
+    </header>
+
+    <section class="admin-dashboard-hero">
+      <div>
+        <p class="admin-eyebrow">Control Room</p>
+        <h3>화면 편집, 데이터 관리, AI 설정을 한 곳에서 확인합니다.</h3>
+        <p>왼쪽 메뉴는 작업 영역이고, 아래 설정은 관리자 화면 자체의 공간감과 색 분리를 조절합니다.</p>
+      </div>
+      <div class="admin-dashboard-metrics" aria-label="Admin status overview">
+        <article>
+          <span>사용자 화면</span>
+          <strong>6</strong>
+        </article>
+        <article>
+          <span>관리 영역</span>
+          <strong>4</strong>
+        </article>
+        <article>
+          <span>미리보기 모드</span>
+          <strong>3</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="admin-dashboard-grid">
+      <article class="admin-dashboard-panel">
+        <header>
+          <div>
+            <p class="admin-eyebrow">Admin UI Settings</p>
+            <h3>관리자 화면 조절</h3>
+          </div>
+        </header>
+
+        <div class="admin-dashboard-controls">
+          <fieldset>
+            <legend>공간 분리</legend>
+            <label>
+              <input type="radio" name="adminTone" value="layered" data-admin-setting="tone" checked>
+              <span>레이어 분리</span>
+            </label>
+            <label>
+              <input type="radio" name="adminTone" value="contrast" data-admin-setting="tone">
+              <span>대비 강하게</span>
+            </label>
+            <label>
+              <input type="radio" name="adminTone" value="paper" data-admin-setting="tone">
+              <span>문서형 밝게</span>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>입력 밀도</legend>
+            <label>
+              <input type="radio" name="adminDensity" value="comfortable" data-admin-setting="density" checked>
+              <span>여유 있게</span>
+            </label>
+            <label>
+              <input type="radio" name="adminDensity" value="compact" data-admin-setting="density">
+              <span>촘촘하게</span>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>관리자 지향 색</legend>
+            <label>
+              <span>사용자 영역 프레임 색</span>
+              <input type="color" name="adminAccent" value="#2f6f64" data-admin-setting="accent">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>글꼴 첨부</legend>
+            <label class="admin-file-control">
+              <span>폰트 파일</span>
+              <input type="file"
+                     name="adminFontFile"
+                     accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf"
+                     data-admin-setting="fontFile">
+            </label>
+            <div class="admin-font-status">
+              <span data-admin-font-name>첨부된 폰트 없음</span>
+              <button type="button" data-admin-font-clear>폰트 해제</button>
+            </div>
+            <p class="admin-control-help">무료 폰트는 라이선스를 확인한 뒤 .woff2, .woff, .ttf, .otf 파일로 첨부하세요.</p>
+          </fieldset>
+        </div>
+      </article>
+
+      <article class="admin-dashboard-panel">
+        <header>
+          <div>
+            <p class="admin-eyebrow">Work Areas</p>
+            <h3>작업 구역</h3>
+          </div>
+        </header>
+
+        <div class="admin-dashboard-links">
+          <a th:href="@{/admin/ui}">
+            <strong>사용자 환경 관리</strong>
+            <span>전체 페이지 미리보기, 화면 비율, 테마 비교</span>
+          </a>
+          <a th:href="@{/admin/content/home}">
+            <strong>화면 내용 편집</strong>
+            <span>홈/아티스트 문구와 이미지 편집</span>
+          </a>
+          <a th:href="@{/admin/data}">
+            <strong>데이터 관리</strong>
+            <span>상품, 저장소, 관리 데이터 진입</span>
+          </a>
+          <a th:href="@{/admin/ai}">
+            <strong>AI 챗봇 관리</strong>
+            <span>챗봇 행동과 유도 흐름 관리</span>
+          </a>
+        </div>
+      </article>
+    </section>
+  </section>
+</main>
+</body>
+</html>

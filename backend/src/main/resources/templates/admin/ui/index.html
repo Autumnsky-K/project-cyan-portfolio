@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>일괄 UI 미리보기</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ui-all', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">User Experience Control</p>
+        <h2>일괄 UI 미리보기</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/content/home}">홈 내용 편집</a>
+      </div>
+    </header>
+
+    <section class="admin-ui-workbench"
+             data-preview-layout="grid"
+             data-preview-viewport="desktop"
+             aria-label="User page preview workbench">
+      <div class="admin-preview-stage">
+        <nav class="admin-preview-anchor-nav" aria-label="Preview page anchors">
+          <a th:each="page : ${pages}"
+             th:href="${'#' + page.key()}"
+             th:text="${page.title()}">홈 페이지 미리보기</a>
+        </nav>
+
+        <section class="admin-preview-grid" aria-label="User page previews">
+          <article class="admin-preview-card"
+                   th:each="page : ${pages}"
+                   th:id="${page.key()}"
+                   th:attr="data-preview-page-key=${page.key()}">
+            <label class="admin-preview-check">
+              <input type="checkbox" th:checked="${page.implemented()}">
+              <span>선택</span>
+            </label>
+
+            <header>
+              <div>
+                <strong th:text="${page.title()}">홈 페이지 미리보기</strong>
+                <p th:text="${page.purpose()}">화면 목적</p>
+              </div>
+              <a th:href="${'#' + page.key()}" data-preview-focus-link>크게 보기</a>
+            </header>
+
+            <div class="admin-preview-url" th:if="${page.implemented()}">
+              <span>URL</span>
+              <code th:text="${page.previewUrl()}">http://127.0.0.1:5173/</code>
+            </div>
+            <div class="admin-preview-url is-muted" th:if="${!page.implemented()}">
+              <span>ROUTE</span>
+              <code th:text="${page.route()}">/account</code>
+            </div>
+
+            <div class="admin-preview-frame-wrap" th:if="${page.implemented()}">
+              <iframe class="admin-preview-frame"
+                      loading="lazy"
+                      th:title="${page.title()}"
+                      th:attr="data-base-src=${page.previewUrl()}"
+                      th:src="${page.previewUrl()}"></iframe>
+            </div>
+            <div class="admin-preview-placeholder" th:if="${!page.implemented()}">
+              <strong>준비 중</strong>
+              <span th:text="${page.route()}">/account</span>
+            </div>
+
+            <footer>
+              <span th:text="${page.route()}">/</span>
+              <span th:if="${page.autoDetected()}">자동 감지</span>
+            </footer>
+          </article>
+        </section>
+      </div>
+
+      <aside class="admin-ui-settings" aria-label="UI preview settings">
+        <section class="admin-ui-setting-panel">
+          <h3>미리보기 배열</h3>
+          <label>
+            <input type="radio" name="previewLayout" value="grid" checked>
+            <span>2x2 격자</span>
+          </label>
+          <label>
+            <input type="radio" name="previewLayout" value="focus">
+            <span>1x1 크게 보기</span>
+          </label>
+        </section>
+
+        <section class="admin-ui-setting-panel">
+          <h3>화면 비율</h3>
+          <label>
+            <input type="radio" name="previewViewport" value="mobile">
+            <span>모바일 세로</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="cinema">
+            <span>데스크탑 21:9</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="desktop" checked>
+            <span>데스크탑 16:9</span>
+          </label>
+        </section>
+
+        <section class="admin-ui-setting-panel">
+          <h3>사용자 페이지 테마</h3>
+          <label>
+            <span>사용자 대표색</span>
+            <input type="color" name="themePrimary" value="#111111">
+          </label>
+          <label>
+            <span>사용자 강조색</span>
+            <input type="color" name="themeAccent" value="#2f6f64">
+          </label>
+          <label>
+            <span>사용자 배경색</span>
+            <input type="color" name="themeBackground" value="#ffffff">
+          </label>
+          <label>
+            <span>사용자 글자 크기</span>
+            <input type="range" name="themeFontSize" min="13" max="20" value="16">
+          </label>
+          <label>
+            <span>사용자 글꼴</span>
+            <select name="themeFontFamily">
+              <option value="var(--admin-font-family, Arial, 'Noto Sans KR', sans-serif)">첨부한 폰트 사용</option>
+              <option value="Arial, 'Noto Sans KR', sans-serif">기본 산세리프</option>
+              <option value="'Segoe UI', Arial, sans-serif">영문 산세리프</option>
+              <option value="Georgia, serif">세리프</option>
+            </select>
+          </label>
+          <label class="admin-file-control">
+            <span>폰트 파일 첨부</span>
+            <input type="file"
+                   name="adminPreviewFontFile"
+                   accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf"
+                   data-admin-setting="fontFile">
+          </label>
+          <div class="admin-font-status">
+            <span data-admin-font-name>첨부된 폰트 없음</span>
+            <button type="button" data-admin-font-clear>폰트 해제</button>
+          </div>
+        </section>
+
+        <section class="admin-ui-setting-panel">
+          <h3>적용 범위</h3>
+          <label>
+            <input type="radio" name="themeApplyScope" value="all" checked>
+            <span>전체 미리보기 적용</span>
+          </label>
+          <label>
+            <input type="radio" name="themeApplyScope" value="checked">
+            <span>체크한 화면만 적용</span>
+          </label>
+        </section>
+      </aside>
+    </section>
+  </section>
+</main>
+
+<script>
+  const workbench = document.querySelector('.admin-ui-workbench')
+  const previewSettingsKey = 'projectCyanUiPreviewSettings'
+
+  function readPreviewSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(previewSettingsKey) || '{}')
+    } catch (error) {
+      return {}
+    }
+  }
+
+  function writePreviewSettings() {
+    const settings = {
+      previewLayout: document.querySelector('input[name="previewLayout"]:checked')?.value || 'grid',
+      previewViewport: document.querySelector('input[name="previewViewport"]:checked')?.value || 'desktop',
+      themePrimary: document.querySelector('[name="themePrimary"]')?.value || '#111111',
+      themeAccent: document.querySelector('[name="themeAccent"]')?.value || '#2f6f64',
+      themeBackground: document.querySelector('[name="themeBackground"]')?.value || '#ffffff',
+      themeFontSize: document.querySelector('[name="themeFontSize"]')?.value || '16',
+      themeFontFamily: document.querySelector('[name="themeFontFamily"]')?.value || '',
+      themeApplyScope: document.querySelector('input[name="themeApplyScope"]:checked')?.value || 'all',
+    }
+    localStorage.setItem(previewSettingsKey, JSON.stringify(settings))
+  }
+
+  function restorePreviewSettings() {
+    const settings = readPreviewSettings()
+
+    if (settings.previewLayout) {
+      const input = document.querySelector(`input[name="previewLayout"][value="${settings.previewLayout}"]`)
+      if (input) {
+        input.checked = true
+        workbench.dataset.previewLayout = settings.previewLayout
+      }
+    }
+
+    if (settings.previewViewport) {
+      const input = document.querySelector(`input[name="previewViewport"][value="${settings.previewViewport}"]`)
+      if (input) {
+        input.checked = true
+        workbench.dataset.previewViewport = settings.previewViewport
+      }
+    }
+
+    if (settings.themeApplyScope) {
+      const input = document.querySelector(`input[name="themeApplyScope"][value="${settings.themeApplyScope}"]`)
+      if (input) {
+        input.checked = true
+      }
+    }
+
+    ;[
+      ['themePrimary', settings.themePrimary],
+      ['themeAccent', settings.themeAccent],
+      ['themeBackground', settings.themeBackground],
+      ['themeFontSize', settings.themeFontSize],
+      ['themeFontFamily', settings.themeFontFamily],
+    ].forEach(([name, value]) => {
+      const input = document.querySelector(`[name="${name}"]`)
+      if (input && value) {
+        input.value = value
+      }
+    })
+  }
+
+  function selectedApplyScope() {
+    return document.querySelector('input[name="themeApplyScope"]:checked')?.value || 'all'
+  }
+
+  function previewThemeParams() {
+    return {
+      previewPrimary: document.querySelector('[name="themePrimary"]')?.value || '#111111',
+      previewAccent: document.querySelector('[name="themeAccent"]')?.value || '#2f6f64',
+      previewBackground: document.querySelector('[name="themeBackground"]')?.value || '#ffffff',
+      previewFontSize: document.querySelector('[name="themeFontSize"]')?.value || '16',
+      previewFontFamily: document.querySelector('[name="themeFontFamily"]')?.value || '',
+    }
+  }
+
+  function previewUrlWithTheme(baseSrc, params) {
+    const url = new URL(baseSrc, window.location.href)
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) {
+        url.searchParams.set(key, value)
+      }
+    })
+    return url.toString()
+  }
+
+  function shouldApplyTheme(card) {
+    return selectedApplyScope() === 'all' || card.querySelector('.admin-preview-check input')?.checked
+  }
+
+  function updatePreviewTheme() {
+    const params = previewThemeParams()
+    writePreviewSettings()
+
+    document.querySelectorAll('.admin-preview-card').forEach((card) => {
+      const frame = card.querySelector('.admin-preview-frame')
+      const urlLabel = card.querySelector('.admin-preview-url code')
+      if (!frame?.dataset.baseSrc) {
+        return
+      }
+
+      const nextSrc = shouldApplyTheme(card)
+        ? previewUrlWithTheme(frame.dataset.baseSrc, params)
+        : frame.dataset.baseSrc
+      frame.src = nextSrc
+      if (urlLabel) {
+        urlLabel.textContent = nextSrc
+      }
+    })
+  }
+
+  function scrollToPreviewHash() {
+    const key = decodeURIComponent(window.location.hash.replace(/^#/, ''))
+    if (!key) {
+      return
+    }
+    const target = document.getElementById(key)
+    if (!target) {
+      return
+    }
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  document.querySelectorAll('input[name="previewLayout"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        workbench.dataset.previewLayout = input.value
+        writePreviewSettings()
+      }
+    })
+  })
+
+  document.querySelectorAll('input[name="previewViewport"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        workbench.dataset.previewViewport = input.value
+        writePreviewSettings()
+      }
+    })
+  })
+
+  document.querySelectorAll('[name="themePrimary"], [name="themeAccent"], [name="themeBackground"], [name="themeFontSize"], [name="themeFontFamily"], input[name="themeApplyScope"], .admin-preview-check input')
+    .forEach((control) => {
+      control.addEventListener('input', updatePreviewTheme)
+      control.addEventListener('change', updatePreviewTheme)
+    })
+
+  window.addEventListener('hashchange', scrollToPreviewHash)
+
+  restorePreviewSettings()
+  updatePreviewTheme()
+  scrollToPreviewHash()
+</script>
+</body>
+</html>

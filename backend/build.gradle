@@ -18,6 +18,8 @@ repositories {
 }
 
 dependencies {
+	implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20260313.1'
+	implementation 'org.webjars.npm:quill:2.0.3'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -40,4 +42,25 @@ tasks.named('test') {
 
 tasks.named('bootRun') {
 	systemProperty 'spring.profiles.active', System.getProperty('spring.profiles.active', 'local')
+	doFirst {
+		[rootProject.file('.env.local'), file('.env.local')].findAll { it.exists() }.each { envFile ->
+			envFile.eachLine { rawLine ->
+				def line = rawLine.trim()
+				if (!line || line.startsWith('#') || !line.contains('=')) {
+					return
+				}
+
+				def parts = line.split('=', 2)
+				def key = parts[0].trim()
+				def value = parts[1].trim()
+				if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+					value = value.substring(1, value.length() - 1)
+				}
+
+				if (!System.getenv().containsKey(key)) {
+					environment key, value
+				}
+			}
+		}
+	}
 }

@@ -39,11 +39,6 @@ public class AdminGoodsPageController {
 		this.goodsStockRepository = goodsStockRepository;
 	}
 
-	@GetMapping("/admin")
-	public String redirectAdmin() {
-		return "redirect:/admin/goods";
-	}
-
 	@GetMapping("/admin/goods")
 	public String listGoods(
 		@RequestParam(required = false) String q,

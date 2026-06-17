@@ -23,17 +23,20 @@ public class GoodsService {
 	private final ArtistRepository artistRepository;
 	private final GoodsCategoryRepository goodsCategoryRepository;
 	private final TagRepository tagRepository;
+	private final GoodsDescriptionSanitizer goodsDescriptionSanitizer;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
 		ArtistRepository artistRepository,
 		GoodsCategoryRepository goodsCategoryRepository,
-		TagRepository tagRepository
+		TagRepository tagRepository,
+		GoodsDescriptionSanitizer goodsDescriptionSanitizer
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
 		this.goodsCategoryRepository = goodsCategoryRepository;
 		this.tagRepository = tagRepository;
+		this.goodsDescriptionSanitizer = goodsDescriptionSanitizer;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -80,7 +83,7 @@ public class GoodsService {
 
 	public GoodsDetailResponse findGoodsDetail(Long goodsId) {
 		return goodsRepository.findById(goodsId)
-			.map(GoodsDetailResponse::from)
+			.map(goods -> GoodsDetailResponse.from(goods, goodsDescriptionSanitizer.sanitize(goods.getDescription())))
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
 	}
 

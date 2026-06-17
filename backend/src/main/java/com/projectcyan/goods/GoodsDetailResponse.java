@@ -16,13 +16,17 @@ public record GoodsDetailResponse(
 	Boolean aiPickDefault
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
+		return from(goods, goods.getDescription());
+	}
+
+	public static GoodsDetailResponse from(Goods goods, String description) {
 		return new GoodsDetailResponse(
 			goods.getGoodsId(),
 			goods.getGoodsName(),
 			goods.getPrice(),
 			goods.getMainImageUrl(),
 			goods.getTags().stream().map(Tag::getTagName).toList(),
-			goods.getDescription(),
+			description,
 			goods.getArtist() == null ? null : goods.getArtist().getArtistId(),
 			goods.getStockCount(),
 			goods.getArtist() == null ? null : goods.getArtist().getArtistName(),

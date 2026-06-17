@@ -1,8 +1,10 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { fetchCmsPage, type CmsPage } from '../../api/cms'
 import { fetchGoods, fetchGoodsFilters, type GoodsFilterOption, type GoodsQueryParams, type GoodsSummary, type PageResponse } from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
 import { useCart } from '../cart/useCart'
+import { applyPreviewTheme, previewTypographyStyle } from '../theme/previewTheme'
 import './goods.css'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
@@ -15,8 +17,21 @@ type FilterGroup = {
   options: GoodsFilterOption[]
 }
 
+const defaultHomePage: CmsPage = {
+  pageKey: 'home',
+  eyebrow: 'SM Universe Store',
+  title: 'Goods',
+  summaryTitle: 'Featured Goods',
+  summaryBody: 'Showing store items',
+  primaryColor: '#111111',
+  accentColor: '#2f6f64',
+  backgroundColor: '#ffffff',
+  heroImageUrl: null,
+}
+
 function GoodsPage() {
   const { addCartItem } = useCart()
+  const [cmsPage, setCmsPage] = useState<CmsPage>(defaultHomePage)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('createdAt,desc')
   const [page, setPage] = useState(0)
@@ -56,6 +71,26 @@ function GoodsPage() {
     },
     [page, query, selectedFilters, sort],
   )
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadCmsPage() {
+      try {
+        setCmsPage(await fetchCmsPage('home', { signal: controller.signal }))
+      } catch (loadError) {
+        if (!(loadError instanceof DOMException && loadError.name === 'AbortError')) {
+          setCmsPage(defaultHomePage)
+        }
+      }
+    }
+
+    loadCmsPage()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -197,19 +232,33 @@ function GoodsPage() {
     setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
   }
 
+  const previewPage = applyPreviewTheme(cmsPage)
+
+  const pageStyle = {
+    '--goods-ink': previewPage.primaryColor,
+    '--goods-accent': previewPage.accentColor,
+    backgroundColor: previewPage.backgroundColor,
+    ...previewTypographyStyle(),
+  } as CSSProperties
+  const headerStyle = previewPage.heroImageUrl
+    ? {
+        backgroundImage: `linear-gradient(90deg, ${previewPage.backgroundColor} 0%, rgba(255,255,255,.86) 50%, rgba(255,255,255,.18) 100%), url("${previewPage.heroImageUrl}")`,
+      }
+    : undefined
+
   return (
-    <main className="goods-page">
-      <header className="store-header">
+    <main className="goods-page" style={pageStyle}>
+      <header className="store-header" style={headerStyle}>
         <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Goods</h1>
+          <p className="eyebrow">{previewPage.eyebrow}</p>
+          <h1>{previewPage.title}</h1>
         </div>
         <nav className="store-nav" aria-label="Store navigation">
           <Link to="/">Home</Link>
           <Link to="/artists">Artists</Link>
-          <Link to="/goods" aria-current="page">
+          <a href="#goods" aria-current="page">
             Goods
-          </Link>
+          </a>
           <CartNavLink />
         </nav>
       </header>
@@ -267,13 +316,13 @@ function GoodsPage() {
         <div className="goods-content">
           <div className="result-summary">
             <div>
-              <h2>Featured Goods</h2>
+              <h2>{previewPage.summaryTitle}</h2>
               <p>
                 {status === 'loading'
                   ? 'Loading store items'
                   : status === 'refreshing'
                     ? `Updating ${goods.length} of ${totalElements} store items`
-                  : `Showing ${goods.length} of ${totalElements} store items`}
+                  : previewPage.summaryBody}
               </p>
             </div>
             <div className="view-toggle" aria-label="View options">

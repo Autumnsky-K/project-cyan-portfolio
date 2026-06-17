@@ -13,6 +13,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import com.projectcyan.admin.SupabaseUsageCounter;
+
 @Service
 public class SupabaseStorageService {
 
@@ -20,9 +22,11 @@ public class SupabaseStorageService {
 
 	private final SupabaseStorageProperties properties;
 	private final RestClient restClient;
+	private final SupabaseUsageCounter supabaseUsageCounter;
 
-	public SupabaseStorageService(SupabaseStorageProperties properties) {
+	public SupabaseStorageService(SupabaseStorageProperties properties, SupabaseUsageCounter supabaseUsageCounter) {
 		this.properties = properties;
+		this.supabaseUsageCounter = supabaseUsageCounter;
 		this.restClient = RestClient.create();
 	}
 
@@ -63,6 +67,7 @@ public class SupabaseStorageService {
 				))
 				.retrieve()
 				.toBodilessEntity();
+			supabaseUsageCounter.recordWrite("스토리지 버킷 생성");
 			return normalizedBucketName;
 		} catch (RestClientResponseException exception) {
 			if (exception.getStatusCode().value() == 409) {
@@ -87,6 +92,7 @@ public class SupabaseStorageService {
 				.body(new byte[0])
 				.retrieve()
 				.toBodilessEntity();
+			supabaseUsageCounter.recordWrite("스토리지 경로 생성");
 			return normalizedPath;
 		} catch (RestClientResponseException exception) {
 			throw storageException("Path create request failed.", exception);

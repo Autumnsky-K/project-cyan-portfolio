@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home CMS</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/content-admin.css}">
+</head>
+<body>
+<main class="admin-page" data-cms-page="home">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('content-home', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Live Preview Controller</p>
+        <h2>Home</h2>
+      </div>
+      <div class="admin-header-actions">
+        <button class="admin-primary admin-apply-page-button" type="submit" form="homeContentForm">페이지 적용</button>
+        <a th:href="@{/}">스토어 열기</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+
+    <section class="cms-workbench">
+      <form id="homeContentForm"
+            class="cms-sheet-panel"
+            method="post"
+            th:action="@{/admin/content/home}"
+            data-confirm-submit
+            data-confirm-form-title="홈 페이지">
+        <div class="cms-panel-heading">
+          <h3>문구·이미지 입력 / 출력</h3>
+        </div>
+        <input type="hidden" name="primaryColor" data-preview-input="primaryColor" th:value="${page.primaryColor()}">
+        <input type="hidden" name="accentColor" data-preview-input="accentColor" th:value="${page.accentColor()}">
+        <input type="hidden" name="backgroundColor" data-preview-input="backgroundColor" th:value="${page.backgroundColor()}">
+
+        <table class="cms-sheet">
+          <thead>
+          <tr>
+            <th>Field</th>
+            <th>Input</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <th>Eyebrow</th>
+            <td><input name="eyebrow" data-preview-input="eyebrow" data-confirm-group="문구" data-confirm-label="상단 보조 문구" th:value="${page.eyebrow()}" th:data-fallback-value="${page.eyebrow()}" th:placeholder="${page.eyebrow() + ' (공백 설정 시, 저장전 이름 적용됨)'}"></td>
+          </tr>
+          <tr>
+            <th>Title</th>
+            <td><input name="title" data-preview-input="title" data-confirm-group="문구" data-confirm-label="제목" th:value="${page.title()}" th:data-fallback-value="${page.title()}" th:placeholder="${page.title() + ' (공백 설정 시, 저장전 이름 적용됨)'}"></td>
+          </tr>
+          <tr>
+            <th>Section Title</th>
+            <td><input name="summaryTitle" data-preview-input="summaryTitle" data-confirm-group="문구" data-confirm-label="섹션 제목" th:value="${page.summaryTitle()}" th:data-fallback-value="${page.summaryTitle()}" th:placeholder="${page.summaryTitle() + ' (공백 설정 시, 저장전 이름 적용됨)'}"></td>
+          </tr>
+          <tr>
+            <th>Section Copy</th>
+            <td><input name="summaryBody" data-preview-input="summaryBody" data-confirm-group="문구" data-confirm-label="섹션 설명" th:value="${page.summaryBody()}" th:data-fallback-value="${page.summaryBody()}" th:placeholder="${page.summaryBody() + ' (공백 설정 시, 저장전 이름 적용됨)'}"></td>
+          </tr>
+          <tr>
+            <th>Header Image</th>
+            <td>
+              <input name="heroImageUrl" data-preview-input="heroImageUrl" data-confirm-group="이미지" data-confirm-label="헤더 이미지" th:value="${page.heroImageUrl()}" th:data-fallback-value="${page.heroImageUrl()}" th:placeholder="${(page.heroImageUrl() ?: '현재 이미지 없음') + ' (공백 설정 시, 저장전 이름 적용됨)'}">
+              <input class="cms-file-input" type="file" accept="image/*" data-image-target="heroImageUrl">
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </form>
+
+      <section class="cms-preview-panel" aria-label="Home preview">
+        <div class="cms-panel-heading">
+          <h3>Live Preview</h3>
+          <span>Before Apply</span>
+        </div>
+        <iframe id="cmsPreview" title="Home live preview"></iframe>
+      </section>
+    </section>
+  </section>
+</main>
+<script th:src="@{/admin/content-admin.js}"></script>
+</body>
+</html>

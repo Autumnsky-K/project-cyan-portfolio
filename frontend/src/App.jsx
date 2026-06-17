@@ -5,6 +5,7 @@ import CartPage from './features/cart/CartPage'
 import { CartProvider } from './features/cart/cartStore'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
+import HomePage from './features/home/HomePage'
 import LoginPage from './features/member/LoginPage.jsx'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot.tsx'
@@ -17,7 +18,7 @@ function AppShell() {
     <>
       <div id='content'>
         <Routes>
-          <Route path="/" element={<GoodsPage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
           <Route path="/cart" element={<CartPage />} />

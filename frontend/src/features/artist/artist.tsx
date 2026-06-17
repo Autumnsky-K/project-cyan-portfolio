@@ -1,6 +1,7 @@
-import type { ReactElement } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type CSSProperties, type ReactElement } from 'react'
 
+import { fetchCmsArtists, fetchCmsPage, type CmsArtistProfile, type CmsPage } from '../../api/cms'
+import { applyPreviewTheme, previewTypographyStyle } from '../theme/previewTheme'
 import './artist.css'
 
 type FilterGroup = {
@@ -11,10 +12,23 @@ type FilterGroup = {
 type Artist = {
   artistId: number
   name: string
-  imageUrl: string
+  imageUrl?: string | null
+  groupName?: string | null
   lore: string
   debutDate: string
   collections: string[]
+}
+
+const defaultArtistPage: CmsPage = {
+  pageKey: 'artists',
+  eyebrow: 'SM Universe Store',
+  title: 'Artists',
+  summaryTitle: 'Artist Universe',
+  summaryBody: 'Showing artist profiles',
+  primaryColor: '#111111',
+  accentColor: '#2f6f64',
+  backgroundColor: '#ffffff',
+  heroImageUrl: null,
 }
 
 const filters: FilterGroup[] = [
@@ -32,7 +46,7 @@ const filters: FilterGroup[] = [
   },
 ]
 
-const artists: Artist[] = [
+const fallbackArtists: Artist[] = [
   {
     artistId: 7,
     name: 'aespa',
@@ -71,21 +85,79 @@ const artists: Artist[] = [
   },
 ]
 
+function mapCmsArtist(artist: CmsArtistProfile): Artist {
+  return {
+    artistId: artist.artistId,
+    name: artist.name,
+    imageUrl: artist.imageUrl,
+    groupName: artist.groupName,
+    lore: artist.lore || 'Artist profile is ready for CMS editing.',
+    debutDate: artist.debutDate || '-',
+    collections: (artist.collections || '')
+      .split(',')
+      .map((collection) => collection.trim())
+      .filter(Boolean),
+  }
+}
+
 function ArtistPage(): ReactElement {
+  const [cmsPage, setCmsPage] = useState<CmsPage>(defaultArtistPage)
+  const [cmsArtists, setCmsArtists] = useState<Artist[]>(fallbackArtists)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadCms() {
+      try {
+        const [page, artists] = await Promise.all([
+          fetchCmsPage('artists', { signal: controller.signal }),
+          fetchCmsArtists({ signal: controller.signal }),
+        ])
+        setCmsPage(page)
+        setCmsArtists(artists.length ? artists.map(mapCmsArtist) : fallbackArtists)
+      } catch (loadError) {
+        if (!(loadError instanceof DOMException && loadError.name === 'AbortError')) {
+          setCmsPage(defaultArtistPage)
+          setCmsArtists(fallbackArtists)
+        }
+      }
+    }
+
+    loadCms()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  const previewPage = applyPreviewTheme(cmsPage)
+
+  const pageStyle = {
+    '--artist-ink': previewPage.primaryColor,
+    '--artist-accent': previewPage.accentColor,
+    backgroundColor: previewPage.backgroundColor,
+    ...previewTypographyStyle(),
+  } as CSSProperties
+  const headerStyle = previewPage.heroImageUrl
+    ? {
+        backgroundImage: `linear-gradient(90deg, ${previewPage.backgroundColor} 0%, rgba(255,255,255,.86) 50%, rgba(255,255,255,.18) 100%), url("${previewPage.heroImageUrl}")`,
+      }
+    : undefined
+
   return (
-    <main className="artist-page">
-      <header className="artist-header">
+    <main className="artist-page" style={pageStyle}>
+      <header className="artist-header" style={headerStyle}>
         <div>
-          <p className="artist-eyebrow">SM Universe Store</p>
-          <h1>Artists</h1>
+          <p className="artist-eyebrow">{previewPage.eyebrow}</p>
+          <h1>{previewPage.title}</h1>
         </div>
         <nav className="artist-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
-          <Link to="/artists" aria-current="page">
+          <a href="#home">Home</a>
+          <a href="#artists" aria-current="page">
             Artists
-          </Link>
-          <Link to="/goods">Goods</Link>
-          <Link to="/cart">Cart</Link>
+          </a>
+          <a href="#goods">Goods</a>
+          <a href="#cart">Cart</a>
         </nav>
       </header>
 
@@ -126,16 +198,16 @@ function ArtistPage(): ReactElement {
         <div className="artist-content">
           <div className="artist-summary">
             <div>
-              <h2>Artist Universe</h2>
-              <p>Showing {artists.length} artist profiles</p>
+              <h2>{previewPage.summaryTitle}</h2>
+              <p>{previewPage.summaryBody}</p>
             </div>
           </div>
 
           <div className="artist-grid">
-            {artists.map((artist) => (
+            {cmsArtists.map((artist) => (
               <article className="artist-card" data-artist-id={artist.artistId} key={artist.artistId}>
                 <div className="artist-image" aria-label={`${artist.name} image placeholder`}>
-                  <span>{artist.name}</span>
+                  {artist.imageUrl ? <img src={artist.imageUrl} alt="" /> : <span>{artist.name}</span>}
                 </div>
                 <div className="artist-card-body">
                   <div className="artist-card-topline">
@@ -150,7 +222,7 @@ function ArtistPage(): ReactElement {
                     ))}
                   </div>
                   <div className="artist-card-footer">
-                    <strong>{artist.collections.length} collections</strong>
+                    <strong>{artist.groupName || `${artist.collections.length} collections`}</strong>
                     <button type="button">View</button>
                   </div>
                 </div>

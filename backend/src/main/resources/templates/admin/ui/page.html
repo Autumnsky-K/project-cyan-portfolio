@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${page.title()}">UI 미리보기</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar(${currentKey}, 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow" th:text="${page.route()}">/</p>
+        <h2 th:text="${page.title()}">홈 페이지 미리보기</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/ui}">일괄 UI 미리보기</a>
+        <a th:if="${page.implemented()}" th:href="${page.previewUrl()}" target="_blank" rel="noreferrer">새 창으로 열기</a>
+      </div>
+    </header>
+
+    <section class="admin-preview-focus" th:if="${page.implemented()}">
+      <div class="admin-preview-url admin-preview-url-wide">
+        <span>URL</span>
+        <code th:text="${page.previewUrl()}">http://127.0.0.1:5173/</code>
+      </div>
+      <iframe class="admin-preview-focus-frame"
+              th:title="${page.title()}"
+              th:attr="data-base-src=${page.previewUrl()}"
+              th:src="${page.previewUrl()}"></iframe>
+    </section>
+
+    <section class="admin-preview-placeholder large" th:if="${!page.implemented()}">
+      <strong>아직 연결된 사용자 화면이 없습니다.</strong>
+      <span th:text="${page.purpose()}">마이페이지 개인정보 영역</span>
+      <a th:href="@{/admin/ui}">목록으로 돌아가기</a>
+    </section>
+  </section>
+</main>
+</body>
+</html>
