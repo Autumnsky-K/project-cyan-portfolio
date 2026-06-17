@@ -207,9 +207,9 @@ function GoodsPage() {
         <nav className="store-nav" aria-label="Store navigation">
           <Link to="/">Home</Link>
           <Link to="/artists">Artists</Link>
-          <a href="#goods" aria-current="page">
+          <Link to="/goods" aria-current="page">
             Goods
-          </a>
+          </Link>
           <CartNavLink />
         </nav>
       </header>
