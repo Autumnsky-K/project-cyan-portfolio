@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Storage Admin</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside class="admin-sidebar" aria-label="Admin navigation">
+    <div>
+      <p class="admin-eyebrow">Project Cyan</p>
+      <h1>Admin</h1>
+    </div>
+    <nav>
+      <a th:href="@{/admin/goods}">Goods</a>
+      <a aria-current="page" th:href="@{/admin/storage}">Storage</a>
+      <span>Orders</span>
+      <span>Members</span>
+    </nav>
+  </aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Supabase Storage</p>
+        <h2>Storage</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/goods}">Goods Admin</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+    <div class="admin-notice admin-notice-error" th:if="${storageError}" th:text="${storageError}"></div>
+
+    <form class="admin-form" method="post" th:object="${bucketForm}" th:action="@{/admin/storage/buckets}">
+      <section class="admin-form-grid">
+        <label>
+          <span>Bucket Name</span>
+          <input type="text" th:field="*{bucketName}" placeholder="goods-images" required>
+          <small th:if="${#fields.hasErrors('bucketName')}" th:errors="*{bucketName}"></small>
+        </label>
+
+        <label class="admin-check-label">
+          <span>Access</span>
+          <span class="admin-check-inline">
+            <input type="checkbox" th:field="*{publicBucket}">
+            <span>Public bucket</span>
+          </span>
+        </label>
+      </section>
+
+      <div class="admin-form-actions">
+        <button class="admin-primary" type="submit">Create Bucket</button>
+      </div>
+    </form>
+
+    <form class="admin-form" method="post" th:object="${pathForm}" th:action="@{/admin/storage/paths}">
+      <section class="admin-form-grid">
+        <label>
+          <span>Bucket</span>
+          <select th:field="*{bucketName}" required>
+            <option value="">Select bucket</option>
+            <option th:each="bucket : ${buckets}" th:value="${bucket.name()}" th:text="${bucket.name()}"></option>
+          </select>
+          <small th:if="${#fields.hasErrors('bucketName')}" th:errors="*{bucketName}"></small>
+        </label>
+
+        <label>
+          <span>Path</span>
+          <input type="text" th:field="*{path}" placeholder="goods/photocard" required>
+          <small th:if="${#fields.hasErrors('path')}" th:errors="*{path}"></small>
+        </label>
+      </section>
+
+      <div class="admin-form-actions">
+        <button class="admin-primary" type="submit">Create Path</button>
+      </div>
+    </form>
+
+    <section class="admin-table-panel" aria-label="Supabase storage buckets">
+      <div class="admin-state" th:if="${#lists.isEmpty(buckets)}">No buckets found.</div>
+
+      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(buckets)}">
+        <table class="admin-goods-table admin-storage-table">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Access</th>
+            <th>Created</th>
+            <th>Updated</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="bucket : ${buckets}">
+            <td><strong th:text="${bucket.name()}">bucket</strong></td>
+            <td th:text="${bucket.id()}">bucket</td>
+            <td th:text="${bucket.publicBucket() == true ? 'PUBLIC' : 'PRIVATE'}">PUBLIC</td>
+            <td th:text="${bucket.createdAt() ?: '-'}">-</td>
+            <td th:text="${bucket.updatedAt() ?: '-'}">-</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

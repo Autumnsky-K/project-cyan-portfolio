@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Goods Admin</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside class="admin-sidebar" aria-label="Admin navigation">
+    <div>
+      <p class="admin-eyebrow">Project Cyan</p>
+      <h1>Admin</h1>
+    </div>
+    <nav>
+      <a aria-current="page" th:href="@{/admin/goods}">Goods</a>
+      <a th:href="@{/admin/storage}">Storage</a>
+      <span>Orders</span>
+      <span>Members</span>
+    </nav>
+  </aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Store Management</p>
+        <h2>Goods</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/goods}">View Store</a>
+        <a class="admin-primary" th:href="@{/admin/goods/new}">New Goods</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+
+    <section class="admin-stats" aria-label="Goods status">
+      <article>
+        <span>Total goods</span>
+        <strong th:text="${goodsPage.totalElements()}">0</strong>
+      </article>
+      <article>
+        <span>Current page</span>
+        <strong th:text="${goodsPage.totalPages() > 0 ? goodsPage.page() + 1 : 0}">0</strong>
+      </article>
+      <article>
+        <span>Rows visible</span>
+        <strong th:text="${#lists.size(goodsPage.content())}">0</strong>
+      </article>
+    </section>
+
+    <form class="admin-toolbar" method="get" th:action="@{/admin/goods}" aria-label="Goods admin filters">
+      <label>
+        <span>Search</span>
+        <input type="search" name="q" placeholder="Search goods" th:value="${q}">
+      </label>
+      <label>
+        <span>Artist</span>
+        <select name="artistId">
+          <option value="">All artists</option>
+          <option th:each="artist : ${filters.artists()}"
+                  th:value="${artist.value()}"
+                  th:text="${artist.label()}"
+                  th:selected="${artistId != null and artist.value() == artistId.toString()}"></option>
+        </select>
+      </label>
+      <label>
+        <span>Category</span>
+        <select name="categoryId">
+          <option value="">All categories</option>
+          <option th:each="category : ${filters.categories()}"
+                  th:value="${category.value()}"
+                  th:text="${category.label()}"
+                  th:selected="${categoryId != null and category.value() == categoryId.toString()}"></option>
+        </select>
+      </label>
+      <label>
+        <span>Sort</span>
+        <select name="sort">
+          <option value="createdAt,desc" th:selected="${sort == 'createdAt,desc'}">Newest</option>
+          <option value="goodsName,asc" th:selected="${sort == 'goodsName,asc'}">Name A to Z</option>
+          <option value="price,asc" th:selected="${sort == 'price,asc'}">Price low to high</option>
+          <option value="price,desc" th:selected="${sort == 'price,desc'}">Price high to low</option>
+        </select>
+      </label>
+      <button type="submit">Apply</button>
+    </form>
+
+    <section class="admin-table-panel" aria-label="Goods table">
+      <div class="admin-state" th:if="${#lists.isEmpty(goodsPage.content())}">No goods match these filters.</div>
+
+      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(goodsPage.content())}">
+        <table class="admin-goods-table">
+          <thead>
+          <tr>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Artist</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Stock</th>
+            <th>Tags</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="item : ${goodsPage.content()}" th:attr="data-goods-id=${item.goodsId()}">
+            <td>
+              <div class="admin-thumb" th:aria-label="${item.name()} + ' image'">
+                <img th:if="${item.imageUrl()}" th:src="${item.imageUrl()}" alt="">
+                <span th:if="${item.imageUrl() == null or item.imageUrl().isBlank()}"
+                      th:text="${item.categoryName() ?: 'Goods'}">Goods</span>
+              </div>
+            </td>
+            <td>
+              <strong th:text="${item.name()}">Goods name</strong>
+              <span th:text="'#' + ${item.goodsId()}">#0</span>
+            </td>
+            <td th:text="${item.artistName() ?: '-'}">-</td>
+            <td th:text="${item.categoryName() ?: '-'}">-</td>
+            <td th:text="${'KRW ' + #numbers.formatInteger(item.price() ?: 0, 0, 'COMMA')}">KRW 0</td>
+            <td>
+              <form class="inline-form" method="post" th:action="@{/admin/goods/{goodsId}/status(goodsId=${item.goodsId()})}">
+                <select name="salesStatus" aria-label="Sales status">
+                  <option th:each="status : ${salesStatuses}"
+                          th:value="${status}"
+                          th:text="${status}"
+                          th:selected="${status == item.salesStatus()}"></option>
+                </select>
+                <button type="submit">Save</button>
+              </form>
+            </td>
+            <td>
+              <form class="inline-form compact-form" method="post" th:action="@{/admin/goods/{goodsId}/stock(goodsId=${item.goodsId()})}">
+                <input type="number"
+                       name="stockCount"
+                       min="0"
+                       th:value="${stockCounts[item.goodsId()] ?: 0}"
+                       aria-label="Stock count">
+                <button type="submit">Save</button>
+              </form>
+            </td>
+            <td>
+              <div class="admin-tag-list">
+                <span th:each="tag : ${item.tags()}" th:text="${tag}">TAG</span>
+                <span th:if="${#lists.isEmpty(item.tags())}">-</span>
+              </div>
+            </td>
+            <td>
+              <div class="admin-actions">
+                <a th:href="@{/goods/{goodsId}(goodsId=${item.goodsId()})}">View</a>
+                <a th:href="@{/admin/goods/{goodsId}/edit(goodsId=${item.goodsId()})}">Edit</a>
+                <form method="post" th:action="@{/admin/goods/{goodsId}/delete(goodsId=${item.goodsId()})}">
+                  <button type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <nav class="admin-pagination" th:if="${goodsPage.totalPages() > 0}" aria-label="Admin goods pagination">
+      <a th:classappend="${goodsPage.page() <= 0} ? ' is-disabled'"
+         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() - 1})}">Previous</a>
+      <div class="admin-page-list">
+        <a th:each="pageNumber : ${pageNumbers}"
+           th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${pageNumber})}"
+           th:aria-current="${pageNumber == goodsPage.page()} ? 'page'"
+           th:text="${pageNumber + 1}">1</a>
+      </div>
+      <a th:classappend="${goodsPage.page() >= goodsPage.totalPages() - 1} ? ' is-disabled'"
+         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() + 1})}">Next</a>
+      <span th:text="${'Page ' + (goodsPage.page() + 1) + ' of ' + goodsPage.totalPages()}">Page 1 of 1</span>
+    </nav>
+  </section>
+</main>
+</body>
+</html>
