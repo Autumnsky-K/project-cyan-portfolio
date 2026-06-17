@@ -74,6 +74,49 @@ ws://localhost:8000/client-ws
 
 현재 mock 응답은 추천 관련 문구에 `navigate`, `highlight` 액션을 반환하고, 장바구니 관련 문구에 `addToCart` 액션을 반환합니다. 액션이 없을 때는 `actions`가 빈 배열입니다.
 
+## 응답 provider 설정
+
+기본 응답 provider는 로컬 개발용 `mock`입니다.
+
+AI 서버는 실행 위치가 `ai/`일 때 `ai/.env`와 `ai/.env.local`을 읽습니다. 루트의 `npm run dev`와 `npm run dev:ai`는 내부에서 `cd ai` 후 서버를 실행하므로, 로컬 AI 설정 파일은 `ai/` 바로 아래에 둡니다.
+
+```text
+ai/.env
+ai/.env.local
+```
+
+`ai/.env`는 팀 공통 placeholder나 개인 로컬 설정에 사용할 수 있고, `ai/.env.local`은 개인 override에 사용할 수 있습니다. 두 파일 모두 `.gitignore` 대상이므로 커밋하지 않습니다. 쉘에서 직접 export한 환경변수가 있으면 `.env` 값보다 우선합니다.
+
+```bash
+PROJECT_CYAN_AI_PROVIDER=mock
+```
+
+실제 LLM 응답을 받을 때는 provider를 원하는 LLM adapter로 바꾸고 접속 정보를 로컬 비밀 설정에 넣습니다. Project Cyan은 OLV 서버를 별도로 실행해 `/client-ws`로 다시 연결하지 않습니다. OLV의 LLM adapter 구조만 참고해 AI 서버 안에서 LLM provider를 직접 호출합니다.
+
+OpenAI API를 사용할 때는 아래처럼 설정합니다.
+
+```env
+PROJECT_CYAN_AI_PROVIDER=openai
+PROJECT_CYAN_LLM_BASE_URL=https://api.openai.com/v1
+PROJECT_CYAN_LLM_API_KEY=<LLM API key>
+PROJECT_CYAN_LLM_MODEL=gpt-5.4-mini
+```
+
+Claude API를 사용할 때도 같은 `PROJECT_CYAN_LLM_*` 키를 사용합니다.
+
+```env
+PROJECT_CYAN_AI_PROVIDER=claude
+PROJECT_CYAN_LLM_BASE_URL=https://api.anthropic.com
+PROJECT_CYAN_LLM_API_KEY=<LLM API key>
+PROJECT_CYAN_LLM_MODEL=claude-3-haiku-20240307
+```
+
+`PROJECT_CYAN_LLM_API_KEY`는 필수 값입니다. 실제 API key, token, password, secret은 문서와 커밋에 남기지 말고 `ai/.env` 또는 `ai/.env.local`에만 보관합니다.
+
+`PROJECT_CYAN_OLV_GATEWAY_URL`과 `PROJECT_CYAN_OLV_API_KEY`는 OLV-compatible REST gateway가 별도로 있을 때만 쓰는 실험적 호환 설정입니다. OLV 원본 서버의 `/client-ws` WebSocket을 Project Cyan AI 서버가 다시 호출하는 구조는 현재 권장 경로가 아닙니다.
+
+LLM provider는 응답 안의 `[ACTION:...]` 태그를 파싱해 WebSocket 응답의 `actions` 배열로 변환하고, 챗봇 말풍선에 표시되는 `text`에서는 해당 태그를 제거합니다.
+
 ## 프론트엔드 연결
 
 프론트엔드 개발 서버를 로컬 AI 서버와 함께 실행할 때는 WebSocket URL을 환경변수로 넘깁니다.
