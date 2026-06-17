@@ -69,6 +69,7 @@ body {
 .admin-form input,
 .admin-form select,
 .admin-form textarea,
+.admin-check-inline,
 .admin-form-actions a,
 .admin-form-actions button,
 .inline-form input,
@@ -156,6 +157,11 @@ button.admin-primary {
   border-radius: 6px;
   background: var(--admin-soft);
   color: var(--admin-ink);
+}
+
+.admin-notice-error {
+  border-color: #d8a5a5;
+  background: #fff4f4;
 }
 
 .admin-stats {
@@ -385,9 +391,27 @@ button.admin-primary {
 }
 
 .admin-checks input,
-.admin-tag-options input {
+.admin-tag-options input,
+.admin-check-inline input {
   width: auto;
   min-height: 0;
+}
+
+.admin-check-label {
+  align-content: start;
+}
+
+.admin-check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px;
+}
+
+.admin-storage-table {
+  min-width: 760px;
 }
 
 @media (max-width: 960px) {
