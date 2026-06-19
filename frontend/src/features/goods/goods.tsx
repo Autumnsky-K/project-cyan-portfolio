@@ -1,5 +1,5 @@
-import { type ChangeEvent, type FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type ChangeEvent, type FormEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   fetchGoods,
   fetchGoodsDetail,
@@ -33,6 +33,20 @@ type GoodsSection = 'all' | 'favorites'
 type FavoritesStatus = 'idle' | 'loading' | 'data' | 'error'
 
 const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
+
+function takePendingScrollRestore() {
+  const rawScrollY = new URLSearchParams(window.location.search).get('_scroll')
+  if (rawScrollY === null) return null
+  const scrollY = Number(rawScrollY)
+  return Number.isFinite(scrollY) && scrollY >= 0 ? scrollY : null
+}
+
+function storePendingScrollRestore() {
+  const url = new URL(window.location.href)
+  url.searchParams.set('_scroll', String(Math.round(window.scrollY)))
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
+}
+
 function readFilterParam(params: URLSearchParams, key: string) {
   const raw = params.get(key) ?? ''
   const separator = raw.includes(';') ? ';' : ','
@@ -99,6 +113,18 @@ function GoodsCards({
   isFavorite: (goodsId: number) => boolean
   toggleFavorite: (goodsId: number) => void
 }) {
+  const navigate = useNavigate()
+
+  function openGoodsDetail(event: ReactMouseEvent<HTMLAnchorElement>, goodsId: number) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+    event.preventDefault()
+    storePendingScrollRestore()
+    navigate(`/goods/${goodsId}`, {
+      state: { fromGoods: true },
+    })
+  }
+
   return (
     <div className={`goods-grid goods-${viewMode}`}>
       {items.map((item) => (
@@ -107,6 +133,7 @@ function GoodsCards({
             className="goods-image goods-detail-link"
             aria-label={`${item.name} 상세 보기`}
             to={`/goods/${item.goodsId}`}
+            onClick={(event) => openGoodsDetail(event, item.goodsId)}
           >
             <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
           </Link>
@@ -116,7 +143,11 @@ function GoodsCards({
               <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
             </div>
             <h3>
-              <Link className="goods-name-link" to={`/goods/${item.goodsId}`}>
+              <Link
+                className="goods-name-link"
+                to={`/goods/${item.goodsId}`}
+                onClick={(event) => openGoodsDetail(event, item.goodsId)}
+              >
                 {item.name}
               </Link>
             </h3>
@@ -134,7 +165,13 @@ function GoodsCards({
             <div className="card-footer">
               <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
               <div className="card-footer-actions">
-                <Link className="card-action" to={`/goods/${item.goodsId}`}>View</Link>
+                <Link
+                  className="card-action"
+                  to={`/goods/${item.goodsId}`}
+                  onClick={(event) => openGoodsDetail(event, item.goodsId)}
+                >
+                  View
+                </Link>
                 <button
                   className="favorite-button"
                   type="button"
@@ -182,17 +219,45 @@ function GoodsPage() {
   const searchScrollPositionRef = useRef<number | null>(null)
   const committedQueryRef = useRef(initialState.query.trim())
   const pageJumpRef = useRef<HTMLDivElement | null>(null)
+  const pendingScrollRestoreRef = useRef<number | null>(takePendingScrollRestore())
+  const scrollRestoreTimerRef = useRef<number | null>(null)
   const debouncedQuery = useDebouncedValue(query, 300)
 
   useLayoutEffect(() => {
     const previousScrollRestoration = window.history.scrollRestoration
     window.history.scrollRestoration = 'manual'
-    window.scrollTo({ top: 0, left: 0 })
+    if (pendingScrollRestoreRef.current === null) {
+      window.scrollTo({ top: 0, left: 0 })
+    }
 
     return () => {
       window.history.scrollRestoration = previousScrollRestoration
     }
   }, [])
+
+  useLayoutEffect(() => {
+    if (
+      pendingScrollRestoreRef.current === null
+      || status === 'loading'
+      || status === 'refreshing'
+    ) {
+      return
+    }
+
+    const scrollY = pendingScrollRestoreRef.current
+    pendingScrollRestoreRef.current = null
+    scrollRestoreTimerRef.current = window.setTimeout(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' })
+      scrollRestoreTimerRef.current = null
+    }, 200)
+
+    return () => {
+      if (scrollRestoreTimerRef.current !== null) {
+        window.clearTimeout(scrollRestoreTimerRef.current)
+        scrollRestoreTimerRef.current = null
+      }
+    }
+  }, [status])
 
   useLayoutEffect(() => {
     if (status !== 'empty' || searchScrollPositionRef.current === null) {
