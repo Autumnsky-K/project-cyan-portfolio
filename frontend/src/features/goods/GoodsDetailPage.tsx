@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
@@ -26,6 +26,10 @@ function GoodsDetailPage() {
   const [activeTab, setActiveTab] = useState<DetailTab>('intro')
   const [shareFeedback, setShareFeedback] = useState('')
   const shareFeedbackTimerRef = useRef<number | null>(null)
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [goodsId])
 
   useEffect(() => {
     const controller = new AbortController()
