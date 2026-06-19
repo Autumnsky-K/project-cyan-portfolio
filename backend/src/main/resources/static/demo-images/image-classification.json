@@ -1,0 +1,2142 @@
+﻿[
+    {
+        "game":  "genshin_impact",
+        "character":  "aino",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  301,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/aino.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "barbara",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  335,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/barbara.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  936
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  723
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "charlotte",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/charlotte.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  650
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "chiori",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  290,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/chiori.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  1000
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  609
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "citlali",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/citlali.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  653
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "collei",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  290,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/collei.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "columbina",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/columbina.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  693
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  674
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  609
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "emilie",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/emilie.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  106,
+                               "height":  185
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "escoffier",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/escoffier.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  1137
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "faruzan",
+        "thumbnail":  {
+                          "sourceFile":  "05.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/faruzan.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "furina",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/furina.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  711
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  689
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "ganyu",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  290,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/ganyu.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  844
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  843
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "ineffa",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/ineffa.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  873
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  214,
+                               "height":  256
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "jean",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/jean.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  714
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  670
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  595
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "kachina",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/kachina.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  711
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  658
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  646
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "kamisato_ayaka",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  389,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/kamisato_ayaka.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  696
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "kirara",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/kirara.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  844
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "lauma",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/lauma.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  266
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "layla",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/layla.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  663
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "linnea",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  337,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/linnea.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  1137
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "lynette",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/lynette.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "mona",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  290,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/mona.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  800
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "mualani",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  461,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/mualani.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  461
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  266
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "nahida",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  296,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/nahida.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  948
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "navia",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  329,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/navia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  1000
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  725
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "nicole",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/nicole.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  266
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  266
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  266
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "nilou",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  415,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/nilou.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "ningguang",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  331,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/ningguang.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  603
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "noelle",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  443,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/noelle.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  957
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  694
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "prune",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  268,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/prune.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  631
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "qiqi",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  371,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/qiqi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  722
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "sangonomiya_kokomi",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  469,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/sangonomiya_kokomi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  573
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "sigewinne",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/sigewinne.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  226,
+                               "height":  256
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "sucrose",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  414,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/sucrose.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  969
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "xiangling",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  414,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/xiangling.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  420,
+                               "height":  720
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "yae_miko",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  291,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/yae_miko.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  587
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "yanfei",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  355,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/yanfei.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  718
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "yaoyao",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  335,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/yaoyao.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  1021
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  544
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "yoimiya",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  300,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/yoimiya.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  420,
+                               "height":  720
+                           },
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  577
+                           }
+                       ]
+    },
+    {
+        "game":  "genshin_impact",
+        "character":  "zibai",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  309,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/genshin_impact/zibai.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  1137
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  711
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "aurelia",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  485,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/aurelia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  485
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  266
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "daffodill",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/daffodill.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  734
+                           },
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  104,
+                               "height":  185
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "esper_zero",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/esper_zero.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  771
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  670
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "fadia",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  239,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/fadia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  663
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "haniel",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/haniel.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  734
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "hotori",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  239,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/hotori.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  636
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "lacrimosa",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  279,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/lacrimosa.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  916
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  663
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "mint",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/mint.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  734
+                           },
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  733
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "nanally",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/nanally.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  661
+                           }
+                       ]
+    },
+    {
+        "game":  "neverness_to_everness",
+        "character":  "skia",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/neverness_to_everness/skia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  734
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "baizhi",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  335,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/baizhi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  609
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "buling",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  355,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/buling.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "cartethyia",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/cartethyia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  1027
+                           },
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  852
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "ciaccona",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  269,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/ciaccona.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  734
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "encore",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/encore.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  578
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "iuno",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/iuno.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  846
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "jianxin",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  349,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/jianxin.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  711
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  632
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "jinhsi",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  470,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/jinhsi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "lumi",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  345,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/lumi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "mornye",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  437,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/mornye.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  790
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "phoebe",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/phoebe.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  895
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  843
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "roccia",
+        "thumbnail":  {
+                          "sourceFile":  "10.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/roccia.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  745
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  726
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "sanhua",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  421,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/sanhua.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  765
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  711
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "taoqi",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/taoqi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  586
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "the_shorekeeper",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/the_shorekeeper.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "verina",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  316,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/verina.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  840
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  711
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "yangyang",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  335,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/yangyang.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  830
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "youhu",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/youhu.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  865
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  842
+                           }
+                       ]
+    },
+    {
+        "game":  "wuthering_waves",
+        "character":  "zhezhi",
+        "thumbnail":  {
+                          "sourceFile":  "05.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/wuthering_waves/zhezhi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  842
+                           },
+                           {
+                               "sourceFile":  "08.jpg",
+                               "width":  474,
+                               "height":  711
+                           },
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  701
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "alexandrina_sebastiane_rina",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/alexandrina_sebastiane_rina.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  617
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "alice_thymefield",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  229,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/alice_thymefield.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "07.jpg",
+                               "width":  474,
+                               "height":  1682
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  852
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  852
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "astra_yao",
+        "thumbnail":  {
+                          "sourceFile":  "04.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/astra_yao.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  615
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "belle",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  632,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/belle.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "06.jpg",
+                               "width":  474,
+                               "height":  829
+                           },
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  631
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  631
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "corin_wickes",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/corin_wickes.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  852
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  700
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  617
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "grace_howard",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/grace_howard.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  1220
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "ju_fufu",
+        "thumbnail":  {
+                          "sourceFile":  "02.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/ju_fufu.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  762
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  689
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "koleda_belobog",
+        "thumbnail":  {
+                          "sourceFile":  "07.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/koleda_belobog.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  676
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "lucia_elowen",
+        "thumbnail":  {
+                          "sourceFile":  "09.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/lucia_elowen.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  474
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  430,
+                               "height":  430
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "nicole_demara",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/nicole_demara.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  948
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "piper_wheel",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  355,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/piper_wheel.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "04.jpg",
+                               "width":  474,
+                               "height":  982
+                           },
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  982
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  948
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "qingyi",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/qingyi.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  948
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "soukaku",
+        "thumbnail":  {
+                          "sourceFile":  "01.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/soukaku.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "03.jpg",
+                               "width":  474,
+                               "height":  733
+                           },
+                           {
+                               "sourceFile":  "05.jpg",
+                               "width":  474,
+                               "height":  631
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "sunna",
+        "thumbnail":  {
+                          "sourceFile":  "08.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  474,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/sunna.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  1055
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "ukinami_yuzuha",
+        "thumbnail":  {
+                          "sourceFile":  "03.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  328,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/ukinami_yuzuha.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "09.jpg",
+                               "width":  474,
+                               "height":  915
+                           },
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  915
+                           }
+                       ]
+    },
+    {
+        "game":  "zenless_zone_zero",
+        "character":  "vivian_banshee",
+        "thumbnail":  {
+                          "sourceFile":  "06.jpg",
+                          "sourceWidth":  474,
+                          "sourceHeight":  266,
+                          "outputWidth":  640,
+                          "outputHeight":  480,
+                          "url":  "/demo-images/thumbnails/zenless_zone_zero/vivian_banshee.jpg"
+                      },
+        "bodyImages":  [
+                           {
+                               "sourceFile":  "02.jpg",
+                               "width":  474,
+                               "height":  948
+                           },
+                           {
+                               "sourceFile":  "01.jpg",
+                               "width":  474,
+                               "height":  865
+                           },
+                           {
+                               "sourceFile":  "10.jpg",
+                               "width":  474,
+                               "height":  806
+                           }
+                       ]
+    }
+]
