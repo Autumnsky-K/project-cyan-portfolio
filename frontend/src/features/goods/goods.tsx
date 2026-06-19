@@ -1,61 +1,233 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchGoods, fetchGoodsFilters, type GoodsFilterOption, type GoodsQueryParams, type GoodsSummary, type PageResponse } from '../../api/goods'
+import {
+  fetchGoods,
+  fetchGoodsDetail,
+  fetchGoodsFilters,
+  type GoodsFilterOption,
+  type GoodsQueryParams,
+  type GoodsSummary,
+  type PageResponse,
+} from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
-import { useCart } from '../cart/useCart'
+import GoodsFilterUi, {
+  GoodsActiveFilterChips,
+  type GoodsFilterGroup,
+  type GoodsFilterParam,
+  type GoodsSelectedFilters,
+} from './GoodsFilterUi'
+import GoodsImage from './GoodsImage'
+import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
+import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
+import GoodsStatusBadge from './GoodsStatusBadge'
+import { useDebouncedValue } from './useDebouncedValue'
+import { useGoodsFavorites } from './useGoodsFavorites'
 import './goods.css'
+import './goods-list-ui.css'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
-type FilterParam = 'categoryIds' | 'artistIds' | 'tags'
-type SelectedFilters = Record<FilterParam, string[]>
-type FilterGroup = {
-  title: string
-  param: FilterParam
-  options: GoodsFilterOption[]
+type ViewMode = 'grid' | 'list'
+type GoodsSection = 'all' | 'favorites'
+type FavoritesStatus = 'idle' | 'loading' | 'data' | 'error'
+
+const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
+function readFilterParam(params: URLSearchParams, key: string) {
+  const raw = params.get(key) ?? ''
+  const separator = raw.includes(';') ? ';' : ','
+  return raw.split(separator).map((value) => value.trim()).filter(Boolean)
+}
+
+function expandFilterValues(values: string[]) {
+  return values.flatMap((value) => value.split('|')).filter(Boolean)
+}
+
+function createGoodsUrl({
+  query,
+  sort,
+  page,
+  selectedFilters,
+}: {
+  query: string
+  sort: string
+  page: number
+  selectedFilters: GoodsSelectedFilters
+}) {
+  const params = new URLSearchParams()
+  if (query.trim()) params.set('q', query.trim())
+  if (sort !== 'createdAt,desc') params.set('sort', sort)
+  if (page > 0) params.set('page', String(page + 1))
+  if (selectedFilters.categoryIds.length) params.set('categories', selectedFilters.categoryIds.join(';'))
+  if (selectedFilters.artistIds.length) params.set('artists', selectedFilters.artistIds.join(';'))
+  if (selectedFilters.tags.length) params.set('tags', selectedFilters.tags.join(';'))
+
+  return `${window.location.pathname}${params.size ? `?${params.toString()}` : ''}`
+}
+
+function readInitialState() {
+  const params = new URLSearchParams(window.location.search)
+  const requestedSort = params.get('sort') ?? 'createdAt,desc'
+  const requestedPage = Number(params.get('page') ?? 1)
+
+  return {
+    query: params.get('q') ?? '',
+    sort: ALLOWED_SORTS.has(requestedSort) ? requestedSort : 'createdAt,desc',
+    page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
+    selectedFilters: {
+      categoryIds: readFilterParam(params, 'categories'),
+      artistIds: readFilterParam(params, 'artists'),
+      tags: readFilterParam(params, 'tags'),
+    } satisfies GoodsSelectedFilters,
+  }
+}
+
+function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
+  return [...new Map(
+    options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
+  ).values()]
+}
+
+function GoodsCards({
+  items,
+  viewMode,
+  isFavorite,
+  toggleFavorite,
+}: {
+  items: GoodsSummary[]
+  viewMode: ViewMode
+  isFavorite: (goodsId: number) => boolean
+  toggleFavorite: (goodsId: number) => void
+}) {
+  return (
+    <div className={`goods-grid goods-${viewMode}`}>
+      {items.map((item) => (
+        <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
+          <div className="goods-image" aria-label={`${item.name} image`}>
+            <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
+          </div>
+          <div className="goods-card-body">
+            <div className="card-topline">
+              <span>{item.artistName ?? 'SM Artist'}</span>
+              <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
+            </div>
+            <h3>{item.name}</h3>
+            <p>{item.categoryName ?? 'Goods'}</p>
+            {(item.tags ?? []).length > 0 && (
+              <div className="tag-row">
+                {(item.tags ?? []).map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
+            )}
+            <div className="card-footer">
+              <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
+              <div className="card-footer-actions">
+                <Link className="card-action" to={`/goods/${item.goodsId}`}>View</Link>
+                <button
+                  className="favorite-button"
+                  type="button"
+                  aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                  aria-pressed={isFavorite(item.goodsId)}
+                  onClick={() => toggleFavorite(item.goodsId)}
+                >
+                  <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  )
 }
 
 function GoodsPage() {
-  const { addCartItem } = useCart()
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('createdAt,desc')
-  const [page, setPage] = useState(0)
-  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({ categoryIds: [], artistIds: [], tags: [] })
-  const [filters, setFilters] = useState<FilterGroup[]>([])
+  const [initialState] = useState(readInitialState)
+  const { favoriteIds, isFavorite, toggleFavorite } = useGoodsFavorites()
+  const [query, setQuery] = useState(initialState.query)
+  const [sort, setSort] = useState(initialState.sort)
+  const [page, setPage] = useState(initialState.page)
+  const [selectedFilters, setSelectedFilters] = useState<GoodsSelectedFilters>(initialState.selectedFilters)
+  const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
   const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
-  const [addedGoodsId, setAddedGoodsId] = useState<number | null>(null)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [activeSection, setActiveSection] = useState<GoodsSection>('all')
+  const [favoriteGoods, setFavoriteGoods] = useState<GoodsSummary[]>([])
+  const [favoritesStatus, setFavoritesStatus] = useState<FavoritesStatus>('idle')
+  const [favoritesError, setFavoritesError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
+  const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)
-  const cartToastTimerRef = useRef<number | null>(null)
+  const resultsStartRef = useRef<HTMLDivElement | null>(null)
+  const goodsResultsRef = useRef<HTMLDivElement | null>(null)
+  const searchScrollPositionRef = useRef<number | null>(null)
+  const committedQueryRef = useRef(initialState.query.trim())
+  const debouncedQuery = useDebouncedValue(query, 300)
+
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    window.scrollTo({ top: 0, left: 0 })
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (status !== 'empty' || searchScrollPositionRef.current === null) {
+      return
+    }
+
+    window.scrollTo({ top: searchScrollPositionRef.current })
+    searchScrollPositionRef.current = null
+  }, [status])
+
+  const scrollToResults = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      resultsStartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
 
   const requestParams = useMemo<GoodsQueryParams>(
     () => {
-      const params = {
-        q: query,
+      return {
+        q: debouncedQuery,
         sort,
         page,
         size: 12,
-        categoryIds: selectedFilters.categoryIds.join(','),
-        artistIds: selectedFilters.artistIds.join(','),
-        tags: selectedFilters.tags.join(','),
+        categoryIds: expandFilterValues(selectedFilters.categoryIds).join(','),
+        artistIds: expandFilterValues(selectedFilters.artistIds).join(','),
+        tags: expandFilterValues(selectedFilters.tags).join(','),
       }
-
-      if (selectedFilters.categoryIds.length === 1) {
-        params.categoryId = selectedFilters.categoryIds[0]
-      }
-      if (selectedFilters.artistIds.length === 1) {
-        params.artistId = selectedFilters.artistIds[0]
-      }
-      if (selectedFilters.tags.length === 1) {
-        params.tag = selectedFilters.tags[0]
-      }
-
-      return params
     },
-    [page, query, selectedFilters, sort],
+    [debouncedQuery, page, selectedFilters, sort],
   )
+
+  useEffect(() => {
+    window.history.replaceState(null, '', createGoodsUrl({
+      query: committedQueryRef.current,
+      sort,
+      page,
+      selectedFilters,
+    }))
+  }, [page, selectedFilters, sort])
+
+  useEffect(() => {
+    function restoreHistoryState() {
+      const restoredState = readInitialState()
+      committedQueryRef.current = restoredState.query.trim()
+      setQuery(restoredState.query)
+      setSort(restoredState.sort)
+      setPage(restoredState.page)
+      setSelectedFilters(restoredState.selectedFilters)
+    }
+
+    window.addEventListener('popstate', restoreHistoryState)
+    return () => window.removeEventListener('popstate', restoreHistoryState)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -66,9 +238,9 @@ function GoodsPage() {
       try {
         const data = await fetchGoodsFilters({ signal: controller.signal })
         setFilters([
-          { title: 'Category', param: 'categoryIds', options: data.categories ?? [] },
-          { title: 'Artist', param: 'artistIds', options: data.artists ?? [] },
-          { title: 'Tag', param: 'tags', options: data.tags ?? [] },
+          { title: 'Category', param: 'categoryIds', options: uniqueFilterOptions(data.categories) },
+          { title: 'Artist', param: 'artistIds', options: uniqueFilterOptions(data.artists) },
+          { title: 'Tag', param: 'tags', options: uniqueFilterOptions(data.tags) },
         ])
         setFilterStatus('data')
       } catch (loadError) {
@@ -115,18 +287,43 @@ function GoodsPage() {
     return () => {
       controller.abort()
     }
-  }, [requestParams])
+  }, [requestParams, retryKey])
 
-  useEffect(
-    () => () => {
-      if (cartToastTimerRef.current !== null) {
-        window.clearTimeout(cartToastTimerRef.current)
-      }
-    },
-    [],
-  )
+  useEffect(() => {
+    if (activeSection !== 'favorites') {
+      return undefined
+    }
 
-  function updateFilter(param: FilterParam, value: string) {
+    if (favoriteIds.length === 0) {
+      return undefined
+    }
+
+    const controller = new AbortController()
+
+    Promise.resolve()
+      .then(() => {
+        if (controller.signal.aborted) return []
+        setFavoritesStatus('loading')
+        setFavoritesError('')
+        return Promise.all(
+          favoriteIds.map((goodsId) => fetchGoodsDetail(goodsId, { signal: controller.signal })),
+        )
+      })
+      .then((items) => {
+        if (controller.signal.aborted) return
+        setFavoriteGoods(items)
+        setFavoritesStatus('data')
+      })
+      .catch((loadError) => {
+        if (loadError instanceof DOMException && loadError.name === 'AbortError') return
+        setFavoritesError(loadError instanceof Error ? loadError.message : 'Failed to load favorite goods.')
+        setFavoritesStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [activeSection, favoriteIds])
+
+  function updateFilter(param: GoodsFilterParam, value: string) {
     setPage(0)
     setSelectedFilters((current) => {
       const currentValues = current[param] ?? []
@@ -142,34 +339,28 @@ function GoodsPage() {
   }
 
   function resetFilters() {
+    committedQueryRef.current = ''
     setQuery('')
     setSort('createdAt,desc')
     setPage(0)
     setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
+    scrollToResults()
   }
 
-  function isFilterSelected(param: FilterParam, value: string) {
-    return (selectedFilters[param] ?? []).includes(value)
+  function applyMobileFilters(nextFilters: GoodsSelectedFilters) {
+    setPage(0)
+    setSelectedFilters(nextFilters)
+    scrollToResults()
   }
 
-  function handleAddCartItem(item: GoodsSummary) {
-    addCartItem(item)
-    setAddedGoodsId(item.goodsId)
-    if (cartToastTimerRef.current !== null) {
-      window.clearTimeout(cartToastTimerRef.current)
-    }
-    cartToastTimerRef.current = window.setTimeout(() => {
-      setAddedGoodsId(null)
-    }, 1600)
-  }
-
-  const goods = goodsPage?.content ?? []
+  const goods = useMemo(() => goodsPage?.content ?? [], [goodsPage])
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
   const hasPreviousPage = currentPage > 0
   const hasNextPage = totalPages > 0 && currentPage < totalPages - 1
   const hasGoods = goods.length > 0
+
   const pageNumbers = useMemo(() => {
     if (totalPages < 1) {
       return []
@@ -183,19 +374,51 @@ function GoodsPage() {
     return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
   }, [currentPage, totalPages])
 
-  function handleQueryChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleQueryChange(value: string) {
+    searchScrollPositionRef.current = window.scrollY
+    if (goods.length > 0 && goodsResultsRef.current) {
+      setEmptyResultsMinHeight(goodsResultsRef.current.offsetHeight)
+    }
     setPage(0)
-    setQuery(event.target.value)
+    setQuery(value)
+  }
+
+  function commitSearch(value: string) {
+    const normalizedValue = value.trim()
+    if (normalizedValue === committedQueryRef.current) {
+      return
+    }
+
+    committedQueryRef.current = normalizedValue
+    window.history.pushState(null, '', createGoodsUrl({
+      query: normalizedValue,
+      sort,
+      page: 0,
+      selectedFilters,
+    }))
   }
 
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
+    scrollToResults()
   }
 
   function goToPage(nextPage: number) {
     setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
+    scrollToResults()
   }
+
+  const searchSuggestions = useMemo(() => {
+    const values = [
+      ...goods.flatMap((item) => [item.name, item.artistName, item.categoryName, ...(item.tags ?? [])]),
+      ...filters.flatMap((group) => group.options.map((option) => option.label)),
+    ].filter((value): value is string => Boolean(value?.trim()))
+
+    return [...new Map(values.map((value) => [value.toLocaleLowerCase(), value])).values()]
+  }, [filters, goods])
+
+  const closeMobileFilters = useCallback(() => setIsMobileFilterOpen(false), [])
 
   return (
     <main className="goods-page">
@@ -205,7 +428,6 @@ function GoodsPage() {
           <h1>Goods</h1>
         </div>
         <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
           <Link to="/artists">Artists</Link>
           <Link to="/goods" aria-current="page">
             Goods
@@ -214,16 +436,24 @@ function GoodsPage() {
         </nav>
       </header>
 
+      <nav className="goods-section-tabs" aria-label="Goods sections">
+        <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>
+          All goods
+        </button>
+        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => setActiveSection('favorites')}>
+          Favorites <span>{favoriteIds.length}</span>
+        </button>
+      </nav>
+
+      {activeSection === 'all' && (
+        <>
       <section className="store-toolbar" aria-label="Goods search and sort">
-        <label className="search-field">
-          <span>Search</span>
-          <input
-            type="search"
-            placeholder="Search goods, artist, category"
-            value={query}
-            onChange={handleQueryChange}
-          />
-        </label>
+        <GoodsSearchAutocomplete
+          query={query}
+          suggestions={searchSuggestions}
+          onQueryChange={handleQueryChange}
+          onSearchCommit={commitSearch}
+        />
         <label className="sort-field">
           <span>Sort</span>
           <select value={sort} onChange={handleSortChange}>
@@ -236,36 +466,25 @@ function GoodsPage() {
       </section>
 
       <section className="store-layout" id="goods">
-        <aside className="filter-panel" aria-label="Goods filters">
-          <div className="panel-heading">
-            <h2>Filters</h2>
-            <button type="button" onClick={resetFilters}>
-              Reset
-            </button>
-          </div>
-          {filterStatus === 'loading' && <p className="filter-note">Loading filters...</p>}
-          {filterStatus === 'error' && <p className="filter-note">Unable to load filters.</p>}
-          {filters.map((group) => (
-            <fieldset className="filter-group" key={group.title}>
-              <legend>{group.title}</legend>
-              <div className="filter-options">
-                {group.options.map((option) => (
-                  <label key={option.value}>
-                    <input
-                      type="checkbox"
-                      checked={isFilterSelected(group.param, option.value)}
-                      onChange={() => updateFilter(group.param, option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-        </aside>
+        <GoodsFilterUi
+          groups={filters}
+          filterStatus={filterStatus}
+          selectedFilters={selectedFilters}
+          isMobileOpen={isMobileFilterOpen}
+          onCloseMobile={closeMobileFilters}
+          onOpenMobile={() => setIsMobileFilterOpen(true)}
+          onApplyMobile={applyMobileFilters}
+          onReset={resetFilters}
+          onToggle={updateFilter}
+        />
 
         <div className="goods-content">
-          <div className="result-summary">
+          <GoodsActiveFilterChips
+            groups={filters}
+            selectedFilters={selectedFilters}
+            onRemoveFilter={updateFilter}
+          />
+          <div className="result-summary" ref={resultsStartRef}>
             <div>
               <h2>Featured Goods</h2>
               <p>
@@ -277,68 +496,39 @@ function GoodsPage() {
               </p>
             </div>
             <div className="view-toggle" aria-label="View options">
-              <button type="button" aria-pressed="true">
+              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
                 Grid
               </button>
-              <button type="button">List</button>
+              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                List
+              </button>
             </div>
           </div>
 
-          {status === 'loading' && !hasGoods && <div className="goods-state">Loading goods...</div>}
+          <div
+            className="goods-results"
+            ref={goodsResultsRef}
+            style={status === 'empty' ? { minHeight: emptyResultsMinHeight } : undefined}
+          >
+            {status === 'loading' && !hasGoods && <GoodsCardSkeleton />}
 
-          {status === 'error' && (
-            <div className="goods-state error-state">
-              <strong>Unable to load goods</strong>
-              <span>{error}</span>
-            </div>
-          )}
+            {status === 'error' && (
+              <GoodsListState kind="error" message={error} onAction={() => setRetryKey((value) => value + 1)} />
+            )}
 
-          {status === 'empty' && !hasGoods && <div className="goods-state">No goods match these filters.</div>}
+            {status === 'empty' && !hasGoods && <GoodsListState kind="empty" onAction={resetFilters} />}
 
-          {hasGoods && (
-            <div className="goods-grid" data-refreshing={status === 'refreshing'}>
-              {goods.map((item) => (
-                <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
-                  <div className="goods-image" aria-label={`${item.name} image`}>
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt="" />
-                    ) : (
-                      <span>{item.categoryName ?? 'Goods'}</span>
-                    )}
-                  </div>
-                  <div className="goods-card-body">
-                    <div className="card-topline">
-                      <span>{item.artistName ?? 'SM Artist'}</span>
-                      <strong>{item.salesStatus ?? (item.isBestSeller ? 'Best' : 'On sale')}</strong>
-                    </div>
-                    <h3>{item.name}</h3>
-                    <p>{item.categoryName ?? 'Goods'}</p>
-                    <div className="tag-row">
-                      {(item.tags ?? []).map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                    <div className="card-footer">
-                      <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
-                      <div>
-                        <Link className="card-action" to={`/goods/${item.goodsId}`}>
-                          View
-                        </Link>
-                        <span className="add-action-wrap">
-                          <button type="button" data-add-to-cart={item.goodsId} onClick={() => handleAddCartItem(item)}>
-                            Add
-                          </button>
-                          {addedGoodsId === item.goodsId && (
-                            <span className="add-feedback-popover">Added to cart</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+            {hasGoods && (
+              <div data-refreshing={status === 'refreshing'}>
+                <GoodsCards
+                  items={goods}
+                  viewMode={viewMode}
+                  isFavorite={isFavorite}
+                  toggleFavorite={toggleFavorite}
+                />
+              </div>
+            )}
+          </div>
 
           {totalPages > 0 && (
             <nav className="goods-pagination" aria-label="Goods pagination">
@@ -367,6 +557,44 @@ function GoodsPage() {
           )}
         </div>
       </section>
+        </>
+      )}
+
+      {activeSection === 'favorites' && (
+        <section className="favorites-content" aria-labelledby="favorites-heading">
+          <div className="result-summary">
+            <div>
+              <h2 id="favorites-heading">Favorite Goods</h2>
+              <p>{favoriteIds.length} saved item{favoriteIds.length === 1 ? '' : 's'}</p>
+            </div>
+            <div className="view-toggle" aria-label="Favorite view options">
+              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>Grid</button>
+              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>List</button>
+            </div>
+          </div>
+
+          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.min(favoriteIds.length, 6)} />}
+          {favoritesStatus === 'error' && (
+            <GoodsListState kind="error" message={favoritesError} onAction={() => setActiveSection('all')} />
+          )}
+          {favoriteIds.length === 0 && (
+            <div className="goods-state favorites-empty" role="status">
+              <span className="goods-state-mark" aria-hidden="true">♡</span>
+              <strong>No favorite goods yet</strong>
+              <span>Tap the heart on a goods card to save it here.</span>
+              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
+            </div>
+          )}
+          {favoritesStatus === 'data' && favoriteGoods.length > 0 && (
+            <GoodsCards
+              items={favoriteGoods}
+              viewMode={viewMode}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
+            />
+          )}
+        </section>
+      )}
     </main>
   )
 }
