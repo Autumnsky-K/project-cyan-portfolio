@@ -1,4 +1,4 @@
-import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   fetchGoods,
@@ -173,11 +173,15 @@ function GoodsPage() {
   const [favoritesError, setFavoritesError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
+  const [isPageJumpOpen, setIsPageJumpOpen] = useState(false)
+  const [pageJumpValue, setPageJumpValue] = useState('')
   const hasLoadedGoodsRef = useRef(false)
   const resultsStartRef = useRef<HTMLDivElement | null>(null)
+  const searchToolbarRef = useRef<HTMLElement | null>(null)
   const goodsResultsRef = useRef<HTMLDivElement | null>(null)
   const searchScrollPositionRef = useRef<number | null>(null)
   const committedQueryRef = useRef(initialState.query.trim())
+  const pageJumpRef = useRef<HTMLDivElement | null>(null)
   const debouncedQuery = useDebouncedValue(query, 300)
 
   useLayoutEffect(() => {
@@ -199,9 +203,9 @@ function GoodsPage() {
     searchScrollPositionRef.current = null
   }, [status])
 
-  const scrollToResults = useCallback(() => {
+  const scrollToResults = useCallback((behavior: ScrollBehavior = 'smooth') => {
     window.requestAnimationFrame(() => {
-      resultsStartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      resultsStartRef.current?.scrollIntoView({ behavior, block: 'start' })
     })
   }, [])
 
@@ -242,6 +246,25 @@ function GoodsPage() {
     window.addEventListener('popstate', restoreHistoryState)
     return () => window.removeEventListener('popstate', restoreHistoryState)
   }, [])
+
+  useEffect(() => {
+    if (!isPageJumpOpen) return undefined
+
+    function closePageJump(event: MouseEvent) {
+      if (!pageJumpRef.current?.contains(event.target as Node)) setIsPageJumpOpen(false)
+    }
+
+    function closePageJumpOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsPageJumpOpen(false)
+    }
+
+    document.addEventListener('mousedown', closePageJump)
+    document.addEventListener('keydown', closePageJumpOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closePageJump)
+      document.removeEventListener('keydown', closePageJumpOnEscape)
+    }
+  }, [isPageJumpOpen])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -418,7 +441,18 @@ function GoodsPage() {
 
   function goToPage(nextPage: number) {
     setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
-    scrollToResults()
+    setIsPageJumpOpen(false)
+    window.requestAnimationFrame(() => {
+      searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    })
+  }
+
+  function submitPageJump(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const requestedPage = Number(pageJumpValue)
+    if (!Number.isInteger(requestedPage)) return
+    goToPage(requestedPage - 1)
+    setPageJumpValue('')
   }
 
   const searchSuggestions = useMemo(() => {
@@ -459,7 +493,7 @@ function GoodsPage() {
 
       {activeSection === 'all' && (
         <>
-      <section className="store-toolbar" aria-label="Goods search and sort">
+      <section className="store-toolbar" ref={searchToolbarRef} aria-label="Goods search and sort">
         <GoodsSearchAutocomplete
           query={query}
           suggestions={searchSuggestions}
@@ -544,65 +578,69 @@ function GoodsPage() {
 
           {totalPages > 0 && (
             <nav className="goods-pagination" aria-label="Goods pagination">
-              {totalPages > 5 && (
-                <>
-                  <button
-                    className="pagination-jump"
-                    aria-label="첫 페이지로 이동"
-                    type="button"
-                    disabled={currentPage === 0}
-                    onClick={() => goToPage(0)}
-                  >
-                    맨앞
-                  </button>
-                  <button
-                    className="pagination-jump"
-                    aria-label="5페이지 뒤로 이동"
-                    type="button"
-                    disabled={currentPage === 0}
-                    onClick={() => goToPage(currentPage - 5)}
-                  >
-                    -5
-                  </button>
-                </>
-              )}
-              <div className="page-number-list">
-                {pageNumbers.map((pageNumber) => (
-                  <button
-                    aria-current={pageNumber === currentPage ? 'page' : undefined}
-                    key={pageNumber}
-                    type="button"
-                    onClick={() => goToPage(pageNumber)}
-                  >
-                    {pageNumber + 1}
-                  </button>
-                ))}
+              <div className="pagination-controls">
+                <button
+                  className="pagination-arrow"
+                  aria-label="이전 페이지"
+                  type="button"
+                  disabled={currentPage === 0}
+                  onClick={() => goToPage(currentPage - 1)}
+                >
+                  ‹
+                </button>
+                <div className="page-number-list">
+                  {pageNumbers.map((pageNumber) => (
+                    <button
+                      aria-current={pageNumber === currentPage ? 'page' : undefined}
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => goToPage(pageNumber)}
+                    >
+                      {pageNumber + 1}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="pagination-arrow"
+                  aria-label="다음 페이지"
+                  type="button"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => goToPage(currentPage + 1)}
+                >
+                  ›
+                </button>
               </div>
-              <span className="pagination-mobile-status" aria-current="page">
-                {currentPage + 1} / {totalPages}
-              </span>
-              {totalPages > 5 && (
-                <>
+              <div className="pagination-status-wrap" ref={pageJumpRef}>
+                {isPageJumpOpen ? (
+                  <form className="pagination-inline-jump" aria-label="페이지 이동" onSubmit={submitPageJump}>
+                    <input
+                      autoFocus
+                      aria-label="페이지 번호"
+                      id="goods-page-jump"
+                      inputMode="numeric"
+                      min="1"
+                      max={totalPages}
+                      type="number"
+                      value={pageJumpValue}
+                      onChange={(event) => setPageJumpValue(event.target.value)}
+                    />
+                    <span>/ {totalPages}</span>
+                    <button type="submit" disabled={!pageJumpValue}>이동</button>
+                  </form>
+                ) : (
                   <button
-                    className="pagination-jump"
-                    aria-label="5페이지 앞으로 이동"
+                    className="pagination-status"
+                    aria-expanded="false"
                     type="button"
-                    disabled={currentPage >= totalPages - 1}
-                    onClick={() => goToPage(currentPage + 5)}
+                    onClick={() => {
+                      setPageJumpValue(String(currentPage + 1))
+                      setIsPageJumpOpen(true)
+                    }}
                   >
-                    +5
+                    {currentPage + 1} / {totalPages}
                   </button>
-                  <button
-                    className="pagination-jump"
-                    aria-label="마지막 페이지로 이동"
-                    type="button"
-                    disabled={currentPage >= totalPages - 1}
-                    onClick={() => goToPage(totalPages - 1)}
-                  >
-                    맨뒤
-                  </button>
-                </>
-              )}
+                )}
+              </div>
             </nav>
           )}
         </div>
