@@ -2,6 +2,8 @@
 
 project-cyan은 React + Vite 프론트엔드, Spring Boot 백엔드, FastAPI AI WebSocket 서버로 구성된 모노레포입니다.
 
+AI 챗봇, LLM provider, WebSocket, Live2D 렌더러를 새 로컬 환경에서 함께 재현하는 절차는 `docs/ai-live2d-local-setup.md`를 참고합니다.
+
 ## 루트 개발 서버 실행
 
 macOS/Linux 기준으로 루트 디렉토리에서 아래 명령으로 세 개발 서버를 함께 실행합니다.
