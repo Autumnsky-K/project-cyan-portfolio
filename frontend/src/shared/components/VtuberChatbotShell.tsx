@@ -4,6 +4,7 @@ import {
   type VtuberCharacterConfig,
   type VtuberDisplayState,
 } from '../../features/vtuber/types'
+import Live2DCharacter from '../../features/vtuber/Live2DCharacter'
 import './VtuberChatbot.css'
 
 type VtuberChatbotProps = {
@@ -47,19 +48,13 @@ function VtuberChatbotShell({
     >
       <div
         className="vtuber-stage"
-        aria-label={`${character.name} Live2D character placeholder`}
+        aria-label={`${character.name} Live2D character stage`}
       >
-        <div className="vtuber-avatar" data-display-state={displayState} aria-hidden="true">
-          <span className="vtuber-avatar-face" />
-          {displayState === 'thinking' ? (
-            <span className="vtuber-thinking-dots" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-          ) : null}
-        </div>
-        <span className="vtuber-status">{statusLabel}</span>
+        <Live2DCharacter
+          character={character}
+          displayState={displayState}
+          statusLabel={statusLabel}
+        />
       </div>
 
       <section className="vtuber-panel" aria-label="Chatbot conversation">
