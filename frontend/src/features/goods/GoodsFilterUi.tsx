@@ -90,6 +90,25 @@ export function GoodsActiveFilterChips({
   const hiddenChips = allChips.slice(visibleChips.length)
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
+
+  function openMoreFilters() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setIsMoreOpen(true)
+  }
+
+  function closeMoreFilters() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+    }
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsMoreOpen(false)
+      closeTimerRef.current = null
+    }, 220)
+  }
 
   useEffect(() => {
     if (!isMoreOpen) return undefined
@@ -110,6 +129,15 @@ export function GoodsActiveFilterChips({
     }
   }, [isMoreOpen])
 
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current)
+      }
+    },
+    [],
+  )
+
   return (
     <div
       className="active-filter-bar"
@@ -129,9 +157,9 @@ export function GoodsActiveFilterChips({
             <div
               className="active-filter-more-wrap"
               ref={moreRef}
-              onMouseEnter={() => setIsMoreOpen(true)}
-              onMouseLeave={() => setIsMoreOpen(false)}
-              onFocus={() => setIsMoreOpen(true)}
+              onMouseEnter={openMoreFilters}
+              onMouseLeave={closeMoreFilters}
+              onFocus={openMoreFilters}
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) setIsMoreOpen(false)
               }}
