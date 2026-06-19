@@ -336,6 +336,7 @@ button.goods-rating-summary {
     var(--goods-soft);
   color: var(--goods-muted);
   font-size: 14px;
+  text-decoration: none;
 }
 
 .goods-image img {
@@ -346,6 +347,17 @@ button.goods-rating-summary {
   max-width: 100%;
   object-fit: cover;
   object-position: center;
+  transition: transform 180ms ease;
+}
+
+.goods-image:hover img {
+  transform: scale(1.025);
+}
+
+.goods-detail-link:focus-visible,
+.goods-name-link:focus-visible {
+  outline: 3px solid #3153b8;
+  outline-offset: -3px;
 }
 
 .goods-card-body {
@@ -469,6 +481,16 @@ button.goods-rating-summary {
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.goods-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.goods-name-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .goods-card p {

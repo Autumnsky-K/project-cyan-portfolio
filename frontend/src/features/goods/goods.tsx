@@ -103,15 +103,23 @@ function GoodsCards({
     <div className={`goods-grid goods-${viewMode}`}>
       {items.map((item) => (
         <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
-          <div className="goods-image" aria-label={`${item.name} image`}>
+          <Link
+            className="goods-image goods-detail-link"
+            aria-label={`${item.name} 상세 보기`}
+            to={`/goods/${item.goodsId}`}
+          >
             <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
-          </div>
+          </Link>
           <div className="goods-card-body">
             <div className="card-topline">
               <span>{item.artistName ?? 'SM Artist'}</span>
               <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
             </div>
-            <h3>{item.name}</h3>
+            <h3>
+              <Link className="goods-name-link" to={`/goods/${item.goodsId}`}>
+                {item.name}
+              </Link>
+            </h3>
             <p>{item.categoryName ?? 'Goods'}</p>
             <GoodsRatingSummary
               averageRating={item.averageRating}
