@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
   fetchRelatedGoods,
@@ -19,6 +19,7 @@ type DetailTab = 'intro' | 'notice' | 'reviews'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
+  const location = useLocation()
   const [goods, setGoods] = useState<GoodsDetail | null>(null)
   const [relatedGoods, setRelatedGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<DetailStatus>('loading')
@@ -26,10 +27,51 @@ function GoodsDetailPage() {
   const [activeTab, setActiveTab] = useState<DetailTab>('intro')
   const [shareFeedback, setShareFeedback] = useState('')
   const shareFeedbackTimerRef = useRef<number | null>(null)
+  const pendingScrollRestoreRef = useRef<number | null>(null)
+  const scrollRestoreTimerRef = useRef<number | null>(null)
 
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [goodsId])
+    const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
+    const scrollY = rawScrollY === null ? null : Number(rawScrollY)
+    pendingScrollRestoreRef.current = Number.isFinite(scrollY) && scrollY !== null
+      ? Math.max(scrollY, 0)
+      : null
+
+    if (pendingScrollRestoreRef.current === null) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }
+  }, [goodsId, location.search])
+
+  useLayoutEffect(() => {
+    if (
+      status !== 'data'
+      || String(goods?.goodsId) !== goodsId
+      || pendingScrollRestoreRef.current === null
+    ) {
+      return
+    }
+
+    const scrollY = pendingScrollRestoreRef.current
+    pendingScrollRestoreRef.current = null
+    scrollRestoreTimerRef.current = window.setTimeout(() => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' })
+      const cleanUrl = new URL(window.location.href)
+      cleanUrl.searchParams.delete('_detailScroll')
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${cleanUrl.pathname}${cleanUrl.search}`,
+      )
+      scrollRestoreTimerRef.current = null
+    }, 200)
+
+    return () => {
+      if (scrollRestoreTimerRef.current !== null) {
+        window.clearTimeout(scrollRestoreTimerRef.current)
+        scrollRestoreTimerRef.current = null
+      }
+    }
+  }, [goods?.goodsId, goodsId, status])
 
   useEffect(() => {
     const controller = new AbortController()
