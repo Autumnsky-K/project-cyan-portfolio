@@ -30,6 +30,7 @@ public class GoodsService {
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsDetailDataRepository goodsDetailDataRepository;
+	private final GoodsReviewRepository goodsReviewRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -37,7 +38,8 @@ public class GoodsService {
 		GoodsCategoryRepository goodsCategoryRepository,
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
-		GoodsDetailDataRepository goodsDetailDataRepository
+		GoodsDetailDataRepository goodsDetailDataRepository,
+		GoodsReviewRepository goodsReviewRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -45,6 +47,7 @@ public class GoodsService {
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsDetailDataRepository = goodsDetailDataRepository;
+		this.goodsReviewRepository = goodsReviewRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -86,7 +89,22 @@ public class GoodsService {
 			parseSort(sort)
 		);
 
-		return PageResponse.from(goodsRepository.findAll(specification, pageable).map(GoodsSummaryResponse::from));
+		var goodsPage = goodsRepository.findAll(specification, pageable);
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			goodsPage.getContent().stream().map(Goods::getGoodsId).toList()
+		);
+		return new PageResponse<>(
+			goodsPage.getContent().stream()
+				.map(goods -> GoodsSummaryResponse.from(
+					goods,
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty())
+				))
+				.toList(),
+			goodsPage.getNumber(),
+			goodsPage.getSize(),
+			goodsPage.getTotalElements(),
+			goodsPage.getTotalPages()
+		);
 	}
 
 	public GoodsDetailResponse findGoodsDetail(Long goodsId) {
@@ -97,7 +115,13 @@ public class GoodsService {
 			.orElse(0));
 		GoodsDetailMetadata metadata = goodsDetailDataRepository.findMetadata(goodsId);
 		PurchaseAvailability availability = purchaseAvailability(goods, metadata);
-		return GoodsDetailResponse.from(goods, metadata, availability.state(), availability.message());
+		return GoodsDetailResponse.from(
+			goods,
+			metadata,
+			availability.state(),
+			availability.message(),
+			goodsReviewRepository.findSummary(goodsId)
+		);
 	}
 
 	public List<GoodsSummaryResponse> findRelatedGoods(Long goodsId, int size) {
@@ -120,10 +144,37 @@ public class GoodsService {
 				PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"))
 			).forEach(item -> related.putIfAbsent(item.getGoodsId(), item));
 		}
-		return related.values().stream()
+		List<Goods> relatedGoods = related.values().stream()
 			.limit(limit)
-			.map(GoodsSummaryResponse::from)
 			.toList();
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			relatedGoods.stream().map(Goods::getGoodsId).toList()
+		);
+		return relatedGoods.stream()
+			.map(item -> GoodsSummaryResponse.from(
+				item,
+				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty())
+			))
+			.toList();
+	}
+
+	public PageResponse<GoodsReviewResponse> findGoodsReviews(Long goodsId, int page, int size, String sort) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return goodsReviewRepository.findReviews(
+			goodsId,
+			Math.max(page, 0),
+			Math.max(1, Math.min(size, 20)),
+			sort
+		);
+	}
+
+	public GoodsReviewSummary findGoodsReviewSummary(Long goodsId) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return goodsReviewRepository.findSummary(goodsId);
 	}
 
 	public GoodsFiltersResponse findGoodsFilters() {

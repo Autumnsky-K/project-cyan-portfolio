@@ -51,4 +51,19 @@ public class GoodsController {
 	) {
 		return goodsService.findRelatedGoods(goodsId, size);
 	}
+
+	@GetMapping("/{goodsId}/reviews")
+	public PageResponse<GoodsReviewResponse> findGoodsReviews(
+		@PathVariable Long goodsId,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "5") int size,
+		@RequestParam(defaultValue = "newest") String sort
+	) {
+		return goodsService.findGoodsReviews(goodsId, page, size, sort);
+	}
+
+	@GetMapping("/{goodsId}/reviews/summary")
+	public GoodsReviewSummary findGoodsReviewSummary(@PathVariable Long goodsId) {
+		return goodsService.findGoodsReviewSummary(goodsId);
+	}
 }

@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.1.3` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.1.4` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -217,6 +217,19 @@
 - **추가 가능 필드**: `discountRate`, `images[]`(다중 이미지), `releaseDate` 등 — 자유 추가
 - **비고**: `goodsId`는 AI `[ACTION]`과 DOM `data-goods-id`(§4)에서 그대로 사용된다. **절대 타입/이름 변경 금지.**
 
+#### [GET] /api/goods/{goodsId}/reviews
+- 설명: 상품 리뷰 목록 조회
+- 인증 필요: N
+- 요청 query: `page=0&size=5&sort=newest|rating`
+- 응답: 페이지 객체, content = `{ reviewId, rating, authorName, optionLabel, content, createdAt }`
+- 상태: [x] 동결
+
+#### [GET] /api/goods/{goodsId}/reviews/summary
+- 설명: 상품 리뷰 평점 요약 조회
+- 인증 필요: N
+- 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
+- 상태: [x] 동결
+
 ---
 
 ### 3.3 아티스트 (artists) — 담당: `__________`
@@ -349,6 +362,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-1X | v0.1.1 | (예) goods | additive | `discountRate` 필드 추가 | 굿즈 |
 | 2026-06-1X | v0.2.0 | (예) goods | breaking | `price` 타입 String→int 변경 | 전원 |
 | 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
+| 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 |  |  |  |  |  |  |
 
 ### 로그 기록

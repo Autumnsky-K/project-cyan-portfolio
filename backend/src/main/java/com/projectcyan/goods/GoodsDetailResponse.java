@@ -25,7 +25,9 @@ public record GoodsDetailResponse(
 	GoodsShippingResponse shipping,
 	List<GoodsOptionGroupResponse> optionGroups,
 	List<GoodsVariantResponse> variants,
-	GoodsNoticesResponse notices
+	GoodsNoticesResponse notices,
+	Double averageRating,
+	Long reviewCount
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
 		return from(
@@ -42,7 +44,8 @@ public record GoodsDetailResponse(
 			goods.getStockCount() != null && goods.getStockCount() > 0 ? "AVAILABLE" : "SOLD_OUT",
 			goods.getStockCount() != null && goods.getStockCount() > 0
 				? "구매 가능한 상품입니다."
-				: "품절된 상품입니다."
+				: "품절된 상품입니다.",
+			GoodsReviewSummary.empty()
 		);
 	}
 
@@ -50,7 +53,8 @@ public record GoodsDetailResponse(
 		Goods goods,
 		GoodsDetailMetadata metadata,
 		String purchaseState,
-		String purchaseMessage
+		String purchaseMessage,
+		GoodsReviewSummary reviewSummary
 	) {
 		return new GoodsDetailResponse(
 			goods.getGoodsId(),
@@ -74,7 +78,9 @@ public record GoodsDetailResponse(
 			metadata.shipping(),
 			metadata.optionGroups(),
 			metadata.variants(),
-			metadata.notices()
+			metadata.notices(),
+			reviewSummary.averageRating(),
+			reviewSummary.reviewCount()
 		);
 	}
 }

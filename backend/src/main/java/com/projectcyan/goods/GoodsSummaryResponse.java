@@ -12,9 +12,15 @@ public record GoodsSummaryResponse(
 	String categoryName,
 	String salesStatus,
 	Boolean isBestSeller,
-	Boolean aiPickDefault
+	Boolean aiPickDefault,
+	Double averageRating,
+	Long reviewCount
 ) {
 	public static GoodsSummaryResponse from(Goods goods) {
+		return from(goods, GoodsReviewSummary.empty());
+	}
+
+	public static GoodsSummaryResponse from(Goods goods, GoodsReviewSummary reviewSummary) {
 		return new GoodsSummaryResponse(
 			goods.getGoodsId(),
 			goods.getGoodsName(),
@@ -25,7 +31,9 @@ public record GoodsSummaryResponse(
 			goods.getCategory() == null ? null : goods.getCategory().getCategoryName(),
 			goods.getSalesStatus(),
 			goods.getBestSeller(),
-			goods.getAiPickDefault()
+			goods.getAiPickDefault(),
+			reviewSummary.averageRating(),
+			reviewSummary.reviewCount()
 		);
 	}
 }

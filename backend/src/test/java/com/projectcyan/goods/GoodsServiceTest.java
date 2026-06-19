@@ -18,6 +18,7 @@ class GoodsServiceTest {
 	private GoodsRepository goodsRepository;
 	private GoodsStockRepository goodsStockRepository;
 	private GoodsDetailDataRepository goodsDetailDataRepository;
+	private GoodsReviewRepository goodsReviewRepository;
 	private GoodsService goodsService;
 
 	@BeforeEach
@@ -25,13 +26,15 @@ class GoodsServiceTest {
 		goodsRepository = mock(GoodsRepository.class);
 		goodsStockRepository = mock(GoodsStockRepository.class);
 		goodsDetailDataRepository = mock(GoodsDetailDataRepository.class);
+		goodsReviewRepository = mock(GoodsReviewRepository.class);
 		goodsService = new GoodsService(
 			goodsRepository,
 			mock(ArtistRepository.class),
 			mock(GoodsCategoryRepository.class),
 			mock(TagRepository.class),
 			goodsStockRepository,
-			goodsDetailDataRepository
+			goodsDetailDataRepository,
+			goodsReviewRepository
 		);
 	}
 
@@ -94,6 +97,7 @@ class GoodsServiceTest {
 		when(goodsRepository.findById(goods.getGoodsId())).thenReturn(Optional.of(goods));
 		when(goodsStockRepository.findById(goods.getGoodsId())).thenReturn(Optional.of(stock));
 		when(goodsDetailDataRepository.findMetadata(goods.getGoodsId())).thenReturn(metadata);
+		when(goodsReviewRepository.findSummary(goods.getGoodsId())).thenReturn(GoodsReviewSummary.empty());
 		return goodsService.findGoodsDetail(goods.getGoodsId());
 	}
 
