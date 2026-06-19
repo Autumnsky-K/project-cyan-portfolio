@@ -21,7 +21,15 @@ npm run build
 
 챗봇은 `/client-ws` WebSocket 엔드포인트에 연결합니다. AI WebSocket 서버가 실행 중이 아니면 챗봇 상태가 `연결 대기`로 표시됩니다. 프론트엔드만 실행하는 테스트에서는 정상 동작입니다.
 
-Live2D 자산은 허용된 캐릭터 config에서만 선택하며, 기본 경로는 `/live2d/{characterId}/model.model3.json` 형식입니다. 현재 기본 캐릭터는 `cyan`이고, 실제 런타임 로딩 전까지는 placeholder avatar가 `idle`, `connecting`, `ready`, `thinking`, `speaking`, `error` 표시 상태를 시각적으로 표현합니다.
+Live2D 자산은 허용된 캐릭터 config에서만 선택하며, 기본 모델은 `frontend/public/live2d/cyan/model.model3.json`입니다. 런타임에서는 `frontend/src/features/vtuber/characters.ts`의 `character.modelUrl` 값만 사용해 모델을 로드하며, 현재 기본 URL은 `/live2d/cyan/model.model3.json`입니다.
+
+Live2D 렌더러는 Pixi v6와 `pixi-live2d-display/cubism4`를 사용합니다. Cubism Core는 Live2D Proprietary Software License Agreement가 적용되는 Redistributable Code이므로 public repo에는 커밋하지 않습니다. 로컬 개발에서는 아래 명령으로 `frontend/public/live2d/runtime/live2dcubismcore.min.js`를 내려받습니다.
+
+```bash
+npm run live2d:core
+```
+
+앱은 이 파일을 `/live2d/runtime/live2dcubismcore.min.js`에서 동적으로 로드하며, 파일이 없거나 WebGL을 사용할 수 없거나 모델 로딩이 실패하면 앱 전체를 깨뜨리지 않고 기존 placeholder avatar fallback을 표시합니다.
 
 ### 프론트엔드만 실행하는 경우
 
