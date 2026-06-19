@@ -281,7 +281,7 @@ function GoodsPage() {
         ])
         setFilterStatus('data')
       } catch (loadError) {
-        if (loadError.name === 'AbortError') {
+        if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
         setFilters([])
@@ -311,7 +311,7 @@ function GoodsPage() {
         setGoodsPage(data)
         setStatus(data.content?.length ? 'data' : 'empty')
       } catch (loadError) {
-        if (loadError.name === 'AbortError') {
+        if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
         setError(loadError instanceof Error ? loadError.message : 'Failed to load goods.')
