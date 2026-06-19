@@ -624,6 +624,15 @@ button.goods-rating-summary {
   gap: 6px;
 }
 
+.pagination-mobile-status {
+  display: none;
+  min-width: 76px;
+  padding: 9px 12px;
+  color: var(--goods-ink);
+  font-weight: 700;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .store-header,
   .store-toolbar,
@@ -665,8 +674,7 @@ button.goods-rating-summary {
   }
 
   .store-nav,
-  .result-summary,
-  .goods-pagination {
+  .result-summary {
     align-items: stretch;
     flex-direction: column;
   }
@@ -681,8 +689,26 @@ button.goods-rating-summary {
   }
 
   .page-number-list {
-    justify-content: center;
-    width: 100%;
+    display: none;
+  }
+
+  .goods-pagination {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(52px, auto)) minmax(76px, auto) repeat(2, minmax(52px, auto));
+    gap: 6px;
+  }
+
+  .goods-pagination:not(:has(.pagination-jump)) {
+    grid-template-columns: 1fr;
+  }
+
+  .pagination-mobile-status {
+    display: block;
+  }
+
+  .goods-pagination button {
+    min-width: 0;
+    padding-inline: 8px;
   }
 
   .goods-grid {

@@ -371,8 +371,6 @@ function GoodsPage() {
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
-  const hasPreviousPage = currentPage > 0
-  const hasNextPage = totalPages > 0 && currentPage < totalPages - 1
   const hasGoods = goods.length > 0
 
   const pageNumbers = useMemo(() => {
@@ -546,9 +544,28 @@ function GoodsPage() {
 
           {totalPages > 0 && (
             <nav className="goods-pagination" aria-label="Goods pagination">
-              <button type="button" disabled={!hasPreviousPage} onClick={() => goToPage(currentPage - 1)}>
-                Previous
-              </button>
+              {totalPages > 5 && (
+                <>
+                  <button
+                    className="pagination-jump"
+                    aria-label="첫 페이지로 이동"
+                    type="button"
+                    disabled={currentPage === 0}
+                    onClick={() => goToPage(0)}
+                  >
+                    맨앞
+                  </button>
+                  <button
+                    className="pagination-jump"
+                    aria-label="5페이지 뒤로 이동"
+                    type="button"
+                    disabled={currentPage === 0}
+                    onClick={() => goToPage(currentPage - 5)}
+                  >
+                    -5
+                  </button>
+                </>
+              )}
               <div className="page-number-list">
                 {pageNumbers.map((pageNumber) => (
                   <button
@@ -561,12 +578,31 @@ function GoodsPage() {
                   </button>
                 ))}
               </div>
-              <button type="button" disabled={!hasNextPage} onClick={() => goToPage(currentPage + 1)}>
-                Next
-              </button>
-              <span>
-                Page {currentPage + 1} of {totalPages}
+              <span className="pagination-mobile-status" aria-current="page">
+                {currentPage + 1} / {totalPages}
               </span>
+              {totalPages > 5 && (
+                <>
+                  <button
+                    className="pagination-jump"
+                    aria-label="5페이지 앞으로 이동"
+                    type="button"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => goToPage(currentPage + 5)}
+                  >
+                    +5
+                  </button>
+                  <button
+                    className="pagination-jump"
+                    aria-label="마지막 페이지로 이동"
+                    type="button"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => goToPage(totalPages - 1)}
+                  >
+                    맨뒤
+                  </button>
+                </>
+              )}
             </nav>
           )}
         </div>
