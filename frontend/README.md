@@ -2,6 +2,8 @@
 
 project-cyan의 React + Vite 프론트엔드 애플리케이션입니다.
 
+AI WebSocket과 Live2D 렌더러를 포함한 전체 로컬 통합 설정은 `../docs/ai-live2d-local-setup.md`를 참고합니다.
+
 ## 실행
 
 ```bash
@@ -70,6 +72,6 @@ VITE_VTUBER_WS_URL=ws://<ai-server-host>/client-ws
 mock AI 서버 응답 예시는 다음처럼 확인할 수 있습니다.
 
 ```json
-{ "type": "assistant", "text": "추천 상품을 보여드릴게요.", "actions": [{ "type": "navigate", "path": "/goods" }, { "type": "highlight", "selector": "[data-goods-id='42']" }] }
-{ "type": "assistant", "text": "장바구니에 담았어요.", "actions": [{ "type": "addToCart", "goodsId": "42" }] }
+{ "type": "full-text", "text": "추천 상품을 보여드릴게요.", "actions": [{ "type": "navigate", "path": "/goods" }, { "type": "highlight", "selector": "[data-goods-id='42']" }] }
+{ "type": "full-text", "text": "장바구니에 담았어요.", "actions": [{ "type": "addToCart", "goodsId": "42" }] }
 ```
