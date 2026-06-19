@@ -47,6 +47,7 @@ public class LocalDemoGoodsSynchronizer {
 	private static final long VARIANT_ID_BASE = 4_000_000_000_000L;
 	private static final long OPTION_GROUP_ID_BASE = 5_000_000_000_000L;
 	private static final long OPTION_VALUE_ID_BASE = 6_000_000_000_000L;
+	private static final long REVIEW_ID_BASE = 7_000_000_000_000L;
 	private static final long ID_RANGE = 900_000_000_000L;
 
 	private final Path imageRoot;
@@ -81,6 +82,7 @@ public class LocalDemoGoodsSynchronizer {
 
 	private synchronized void synchronize() {
 		try {
+			ensureReviewSchema();
 			List<DemoImage> images = scanImages();
 			ProductMetadataFile existingFile = readMetadata();
 			ProductMetadataFile mergedFile = mergeMetadata(images, existingFile);
@@ -100,6 +102,25 @@ public class LocalDemoGoodsSynchronizer {
 		} catch (IOException | RuntimeException exception) {
 			log.error("Unable to synchronize local demo goods.", exception);
 		}
+	}
+
+	private void ensureReviewSchema() {
+		jdbcTemplate.execute(
+			"""
+			create table if not exists goods_review (
+				review_id bigint primary key,
+				goods_id bigint not null references goods (goods_id) on delete cascade,
+				rating integer not null check (rating between 1 and 5),
+				author_name varchar(100) not null,
+				option_label varchar(255),
+				content text not null,
+				created_at timestamptz not null default now()
+			)
+			"""
+		);
+		jdbcTemplate.execute(
+			"create index if not exists idx_goods_review_goods_created on goods_review (goods_id, created_at desc)"
+		);
 	}
 
 	private List<DemoImage> scanImages() throws IOException {
@@ -267,6 +288,7 @@ public class LocalDemoGoodsSynchronizer {
 		List<Object[]> values = new ArrayList<>();
 		List<Object[]> variants = new ArrayList<>();
 		List<Object[]> variantValues = new ArrayList<>();
+		List<Object[]> reviews = new ArrayList<>();
 		Set<String> seenCategories = new java.util.HashSet<>();
 		Set<String> seenArtists = new java.util.HashSet<>();
 
@@ -331,6 +353,27 @@ public class LocalDemoGoodsSynchronizer {
 					}
 				}
 			}
+
+			int reviewCount = 2 + (int) (stableNumber(product.relativePath() + "/reviews") % 5);
+			for (int reviewIndex = 0; reviewIndex < reviewCount; reviewIndex++) {
+				long reviewSeed = stableNumber(product.relativePath() + "/review/" + reviewIndex);
+				int rating = Math.max(3, 5 - (int) (reviewSeed % 4));
+				String optionLabel = product.optionGroups().isEmpty()
+					? null
+					: product.optionGroups().stream()
+						.map(group -> group.name() + ": " + group.values().get((int) (reviewSeed % group.values().size())))
+						.reduce((left, right) -> left + " / " + right)
+						.orElse(null);
+				reviews.add(new Object[] {
+					stableId(REVIEW_ID_BASE, product.relativePath() + "/review/" + reviewIndex),
+					goodsId,
+					rating,
+					List.of("민*", "서*", "지*", "하*", "윤*").get((int) (reviewSeed % 5)),
+					optionLabel,
+					reviewContent(rating, reviewIndex),
+					Timestamp.from(DEMO_ANCHOR.minusSeconds((reviewIndex + 1L) * 2 * 24 * 60 * 60))
+				});
+			}
 		}
 
 		jdbcTemplate.batchUpdate("insert into goods_category (category_id, category_name) values (?, ?)", categories);
@@ -363,6 +406,26 @@ public class LocalDemoGoodsSynchronizer {
 			"insert into goods_variant_value (variant_id, option_value_id) values (?, ?)",
 			variantValues
 		);
+		jdbcTemplate.batchUpdate(
+			"""
+			insert into goods_review (
+				review_id, goods_id, rating, author_name, option_label, content, created_at
+			) values (?, ?, ?, ?, ?, ?, ?)
+			""",
+			reviews
+		);
+	}
+
+	private String reviewContent(int rating, int reviewIndex) {
+		if (rating >= 5) {
+			return reviewIndex % 2 == 0
+				? "이미지가 선명하고 마감도 좋아서 만족합니다."
+				: "포장이 꼼꼼했고 실제 상품이 더 예쁩니다.";
+		}
+		if (rating == 4) {
+			return "전체적으로 만족스럽고 배송도 예상보다 빨랐습니다.";
+		}
+		return "상품은 마음에 들지만 포장 상태는 조금 아쉬웠습니다.";
 	}
 
 	private void deleteImportedRows() {
