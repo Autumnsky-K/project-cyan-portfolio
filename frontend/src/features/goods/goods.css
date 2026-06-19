@@ -69,6 +69,34 @@
   color: #ffffff;
 }
 
+.goods-rating-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--goods-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+button.goods-rating-summary {
+  cursor: pointer;
+}
+
+.goods-rating-summary strong {
+  color: var(--goods-text);
+}
+
+.goods-rating-star,
+.review-score strong span,
+.review-item-meta strong span {
+  color: #f2b01e;
+}
+
 .goods-section-tabs {
   display: flex;
   gap: 4px;

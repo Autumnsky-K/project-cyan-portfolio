@@ -3,6 +3,7 @@ import type { GoodsSummary } from '../../api/goods'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsImage from './GoodsImage'
 import GoodsStatusBadge from './GoodsStatusBadge'
+import GoodsRatingSummary from './GoodsRatingSummary'
 
 function RelatedGoodsSection({ goods }: { goods: GoodsSummary[] }) {
   if (goods.length === 0) return null
@@ -33,6 +34,7 @@ function RelatedGoodsSection({ goods }: { goods: GoodsSummary[] }) {
               <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
             </div>
             <strong>{item.name}</strong>
+            <GoodsRatingSummary averageRating={item.averageRating} reviewCount={item.reviewCount} compact />
             <span>{formatGoodsPrice(item.price)}</span>
           </Link>
         ))}

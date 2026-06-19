@@ -11,6 +11,8 @@ export type GoodsSummary = {
   salesStatus?: string | null
   isBestSeller?: boolean | null
   aiPickDefault?: boolean | null
+  averageRating?: number | null
+  reviewCount?: number | null
 }
 
 export type GoodsDetail = GoodsSummary & {
@@ -60,6 +62,25 @@ export type GoodsNotices = {
   intro: string
   cancel: string
   delivery: string
+}
+
+export type GoodsReview = {
+  reviewId: number
+  rating: number
+  authorName: string
+  optionLabel?: string | null
+  content: string
+  createdAt: string
+}
+
+export type GoodsReviewSummary = {
+  averageRating: number
+  reviewCount: number
+  ratingFiveCount: number
+  ratingFourCount: number
+  ratingThreeCount: number
+  ratingTwoCount: number
+  ratingOneCount: number
 }
 
 export type GoodsFilterOption = {
@@ -141,6 +162,39 @@ export async function fetchRelatedGoods(
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, 'Failed to load related goods.'))
+  }
+
+  return response.json()
+}
+
+export async function fetchGoodsReviews(
+  goodsId: string | number | undefined,
+  page = 0,
+  size = 5,
+  sort = 'newest',
+  options: FetchOptions = {},
+): Promise<PageResponse<GoodsReview>> {
+  const url = new URL(`${API_BASE_URL}/goods/${goodsId}/reviews`)
+  url.searchParams.set('page', String(page))
+  url.searchParams.set('size', String(size))
+  url.searchParams.set('sort', sort)
+  const response = await fetch(url, options)
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load goods reviews.'))
+  }
+
+  return response.json()
+}
+
+export async function fetchGoodsReviewSummary(
+  goodsId: string | number | undefined,
+  options: FetchOptions = {},
+): Promise<GoodsReviewSummary> {
+  const response = await fetch(`${API_BASE_URL}/goods/${goodsId}/reviews/summary`, options)
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load review summary.'))
   }
 
   return response.json()

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GoodsDetail, GoodsVariant } from '../../api/goods'
 import { useCart } from '../cart/useCart'
 import { formatGoodsDate, formatGoodsPrice } from './goodsFormatters'
+import GoodsRatingSummary from './GoodsRatingSummary'
 
 const PURCHASE_STATE_LABELS: Record<string, string> = {
   AVAILABLE: '판매 중',
@@ -15,7 +16,7 @@ function variantMatches(variant: GoodsVariant, selections: Record<string, string
   return Object.entries(selections).every(([key, value]) => variant.selections[key] === value)
 }
 
-function GoodsPurchasePanel({ goods }: { goods: GoodsDetail }) {
+function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onReviewClick?: () => void }) {
   const { addCartItem } = useCart()
   const [selections, setSelections] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
@@ -119,6 +120,11 @@ function GoodsPurchasePanel({ goods }: { goods: GoodsDetail }) {
         </span>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
+        <GoodsRatingSummary
+          averageRating={goods.averageRating}
+          reviewCount={goods.reviewCount}
+          onClick={onReviewClick}
+        />
         <strong>{formatGoodsPrice(unitPrice)}</strong>
       </div>
 

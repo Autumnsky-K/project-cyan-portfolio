@@ -9,12 +9,13 @@ import {
 import CartNavLink from '../cart/CartNavLink'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
+import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import './goods.css'
 import './goods-detail.css'
 
 type DetailStatus = 'loading' | 'data' | 'error'
-type DetailTab = 'intro' | 'notice'
+type DetailTab = 'intro' | 'notice' | 'reviews'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
@@ -156,6 +157,9 @@ function GoodsDetailPage() {
                   <button aria-selected={activeTab === 'notice'} role="tab" type="button" onClick={() => setActiveTab('notice')}>
                     안내 사항
                   </button>
+                  <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
+                    리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
+                  </button>
                 </div>
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
@@ -171,17 +175,25 @@ function GoodsDetailPage() {
                       )}
                     </div>
                   </div>
-                ) : (
+                ) : activeTab === 'notice' ? (
                   <div className="detail-tab-panel notice-list" role="tabpanel">
                     <article><h2>배송 안내</h2><p>{goods.notices?.delivery}</p></article>
                     <article><h2>취소·변경 안내</h2><p>{goods.notices?.cancel}</p></article>
                     <article><h2>배송 범위</h2><p>{goods.shipping?.note}</p></article>
                   </div>
+                ) : (
+                  <div className="detail-tab-panel" role="tabpanel">
+                    <GoodsReviewsPanel goodsId={goods.goodsId} />
+                  </div>
                 )}
               </div>
             </div>
 
-            <GoodsPurchasePanel key={goods.goodsId} goods={goods} />
+            <GoodsPurchasePanel
+              key={goods.goodsId}
+              goods={goods}
+              onReviewClick={() => setActiveTab('reviews')}
+            />
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />

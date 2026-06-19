@@ -36,7 +36,7 @@
 .purchase-button:disabled { background: #c8c8c8; cursor: not-allowed; }
 .purchase-feedback { text-align: center; color: #3153b8; font-size: 14px; font-weight: 700; }
 .detail-tabs { padding: 54px 42px; }
-.detail-tab-list { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--goods-line); }
+.detail-tab-list { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--goods-line); }
 .detail-tab-list button { padding: 16px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
 .detail-tab-list button[aria-selected="true"] { border-color: #111; }
 .detail-tab-panel { padding: 36px 8px; }
@@ -46,6 +46,29 @@
 .detail-long-image img { width: min(100%, 720px); max-height: 1100px; object-fit: contain; }
 .notice-list { display: grid; gap: 20px; }
 .notice-list article { padding-bottom: 20px; border-bottom: 1px solid var(--goods-line); }
+.goods-reviews { display: grid; gap: 28px; }
+.review-summary { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(260px, 1.3fr); gap: 28px; padding: 28px; background: var(--goods-soft); }
+.review-score { display: grid; align-content: center; justify-items: center; gap: 6px; padding-right: 28px; border-right: 1px solid var(--goods-line); text-align: center; }
+.review-score p, .review-score strong, .review-score span { margin: 0; }
+.review-score strong { color: var(--goods-ink); font-size: 34px; }
+.review-score > span { color: var(--goods-muted); }
+.review-distribution { display: grid; gap: 8px; align-content: center; }
+.review-distribution > div { display: grid; grid-template-columns: 34px minmax(80px, 1fr) 28px; align-items: center; gap: 10px; color: var(--goods-muted); font-size: 13px; }
+.review-distribution-track { height: 7px; border-radius: 999px; background: #dedede; overflow: hidden; }
+.review-distribution-track > span { display: block; height: 100%; border-radius: inherit; background: #f2b01e; }
+.review-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--goods-line); }
+.review-list-heading h2 { margin: 0; font-size: 22px; }
+.review-list-heading > div { display: flex; gap: 6px; }
+.review-list-heading button, .review-pagination button { padding: 7px 11px; border: 1px solid var(--goods-line); border-radius: 999px; background: #fff; color: var(--goods-muted); font: inherit; cursor: pointer; }
+.review-list-heading button[aria-pressed="true"] { border-color: var(--goods-ink); background: var(--goods-ink); color: #fff; }
+.review-item { display: grid; gap: 10px; padding: 0 4px 24px; border-bottom: 1px solid var(--goods-line); }
+.review-item p { margin: 0; color: var(--goods-text); }
+.review-item-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; color: var(--goods-muted); font-size: 13px; }
+.review-item-meta strong { color: var(--goods-ink); }
+.review-option { width: fit-content; padding: 5px 8px; border-radius: 4px; background: var(--goods-soft); color: var(--goods-muted) !important; font-size: 13px; }
+.review-state { padding: 36px 20px; border: 1px dashed var(--goods-line); color: var(--goods-muted); text-align: center; }
+.review-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.review-pagination button:disabled { cursor: not-allowed; opacity: .4; }
 .related-section { display: grid; gap: 24px; max-width: 1380px; margin: 0 auto; padding: 56px 32px 80px; border-top: 1px solid var(--goods-line); }
 .related-section h2 { margin: 0; }
 .related-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
@@ -83,4 +106,8 @@
   .detail-image { min-height: 320px; }
   .purchase-heading h2 { font-size: 24px; }
   .related-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-tab-list button { padding-inline: 8px; font-size: 13px; }
+  .review-summary { grid-template-columns: 1fr; padding: 20px; }
+  .review-score { padding: 0 0 20px; border-right: 0; border-bottom: 1px solid var(--goods-line); }
+  .review-list-heading { align-items: flex-start; flex-direction: column; }
 }

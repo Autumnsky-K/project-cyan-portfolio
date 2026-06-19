@@ -18,6 +18,7 @@ import GoodsFilterUi, {
 } from './GoodsFilterUi'
 import GoodsImage from './GoodsImage'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
+import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
 import GoodsStatusBadge from './GoodsStatusBadge'
 import { useDebouncedValue } from './useDebouncedValue'
@@ -112,6 +113,11 @@ function GoodsCards({
             </div>
             <h3>{item.name}</h3>
             <p>{item.categoryName ?? 'Goods'}</p>
+            <GoodsRatingSummary
+              averageRating={item.averageRating}
+              reviewCount={item.reviewCount}
+              compact
+            />
             {(item.tags ?? []).length > 0 && (
               <div className="tag-row">
                 {(item.tags ?? []).map((tag) => <span key={tag}>{tag}</span>)}
