@@ -1,0 +1,95 @@
+import { type MouseEvent, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import type { GoodsSummary } from '../../api/goods'
+import GoodsImage from './GoodsImage'
+import GoodsRatingSummary from './GoodsRatingSummary'
+import GoodsStatusBadge from './GoodsStatusBadge'
+
+export type GoodsViewMode = 'grid' | 'list'
+
+type GoodsCardsProps = {
+  items: GoodsSummary[]
+  viewMode: GoodsViewMode
+  isFavorite: (goodsId: number) => boolean
+  toggleFavorite: (goodsId: number) => void
+  onOpenDetail: (event: MouseEvent<HTMLAnchorElement>, goodsId: number) => void
+}
+
+function GoodsCards({
+  items,
+  viewMode,
+  isFavorite,
+  toggleFavorite,
+  onOpenDetail,
+}: GoodsCardsProps) {
+  const openDetail = useCallback(
+    (goodsId: number) => (event: MouseEvent<HTMLAnchorElement>) => onOpenDetail(event, goodsId),
+    [onOpenDetail],
+  )
+
+  return (
+    <div className={`goods-grid goods-${viewMode}`}>
+      {items.map((item) => (
+        <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
+          <Link
+            className="goods-image goods-detail-link"
+            aria-label={`${item.name} 상세 보기`}
+            to={`/goods/${item.goodsId}`}
+            onClick={openDetail(item.goodsId)}
+          >
+            <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
+          </Link>
+          <div className="goods-card-body">
+            <div className="card-topline">
+              <span>{item.artistName ?? 'SM Artist'}</span>
+              <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
+            </div>
+            <h3>
+              <Link
+                className="goods-name-link"
+                to={`/goods/${item.goodsId}`}
+                onClick={openDetail(item.goodsId)}
+              >
+                {item.name}
+              </Link>
+            </h3>
+            <p>{item.categoryName ?? 'Goods'}</p>
+            <GoodsRatingSummary
+              averageRating={item.averageRating}
+              reviewCount={item.reviewCount}
+              compact
+            />
+            {(item.tags ?? []).length > 0 && (
+              <div className="tag-row">
+                {(item.tags ?? []).map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
+            )}
+            <div className="card-footer">
+              <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
+              <div className="card-footer-actions">
+                <Link
+                  className="card-action"
+                  to={`/goods/${item.goodsId}`}
+                  onClick={openDetail(item.goodsId)}
+                >
+                  View
+                </Link>
+                <button
+                  className="favorite-button"
+                  type="button"
+                  aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                  aria-pressed={isFavorite(item.goodsId)}
+                  onClick={() => toggleFavorite(item.goodsId)}
+                >
+                  <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  )
+}
+
+export default GoodsCards

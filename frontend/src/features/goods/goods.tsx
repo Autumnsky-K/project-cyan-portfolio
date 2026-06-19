@@ -1,100 +1,32 @@
-import { type ChangeEvent, type FormEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   fetchGoods,
-  fetchGoodsDetail,
   fetchGoodsFilters,
   type GoodsFilterOption,
-  type GoodsQueryParams,
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
+import GoodsCards, { type GoodsViewMode } from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
   type GoodsFilterGroup,
-  type GoodsFilterParam,
   type GoodsSelectedFilters,
 } from './GoodsFilterUi'
-import GoodsImage from './GoodsImage'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
-import GoodsRatingSummary from './GoodsRatingSummary'
+import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
-import GoodsStatusBadge from './GoodsStatusBadge'
-import { useDebouncedValue } from './useDebouncedValue'
+import { useFavoriteGoods } from './useFavoriteGoods'
 import { useGoodsFavorites } from './useGoodsFavorites'
+import { useGoodsListQueryState } from './useGoodsListQueryState'
+import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
-type ViewMode = 'grid' | 'list'
 type GoodsSection = 'all' | 'favorites'
-type FavoritesStatus = 'idle' | 'loading' | 'data' | 'error'
-
-const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
-
-function takePendingScrollRestore() {
-  const rawScrollY = new URLSearchParams(window.location.search).get('_scroll')
-  if (rawScrollY === null) return null
-  const scrollY = Number(rawScrollY)
-  return Number.isFinite(scrollY) && scrollY >= 0 ? scrollY : null
-}
-
-function storePendingScrollRestore() {
-  const url = new URL(window.location.href)
-  url.searchParams.set('_scroll', String(Math.round(window.scrollY)))
-  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
-}
-
-function readFilterParam(params: URLSearchParams, key: string) {
-  const raw = params.get(key) ?? ''
-  const separator = raw.includes(';') ? ';' : ','
-  return raw.split(separator).map((value) => value.trim()).filter(Boolean)
-}
-
-function expandFilterValues(values: string[]) {
-  return values.flatMap((value) => value.split('|')).filter(Boolean)
-}
-
-function createGoodsUrl({
-  query,
-  sort,
-  page,
-  selectedFilters,
-}: {
-  query: string
-  sort: string
-  page: number
-  selectedFilters: GoodsSelectedFilters
-}) {
-  const params = new URLSearchParams()
-  if (query.trim()) params.set('q', query.trim())
-  if (sort !== 'createdAt,desc') params.set('sort', sort)
-  if (page > 0) params.set('page', String(page + 1))
-  if (selectedFilters.categoryIds.length) params.set('categories', selectedFilters.categoryIds.join(';'))
-  if (selectedFilters.artistIds.length) params.set('artists', selectedFilters.artistIds.join(';'))
-  if (selectedFilters.tags.length) params.set('tags', selectedFilters.tags.join(';'))
-
-  return `${window.location.pathname}${params.size ? `?${params.toString()}` : ''}`
-}
-
-function readInitialState() {
-  const params = new URLSearchParams(window.location.search)
-  const requestedSort = params.get('sort') ?? 'createdAt,desc'
-  const requestedPage = Number(params.get('page') ?? 1)
-
-  return {
-    query: params.get('q') ?? '',
-    sort: ALLOWED_SORTS.has(requestedSort) ? requestedSort : 'createdAt,desc',
-    page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
-    selectedFilters: {
-      categoryIds: readFilterParam(params, 'categories'),
-      artistIds: readFilterParam(params, 'artists'),
-      tags: readFilterParam(params, 'tags'),
-    } satisfies GoodsSelectedFilters,
-  }
-}
 
 function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
   return [...new Map(
@@ -102,162 +34,43 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
   ).values()]
 }
 
-function GoodsCards({
-  items,
-  viewMode,
-  isFavorite,
-  toggleFavorite,
-}: {
-  items: GoodsSummary[]
-  viewMode: ViewMode
-  isFavorite: (goodsId: number) => boolean
-  toggleFavorite: (goodsId: number) => void
-}) {
-  const navigate = useNavigate()
-
-  function openGoodsDetail(event: ReactMouseEvent<HTMLAnchorElement>, goodsId: number) {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-
-    event.preventDefault()
-    storePendingScrollRestore()
-    navigate(`/goods/${goodsId}`, {
-      state: { fromGoods: true },
-    })
-  }
-
-  return (
-    <div className={`goods-grid goods-${viewMode}`}>
-      {items.map((item) => (
-        <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
-          <Link
-            className="goods-image goods-detail-link"
-            aria-label={`${item.name} 상세 보기`}
-            to={`/goods/${item.goodsId}`}
-            onClick={(event) => openGoodsDetail(event, item.goodsId)}
-          >
-            <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
-          </Link>
-          <div className="goods-card-body">
-            <div className="card-topline">
-              <span>{item.artistName ?? 'SM Artist'}</span>
-              <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
-            </div>
-            <h3>
-              <Link
-                className="goods-name-link"
-                to={`/goods/${item.goodsId}`}
-                onClick={(event) => openGoodsDetail(event, item.goodsId)}
-              >
-                {item.name}
-              </Link>
-            </h3>
-            <p>{item.categoryName ?? 'Goods'}</p>
-            <GoodsRatingSummary
-              averageRating={item.averageRating}
-              reviewCount={item.reviewCount}
-              compact
-            />
-            {(item.tags ?? []).length > 0 && (
-              <div className="tag-row">
-                {(item.tags ?? []).map((tag) => <span key={tag}>{tag}</span>)}
-              </div>
-            )}
-            <div className="card-footer">
-              <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
-              <div className="card-footer-actions">
-                <Link
-                  className="card-action"
-                  to={`/goods/${item.goodsId}`}
-                  onClick={(event) => openGoodsDetail(event, item.goodsId)}
-                >
-                  View
-                </Link>
-                <button
-                  className="favorite-button"
-                  type="button"
-                  aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
-                  aria-pressed={isFavorite(item.goodsId)}
-                  onClick={() => toggleFavorite(item.goodsId)}
-                >
-                  <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </article>
-      ))}
-    </div>
-  )
-}
-
 function GoodsPage() {
-  const [initialState] = useState(readInitialState)
   const { favoriteIds, isFavorite, toggleFavorite } = useGoodsFavorites()
-  const [query, setQuery] = useState(initialState.query)
-  const [sort, setSort] = useState(initialState.sort)
-  const [page, setPage] = useState(initialState.page)
-  const [selectedFilters, setSelectedFilters] = useState<GoodsSelectedFilters>(initialState.selectedFilters)
+  const {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    page,
+    setPage,
+    selectedFilters,
+    setSelectedFilters,
+    requestParams,
+    toggleFilter,
+    reset,
+    commitSearch,
+  } = useGoodsListQueryState()
   const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
   const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [viewMode, setViewMode] = useState<GoodsViewMode>('grid')
   const [activeSection, setActiveSection] = useState<GoodsSection>('all')
-  const [favoriteGoods, setFavoriteGoods] = useState<GoodsSummary[]>([])
-  const [favoritesStatus, setFavoritesStatus] = useState<FavoritesStatus>('idle')
-  const [favoritesError, setFavoritesError] = useState('')
+  const {
+    goods: favoriteGoods,
+    status: favoritesStatus,
+    error: favoritesError,
+  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
-  const [isPageJumpOpen, setIsPageJumpOpen] = useState(false)
-  const [pageJumpValue, setPageJumpValue] = useState('')
   const hasLoadedGoodsRef = useRef(false)
   const resultsStartRef = useRef<HTMLDivElement | null>(null)
   const searchToolbarRef = useRef<HTMLElement | null>(null)
   const goodsResultsRef = useRef<HTMLDivElement | null>(null)
   const searchScrollPositionRef = useRef<number | null>(null)
-  const committedQueryRef = useRef(initialState.query.trim())
-  const pageJumpRef = useRef<HTMLDivElement | null>(null)
-  const pendingScrollRestoreRef = useRef<number | null>(takePendingScrollRestore())
-  const scrollRestoreTimerRef = useRef<number | null>(null)
-  const debouncedQuery = useDebouncedValue(query, 300)
-
-  useLayoutEffect(() => {
-    const previousScrollRestoration = window.history.scrollRestoration
-    window.history.scrollRestoration = 'manual'
-    if (pendingScrollRestoreRef.current === null) {
-      window.scrollTo({ top: 0, left: 0 })
-    }
-
-    return () => {
-      window.history.scrollRestoration = previousScrollRestoration
-    }
-  }, [])
-
-  useLayoutEffect(() => {
-    if (
-      pendingScrollRestoreRef.current === null
-      || status === 'loading'
-      || status === 'refreshing'
-    ) {
-      return
-    }
-
-    const scrollY = pendingScrollRestoreRef.current
-    pendingScrollRestoreRef.current = null
-    scrollRestoreTimerRef.current = window.setTimeout(() => {
-      window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' })
-      scrollRestoreTimerRef.current = null
-    }, 200)
-
-    return () => {
-      if (scrollRestoreTimerRef.current !== null) {
-        window.clearTimeout(scrollRestoreTimerRef.current)
-        scrollRestoreTimerRef.current = null
-      }
-    }
-  }, [status])
+  const openGoodsDetail = useGoodsScrollRestoration(status)
 
   useLayoutEffect(() => {
     if (status !== 'empty' || searchScrollPositionRef.current === null) {
@@ -273,63 +86,6 @@ function GoodsPage() {
       resultsStartRef.current?.scrollIntoView({ behavior, block: 'start' })
     })
   }, [])
-
-  const requestParams = useMemo<GoodsQueryParams>(
-    () => {
-      return {
-        q: debouncedQuery,
-        sort,
-        page,
-        size: 12,
-        categoryIds: expandFilterValues(selectedFilters.categoryIds).join(','),
-        artistIds: expandFilterValues(selectedFilters.artistIds).join(','),
-        tags: expandFilterValues(selectedFilters.tags).join(','),
-      }
-    },
-    [debouncedQuery, page, selectedFilters, sort],
-  )
-
-  useEffect(() => {
-    window.history.replaceState(null, '', createGoodsUrl({
-      query: committedQueryRef.current,
-      sort,
-      page,
-      selectedFilters,
-    }))
-  }, [page, selectedFilters, sort])
-
-  useEffect(() => {
-    function restoreHistoryState() {
-      const restoredState = readInitialState()
-      committedQueryRef.current = restoredState.query.trim()
-      setQuery(restoredState.query)
-      setSort(restoredState.sort)
-      setPage(restoredState.page)
-      setSelectedFilters(restoredState.selectedFilters)
-    }
-
-    window.addEventListener('popstate', restoreHistoryState)
-    return () => window.removeEventListener('popstate', restoreHistoryState)
-  }, [])
-
-  useEffect(() => {
-    if (!isPageJumpOpen) return undefined
-
-    function closePageJump(event: MouseEvent) {
-      if (!pageJumpRef.current?.contains(event.target as Node)) setIsPageJumpOpen(false)
-    }
-
-    function closePageJumpOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsPageJumpOpen(false)
-    }
-
-    document.addEventListener('mousedown', closePageJump)
-    document.addEventListener('keydown', closePageJumpOnEscape)
-    return () => {
-      document.removeEventListener('mousedown', closePageJump)
-      document.removeEventListener('keydown', closePageJumpOnEscape)
-    }
-  }, [isPageJumpOpen])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -391,61 +147,8 @@ function GoodsPage() {
     }
   }, [requestParams, retryKey])
 
-  useEffect(() => {
-    if (activeSection !== 'favorites') {
-      return undefined
-    }
-
-    if (favoriteIds.length === 0) {
-      return undefined
-    }
-
-    const controller = new AbortController()
-
-    Promise.resolve()
-      .then(() => {
-        if (controller.signal.aborted) return []
-        setFavoritesStatus('loading')
-        setFavoritesError('')
-        return Promise.all(
-          favoriteIds.map((goodsId) => fetchGoodsDetail(goodsId, { signal: controller.signal })),
-        )
-      })
-      .then((items) => {
-        if (controller.signal.aborted) return
-        setFavoriteGoods(items)
-        setFavoritesStatus('data')
-      })
-      .catch((loadError) => {
-        if (loadError instanceof DOMException && loadError.name === 'AbortError') return
-        setFavoritesError(loadError instanceof Error ? loadError.message : 'Failed to load favorite goods.')
-        setFavoritesStatus('error')
-      })
-
-    return () => controller.abort()
-  }, [activeSection, favoriteIds])
-
-  function updateFilter(param: GoodsFilterParam, value: string) {
-    setPage(0)
-    setSelectedFilters((current) => {
-      const currentValues = current[param] ?? []
-      const nextValues = currentValues.includes(value)
-        ? currentValues.filter((currentValue) => currentValue !== value)
-        : [...currentValues, value]
-
-      return {
-        ...current,
-        [param]: nextValues,
-      }
-    })
-  }
-
   function resetFilters() {
-    committedQueryRef.current = ''
-    setQuery('')
-    setSort('createdAt,desc')
-    setPage(0)
-    setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
+    reset()
     scrollToResults()
   }
 
@@ -461,19 +164,6 @@ function GoodsPage() {
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
   const hasGoods = goods.length > 0
 
-  const pageNumbers = useMemo(() => {
-    if (totalPages < 1) {
-      return []
-    }
-
-    const maxVisiblePages = 5
-    const halfWindow = Math.floor(maxVisiblePages / 2)
-    const startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages)
-
-    return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
-  }, [currentPage, totalPages])
-
   function handleQueryChange(value: string) {
     searchScrollPositionRef.current = window.scrollY
     if (goods.length > 0 && goodsResultsRef.current) {
@@ -483,21 +173,6 @@ function GoodsPage() {
     setQuery(value)
   }
 
-  function commitSearch(value: string) {
-    const normalizedValue = value.trim()
-    if (normalizedValue === committedQueryRef.current) {
-      return
-    }
-
-    committedQueryRef.current = normalizedValue
-    window.history.pushState(null, '', createGoodsUrl({
-      query: normalizedValue,
-      sort,
-      page: 0,
-      selectedFilters,
-    }))
-  }
-
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
@@ -505,19 +180,10 @@ function GoodsPage() {
   }
 
   function goToPage(nextPage: number) {
-    setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
-    setIsPageJumpOpen(false)
+    setPage(nextPage)
     window.requestAnimationFrame(() => {
       searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
     })
-  }
-
-  function submitPageJump(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const requestedPage = Number(pageJumpValue)
-    if (!Number.isInteger(requestedPage)) return
-    goToPage(requestedPage - 1)
-    setPageJumpValue('')
   }
 
   const searchSuggestions = useMemo(() => {
@@ -586,14 +252,14 @@ function GoodsPage() {
           onOpenMobile={() => setIsMobileFilterOpen(true)}
           onApplyMobile={applyMobileFilters}
           onReset={resetFilters}
-          onToggle={updateFilter}
+          onToggle={toggleFilter}
         />
 
         <div className="goods-content">
           <GoodsActiveFilterChips
             groups={filters}
             selectedFilters={selectedFilters}
-            onRemoveFilter={updateFilter}
+            onRemoveFilter={toggleFilter}
           />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
@@ -636,78 +302,17 @@ function GoodsPage() {
                   viewMode={viewMode}
                   isFavorite={isFavorite}
                   toggleFavorite={toggleFavorite}
+                  onOpenDetail={openGoodsDetail}
                 />
               </div>
             )}
           </div>
 
-          {totalPages > 0 && (
-            <nav className="goods-pagination" aria-label="Goods pagination">
-              <div className="pagination-controls">
-                <button
-                  className="pagination-arrow"
-                  aria-label="이전 페이지"
-                  type="button"
-                  disabled={currentPage === 0}
-                  onClick={() => goToPage(currentPage - 1)}
-                >
-                  ‹
-                </button>
-                <div className="page-number-list">
-                  {pageNumbers.map((pageNumber) => (
-                    <button
-                      aria-current={pageNumber === currentPage ? 'page' : undefined}
-                      key={pageNumber}
-                      type="button"
-                      onClick={() => goToPage(pageNumber)}
-                    >
-                      {pageNumber + 1}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="pagination-arrow"
-                  aria-label="다음 페이지"
-                  type="button"
-                  disabled={currentPage >= totalPages - 1}
-                  onClick={() => goToPage(currentPage + 1)}
-                >
-                  ›
-                </button>
-              </div>
-              <div className="pagination-status-wrap" ref={pageJumpRef}>
-                {isPageJumpOpen ? (
-                  <form className="pagination-inline-jump" aria-label="페이지 이동" onSubmit={submitPageJump}>
-                    <input
-                      autoFocus
-                      aria-label="페이지 번호"
-                      id="goods-page-jump"
-                      inputMode="numeric"
-                      min="1"
-                      max={totalPages}
-                      type="number"
-                      value={pageJumpValue}
-                      onChange={(event) => setPageJumpValue(event.target.value)}
-                    />
-                    <span>/ {totalPages}</span>
-                    <button type="submit" disabled={!pageJumpValue}>이동</button>
-                  </form>
-                ) : (
-                  <button
-                    className="pagination-status"
-                    aria-expanded="false"
-                    type="button"
-                    onClick={() => {
-                      setPageJumpValue(String(currentPage + 1))
-                      setIsPageJumpOpen(true)
-                    }}
-                  >
-                    {currentPage + 1} / {totalPages}
-                  </button>
-                )}
-              </div>
-            </nav>
-          )}
+          <GoodsPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={goToPage}
+          />
         </div>
       </section>
         </>
@@ -744,6 +349,7 @@ function GoodsPage() {
               viewMode={viewMode}
               isFavorite={isFavorite}
               toggleFavorite={toggleFavorite}
+              onOpenDetail={openGoodsDetail}
             />
           )}
         </section>
