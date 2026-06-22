@@ -25,6 +25,7 @@ public class SearchAliasRepository {
 			"""
 			select sa.normalized_alias,
 			       sa.artist_id,
+			       sa.group_id,
 			       sa.category_id,
 			       sa.tag_id,
 			       tag.tag_name
@@ -35,6 +36,7 @@ public class SearchAliasRepository {
 			(resultSet, rowNumber) -> new SearchAliasMatch(
 				resultSet.getString("normalized_alias"),
 				resultSet.getObject("artist_id", Long.class),
+				resultSet.getObject("group_id", Long.class),
 				resultSet.getObject("category_id", Long.class),
 				resultSet.getObject("tag_id", Long.class),
 				resultSet.getString("tag_name")

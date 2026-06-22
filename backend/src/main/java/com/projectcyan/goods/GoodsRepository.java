@@ -17,7 +17,7 @@ public interface GoodsRepository extends JpaRepository<Goods, Long>, JpaSpecific
 
 	List<Goods> findByCategoryCategoryIdAndGoodsIdNot(Long categoryId, Long goodsId, Pageable pageable);
 
-	@EntityGraph(attributePaths = {"artist", "category", "tags"})
+	@EntityGraph(attributePaths = {"artist", "artist.artistGroup", "category", "tags"})
 	@Query("select distinct goods from Goods goods")
 	List<Goods> findAllForRecommendation();
 }
