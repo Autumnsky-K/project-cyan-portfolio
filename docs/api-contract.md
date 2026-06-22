@@ -48,11 +48,11 @@
 
 이 한 줄이 회원·장바구니·주문·추천의 FK와 모든 회원 관련 API에 퍼진다. **코딩 시작 전에 못 박는다.**
 
-- [ ] 인증 방식: `Supabase Auth` / `Spring 자체 인증` → 선택: `__________`
-- [ ] `userId` 타입: `uuid` / `bigint(int8)` → 선택: `__________`
-- [ ] 결정일: `__________` · 결정자: `__________`
+- [x] 인증 방식: `Supabase Auth` / `Spring 자체 인증` → 선택: `Supabase Auth`
+- [x] `userId` 타입: `uuid` / `bigint(int8)` → 선택: `uuid`
+- [x] 결정일: `2026-06-16` · 결정자: 팀 합의
 
-> 결정 전까지 회원 의존 API는 코딩 보류. 나머지 도메인은 §3 목업으로 선행 착수 가능.
+> `userId`는 Supabase `auth.users.id`이며, `public.member.member_uuid`와 동일한 값으로 저장한다.
 
 ### 1.2 Base URL & 공통 헤더
 
@@ -152,18 +152,27 @@
 
 ### 3.1 회원 (members) — 담당: `__________`
 
-> ⚠️ §1.1 키스톤 결정 후 작성. 그 전까지 응답의 `userId` 타입은 `TBD`로 둔다.
+> 회원 인증은 Supabase Auth로 통일한다. 일반 이메일/비밀번호 가입과 소셜 로그인 모두
+> Supabase `auth.users.id`를 `public.member.member_uuid`에 저장한다.
 
 ```
 #### [POST] /api/members/signup
-- 설명: 회원 가입
+- 설명: 회원 가입 (프론트는 Supabase `auth.signUp` 호출)
 - 인증 필요: N
-- 요청 body: { email, password, nickname }
-- 응답 (동결 필드): { userId(TBD), email, nickname }
-- 상태: [ ] 미정
+- 요청 body: { email, password, name, phone }
+- 응답 (동결 필드): { userId(uuid), email, name }
+- 상태: [x] 동결
 ```
 
-*(로그인, 내 정보, 선호 아이돌 저장 등 추가)*
+`public.member` 동기화:
+
+- `member_uuid`: Supabase `auth.users.id`와 동일한 uuid
+- `member_id`: 서비스 내부 bigint PK
+- `login_provider`: `EMAIL`, `KAKAO` 등 인증 제공자
+- `login_id`: 이메일 가입 시 이메일 기반 값, 소셜 로그인 시 provider 기반 fallback
+- `password_hash`: Supabase Auth가 비밀번호를 관리하므로 `null`
+
+*(내 정보, 선호 아이돌 저장 등 추가)*
 
 ---
 
@@ -393,7 +402,8 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-12 | v0.1.1 | ai | additive | ai websocket 입/출력 계약 추가 | 강승민 |
 | 2026-06-15 | v0.1.2 | goods | additive | `GET /api/goods`에 다중 선택 필터용 `categoryIds`, `artistIds`, `tags` query 추가. 기존 `categoryId`, `artistId`, `tag` query는 호환 유지 | Codex |
 | 2026-06-15 | v0.1.3 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
-| 2026-06-18 | v0.1.4 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
-| 2026-06-19 | v0.1.5 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
-| 2026-06-19 | v0.1.6 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
+| 2026-06-16 | v0.1.4 | member | breaking | 인증 방식을 Supabase Auth로 확정하고 `userId`를 uuid로 동결 | 팀 합의 |
+| 2026-06-18 | v0.1.5 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
+| 2026-06-19 | v0.1.6 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
+| 2026-06-19 | v0.1.7 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 |  |  |  |  |  |  |
