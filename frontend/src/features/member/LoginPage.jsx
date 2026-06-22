@@ -1,16 +1,31 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { loginMember } from './member'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { loginMember, loginWithKakao } from './member'
 import './LoginPage.css'
 
+function getAuthError(location) {
+  const params = new URLSearchParams(location.search)
+
+  return location.state?.authError ?? params.get('authError') ?? ''
+}
+
 function LoginPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [form, setForm] = useState({
-    loginId: '',
+    email: '',
     password: '',
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingProvider, setLoadingProvider] = useState('')
   const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => getAuthError(location))
+
+  useEffect(() => {
+    if (getAuthError(location)) {
+      navigate('/login', { replace: true, state: null })
+    }
+  }, [location, navigate])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -24,16 +39,34 @@ function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setIsLoading(true)
+    setLoadingProvider('email')
     setMessage('')
     setError('')
 
     try {
       const result = await loginMember(form)
-      setMessage(`${result.member.loginId} 계정으로 로그인되었습니다.`)
+      setMessage(`${result.member.email} 계정으로 로그인되었습니다.`)
+      navigate('/like')
     } catch (loginError) {
       setError(loginError.message)
     } finally {
       setIsLoading(false)
+      setLoadingProvider('')
+    }
+  }
+
+  const handleKakaoLogin = async () => {
+    setIsLoading(true)
+    setLoadingProvider('kakao')
+    setMessage('')
+    setError('')
+
+    try {
+      await loginWithKakao()
+    } catch (loginError) {
+      setError(loginError.message)
+      setIsLoading(false)
+      setLoadingProvider('')
     }
   }
 
@@ -45,16 +78,16 @@ function LoginPage() {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          {/* 백엔드 연동 전까지 member.js의 가짜 로그인 API를 호출합니다. */}
+          {/* 일반 로그인도 Supabase Auth로 처리해 회원 UUID 기준을 통일합니다. */}
           <label className="login-field">
-            <span>아이디</span>
+            <span>이메일</span>
             <input
-              type="text"
-              name="loginId"
-              value={form.loginId}
+              type="email"
+              name="email"
+              value={form.email}
               onChange={handleChange}
-              placeholder="아이디를 입력하세요"
-              autoComplete="username"
+              placeholder="email@example.com"
+              autoComplete="email"
               required
             />
           </label>
@@ -85,40 +118,27 @@ function LoginPage() {
           )}
 
           <button className="login-submit" type="submit" disabled={isLoading}>
-            {isLoading ? '로그인 중...' : '로그인'}
+            {loadingProvider === 'email' ? '로그인 중...' : '로그인'}
           </button>
         </form>
+
+        <p className="login-help">
+          <Link to="/forgot-password">비밀번호 찾기</Link>
+        </p>
 
         <div className="login-social" aria-label="소셜 로그인">
           <p>소셜 계정으로 로그인</p>
           <div className="login-social-buttons">
             <button
-              className="social-button social-button-kakao"
+              className="social-login-button social-button-kakao"
               type="button"
               aria-label="카카오 로그인"
+              onClick={handleKakaoLogin}
+              disabled={isLoading}
             >
-              카
-            </button>
-            <button
-              className="social-button social-button-naver"
-              type="button"
-              aria-label="네이버 로그인"
-            >
-              N
-            </button>
-            <button
-              className="social-button social-button-google"
-              type="button"
-              aria-label="구글 로그인"
-            >
-              G
-            </button>
-            <button
-              className="social-button social-button-apple"
-              type="button"
-              aria-label="애플 로그인"
-            >
-              A
+              {loadingProvider === 'kakao'
+                ? '카카오로 이동 중...'
+                : '카카오톡으로 로그인하기'}
             </button>
           </div>
         </div>

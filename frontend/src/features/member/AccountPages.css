@@ -1,0 +1,659 @@
+.account-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #1d1d1d;
+  color: #f5f5f5;
+  box-sizing: border-box;
+}
+
+.account-shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+
+.account-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.account-topbar a {
+  color: #f5f5f5;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.account-card {
+  border: 1px solid #8c8c8c;
+  border-radius: 8px;
+  background: #111111;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.32);
+  box-sizing: border-box;
+}
+
+.account-panel {
+  padding: 32px;
+}
+
+.account-panel + .account-panel {
+  border-top: 1px solid #4f4f4f;
+}
+
+.account-heading {
+  margin-bottom: 24px;
+}
+
+.account-heading p {
+  margin: 0 0 8px;
+  color: #cfcfcf;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.account-heading h1,
+.account-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.35;
+}
+
+.account-heading h2 {
+  font-size: 18px;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 420px;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #f0f0f0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-field input,
+.account-field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #5f5f5f;
+  border-radius: 6px;
+  background: #151515;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.account-field textarea {
+  min-height: 84px;
+  padding-top: 12px;
+  resize: vertical;
+}
+
+.account-field input:focus,
+.account-field textarea:focus {
+  border-color: #ffffff;
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.account-button,
+.account-secondary {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  background: #000000;
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.account-button:hover,
+.account-button:focus,
+.account-secondary:hover,
+.account-secondary:focus {
+  border-color: #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+.account-button:disabled,
+.account-secondary:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.account-secondary {
+  border-color: #7f7f7f;
+}
+
+.account-feedback {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-feedback-error {
+  border: 1px solid #8f8f8f;
+  background: #242424;
+  color: #ffffff;
+}
+
+.account-feedback-success {
+  border: 1px solid #cfcfcf;
+  background: #202020;
+  color: #ffffff;
+}
+
+.like-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.like-shell {
+  width: min(760px, 100%);
+}
+
+.like-panel {
+  padding: 0;
+}
+
+.like-panel .account-heading {
+  text-align: center;
+}
+
+.artist-grid,
+.mypage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.like-panel .artist-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.artist-option {
+  position: relative;
+  min-height: 76px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #5f5f5f;
+  border-radius: 8px;
+  background: #202020;
+  color: #f5f5f5;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.like-panel .artist-option {
+  min-height: 118px;
+}
+
+.artist-option::before {
+  content: '이미지';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+  color: #9f9f9f;
+  font-size: 11px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.like-panel .artist-option::before {
+  font-size: 12px;
+}
+
+.artist-option::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.like-panel .artist-option::after {
+  height: 38px;
+}
+
+.artist-option strong {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 1;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.like-panel .artist-option strong {
+  left: 14px;
+  bottom: 12px;
+  font-size: 16px;
+}
+
+.artist-option.is-selected {
+  border-color: #ffffff;
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.like-actions {
+  justify-content: center;
+}
+
+.like-action-button {
+  min-height: 38px;
+  min-width: 104px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.mypage-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.mypage-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  border: 1px solid #cfcfcf;
+  border-radius: 50%;
+  background: #202020;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.mypage-profile-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+.mypage-profile-text h1 {
+  margin: 0 0 6px;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.mypage-profile-text p {
+  margin: 0;
+  color: #cfcfcf;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mypage-edit-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d8d8d8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.mypage-edit-link + .mypage-edit-link {
+  margin-left: 2px;
+}
+
+.mypage-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.mypage-profile-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #3f3f3f;
+}
+
+.mypage-profile-list dt {
+  color: #a8a8a8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mypage-profile-list dd {
+  margin: 0;
+  color: #f5f5f5;
+  font-size: 13px;
+  text-align: right;
+}
+
+.mypage-withdraw {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-right: 32px;
+}
+
+.mypage-withdraw button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9f9f9f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.mypage-withdraw button:hover,
+.mypage-withdraw button:focus {
+  color: #ffffff;
+}
+
+.mypage-section {
+  overflow: hidden;
+}
+
+.mypage-section-heading,
+.mypage-modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.mypage-section-heading h2,
+.mypage-modal-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.mypage-more-button,
+.mypage-modal-heading button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #5f5f5f;
+  border-radius: 999px;
+  background: #181818;
+  color: #f5f5f5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.mypage-more-button:hover,
+.mypage-more-button:focus,
+.mypage-modal-heading button:hover,
+.mypage-modal-heading button:focus {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #111111;
+}
+
+.mypage-carousel {
+  position: relative;
+  min-width: 0;
+}
+
+.mypage-card-row,
+.mypage-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mypage-item-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #5f5f5f;
+  border-radius: 8px;
+  background: #151515;
+  text-align: left;
+}
+
+.mypage-item-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  border-bottom: 1px solid #3f3f3f;
+  background: #242424;
+  color: #8f8f8f;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mypage-item-body {
+  min-height: 132px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.mypage-item-card h3 {
+  display: -webkit-box;
+  min-height: 38px;
+  margin: 0 0 8px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mypage-item-card p,
+.mypage-empty {
+  margin: 0;
+  color: #cfcfcf;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mypage-item-card .mypage-item-meta {
+  margin-bottom: 8px;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.mypage-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #8c8c8c;
+  border-radius: 50%;
+  background: #050505;
+  color: #ffffff;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+
+.mypage-arrow:hover,
+.mypage-arrow:focus {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #111111;
+}
+
+.mypage-arrow-left {
+  left: -17px;
+}
+
+.mypage-arrow-right {
+  right: -17px;
+}
+
+.mypage-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, 0.72);
+  box-sizing: border-box;
+}
+
+.mypage-modal {
+  width: min(900px, 100%);
+  max-height: min(760px, 90vh);
+  overflow: auto;
+  padding: 28px;
+  border: 1px solid #8c8c8c;
+  border-radius: 8px;
+  background: #111111;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.48);
+  box-sizing: border-box;
+}
+
+.mypage-modal-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+@media (max-width: 520px) {
+  .account-page {
+    padding: 24px 16px;
+  }
+
+  .account-panel {
+    padding: 24px 16px;
+  }
+
+  .like-panel .artist-grid {
+    gap: 12px;
+  }
+
+  .like-panel .artist-option {
+    min-height: 96px;
+  }
+
+  .mypage-profile {
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .mypage-avatar {
+    flex-basis: 54px;
+    width: 54px;
+    height: 54px;
+  }
+
+  .mypage-profile-text h1 {
+    font-size: 20px;
+  }
+
+  .mypage-profile-list div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mypage-profile-list dd {
+    text-align: left;
+  }
+
+  .mypage-card-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mypage-item-body {
+    min-height: 142px;
+    padding: 12px;
+  }
+
+  .mypage-arrow {
+    top: 44%;
+    width: 30px;
+    height: 30px;
+    font-size: 21px;
+  }
+
+  .mypage-arrow-left {
+    left: -8px;
+  }
+
+  .mypage-arrow-right {
+    right: -8px;
+  }
+
+  .mypage-modal-backdrop {
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  .mypage-modal {
+    max-height: none;
+    padding: 20px 16px;
+  }
+
+  .mypage-modal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mypage-withdraw {
+    padding-right: 16px;
+  }
+}

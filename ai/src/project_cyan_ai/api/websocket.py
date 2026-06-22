@@ -59,7 +59,7 @@ async def client_ws(websocket: WebSocket):
                 )
                 continue
 
-            response = response_provider.build_response(message.text)
+            response = response_provider.build_response(message.text, message.context)
             await websocket.send_json(response.model_dump())
 
     except WebSocketDisconnect:

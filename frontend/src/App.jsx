@@ -1,14 +1,21 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
+import AuthCallbackPage from './features/member/AuthCallbackPage'
+import ForgotPasswordPage from './features/member/ForgotPasswordPage'
+import LikePage from './features/member/LikePage'
+
 import ArtistPage from './features/artist/artist.tsx'
 import CartPage from './features/cart/CartPage'
 import { CartProvider } from './features/cart/cartStore'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
 import LoginPage from './features/member/LoginPage.jsx'
+import MyPage from './features/member/MyPage'
+import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot.tsx'
+import ArtistPage from './features/artist/artist.tsx'
 import PaymentCancel from './pages/PaymentCancel.jsx'
 import PaymentFail from './pages/PaymentFail.jsx'
 import PaymentSuccess from './pages/PaymentSuccess.jsx'
@@ -50,6 +57,12 @@ function AppShell() {
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
           <Route path="/payment/fail" element={<PaymentFail />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/like" element={<LikePage />} />
+          <Route path="/likes/artists" element={<LikePage />} />
+          <Route path="/mypage" element={<MyPage />} />
         </Routes>
       </div>
       {!hideVtuber && <VtuberChatbot />}
