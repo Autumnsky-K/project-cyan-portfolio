@@ -49,11 +49,8 @@ def isolate_ai_settings(monkeypatch, tmp_path):
         "PROJECT_CYAN_CLAUDE_MODEL",
         "PROJECT_CYAN_OLV_GATEWAY_URL",
         "PROJECT_CYAN_OLV_API_KEY",
-<<<<<<< HEAD
         "PROJECT_CYAN_SPRING_API_URL",
-=======
         "PROJECT_CYAN_GOODS_API_BASE_URL",
->>>>>>> dev
     ):
         monkeypatch.delenv(env_name, raising=False)
     monkeypatch.setenv(
