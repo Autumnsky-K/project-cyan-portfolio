@@ -29,7 +29,7 @@ function CartNavLink({ current = false }: CartNavLinkProps) {
           <>
             <span className="cart-preview-list">
               {previewItems.map((item) => (
-                <span className="cart-preview-item" key={item.goodsId}>
+                <span className="cart-preview-item" key={item.cartItemKey}>
                   <span>{item.name}</span>
                   <span>x {item.quantity}</span>
                 </span>

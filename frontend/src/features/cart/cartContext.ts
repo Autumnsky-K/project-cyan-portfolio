@@ -8,10 +8,18 @@ export type CartGoodsInput = {
   artistName?: string | null
   categoryName?: string | null
   tags?: string[] | null
+  variantId?: string | number | null
+  variantLabel?: string | null
+  variantPrice?: number | null
+  maxQuantity?: number | null
+  shippingFee?: number | null
 }
 
 export type CartItem = {
+  cartItemKey: string
   goodsId: string | number
+  variantId: string | number | null
+  variantLabel: string
   name: string
   price: number
   imageUrl: string | null
@@ -19,13 +27,15 @@ export type CartItem = {
   categoryName: string
   tags: string[]
   quantity: number
+  maxQuantity: number | null
+  shippingFee: number
 }
 
 export type CartContextValue = {
   items: CartItem[]
   addCartItem: (goods: CartGoodsInput, quantity?: number) => void
-  updateCartItemQuantity: (goodsId: CartItem['goodsId'], quantity: number) => void
-  removeCartItem: (goodsId: CartItem['goodsId']) => void
+  updateCartItemQuantity: (cartItemKey: CartItem['cartItemKey'], quantity: number) => void
+  removeCartItem: (cartItemKey: CartItem['cartItemKey']) => void
   clearCart: () => void
 }
 

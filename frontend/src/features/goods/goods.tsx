@@ -1,61 +1,91 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchGoods, fetchGoodsFilters, type GoodsFilterOption, type GoodsQueryParams, type GoodsSummary, type PageResponse } from '../../api/goods'
+import {
+  fetchGoods,
+  fetchGoodsFilters,
+  type GoodsFilterOption,
+  type GoodsSummary,
+  type PageResponse,
+} from '../../api/goods'
 import CartNavLink from '../cart/CartNavLink'
-import { useCart } from '../cart/useCart'
+import GoodsCards, { type GoodsViewMode } from './GoodsCards'
+import GoodsFilterUi, {
+  GoodsActiveFilterChips,
+  type GoodsFilterGroup,
+  type GoodsSelectedFilters,
+} from './GoodsFilterUi'
+import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
+import GoodsPagination from './GoodsPagination'
+import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
+import { useFavoriteGoods } from './useFavoriteGoods'
+import { useGoodsFavorites } from './useGoodsFavorites'
+import { useGoodsListQueryState } from './useGoodsListQueryState'
+import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
+import './goods-list-ui.css'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
-type FilterParam = 'categoryIds' | 'artistIds' | 'tags'
-type SelectedFilters = Record<FilterParam, string[]>
-type FilterGroup = {
-  title: string
-  param: FilterParam
-  options: GoodsFilterOption[]
+type GoodsSection = 'all' | 'favorites'
+
+function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
+  return [...new Map(
+    options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
+  ).values()]
 }
 
 function GoodsPage() {
-  const { addCartItem } = useCart()
-  const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('createdAt,desc')
-  const [page, setPage] = useState(0)
-  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({ categoryIds: [], artistIds: [], tags: [] })
-  const [filters, setFilters] = useState<FilterGroup[]>([])
+  const { favoriteIds, isFavorite, toggleFavorite } = useGoodsFavorites()
+  const {
+    query,
+    setQuery,
+    sort,
+    setSort,
+    page,
+    setPage,
+    selectedFilters,
+    setSelectedFilters,
+    requestParams,
+    toggleFilter,
+    reset,
+    commitSearch,
+  } = useGoodsListQueryState()
+  const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
   const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
   const [status, setStatus] = useState<LoadStatus>('loading')
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
-  const [addedGoodsId, setAddedGoodsId] = useState<number | null>(null)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<GoodsViewMode>('grid')
+  const [activeSection, setActiveSection] = useState<GoodsSection>('all')
+  const {
+    goods: favoriteGoods,
+    status: favoritesStatus,
+    error: favoritesError,
+  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds)
+  const [retryKey, setRetryKey] = useState(0)
+  const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)
-  const cartToastTimerRef = useRef<number | null>(null)
+  const resultsStartRef = useRef<HTMLDivElement | null>(null)
+  const searchToolbarRef = useRef<HTMLElement | null>(null)
+  const goodsResultsRef = useRef<HTMLDivElement | null>(null)
+  const searchScrollPositionRef = useRef<number | null>(null)
+  const openGoodsDetail = useGoodsScrollRestoration(status)
 
-  const requestParams = useMemo<GoodsQueryParams>(
-    () => {
-      const params = {
-        q: query,
-        sort,
-        page,
-        size: 12,
-        categoryIds: selectedFilters.categoryIds.join(','),
-        artistIds: selectedFilters.artistIds.join(','),
-        tags: selectedFilters.tags.join(','),
-      }
+  useLayoutEffect(() => {
+    if (status !== 'empty' || searchScrollPositionRef.current === null) {
+      return
+    }
 
-      if (selectedFilters.categoryIds.length === 1) {
-        params.categoryId = selectedFilters.categoryIds[0]
-      }
-      if (selectedFilters.artistIds.length === 1) {
-        params.artistId = selectedFilters.artistIds[0]
-      }
-      if (selectedFilters.tags.length === 1) {
-        params.tag = selectedFilters.tags[0]
-      }
+    window.scrollTo({ top: searchScrollPositionRef.current })
+    searchScrollPositionRef.current = null
+  }, [status])
 
-      return params
-    },
-    [page, query, selectedFilters, sort],
-  )
+  const scrollToResults = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    window.requestAnimationFrame(() => {
+      resultsStartRef.current?.scrollIntoView({ behavior, block: 'start' })
+    })
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -66,13 +96,13 @@ function GoodsPage() {
       try {
         const data = await fetchGoodsFilters({ signal: controller.signal })
         setFilters([
-          { title: 'Category', param: 'categoryIds', options: data.categories ?? [] },
-          { title: 'Artist', param: 'artistIds', options: data.artists ?? [] },
-          { title: 'Tag', param: 'tags', options: data.tags ?? [] },
+          { title: 'Category', param: 'categoryIds', options: uniqueFilterOptions(data.categories) },
+          { title: 'Artist', param: 'artistIds', options: uniqueFilterOptions(data.artists) },
+          { title: 'Tag', param: 'tags', options: uniqueFilterOptions(data.tags) },
         ])
         setFilterStatus('data')
       } catch (loadError) {
-        if (loadError.name === 'AbortError') {
+        if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
         setFilters([])
@@ -102,7 +132,7 @@ function GoodsPage() {
         setGoodsPage(data)
         setStatus(data.content?.length ? 'data' : 'empty')
       } catch (loadError) {
-        if (loadError.name === 'AbortError') {
+        if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
         setError(loadError instanceof Error ? loadError.message : 'Failed to load goods.')
@@ -115,87 +145,57 @@ function GoodsPage() {
     return () => {
       controller.abort()
     }
-  }, [requestParams])
-
-  useEffect(
-    () => () => {
-      if (cartToastTimerRef.current !== null) {
-        window.clearTimeout(cartToastTimerRef.current)
-      }
-    },
-    [],
-  )
-
-  function updateFilter(param: FilterParam, value: string) {
-    setPage(0)
-    setSelectedFilters((current) => {
-      const currentValues = current[param] ?? []
-      const nextValues = currentValues.includes(value)
-        ? currentValues.filter((currentValue) => currentValue !== value)
-        : [...currentValues, value]
-
-      return {
-        ...current,
-        [param]: nextValues,
-      }
-    })
-  }
+  }, [requestParams, retryKey])
 
   function resetFilters() {
-    setQuery('')
-    setSort('createdAt,desc')
+    reset()
+    scrollToResults()
+  }
+
+  function applyMobileFilters(nextFilters: GoodsSelectedFilters) {
     setPage(0)
-    setSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })
+    setSelectedFilters(nextFilters)
+    scrollToResults()
   }
 
-  function isFilterSelected(param: FilterParam, value: string) {
-    return (selectedFilters[param] ?? []).includes(value)
-  }
-
-  function handleAddCartItem(item: GoodsSummary) {
-    addCartItem(item)
-    setAddedGoodsId(item.goodsId)
-    if (cartToastTimerRef.current !== null) {
-      window.clearTimeout(cartToastTimerRef.current)
-    }
-    cartToastTimerRef.current = window.setTimeout(() => {
-      setAddedGoodsId(null)
-    }, 1600)
-  }
-
-  const goods = goodsPage?.content ?? []
+  const goods = useMemo(() => goodsPage?.content ?? [], [goodsPage])
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
-  const hasPreviousPage = currentPage > 0
-  const hasNextPage = totalPages > 0 && currentPage < totalPages - 1
   const hasGoods = goods.length > 0
-  const pageNumbers = useMemo(() => {
-    if (totalPages < 1) {
-      return []
+
+  function handleQueryChange(value: string) {
+    searchScrollPositionRef.current = window.scrollY
+    if (goods.length > 0 && goodsResultsRef.current) {
+      setEmptyResultsMinHeight(goodsResultsRef.current.offsetHeight)
     }
-
-    const maxVisiblePages = 5
-    const halfWindow = Math.floor(maxVisiblePages / 2)
-    const startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages)
-
-    return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
-  }, [currentPage, totalPages])
-
-  function handleQueryChange(event: ChangeEvent<HTMLInputElement>) {
     setPage(0)
-    setQuery(event.target.value)
+    setQuery(value)
   }
 
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
+    scrollToResults()
   }
 
   function goToPage(nextPage: number) {
-    setPage(Math.min(Math.max(nextPage, 0), Math.max(totalPages - 1, 0)))
+    setPage(nextPage)
+    window.requestAnimationFrame(() => {
+      searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+    })
   }
+
+  const searchSuggestions = useMemo(() => {
+    const values = [
+      ...goods.flatMap((item) => [item.name, item.artistName, item.categoryName, ...(item.tags ?? [])]),
+      ...filters.flatMap((group) => group.options.map((option) => option.label)),
+    ].filter((value): value is string => Boolean(value?.trim()))
+
+    return [...new Map(values.map((value) => [value.toLocaleLowerCase(), value])).values()]
+  }, [filters, goods])
+
+  const closeMobileFilters = useCallback(() => setIsMobileFilterOpen(false), [])
 
   return (
     <main className="goods-page">
@@ -205,7 +205,6 @@ function GoodsPage() {
           <h1>Goods</h1>
         </div>
         <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
           <Link to="/artists">Artists</Link>
           <Link to="/goods" aria-current="page">
             Goods
@@ -214,16 +213,24 @@ function GoodsPage() {
         </nav>
       </header>
 
-      <section className="store-toolbar" aria-label="Goods search and sort">
-        <label className="search-field">
-          <span>Search</span>
-          <input
-            type="search"
-            placeholder="Search goods, artist, category"
-            value={query}
-            onChange={handleQueryChange}
-          />
-        </label>
+      <nav className="goods-section-tabs" aria-label="Goods sections">
+        <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>
+          All goods
+        </button>
+        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => setActiveSection('favorites')}>
+          Favorites <span>{favoriteIds.length}</span>
+        </button>
+      </nav>
+
+      {activeSection === 'all' && (
+        <>
+      <section className="store-toolbar" ref={searchToolbarRef} aria-label="Goods search and sort">
+        <GoodsSearchAutocomplete
+          query={query}
+          suggestions={searchSuggestions}
+          onQueryChange={handleQueryChange}
+          onSearchCommit={commitSearch}
+        />
         <label className="sort-field">
           <span>Sort</span>
           <select value={sort} onChange={handleSortChange}>
@@ -236,36 +243,25 @@ function GoodsPage() {
       </section>
 
       <section className="store-layout" id="goods">
-        <aside className="filter-panel" aria-label="Goods filters">
-          <div className="panel-heading">
-            <h2>Filters</h2>
-            <button type="button" onClick={resetFilters}>
-              Reset
-            </button>
-          </div>
-          {filterStatus === 'loading' && <p className="filter-note">Loading filters...</p>}
-          {filterStatus === 'error' && <p className="filter-note">Unable to load filters.</p>}
-          {filters.map((group) => (
-            <fieldset className="filter-group" key={group.title}>
-              <legend>{group.title}</legend>
-              <div className="filter-options">
-                {group.options.map((option) => (
-                  <label key={option.value}>
-                    <input
-                      type="checkbox"
-                      checked={isFilterSelected(group.param, option.value)}
-                      onChange={() => updateFilter(group.param, option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-        </aside>
+        <GoodsFilterUi
+          groups={filters}
+          filterStatus={filterStatus}
+          selectedFilters={selectedFilters}
+          isMobileOpen={isMobileFilterOpen}
+          onCloseMobile={closeMobileFilters}
+          onOpenMobile={() => setIsMobileFilterOpen(true)}
+          onApplyMobile={applyMobileFilters}
+          onReset={resetFilters}
+          onToggle={toggleFilter}
+        />
 
         <div className="goods-content">
-          <div className="result-summary">
+          <GoodsActiveFilterChips
+            groups={filters}
+            selectedFilters={selectedFilters}
+            onRemoveFilter={toggleFilter}
+          />
+          <div className="result-summary" ref={resultsStartRef}>
             <div>
               <h2>Featured Goods</h2>
               <p>
@@ -277,96 +273,87 @@ function GoodsPage() {
               </p>
             </div>
             <div className="view-toggle" aria-label="View options">
-              <button type="button" aria-pressed="true">
+              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
                 Grid
               </button>
-              <button type="button">List</button>
+              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                List
+              </button>
             </div>
           </div>
 
-          {status === 'loading' && !hasGoods && <div className="goods-state">Loading goods...</div>}
+          <div
+            className="goods-results"
+            ref={goodsResultsRef}
+            style={status === 'empty' ? { minHeight: emptyResultsMinHeight } : undefined}
+          >
+            {status === 'loading' && !hasGoods && <GoodsCardSkeleton />}
 
-          {status === 'error' && (
-            <div className="goods-state error-state">
-              <strong>Unable to load goods</strong>
-              <span>{error}</span>
-            </div>
-          )}
+            {status === 'error' && (
+              <GoodsListState kind="error" message={error} onAction={() => setRetryKey((value) => value + 1)} />
+            )}
 
-          {status === 'empty' && !hasGoods && <div className="goods-state">No goods match these filters.</div>}
+            {status === 'empty' && !hasGoods && <GoodsListState kind="empty" onAction={resetFilters} />}
 
-          {hasGoods && (
-            <div className="goods-grid" data-refreshing={status === 'refreshing'}>
-              {goods.map((item) => (
-                <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
-                  <div className="goods-image" aria-label={`${item.name} image`}>
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt="" />
-                    ) : (
-                      <span>{item.categoryName ?? 'Goods'}</span>
-                    )}
-                  </div>
-                  <div className="goods-card-body">
-                    <div className="card-topline">
-                      <span>{item.artistName ?? 'SM Artist'}</span>
-                      <strong>{item.salesStatus ?? (item.isBestSeller ? 'Best' : 'On sale')}</strong>
-                    </div>
-                    <h3>{item.name}</h3>
-                    <p>{item.categoryName ?? 'Goods'}</p>
-                    <div className="tag-row">
-                      {(item.tags ?? []).map((tag) => (
-                        <span key={tag}>{tag}</span>
-                      ))}
-                    </div>
-                    <div className="card-footer">
-                      <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
-                      <div>
-                        <Link className="card-action" to={`/goods/${item.goodsId}`}>
-                          View
-                        </Link>
-                        <span className="add-action-wrap">
-                          <button type="button" data-add-to-cart={item.goodsId} onClick={() => handleAddCartItem(item)}>
-                            Add
-                          </button>
-                          {addedGoodsId === item.goodsId && (
-                            <span className="add-feedback-popover">Added to cart</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-
-          {totalPages > 0 && (
-            <nav className="goods-pagination" aria-label="Goods pagination">
-              <button type="button" disabled={!hasPreviousPage} onClick={() => goToPage(currentPage - 1)}>
-                Previous
-              </button>
-              <div className="page-number-list">
-                {pageNumbers.map((pageNumber) => (
-                  <button
-                    aria-current={pageNumber === currentPage ? 'page' : undefined}
-                    key={pageNumber}
-                    type="button"
-                    onClick={() => goToPage(pageNumber)}
-                  >
-                    {pageNumber + 1}
-                  </button>
-                ))}
+            {hasGoods && (
+              <div data-refreshing={status === 'refreshing'}>
+                <GoodsCards
+                  items={goods}
+                  viewMode={viewMode}
+                  isFavorite={isFavorite}
+                  toggleFavorite={toggleFavorite}
+                  onOpenDetail={openGoodsDetail}
+                />
               </div>
-              <button type="button" disabled={!hasNextPage} onClick={() => goToPage(currentPage + 1)}>
-                Next
-              </button>
-              <span>
-                Page {currentPage + 1} of {totalPages}
-              </span>
-            </nav>
-          )}
+            )}
+          </div>
+
+          <GoodsPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={goToPage}
+          />
         </div>
       </section>
+        </>
+      )}
+
+      {activeSection === 'favorites' && (
+        <section className="favorites-content" aria-labelledby="favorites-heading">
+          <div className="result-summary">
+            <div>
+              <h2 id="favorites-heading">Favorite Goods</h2>
+              <p>{favoriteIds.length} saved item{favoriteIds.length === 1 ? '' : 's'}</p>
+            </div>
+            <div className="view-toggle" aria-label="Favorite view options">
+              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>Grid</button>
+              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>List</button>
+            </div>
+          </div>
+
+          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.min(favoriteIds.length, 6)} />}
+          {favoritesStatus === 'error' && (
+            <GoodsListState kind="error" message={favoritesError} onAction={() => setActiveSection('all')} />
+          )}
+          {favoriteIds.length === 0 && (
+            <div className="goods-state favorites-empty" role="status">
+              <span className="goods-state-mark" aria-hidden="true">♡</span>
+              <strong>No favorite goods yet</strong>
+              <span>Tap the heart on a goods card to save it here.</span>
+              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
+            </div>
+          )}
+          {favoritesStatus === 'data' && favoriteGoods.length > 0 && (
+            <GoodsCards
+              items={favoriteGoods}
+              viewMode={viewMode}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
+              onOpenDetail={openGoodsDetail}
+            />
+          )}
+        </section>
+      )}
     </main>
   )
 }
