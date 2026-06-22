@@ -336,9 +336,25 @@ export async function getCurrentMember() {
     return null
   }
 
+  const role =
+    data.user.app_metadata?.role ??
+    data.user.user_metadata?.role ??
+    data.user.user_metadata?.memberRole ??
+    null
+
   return {
     userId: data.user.id,
+    memberId:
+      data.user.app_metadata?.memberId ??
+      data.user.user_metadata?.memberId ??
+      data.user.user_metadata?.member_id,
     email: data.user.email,
+    role,
+    isAdmin:
+      role === 'ADMIN' ||
+      role === 'ROLE_ADMIN' ||
+      data.user.app_metadata?.isAdmin === true ||
+      data.user.user_metadata?.isAdmin === true,
     name:
       data.user.user_metadata?.name ??
       data.user.user_metadata?.full_name ??

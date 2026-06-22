@@ -14,6 +14,7 @@ import {
   loadPendingPayment,
 } from '../features/store/storage/paymentStorage'
 import { formatPrice } from '../features/store/utils/storeUtils'
+import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import './Store.css'
 
 function findPreviewOrder(pendingPayment, orderId) {
@@ -29,6 +30,7 @@ function findPreviewOrder(pendingPayment, orderId) {
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams()
+  const access = useCurrentMemberAccess()
   const orderId = searchParams.get('orderId')
   const pgToken = searchParams.get('pg_token')
   const [result, setResult] = useState({
@@ -39,6 +41,10 @@ function PaymentSuccess() {
   })
 
   useEffect(() => {
+    if (access.isLoading) {
+      return undefined
+    }
+
     let ignore = false
     const pendingPayment = loadPendingPayment()
     const targetOrderId = orderId || pendingPayment?.orderId
@@ -59,7 +65,13 @@ function PaymentSuccess() {
     }
 
     approveKakaoPay({ orderId: targetOrderId, tid, pgToken })
-      .catch(() => approveLocalPreview({ orderId: targetOrderId, pgToken }))
+      .catch((error) => {
+        if (access.isAdmin) {
+          return approveLocalPreview({ orderId: targetOrderId, pgToken })
+        }
+
+        throw error
+      })
       .then((data) => {
         if (ignore) return
         clearPendingPayment()
@@ -83,7 +95,7 @@ function PaymentSuccess() {
     return () => {
       ignore = true
     }
-  }, [orderId, pgToken])
+  }, [access.isAdmin, access.isLoading, orderId, pgToken])
 
   const order = result.data?.order
   const orderNumber =
@@ -147,11 +159,13 @@ function PaymentSuccess() {
             Back to cart
           </Link>
         </div>
-        <details className="developer-debug">
-          <summary>Developer debug</summary>
-          <p>{result.developerMessage || '-'}</p>
-          <pre>{JSON.stringify(result.data, null, 2)}</pre>
-        </details>
+        {access.isAdmin && (
+          <details className="developer-debug">
+            <summary>Developer debug</summary>
+            <p>{result.developerMessage || '-'}</p>
+            <pre>{JSON.stringify(result.data, null, 2)}</pre>
+          </details>
+        )}
       </section>
     </main>
   )

@@ -7,10 +7,12 @@ import {
 } from '../constants/status'
 import { markFailed } from '../features/store/services/paymentResultService'
 import { clearPendingPayment } from '../features/store/storage/paymentStorage'
+import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import './Store.css'
 
 function PaymentFail() {
   const [searchParams] = useSearchParams()
+  const access = useCurrentMemberAccess()
   const orderId = searchParams.get('orderId')
   const reason = searchParams.get('reason') || 'Payment approval failed.'
   const [result, setResult] = useState({
@@ -20,10 +22,20 @@ function PaymentFail() {
   })
 
   useEffect(() => {
+    if (access.isLoading) {
+      return undefined
+    }
+
     let ignore = false
 
     failKakaoPay(orderId, reason)
-      .catch(() => markFailed(orderId, reason))
+      .catch((error) => {
+        if (access.isAdmin) {
+          return markFailed(orderId, reason)
+        }
+
+        throw error
+      })
       .then((data) => {
         if (ignore) return
         clearPendingPayment()
@@ -45,7 +57,7 @@ function PaymentFail() {
     return () => {
       ignore = true
     }
-  }, [orderId, reason])
+  }, [access.isAdmin, access.isLoading, orderId, reason])
 
   const paymentStatus = normalizePaymentStatus(
     result.data?.paymentStatus || PAYMENT_CONTRACT_STATUS.FAILED,
@@ -76,11 +88,13 @@ function PaymentFail() {
             Back to cart
           </Link>
         </div>
-        <details className="developer-debug">
-          <summary>Developer debug</summary>
-          <p>{result.developerMessage || reason}</p>
-          <pre>{JSON.stringify(result.data, null, 2)}</pre>
-        </details>
+        {access.isAdmin && (
+          <details className="developer-debug">
+            <summary>Developer debug</summary>
+            <p>{result.developerMessage || reason}</p>
+            <pre>{JSON.stringify(result.data, null, 2)}</pre>
+          </details>
+        )}
       </section>
     </main>
   )

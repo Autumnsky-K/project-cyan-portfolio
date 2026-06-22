@@ -82,7 +82,12 @@ async function fetchCartOrders() {
   return fetchRemoteOrders()
 }
 
-export function useStoreFlow() {
+export function useStoreFlow(options = {}) {
+  const {
+    allowLocalFallback = false,
+    defaultMemberId = DEFAULT_MEMBER_ID,
+    fetchOrderHistory = false,
+  } = options
   const {
     items: sharedCartItems,
     addCartItem,
@@ -97,7 +102,7 @@ export function useStoreFlow() {
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState({
-    memberId: DEFAULT_MEMBER_ID,
+    memberId: defaultMemberId || DEFAULT_MEMBER_ID,
     name: '',
     email: '',
     phone: '',
@@ -118,6 +123,16 @@ export function useStoreFlow() {
     getKakaoReadyDebugInfo,
   )
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
+
+  useEffect(() => {
+    if (!defaultMemberId) return
+
+    setCheckoutForm((currentForm) =>
+      currentForm.memberId
+        ? currentForm
+        : { ...currentForm, memberId: defaultMemberId },
+    )
+  }, [defaultMemberId])
 
   const cartItems = useMemo(
     () =>
@@ -199,6 +214,13 @@ export function useStoreFlow() {
       setOrders(normalizeRemoteOrders(remoteOrders))
       setOrderHistoryMessage('')
     } catch (error) {
+      if (!allowLocalFallback) {
+        console.error('[Cart] Orders API failed.', error)
+        setOrders([])
+        setOrderHistoryMessage('Order history is unavailable.')
+        return
+      }
+
       console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
       setOrders(markLocalDevOrders(loadOrders()))
       setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
@@ -206,6 +228,12 @@ export function useStoreFlow() {
   }
 
   useEffect(() => {
+    if (!fetchOrderHistory) {
+      setOrders([])
+      setOrderHistoryMessage('')
+      return undefined
+    }
+
     let ignore = false
 
     fetchCartOrders()
@@ -216,6 +244,13 @@ export function useStoreFlow() {
       })
       .catch((error) => {
         if (ignore) return
+        if (!allowLocalFallback) {
+          console.error('[Cart] Orders API failed.', error)
+          setOrders([])
+          setOrderHistoryMessage('Order history is unavailable.')
+          return
+        }
+
         console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
         setOrders(markLocalDevOrders(loadOrders()))
         setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
@@ -224,7 +259,7 @@ export function useStoreFlow() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [allowLocalFallback, fetchOrderHistory])
 
   function useFallbackProducts() {
     setStoreProducts(fallbackProducts)
@@ -402,6 +437,13 @@ export function useStoreFlow() {
       savePaidOrder(paidOrder)
       await loadOrderHistory()
     } catch (error) {
+      if (!allowLocalFallback) {
+        console.error('[Cart] Order API save failed.', error)
+        setPaymentStatus(ORDER_STATUS.PAYMENT_FAILED)
+        setMessage('Order save failed. Please try again later.')
+        return
+      }
+
       console.error('[Cart] Order API save failed. Falling back to local preview.', error)
       const paidOrder = buildMockPaidOrder(pendingOrder)
       const nextOrders = persistOrder({ ...paidOrder, source: 'local-dev' })

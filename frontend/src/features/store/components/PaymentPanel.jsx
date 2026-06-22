@@ -27,28 +27,35 @@ function PaymentPanel({
   pendingPayment,
   totalPrice,
   totalQuantity,
+  allowDevPayment = false,
+  allowManualPaymentActions = false,
   onCancelPayment,
   onFailPayment,
   onPaymentMethodChange,
   onRetryPayment,
 }) {
   const paymentStatusLabel = getPaymentStatusLabel(paymentStatus)
+  const visiblePaymentMethod = allowDevPayment
+    ? paymentMethod
+    : PAYMENT_METHODS.KAKAO_PAY
 
   return (
     <aside className="payment-panel">
       <h3>Payment</h3>
       <fieldset className="payment-methods" disabled={isPaymentProcessing}>
         <legend>Payment method</legend>
-        <label>
-          <input
-            checked={paymentMethod === PAYMENT_METHODS.MOCK}
-            name="paymentMethod"
-            onChange={(event) => onPaymentMethodChange(event.target.value)}
-            type="radio"
-            value={PAYMENT_METHODS.MOCK}
-          />
-          Dev preview
-        </label>
+        {allowDevPayment && (
+          <label>
+            <input
+              checked={paymentMethod === PAYMENT_METHODS.MOCK}
+              name="paymentMethod"
+              onChange={(event) => onPaymentMethodChange(event.target.value)}
+              type="radio"
+              value={PAYMENT_METHODS.MOCK}
+            />
+            Dev preview
+          </label>
+        )}
         <label>
           <input
             checked={paymentMethod === PAYMENT_METHODS.KAKAO_PAY}
@@ -72,7 +79,7 @@ function PaymentPanel({
               <strong>{formatPrice(totalPrice)}</strong>
             </p>
             <p>
-              Method: <strong>{getPaymentMethodLabel(paymentMethod)}</strong>
+              Method: <strong>{getPaymentMethodLabel(visiblePaymentMethod)}</strong>
             </p>
             <p>
               Customer: {checkoutForm.name.trim() || '-'} /{' '}
@@ -104,7 +111,7 @@ function PaymentPanel({
       <button disabled={isCartEmpty || isPaymentProcessing} type="submit">
         {isPaymentProcessing
           ? 'Preparing payment...'
-          : paymentMethod === PAYMENT_METHODS.KAKAO_PAY
+          : visiblePaymentMethod === PAYMENT_METHODS.KAKAO_PAY
             ? 'Prepare KakaoPay'
             : 'Create dev preview order'}
       </button>
@@ -131,22 +138,24 @@ function PaymentPanel({
 
       {message && <p className="status-message">{message}</p>}
 
-      <div className="payment-actions">
-        <button
-          type="button"
-          onClick={onFailPayment}
-          disabled={isPaymentProcessing}
-        >
-          Mark failed
-        </button>
-        <button
-          type="button"
-          onClick={onCancelPayment}
-          disabled={isPaymentProcessing}
-        >
-          Mark canceled
-        </button>
-      </div>
+      {allowManualPaymentActions && (
+        <div className="payment-actions">
+          <button
+            type="button"
+            onClick={onFailPayment}
+            disabled={isPaymentProcessing}
+          >
+            Mark failed
+          </button>
+          <button
+            type="button"
+            onClick={onCancelPayment}
+            disabled={isPaymentProcessing}
+          >
+            Mark canceled
+          </button>
+        </div>
+      )}
     </aside>
   )
 }
