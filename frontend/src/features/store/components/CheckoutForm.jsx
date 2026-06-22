@@ -2,6 +2,14 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
   return (
     <div className="checkout-fields">
       <label>
+        Member ID
+        <input
+          value={checkoutForm.memberId}
+          onChange={(event) => onChange('memberId', event.target.value)}
+          placeholder="Server member id"
+        />
+      </label>
+      <label>
         Name
         <input
           value={checkoutForm.name}
