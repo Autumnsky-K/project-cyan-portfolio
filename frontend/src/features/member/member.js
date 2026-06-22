@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigError } from '../../api/supabaseClient'
+import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 
 const FAVORITE_ARTISTS = [
@@ -250,11 +250,8 @@ export async function exchangeAuthCodeForSession(code) {
 export async function signupMember(form) {
   checkSupabaseConfig()
 
-  const response = await fetch(`${API_BASE_URL}/members/signup`, {
+  const response = await apiFetch('/members/signup', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-    },
     body: JSON.stringify({
       email: form.email,
       password: form.password,
@@ -265,12 +262,7 @@ export async function signupMember(form) {
     }),
   })
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => null)
-    throw new Error(error?.message ?? '회원가입에 실패했습니다.')
-  }
-
-  const member = await response.json()
+  const member = await parseApiResponse(response, '회원가입에 실패했습니다.')
   const { error: loginError } = await supabase.auth.signInWithPassword({
     email: form.email,
     password: form.password,
