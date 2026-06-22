@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-
 import { CartProvider } from './features/cart/cartStore'
 
 import AuthCallbackPage from './features/member/AuthCallbackPage'
@@ -48,7 +47,7 @@ function AppShell() {
           <Route path="/" element={<Navigate replace to="/goods" />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
-          <Route path="/cart" element={<CartPage />} />
+          <Route path="/cart" element={<Store />} />
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
