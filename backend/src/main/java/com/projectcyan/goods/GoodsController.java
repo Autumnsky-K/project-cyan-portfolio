@@ -1,5 +1,7 @@
 package com.projectcyan.goods;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,5 +42,28 @@ public class GoodsController {
 	@GetMapping("/{goodsId}")
 	public GoodsDetailResponse findGoodsDetail(@PathVariable Long goodsId) {
 		return goodsService.findGoodsDetail(goodsId);
+	}
+
+	@GetMapping("/{goodsId}/related")
+	public List<GoodsSummaryResponse> findRelatedGoods(
+		@PathVariable Long goodsId,
+		@RequestParam(defaultValue = "8") int size
+	) {
+		return goodsService.findRelatedGoods(goodsId, size);
+	}
+
+	@GetMapping("/{goodsId}/reviews")
+	public PageResponse<GoodsReviewResponse> findGoodsReviews(
+		@PathVariable Long goodsId,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "5") int size,
+		@RequestParam(defaultValue = "newest") String sort
+	) {
+		return goodsService.findGoodsReviews(goodsId, page, size, sort);
+	}
+
+	@GetMapping("/{goodsId}/reviews/summary")
+	public GoodsReviewSummary findGoodsReviewSummary(@PathVariable Long goodsId) {
+		return goodsService.findGoodsReviewSummary(goodsId);
 	}
 }
