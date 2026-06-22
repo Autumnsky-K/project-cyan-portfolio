@@ -239,6 +239,27 @@
 - 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
 - 상태: [x] 동결
 
+#### [GET] /api/goods/recommendation-candidates
+- 설명: AI 답변의 근거로 사용할 판매 가능한 상품 후보 조회
+- 인증 필요: N
+- 요청 query:
+  - `q`: 사용자 자연어 또는 검색어
+  - `artistName`: AI가 추출한 아티스트명
+  - `categoryName`: AI가 추출한 카테고리명
+  - `tags`: comma-separated 태그 후보
+  - `maxPrice`: 최대 가격 KRW
+  - `excludeGoodsIds`: comma-separated 제외 상품 ID
+  - `page`: 기본 `0`
+  - `size`: 기본 `10`, 최대 `20`
+  - `sort`: `relevance,desc` 기본, `price,asc|desc` 지원
+- 응답: 페이지 객체, content = 기존 goods 요약 호환 필드 + `{ artistName, categoryName, salesStatus, stockCount, recommendationReason, matchedFields }`
+- 동작:
+  - 검색 필드는 확장 검색과 관련도 점수에 사용한다.
+  - 가격, 재고, 판매 상태, 제외 ID는 hard filter로 적용한다.
+  - 결과가 없으면 `200`과 빈 페이지를 반환한다.
+  - `search_alias`는 아티스트, 카테고리, 태그 FK 구조를 사용한다.
+- 상태: [x] additive
+
 ---
 
 ### 3.3 아티스트 (artists) — 담당: `__________`
@@ -401,9 +422,14 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
 | 2026-06-12 | v0.1.1 | ai | additive | ai websocket 입/출력 계약 추가 | 강승민 |
 | 2026-06-15 | v0.1.2 | goods | additive | `GET /api/goods`에 다중 선택 필터용 `categoryIds`, `artistIds`, `tags` query 추가. 기존 `categoryId`, `artistId`, `tag` query는 호환 유지 | Codex |
+<<<<<<< HEAD
+| 2026-06-15 | v0.1.2 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
+| 2026-06-22 | v0.1.5 | goods/ai | additive | AI 추천 후보용 `GET /api/goods/recommendation-candidates`와 Spring 카탈로그 기반 ACTION 검증 추가 | Codex |
+=======
 | 2026-06-15 | v0.1.3 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
 | 2026-06-16 | v0.1.4 | member | breaking | 인증 방식을 Supabase Auth로 확정하고 `userId`를 uuid로 동결 | 팀 합의 |
 | 2026-06-18 | v0.1.5 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
 | 2026-06-19 | v0.1.6 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
 | 2026-06-19 | v0.1.7 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
+>>>>>>> dev
 |  |  |  |  |  |  |

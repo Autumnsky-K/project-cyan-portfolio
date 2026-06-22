@@ -13,9 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class GoodsController {
 
 	private final GoodsService goodsService;
+	private final GoodsRecommendationService goodsRecommendationService;
 
-	public GoodsController(GoodsService goodsService) {
+	public GoodsController(
+		GoodsService goodsService,
+		GoodsRecommendationService goodsRecommendationService
+	) {
 		this.goodsService = goodsService;
+		this.goodsRecommendationService = goodsRecommendationService;
 	}
 
 	@GetMapping
@@ -32,6 +37,31 @@ public class GoodsController {
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
 		return goodsService.findGoods(q, artistId, artistIds, categoryId, categoryIds, tag, tags, page, size, sort);
+	}
+
+	@GetMapping("/recommendation-candidates")
+	public PageResponse<GoodsRecommendationResponse> findRecommendationCandidates(
+		@RequestParam(required = false) String q,
+		@RequestParam(required = false) String artistName,
+		@RequestParam(required = false) String categoryName,
+		@RequestParam(required = false) String tags,
+		@RequestParam(required = false) Integer maxPrice,
+		@RequestParam(required = false) String excludeGoodsIds,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "10") int size,
+		@RequestParam(defaultValue = "relevance,desc") String sort
+	) {
+		return goodsRecommendationService.findCandidates(
+			q,
+			artistName,
+			categoryName,
+			tags,
+			maxPrice,
+			excludeGoodsIds,
+			page,
+			size,
+			sort
+		);
 	}
 
 	@GetMapping("/filters")
