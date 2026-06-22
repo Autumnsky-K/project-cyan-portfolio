@@ -38,6 +38,20 @@ ActionPayload: TypeAlias = Union[NavigateAction, HighlightAction, AddToCartActio
 class ClientTextInput(BaseModel):
     type: Literal["text-input"] = CLIENT_TEXT_INPUT_TYPE
     text: str
+    context: "ClientContext | None" = None
+
+
+class CartContextItem(BaseModel):
+    goodsId: str | int
+    name: str
+    quantity: int
+    tags: list[str] = Field(default_factory=list)
+    artistName: str | None = None
+    categoryName: str | None = None
+
+
+class ClientContext(BaseModel):
+    cartItems: list[CartContextItem] = Field(default_factory=list)
 
 
 class FullTextMessage(BaseModel):

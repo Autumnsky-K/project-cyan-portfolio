@@ -16,12 +16,12 @@ const SPEAKING_STATE_DURATION_MS = 2400
 
 function VtuberChatbot(): ReactElement {
   const navigate = useNavigate()
-  const { addCartItem } = useCart()
+  const { addCartItem, items } = useCart()
   const executedActionBatchRef = useRef(0)
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [speakingBatchId, setSpeakingBatchId] = useState(0)
   const { actionBatchId, actions, connectionStatus, latestText, sendText } =
-    useVtuberWebSocket(INITIAL_BUBBLE_TEXT)
+    useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items)
 
   useEffect(() => {
     if (connectionStatus !== 'open') {
