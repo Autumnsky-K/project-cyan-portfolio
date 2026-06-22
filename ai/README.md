@@ -119,6 +119,14 @@ PROJECT_CYAN_LLM_MODEL=claude-3-haiku-20240307
 
 LLM provider는 응답 안의 `[ACTION:...]` 태그를 파싱해 WebSocket 응답의 `actions` 배열로 변환하고, 챗봇 말풍선에 표시되는 `text`에서는 해당 태그를 제거합니다.
 
+상품 관련 요청은 Spring의 추천 후보 API를 먼저 조회합니다. 기본 주소는 아래와 같으며 배포 환경에서는 환경변수로 변경합니다.
+
+```env
+PROJECT_CYAN_SPRING_API_URL=http://localhost:8080/api
+```
+
+Spring이 응답하지 않으면 기존 provider 응답으로 fallback합니다. Spring이 상품 후보를 반환하면 AI는 해당 응답에 포함된 `goodsId`의 ACTION만 전달합니다.
+
 ## 프론트엔드 연결
 
 프론트엔드 개발 서버를 로컬 AI 서버와 함께 실행할 때는 WebSocket URL을 환경변수로 넘깁니다.
