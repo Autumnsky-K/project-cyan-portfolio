@@ -79,13 +79,17 @@ class CatalogGroundedChatResponseProvider:
         self.delegate = delegate
         self.catalog_client = catalog_client
 
-    def build_response(self, text: str) -> FullTextMessage:
+    def build_response(
+        self,
+        text: str,
+        context: dict[str, Any] | None = None,
+    ) -> FullTextMessage:
         if not has_product_intent(text):
-            return self.delegate.build_response(text)
+            return self.delegate.build_response(text, context)
 
         candidates = self.catalog_client.search_candidates(text)
         if candidates is None:
-            return self.delegate.build_response(text)
+            return self.delegate.build_response(text, context)
         if not candidates:
             return FullTextMessage(
                 text="조건에 맞는 판매 가능한 상품을 찾지 못했어요.",
@@ -96,7 +100,7 @@ class CatalogGroundedChatResponseProvider:
             return build_mock_catalog_response(text, candidates)
 
         prompt = build_catalog_prompt(text, candidates)
-        response = self.delegate.build_response(prompt)
+        response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
             for candidate in candidates
