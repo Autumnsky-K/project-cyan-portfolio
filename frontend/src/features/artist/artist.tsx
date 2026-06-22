@@ -76,11 +76,10 @@ function ArtistPage(): ReactElement {
     <main className="artist-page">
       <header className="artist-header">
         <div>
-          <p className="artist-eyebrow">SM Universe Store</p>
+          <p className="artist-eyebrow">Cyan</p>
           <h1>Artists</h1>
         </div>
         <nav className="artist-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
           <Link to="/artists" aria-current="page">
             Artists
           </Link>
