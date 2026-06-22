@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { signupMember } from './member'
 import './SignupPage.css'
 
@@ -30,13 +30,13 @@ const OPTIONAL_TERMS = [
 ]
 
 function SignupPage() {
+  const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     name: '',
     phone: '',
     address: '',
     email: '',
-    loginId: '',
     password: '',
     passwordConfirm: '',
   })
@@ -100,8 +100,8 @@ function SignupPage() {
   const validateStepTwo = () => {
     const isRequiredAgreed = REQUIRED_TERMS.every((term) => agreements[term.id])
 
-    if (!form.loginId || !form.password || !form.passwordConfirm) {
-      setError('아이디와 비밀번호를 모두 입력해주세요.')
+    if (!form.password || !form.passwordConfirm) {
+      setError('비밀번호를 모두 입력해주세요.')
       return false
     }
 
@@ -145,13 +145,14 @@ function SignupPage() {
     setIsLoading(true)
 
     try {
-      // 회원 API 계약이 확정되기 전까지 member.js의 가짜 회원가입 API를 호출합니다.
+      // Supabase Auth 가입 후 DB 트리거가 public.member를 동기화합니다.
       const result = await signupMember({
         ...form,
         agreements,
       })
 
-      setMessage(`${result.member.name}님, 회원가입 화면 입력이 확인되었습니다.`)
+      setMessage(`${result.member.name}님, 회원가입 요청이 완료되었습니다.`)
+      navigate('/like')
     } catch (signupError) {
       setError(signupError.message)
     } finally {
@@ -241,19 +242,6 @@ function SignupPage() {
 
           {step === 2 && (
             <>
-              <label className="signup-field">
-                <span>아이디</span>
-                <input
-                  type="text"
-                  name="loginId"
-                  value={form.loginId}
-                  onChange={handleChange}
-                  placeholder="아이디를 입력하세요"
-                  autoComplete="username"
-                  required
-                />
-              </label>
-
               <label className="signup-field">
                 <span>비밀번호</span>
                 <input

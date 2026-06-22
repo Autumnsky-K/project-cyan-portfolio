@@ -4,7 +4,7 @@
 3	change	Additive API changes must update the docs/api-contract.md change log.
 4	change	Breaking API changes require team agreement, Slack notice, version update, and change log entry.
 5	change	Do not silently delete, rename, retype, or change frozen fields, statuses, DOM hooks, or actions.
-6	member	Do not implement member-dependent APIs until authentication method and userId type are finalized.
+6	member	Use Supabase Auth for member authentication and treat public.member.member_uuid as auth.users.id.
 7	global	Use http://localhost:8080/api as the Spring development API base URL unless instructed otherwise.
 8	global	Use Content-Type: application/json; charset=utf-8 for API requests and responses.
 9	auth	Use Authorization: Bearer <token> for authenticated APIs after auth is finalized.
