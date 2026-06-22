@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.1.0 (초안)` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.1.6` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -226,6 +226,19 @@
 - **추가 가능 필드**: `discountRate`, `images[]`(다중 이미지), `releaseDate` 등 — 자유 추가
 - **비고**: `goodsId`는 AI `[ACTION]`과 DOM `data-goods-id`(§4)에서 그대로 사용된다. **절대 타입/이름 변경 금지.**
 
+#### [GET] /api/goods/{goodsId}/reviews
+- 설명: 상품 리뷰 목록 조회
+- 인증 필요: N
+- 요청 query: `page=0&size=5&sort=newest|rating`
+- 응답: 페이지 객체, content = `{ reviewId, rating, authorName, optionLabel, content, createdAt }`
+- 상태: [x] 동결
+
+#### [GET] /api/goods/{goodsId}/reviews/summary
+- 설명: 상품 리뷰 평점 요약 조회
+- 인증 필요: N
+- 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
+- 상태: [x] 동결
+
 ---
 
 ### 3.3 아티스트 (artists) — 담당: `__________`
@@ -289,14 +302,41 @@
 
 ---
 
-### 3.5 AI 플랫폼 (ai) — 담당: `__________`
+### 3.5 AI 플랫폼 (ai) — 담당: `강승민`
 
 > 캐릭터 아일랜드 ↔ OLV WebSocket. REST가 아니라 **WebSocket 메시지 형태**가 계약이다.
 
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
+- 클라이언트 → 서버 메시지 추가 가능 필드: `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - `actions` 배열 형식은 §4 따름
+- WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
+
+#### 초기 구성
+- WebSocket endpoint: /client-ws
+- 입력 메시지: { type: "text-input", text: string }
+- 입력 메시지 optional context:
+
+```json
+{
+  "context": {
+    "cartItems": [
+      {
+        "goodsId": 42,
+        "name": "aespa OST 포토카드 세트",
+        "quantity": 1,
+        "tags": ["PHOTOCARD", "AESPA"],
+        "artistName": "aespa",
+        "categoryName": "포토카드"
+      }
+    ]
+  }
+}
+```
+
+- 출력 메시지: { type: string, text: string, actions: array }
+- 초기 MVP에서 actions는 빈 배열 허용
 
 *(정확한 메시지 타입은 OLV 코드 확인 후 채울 것)*
 
@@ -343,11 +383,27 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 - additive(추가): 버전 유지 또는 수(patch)만 ↑
 - breaking(삭제·이름변경·타입변경·status 변경): 부(minor) ↑ + 슬랙 공지 필수
 
+### 예시
 | 날짜 | 버전 | 도메인 | 종류 | 변경 내용 | 합의자 |
 |------|------|--------|------|-----------|--------|
 | 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
 | 2026-06-12 | v0.1.0 | artists | additive | `GET /api/artists` 목록 계약 및 artist 요약 객체 추가 | 아티스트 |
 | 2026-06-1X | v0.1.1 | (예) goods | additive | `discountRate` 필드 추가 | 굿즈 |
 | 2026-06-1X | v0.2.0 | (예) goods | breaking | `price` 타입 String→int 변경 | 전원 |
-| 2026-06-16 | v0.2.0 | member | breaking | 인증 방식을 Supabase Auth로 확정하고 `userId`를 uuid로 동결 | 팀 합의 |
+| 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
+| 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
+|  |  |  |  |  |  |
+
+### 로그 기록
+
+| 날짜 | 버전 | 도메인 | 종류 | 변경 내용 | 합의자 |
+|------|------|--------|------|-----------|--------|
+| 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
+| 2026-06-12 | v0.1.1 | ai | additive | ai websocket 입/출력 계약 추가 | 강승민 |
+| 2026-06-15 | v0.1.2 | goods | additive | `GET /api/goods`에 다중 선택 필터용 `categoryIds`, `artistIds`, `tags` query 추가. 기존 `categoryId`, `artistId`, `tag` query는 호환 유지 | Codex |
+| 2026-06-15 | v0.1.3 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
+| 2026-06-16 | v0.1.4 | member | breaking | 인증 방식을 Supabase Auth로 확정하고 `userId`를 uuid로 동결 | 팀 합의 |
+| 2026-06-18 | v0.1.5 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
+| 2026-06-19 | v0.1.6 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
+| 2026-06-19 | v0.1.7 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 |  |  |  |  |  |  |

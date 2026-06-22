@@ -69,6 +69,11 @@ public class Goods {
 	protected Goods() {
 	}
 
+	Goods(Long goodsId) {
+		this.goodsId = goodsId;
+		this.createdAt = Instant.now();
+	}
+
 	public Long getGoodsId() {
 		return goodsId;
 	}
@@ -119,5 +124,38 @@ public class Goods {
 
 	public Set<Tag> getTags() {
 		return tags;
+	}
+
+	void update(
+		String goodsName,
+		Integer price,
+		String description,
+		String mainImageUrl,
+		Artist artist,
+		GoodsCategory category,
+		String salesStatus,
+		Boolean bestSeller,
+		Boolean aiPickDefault,
+		Set<Tag> tags
+	) {
+		this.goodsName = goodsName;
+		this.price = price;
+		this.description = description;
+		this.mainImageUrl = mainImageUrl;
+		this.artist = artist;
+		this.category = category;
+		this.salesStatus = salesStatus;
+		this.bestSeller = bestSeller;
+		this.aiPickDefault = aiPickDefault;
+		this.tags.clear();
+		this.tags.addAll(tags);
+	}
+
+	void updateSalesStatus(String salesStatus) {
+		this.salesStatus = salesStatus;
+	}
+
+	void setStockCount(Integer stockCount) {
+		this.stockCount = stockCount;
 	}
 }

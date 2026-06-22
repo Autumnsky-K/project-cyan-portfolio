@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { Link } from 'react-router-dom'
 
 import './artist.css'
 
@@ -79,12 +80,12 @@ function ArtistPage(): ReactElement {
           <h1>Artists</h1>
         </div>
         <nav className="artist-nav" aria-label="Store navigation">
-          <a href="#home">Home</a>
-          <a href="#artists" aria-current="page">
+          <Link to="/">Home</Link>
+          <Link to="/artists" aria-current="page">
             Artists
-          </a>
-          <a href="#goods">Goods</a>
-          <a href="#cart">Cart</a>
+          </Link>
+          <Link to="/goods">Goods</Link>
+          <Link to="/cart">Cart</Link>
         </nav>
       </header>
 

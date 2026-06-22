@@ -1,5 +1,7 @@
 package com.projectcyan.goods;
 
+import java.util.Collection;
+
 import org.springframework.data.jpa.domain.Specification;
 
 import jakarta.persistence.criteria.Join;
@@ -32,10 +34,28 @@ final class GoodsSpecifications {
 			: builder.equal(root.join("artist", JoinType.LEFT).get("artistId"), artistId);
 	}
 
+	static Specification<Goods> hasArtists(Collection<Long> artistIds) {
+		return (root, query, builder) -> {
+			if (artistIds == null || artistIds.isEmpty()) {
+				return builder.conjunction();
+			}
+			return root.join("artist", JoinType.LEFT).get("artistId").in(artistIds);
+		};
+	}
+
 	static Specification<Goods> hasCategory(Long categoryId) {
 		return (root, query, builder) -> categoryId == null
 			? builder.conjunction()
 			: builder.equal(root.join("category", JoinType.LEFT).get("categoryId"), categoryId);
+	}
+
+	static Specification<Goods> hasCategories(Collection<Long> categoryIds) {
+		return (root, query, builder) -> {
+			if (categoryIds == null || categoryIds.isEmpty()) {
+				return builder.conjunction();
+			}
+			return root.join("category", JoinType.LEFT).get("categoryId").in(categoryIds);
+		};
 	}
 
 	static Specification<Goods> hasTag(String tag) {
@@ -48,6 +68,24 @@ final class GoodsSpecifications {
 			}
 			Join<Goods, Tag> tags = root.joinSet("tags", JoinType.LEFT);
 			return builder.equal(builder.upper(tags.get("tagName")), tag.trim().toUpperCase());
+		};
+	}
+
+	static Specification<Goods> hasTags(Collection<String> tagNames) {
+		return (root, query, builder) -> {
+			if (tagNames == null || tagNames.isEmpty()) {
+				return builder.conjunction();
+			}
+			if (query != null) {
+				query.distinct(true);
+			}
+			Join<Goods, Tag> tags = root.joinSet("tags", JoinType.LEFT);
+			return builder.upper(tags.get("tagName")).in(
+				tagNames.stream()
+					.filter(tagName -> tagName != null && !tagName.isBlank())
+					.map(tagName -> tagName.trim().toUpperCase())
+					.toList()
+			);
 		};
 	}
 }

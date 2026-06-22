@@ -1,0 +1,21 @@
+[project]
+name = "project-cyan-ai"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]>=0.136.3,<0.137.0",
+    "pydantic-settings>=2.14.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
+
+[build-system]
+requires = ["setuptools>=80.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

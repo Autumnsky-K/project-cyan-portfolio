@@ -1,0 +1,14 @@
+{
+  "name": "project-cyan",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "concurrently -k -n frontend,backend,ai -c cyan,green,magenta \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ai\"",
+    "dev:frontend": "npm --prefix frontend run dev --",
+    "dev:backend": "node scripts/dev-backend.mjs",
+    "dev:ai": "node scripts/dev-ai.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}

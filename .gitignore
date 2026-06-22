@@ -59,6 +59,7 @@ out/
 .env
 .env.*
 !.env.example
+!frontend/.env.development
 **/application-local.yml
 **/application-local.properties
 
@@ -69,7 +70,12 @@ out/
 node_modules/
 dist/
 
+# Live2D proprietary runtime fetched locally; see frontend/README.md.
+frontend/public/live2d/runtime/live2dcubismcore.min.js
+
 # Python
 __pycache__/
 *.py[cod]
 .venv/
+.uv-cache/
+*.egg-info/
