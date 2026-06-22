@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Live2D proprietary runtime fetched locally; see README.md.
+public/live2d/runtime/live2dcubismcore.min.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

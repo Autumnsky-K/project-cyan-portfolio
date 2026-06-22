@@ -2,6 +2,8 @@
 
 project-cyan의 FastAPI 기반 AI WebSocket 서버입니다.
 
+프론트엔드 WebSocket, provider env, Live2D 렌더러까지 포함한 전체 로컬 통합 설정은 `../docs/ai-live2d-local-setup.md`를 참고합니다.
+
 ## 준비
 
 Python 3.10 이상을 사용합니다.
