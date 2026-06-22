@@ -9,8 +9,6 @@ import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import ArtistPage from './features/artist/artist.tsx'
 
-import { useEffect, useState } from 'react.jsx'
-
 function getCurrentPage() {
   return window.location.hash === '#artists' ? 'artists' : 'goods'
 }
