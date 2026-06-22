@@ -3,6 +3,10 @@ from uuid import uuid4
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
+from project_cyan_ai.goods_catalog import (
+    CatalogGroundedChatResponseProvider,
+    HttpGoodsCatalogClient,
+)
 from project_cyan_ai.providers import get_chat_response_provider
 from project_cyan_ai.schemas.ws import (
     CLIENT_TEXT_INPUT_TYPE,
@@ -11,6 +15,7 @@ from project_cyan_ai.schemas.ws import (
     FullTextMessage,
     ModelConfigMessage,
 )
+from project_cyan_ai.settings import get_settings
 
 router = APIRouter()
 
@@ -19,7 +24,11 @@ router = APIRouter()
 async def client_ws(websocket: WebSocket):
     await websocket.accept()
     client_uid = str(uuid4())
-    response_provider = get_chat_response_provider()
+    settings = get_settings()
+    response_provider = CatalogGroundedChatResponseProvider(
+        delegate=get_chat_response_provider(),
+        catalog_client=HttpGoodsCatalogClient(settings.spring_api_url),
+    )
 
     await websocket.send_json(
         FullTextMessage(text="Connection established").model_dump()
@@ -50,7 +59,7 @@ async def client_ws(websocket: WebSocket):
                 )
                 continue
 
-            response = response_provider.build_response(message.text)
+            response = response_provider.build_response(message.text, message.context)
             await websocket.send_json(response.model_dump())
 
     except WebSocketDisconnect:

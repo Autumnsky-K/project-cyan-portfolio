@@ -2,6 +2,8 @@
 
 project-cyan의 FastAPI 기반 AI WebSocket 서버입니다.
 
+프론트엔드 WebSocket, provider env, Live2D 렌더러까지 포함한 전체 로컬 통합 설정은 `../docs/ai-live2d-local-setup.md`를 참고합니다.
+
 ## 준비
 
 Python 3.10 이상을 사용합니다.
@@ -116,6 +118,14 @@ PROJECT_CYAN_LLM_MODEL=claude-3-haiku-20240307
 `PROJECT_CYAN_OLV_GATEWAY_URL`과 `PROJECT_CYAN_OLV_API_KEY`는 OLV-compatible REST gateway가 별도로 있을 때만 쓰는 실험적 호환 설정입니다. OLV 원본 서버의 `/client-ws` WebSocket을 Project Cyan AI 서버가 다시 호출하는 구조는 현재 권장 경로가 아닙니다.
 
 LLM provider는 응답 안의 `[ACTION:...]` 태그를 파싱해 WebSocket 응답의 `actions` 배열로 변환하고, 챗봇 말풍선에 표시되는 `text`에서는 해당 태그를 제거합니다.
+
+상품 관련 요청은 Spring의 추천 후보 API를 먼저 조회합니다. 기본 주소는 아래와 같으며 배포 환경에서는 환경변수로 변경합니다.
+
+```env
+PROJECT_CYAN_SPRING_API_URL=http://localhost:8080/api
+```
+
+Spring이 응답하지 않으면 기존 provider 응답으로 fallback합니다. Spring이 상품 후보를 반환하면 AI는 해당 응답에 포함된 `goodsId`의 ACTION만 전달합니다.
 
 ## 프론트엔드 연결
 

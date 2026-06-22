@@ -73,6 +73,9 @@ out/
 node_modules/
 dist/
 
+# Live2D proprietary runtime fetched locally; see frontend/README.md.
+frontend/public/live2d/runtime/live2dcubismcore.min.js
+
 # Python
 __pycache__/
 *.py[cod]

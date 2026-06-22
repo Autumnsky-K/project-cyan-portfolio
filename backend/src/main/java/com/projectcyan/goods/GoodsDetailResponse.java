@@ -1,11 +1,14 @@
 package com.projectcyan.goods;
 
+import java.time.Instant;
+import java.util.List;
+
 public record GoodsDetailResponse(
 	Long goodsId,
 	String name,
 	Integer price,
 	String imageUrl,
-	java.util.List<String> tags,
+	List<String> tags,
 	String description,
 	Long artistId,
 	Integer stockCount,
@@ -13,27 +16,71 @@ public record GoodsDetailResponse(
 	String categoryName,
 	String salesStatus,
 	Boolean isBestSeller,
-	Boolean aiPickDefault
+	Boolean aiPickDefault,
+	String saleType,
+	Instant saleStartAt,
+	Instant saleEndAt,
+	String purchaseState,
+	String purchaseMessage,
+	GoodsShippingResponse shipping,
+	List<GoodsOptionGroupResponse> optionGroups,
+	List<GoodsVariantResponse> variants,
+	GoodsNoticesResponse notices,
+	Double averageRating,
+	Long reviewCount
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
-		return from(goods, goods.getDescription());
+		return from(
+			goods,
+			new GoodsDetailMetadata(
+				"STANDARD",
+				null,
+				null,
+				new GoodsShippingResponse(3000, "Project Cyan Delivery", "국내", null),
+				new GoodsNoticesResponse(null, null, null),
+				List.of(),
+				List.of()
+			),
+			goods.getStockCount() != null && goods.getStockCount() > 0 ? "AVAILABLE" : "SOLD_OUT",
+			goods.getStockCount() != null && goods.getStockCount() > 0
+				? "구매 가능한 상품입니다."
+				: "품절된 상품입니다.",
+			GoodsReviewSummary.empty()
+		);
 	}
 
-	public static GoodsDetailResponse from(Goods goods, String description) {
+	public static GoodsDetailResponse from(
+		Goods goods,
+		GoodsDetailMetadata metadata,
+		String purchaseState,
+		String purchaseMessage,
+		GoodsReviewSummary reviewSummary
+	) {
 		return new GoodsDetailResponse(
 			goods.getGoodsId(),
 			goods.getGoodsName(),
 			goods.getPrice(),
 			goods.getMainImageUrl(),
 			goods.getTags().stream().map(Tag::getTagName).toList(),
-			description,
+			goods.getDescription(),
 			goods.getArtist() == null ? null : goods.getArtist().getArtistId(),
 			goods.getStockCount(),
 			goods.getArtist() == null ? null : goods.getArtist().getArtistName(),
 			goods.getCategory() == null ? null : goods.getCategory().getCategoryName(),
 			goods.getSalesStatus(),
 			goods.getBestSeller(),
-			goods.getAiPickDefault()
+			goods.getAiPickDefault(),
+			metadata.saleType(),
+			metadata.saleStartAt(),
+			metadata.saleEndAt(),
+			purchaseState,
+			purchaseMessage,
+			metadata.shipping(),
+			metadata.optionGroups(),
+			metadata.variants(),
+			metadata.notices(),
+			reviewSummary.averageRating(),
+			reviewSummary.reviewCount()
 		);
 	}
 }

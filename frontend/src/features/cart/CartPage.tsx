@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCart } from './useCart'
 import './cart.css'
-
-const SHIPPING_FEE = 3000
+import Header from '../../shared/components/Header'
 
 function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
@@ -12,25 +11,12 @@ function CartPage() {
   const { items, updateCartItemQuantity, removeCartItem, clearCart } = useCart()
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
-  const shippingFee = items.length > 0 ? SHIPPING_FEE : 0
+  const shippingFee = items.reduce((maximum, item) => Math.max(maximum, item.shippingFee), 0)
   const total = subtotal + shippingFee
 
   return (
     <main className="cart-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Cart</h1>
-        </div>
-        <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
-          <Link to="/artists">Artists</Link>
-          <Link to="/goods">Goods</Link>
-          <span aria-hidden="true" className="store-nav-spacer">
-            Cart
-          </span>
-        </nav>
-      </header>
+      <Header />
 
       <section className="cart-layout">
         <div className="cart-items" aria-label="Cart items">
@@ -57,7 +43,7 @@ function CartPage() {
           )}
 
           {items.map((item) => (
-            <article className="cart-item" key={item.goodsId}>
+            <article className="cart-item" key={item.cartItemKey}>
               <div className="cart-item-image" aria-label={`${item.name} image`}>
                 {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <span>{item.categoryName}</span>}
               </div>
@@ -69,6 +55,7 @@ function CartPage() {
                 </div>
                 <div className="cart-item-tags">
                   <span>{item.categoryName}</span>
+                  {item.variantLabel && <span>{item.variantLabel}</span>}
                   {item.tags.slice(0, 2).map((tag) => (
                     <span key={tag}>{tag}</span>
                   ))}
@@ -78,14 +65,15 @@ function CartPage() {
               <div className="quantity-control" aria-label={`${item.name} quantity`}>
                 <button
                   type="button"
-                  onClick={() => updateCartItemQuantity(item.goodsId, item.quantity - 1)}
+                  onClick={() => updateCartItemQuantity(item.cartItemKey, item.quantity - 1)}
                 >
                   -
                 </button>
                 <span>{item.quantity}</span>
                 <button
                   type="button"
-                  onClick={() => updateCartItemQuantity(item.goodsId, item.quantity + 1)}
+                  disabled={item.maxQuantity !== null && item.quantity >= item.maxQuantity}
+                  onClick={() => updateCartItemQuantity(item.cartItemKey, item.quantity + 1)}
                 >
                   +
                 </button>
@@ -93,7 +81,7 @@ function CartPage() {
 
               <div className="cart-item-price">
                 <strong>{formatPrice(item.price * item.quantity)}</strong>
-                <button type="button" onClick={() => removeCartItem(item.goodsId)}>
+                <button type="button" onClick={() => removeCartItem(item.cartItemKey)}>
                   Remove
                 </button>
               </div>

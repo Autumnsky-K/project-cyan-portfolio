@@ -24,7 +24,7 @@ public class AdminUiPreviewPageController {
 	private final String frontendPreviewBaseUrl;
 
 	public AdminUiPreviewPageController(
-		@Value("${project-cyan.frontend.preview-base-url:http://127.0.0.1:5173}") String frontendPreviewBaseUrl
+		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
 	) {
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
@@ -128,7 +128,7 @@ public class AdminUiPreviewPageController {
 
 	private static String trimTrailingSlash(String value) {
 		if (value == null || value.isBlank()) {
-			return "http://127.0.0.1:5173";
+			return "http://localhost:5173";
 		}
 		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
