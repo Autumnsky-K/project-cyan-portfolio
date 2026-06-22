@@ -17,6 +17,18 @@ export type VtuberCharacterConfig = {
 export type VtuberClientTextInputMessage = {
   type: 'text-input'
   text: string
+  context?: {
+    cartItems?: VtuberClientCartItem[]
+  }
+}
+
+export type VtuberClientCartItem = {
+  goodsId: string | number
+  name: string
+  quantity: number
+  tags: string[]
+  artistName: string
+  categoryName: string
 }
 
 export type NavigateAction = {

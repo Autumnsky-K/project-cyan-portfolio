@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  type VtuberClientCartItem,
   type VtuberAction,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
@@ -61,7 +62,10 @@ function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
   }
 }
 
-export function useVtuberWebSocket(initialText: string): UseVtuberWebSocketResult {
+export function useVtuberWebSocket(
+  initialText: string,
+  cartItems: VtuberClientCartItem[] = [],
+): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const closedByHookRef = useRef(false)
   const sawConnectionErrorRef = useRef(false)
@@ -129,11 +133,21 @@ export function useVtuberWebSocket(initialText: string): UseVtuberWebSocketResul
     const message: VtuberClientTextInputMessage = {
       type: 'text-input',
       text: trimmedText,
+      context: {
+        cartItems: cartItems.map((item) => ({
+          goodsId: item.goodsId,
+          name: item.name,
+          quantity: item.quantity,
+          tags: item.tags,
+          artistName: item.artistName,
+          categoryName: item.categoryName,
+        })),
+      },
     }
 
     socket.send(JSON.stringify(message))
     return true
-  }, [])
+  }, [cartItems])
 
   return {
     actionBatchId,

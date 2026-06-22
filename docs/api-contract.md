@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.1.2` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.1.3` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -286,6 +286,7 @@
 
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
+- 클라이언트 → 서버 메시지 추가 가능 필드: `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
@@ -293,6 +294,25 @@
 #### 초기 구성
 - WebSocket endpoint: /client-ws
 - 입력 메시지: { type: "text-input", text: string }
+- 입력 메시지 optional context:
+
+```json
+{
+  "context": {
+    "cartItems": [
+      {
+        "goodsId": 42,
+        "name": "aespa OST 포토카드 세트",
+        "quantity": 1,
+        "tags": ["PHOTOCARD", "AESPA"],
+        "artistName": "aespa",
+        "categoryName": "포토카드"
+      }
+    ]
+  }
+}
+```
+
 - 출력 메시지: { type: string, text: string, actions: array }
 - 초기 MVP에서 actions는 빈 배열 허용
 
@@ -358,4 +378,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-12 | v0.1.1 | ai | additive | ai websocket 입/출력 계약 추가 | 강승민 |
 | 2026-06-15 | v0.1.2 | goods | additive | `GET /api/goods`에 다중 선택 필터용 `categoryIds`, `artistIds`, `tags` query 추가. 기존 `categoryId`, `artistId`, `tag` query는 호환 유지 | Codex |
 | 2026-06-15 | v0.1.2 | ai | additive | WebSocket ACTION 응답 객체 형태 추가 (`navigate`, `highlight`, `addToCart`) | 강승민 |
+| 2026-06-19 | v0.1.3 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
 |  |  |  |  |  |  |
