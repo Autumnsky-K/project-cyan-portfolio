@@ -19,15 +19,6 @@
   padding: 28px 32px 48px;
 }
 
-.store-nav-spacer {
-  visibility: hidden;
-  padding: 8px 12px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font: inherit;
-  pointer-events: none;
-}
-
 .cart-items,
 .cart-summary {
   display: grid;
@@ -243,10 +234,6 @@
 }
 
 @media (max-width: 620px) {
-  .store-nav-spacer {
-    display: none;
-  }
-
   .cart-heading,
   .cart-item {
     align-items: stretch;
