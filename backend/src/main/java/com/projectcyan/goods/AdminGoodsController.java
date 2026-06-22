@@ -3,7 +3,6 @@ package com.projectcyan.goods;
 import java.net.URI;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,9 +55,9 @@ public class AdminGoodsController {
 		return adminGoodsService.updateStock(goodsId, request);
 	}
 
-	@DeleteMapping("/{goodsId}")
-	public ResponseEntity<Void> deleteGoods(@PathVariable Long goodsId) {
-		adminGoodsService.deleteGoods(goodsId);
+	@PatchMapping("/{goodsId}/discontinue")
+	public ResponseEntity<Void> discontinueGoods(@PathVariable Long goodsId) {
+		adminGoodsService.discontinueGoods(goodsId);
 		return ResponseEntity.noContent().build();
 	}
 }
