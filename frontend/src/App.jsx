@@ -1,12 +1,19 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import GoodsPage from './features/goods/goods'
+import GoodsPage from './features/goods/goods.jsx'
 import AuthCallbackPage from './features/member/AuthCallbackPage'
 import ForgotPasswordPage from './features/member/ForgotPasswordPage'
 import LikePage from './features/member/LikePage'
-import LoginPage from './features/member/LoginPage'
+import LoginPage from './features/member/LoginPage.jsx'
 import MyPage from './features/member/MyPage'
 import ResetPasswordPage from './features/member/ResetPasswordPage'
-import SignupPage from './features/member/SignupPage'
+import SignupPage from './features/member/SignupPage.jsx'
+import ArtistPage from './features/artist/artist.tsx'
+
+import { useEffect, useState } from 'react.jsx'
+
+function getCurrentPage() {
+  return window.location.hash === '#artists' ? 'artists' : 'goods'
+}
 
 function App() {
   return (
@@ -23,6 +30,7 @@ function App() {
         <Route path="/likes/artists" element={<LikePage />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/goods" element={<GoodsPage />} />
+        <Route path="/artists" element={<ArtistPage />} />
       </Routes>
     </BrowserRouter>
   )
