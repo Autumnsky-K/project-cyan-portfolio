@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import CartPanel from '../features/store/components/CartPanel'
 import CheckoutForm from '../features/store/components/CheckoutForm'
 import OrderHistory from '../features/store/components/OrderHistory'
@@ -6,26 +5,14 @@ import PaymentPanel from '../features/store/components/PaymentPanel'
 import ProductList from '../features/store/components/ProductList'
 import { useStoreFlow } from '../features/store/hooks/useStoreFlow'
 import './Store.css'
+import Header from '../shared/components/Header'
 
 function Store() {
   const store = useStoreFlow()
 
   return (
     <main className="store-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Cart</h1>
-        </div>
-        <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/">Home</Link>
-          <Link to="/artists">Artists</Link>
-          <Link to="/goods">Goods</Link>
-          <Link to="/cart" aria-current="page">
-            Cart
-          </Link>
-        </nav>
-      </header>
+      <Header />
 
       <section className="store-toolbar" aria-label="Cart summary">
         <div className="cart-total">

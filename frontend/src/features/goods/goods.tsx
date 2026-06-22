@@ -1,5 +1,4 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   fetchGoods,
   fetchGoodsFilters,
@@ -7,7 +6,6 @@ import {
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
-import CartNavLink from '../cart/CartNavLink'
 import GoodsCards, { type GoodsViewMode } from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
@@ -23,6 +21,7 @@ import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
+import Header from '../../shared/components/Header'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
@@ -199,19 +198,7 @@ function GoodsPage() {
 
   return (
     <main className="goods-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Goods</h1>
-        </div>
-        <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/artists">Artists</Link>
-          <Link to="/goods" aria-current="page">
-            Goods
-          </Link>
-          <CartNavLink />
-        </nav>
-      </header>
+      <Header />
 
       <nav className="goods-section-tabs" aria-label="Goods sections">
         <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useCart } from './useCart'
 import './cart.css'
+import Header from '../../shared/components/Header'
 
 function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
@@ -15,19 +16,7 @@ function CartPage() {
 
   return (
     <main className="cart-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Cart</h1>
-        </div>
-        <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/artists">Artists</Link>
-          <Link to="/goods">Goods</Link>
-          <span aria-hidden="true" className="store-nav-spacer">
-            Cart
-          </span>
-        </nav>
-      </header>
+      <Header />
 
       <section className="cart-layout">
         <div className="cart-items" aria-label="Cart items">

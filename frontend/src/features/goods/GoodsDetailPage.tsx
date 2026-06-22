@@ -6,13 +6,13 @@ import {
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
-import CartNavLink from '../cart/CartNavLink'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import './goods.css'
 import './goods-detail.css'
+import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
 type DetailTab = 'intro' | 'notice' | 'reviews'
@@ -148,17 +148,7 @@ function GoodsDetailPage() {
 
   return (
     <main className="goods-page goods-detail-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">Project Cyan Store</p>
-          <h1>상품 상세</h1>
-        </div>
-        <nav className="store-nav" aria-label="스토어 메뉴">
-          <Link to="/artists">아티스트</Link>
-          <Link to="/goods" aria-current="page">굿즈</Link>
-          <CartNavLink />
-        </nav>
-      </header>
+      <Header />
 
       <section className="detail-toolbar">
         <Link className="detail-action" to="/goods">← 상품 목록</Link>
