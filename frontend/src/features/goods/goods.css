@@ -429,7 +429,6 @@ button.goods-rating-summary {
 .goods-card h3 {
   display: -webkit-box;
   min-width: 0;
-  min-height: 2.5em;
   overflow: hidden;
   margin: 0;
   color: var(--goods-ink);
@@ -454,6 +453,7 @@ button.goods-rating-summary {
 .goods-card p {
   min-width: 0;
   overflow: hidden;
+  margin: 0;
   color: var(--goods-muted);
   font-size: 14px;
   text-overflow: ellipsis;
@@ -466,16 +466,16 @@ button.goods-rating-summary {
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
-  overflow: hidden;
-  max-height: 28px;
 }
 
 .tag-row span {
+  box-sizing: border-box;
   padding: 4px 7px;
   border: 1px solid var(--goods-line);
   border-radius: 4px;
   color: var(--goods-muted);
   font-size: 12px;
+  line-height: 1.2;
 }
 
 .card-footer strong {
