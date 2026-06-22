@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { platform } from "node:os";
 
 const isWindows = platform() === "win32";
-const command = isWindows ? "uv.cmd" : "uv";
+const command = "uv";
 
 const child = spawn(
   command,
@@ -25,7 +25,7 @@ const child = spawn(
       PYTHONIOENCODING: "utf-8",
     },
     stdio: "inherit",
-    shell: isWindows,
+    shell: false,
   },
 );
 

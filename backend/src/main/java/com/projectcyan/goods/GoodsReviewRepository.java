@@ -20,7 +20,7 @@ public class GoodsReviewRepository {
 	}
 
 	public Map<Long, GoodsReviewSummary> findSummaries(Collection<Long> goodsIds) {
-		if (goodsIds == null || goodsIds.isEmpty()) {
+		if (goodsIds == null || goodsIds.isEmpty() || !hasReviewTable()) {
 			return Map.of();
 		}
 
@@ -62,6 +62,10 @@ public class GoodsReviewRepository {
 	}
 
 	public PageResponse<GoodsReviewResponse> findReviews(Long goodsId, int page, int size, String sort) {
+		if (!hasReviewTable()) {
+			return new PageResponse<>(List.of(), page, size, 0, 0);
+		}
+
 		int offset = page * size;
 		String orderBy = "rating".equalsIgnoreCase(sort)
 			? "rating desc, created_at desc, review_id desc"
@@ -96,5 +100,12 @@ public class GoodsReviewRepository {
 		);
 		int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
 		return new PageResponse<>(reviews, page, size, totalElements, totalPages);
+	}
+
+	private boolean hasReviewTable() {
+		return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+			"select to_regclass('public.goods_review') is not null",
+			Boolean.class
+		));
 	}
 }
