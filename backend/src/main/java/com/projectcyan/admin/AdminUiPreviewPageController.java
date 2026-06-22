@@ -50,14 +50,14 @@ public class AdminUiPreviewPageController {
 
 	private List<AdminPreviewPage> previewPages() {
 		Map<String, AdminPreviewPage> pages = new LinkedHashMap<>();
-		addPage(pages, "home", "홈 페이지 미리보기", "PPT형 풀페이지 홈 화면", "/", true, false);
-		addPage(pages, "artists", "아티스트 페이지 미리보기", "아티스트 카드/탐색 화면", "/artists", true, false);
-		addPage(pages, "goods", "굿즈 페이지 미리보기", "상품 목록과 필터 화면", "/goods", true, false);
+		addPage(pages, "home", "홈 화면 미리보기", "메인 진입 화면", "/", true, false);
+		addPage(pages, "artists", "아티스트 화면 미리보기", "아티스트 카드와 검색 화면", "/artists", true, false);
+		addPage(pages, "goods", "굿즈 화면 미리보기", "상품 목록과 필터 화면", "/goods", true, false);
 		addPage(pages, "cart", "장바구니 화면 미리보기", "선택 상품과 결제 진입 화면", "/cart", true, false);
 		addPage(pages, "login", "로그인 화면 미리보기", "회원 로그인 화면", "/login", true, false);
 		addPage(pages, "signup", "회원가입 화면 미리보기", "신규 회원 가입 화면", "/signup", true, false);
-		addPage(pages, "member-profile", "회원 프로필 화면 미리보기", "마이페이지 개인정보 영역", "/account", false, false);
-		addPage(pages, "shipping", "배송 화면 미리보기", "배송지/배송상태/주문 배송 정보", "/shipping", false, false);
+		addPage(pages, "member-profile", "회원 프로필 화면 미리보기", "마이페이지 개인 정보 영역", "/account", false, false);
+		addPage(pages, "shipping", "배송 화면 미리보기", "배송지, 배송 상태, 주문 배송 정보", "/shipping", false, false);
 
 		for (String route : detectedReactRoutes()) {
 			String key = routeToKey(route);

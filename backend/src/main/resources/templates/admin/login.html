@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자 로그인</title>
+  <link rel="stylesheet" th:href="@{/admin/login.css}">
+</head>
+<body>
+<main class="admin-login-shell records-hidden" id="adminLoginShell" th:attr="data-next=${next}">
+  <section class="admin-login-panel" aria-labelledby="adminLoginTitle">
+    <div class="admin-login-brand">
+      <div class="admin-login-mark">A</div>
+      <div>
+        <h1 id="adminLoginTitle">Project Cyan Admin</h1>
+        <p>인증된 세션만 관리자 화면에 접근할 수 있습니다.</p>
+      </div>
+    </div>
+
+    <form id="adminLoginForm" class="admin-login-form" autocomplete="on">
+      <label>
+        <span>아이디</span>
+        <input id="adminUsername" name="username" type="text" autocomplete="username" required autofocus>
+      </label>
+      <label>
+        <span>비밀번호</span>
+        <input id="adminPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button id="adminLoginButton" type="submit">로그인</button>
+      <button id="adminNextButton" class="admin-next-button" type="button" hidden>다음</button>
+      <p id="adminLoginMessage" class="admin-login-message" role="status">대기 중</p>
+    </form>
+  </section>
+
+  <section id="adminAttemptPanel" class="admin-attempt-panel" aria-labelledby="adminAttemptTitle" hidden>
+    <div class="admin-attempt-head">
+      <div>
+        <h2 id="adminAttemptTitle">접속 시도 기록</h2>
+        <p id="adminClientIp">IP 확인 중</p>
+      </div>
+      <button id="adminRefreshAttempts" class="admin-ghost-button" type="button">새로고침</button>
+    </div>
+
+    <div id="adminLockBanner" class="admin-lock-banner" hidden></div>
+
+    <div class="admin-attempt-table-wrap">
+      <table>
+        <thead>
+        <tr>
+          <th>시간</th>
+          <th>IP</th>
+          <th>결과</th>
+          <th>상태</th>
+        </tr>
+        </thead>
+        <tbody id="adminAttemptRows">
+        <tr><td colspan="4">기록 없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script th:src="@{/admin/login.js}"></script>
+</body>
+</html>

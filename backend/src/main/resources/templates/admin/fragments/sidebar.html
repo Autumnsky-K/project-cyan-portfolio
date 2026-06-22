@@ -3,15 +3,19 @@
 <body>
 <aside th:fragment="sidebar(current, sidebarClass, eyebrowClass, heading)"
        th:class="${sidebarClass}"
-       aria-label="Admin navigation">
+       aria-label="관리자 메뉴">
   <div>
     <p th:class="${eyebrowClass}">Project Cyan</p>
-    <h1 th:text="${heading}">Admin</h1>
+    <h1>관리자</h1>
     <div class="admin-supabase-status"
          th:classappend="${supabaseUsage.hasWrites() ? ' is-active' : ' is-idle'}"
          aria-live="polite">
-      <strong th:text="${supabaseUsage.hasWrites() ? 'Supabase로 데이터 전송함 (count : ' + supabaseUsage.writeCount + ')' : 'Supabase 전송 대기 (count : 0)'}">Supabase 전송 대기 (count : 0)</strong>
-      <span th:if="${supabaseUsage.hasWrites()}" th:text="${'최근: ' + supabaseUsage.lastEvent}">최근: 상품 등록</span>
+      <strong th:text="${supabaseUsage.hasWrites() ? 'Supabase 전송 완료 (건수: ' + supabaseUsage.writeCount + ')' : 'Supabase 전송 대기 (건수: 0)'}">Supabase 전송 대기 (건수: 0)</strong>
+      <span th:if="${supabaseUsage.hasWrites()}" th:text="${'최근 작업: ' + supabaseUsage.lastEvent}">최근 작업: 상품 등록</span>
+    </div>
+    <div class="admin-spring-status" aria-live="polite">
+      <strong>Spring 서버 확인</strong>
+      <span>localhost:8080 응답 중</span>
     </div>
   </div>
 
@@ -22,21 +26,21 @@
 
     <details class="admin-nav-group"
              th:attr="open=${#strings.startsWith(current, 'ui-')} ? 'open' : null">
-      <summary class="admin-nav-parent">사용자 환경 관리</summary>
+      <summary class="admin-nav-parent">사용자 화면 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
            th:href="@{/admin/ui}"
            th:attr="aria-current=${current == 'ui-all'} ? 'page' : null"
-           data-ui-preview-all>일괄 UI 미리보기</a>
+           data-ui-preview-all>전체 UI 미리보기</a>
         <a class="admin-nav-child"
            th:href="@{/admin/ui#home}"
-           data-ui-preview-anchor="home">홈 페이지 미리보기</a>
+           data-ui-preview-anchor="home">홈 화면 미리보기</a>
         <a class="admin-nav-child"
            th:href="@{/admin/ui#artists}"
-           data-ui-preview-anchor="artists">아티스트 페이지 미리보기</a>
+           data-ui-preview-anchor="artists">아티스트 화면 미리보기</a>
         <a class="admin-nav-child"
            th:href="@{/admin/ui#goods}"
-           data-ui-preview-anchor="goods">굿즈 페이지 미리보기</a>
+           data-ui-preview-anchor="goods">굿즈 화면 미리보기</a>
         <a class="admin-nav-child"
            th:href="@{/admin/ui#member-profile}"
            data-ui-preview-anchor="member-profile">회원 프로필 화면 미리보기</a>
@@ -65,10 +69,10 @@
       <div class="admin-nav-children">
         <a class="admin-nav-child"
            th:href="@{/admin/data}"
-           th:attr="aria-current=${current == 'data-overview'} ? 'page' : null">데이터 관리 미리보기</a>
+           th:attr="aria-current=${current == 'data-overview'} ? 'page' : null">데이터 관리 지도</a>
         <a class="admin-nav-child"
            th:href="@{/admin/goods}"
-           th:attr="aria-current=${current == 'goods'} ? 'page' : null">상품 정보 관리</a>
+           th:attr="aria-current=${current == 'goods'} ? 'page' : null">굿즈 정보 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/storage}"
            th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>
@@ -248,7 +252,7 @@
           return '이미지'
         }
         if (field.type === 'checkbox') {
-          return '표시 여부'
+          return '노출 여부'
         }
         if (field.type === 'number' || /order|sort/i.test(field.name || '')) {
           return '순서'
@@ -290,10 +294,10 @@
         })
 
         const title = form.dataset.confirmFormTitle || '페이지'
-        const lines = [`${title}을 적용하시겠습니까?`, '', '[이 적용으로 변경되는 목록]']
+        const lines = [`${title}을 적용하시겠습니까?`, '', '[적용하면 변경되는 목록]']
 
         if (groupedChanges.size === 0) {
-          lines.push('변경 감지 없음')
+          lines.push('감지된 변경 없음')
         } else {
           groupedChanges.forEach((changes, group) => {
             lines.push(group)

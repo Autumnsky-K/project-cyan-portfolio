@@ -15,13 +15,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.projectcyan.storage.SupabaseStorageProperties;
+
 @Controller
 public class AdminCmsPageController {
 
-	private final CmsContentService cmsContentService;
+	private static final String CMS_STORAGE_BUCKET = "cms";
 
-	public AdminCmsPageController(CmsContentService cmsContentService) {
+	private final CmsContentService cmsContentService;
+	private final SupabaseStorageProperties storageProperties;
+
+	public AdminCmsPageController(CmsContentService cmsContentService, SupabaseStorageProperties storageProperties) {
 		this.cmsContentService = cmsContentService;
+		this.storageProperties = storageProperties;
 	}
 
 	@GetMapping("/admin/content")
@@ -32,6 +38,7 @@ public class AdminCmsPageController {
 	@GetMapping("/admin/content/home")
 	public String editHome(Model model) {
 		model.addAttribute("page", cmsContentService.findPage("home"));
+		addCmsStorageModel(model);
 		return "admin/content/home";
 	}
 
@@ -41,7 +48,7 @@ public class AdminCmsPageController {
 		RedirectAttributes redirectAttributes
 	) {
 		cmsContentService.savePage("home", request);
-		redirectAttributes.addFlashAttribute("notice", "Home preview was applied.");
+		redirectAttributes.addFlashAttribute("notice", "홈 화면 내용이 적용되었습니다.");
 		return "redirect:/admin/content/home";
 	}
 
@@ -49,6 +56,7 @@ public class AdminCmsPageController {
 	public String editArtists(Model model) {
 		model.addAttribute("page", cmsContentService.findPage("artists"));
 		model.addAttribute("artists", cmsContentService.findArtists(true));
+		addCmsStorageModel(model);
 		return "admin/content/artists";
 	}
 
@@ -58,7 +66,7 @@ public class AdminCmsPageController {
 		RedirectAttributes redirectAttributes
 	) {
 		cmsContentService.savePage("artists", request);
-		redirectAttributes.addFlashAttribute("notice", "Artist page preview was applied.");
+		redirectAttributes.addFlashAttribute("notice", "아티스트 화면 내용이 적용되었습니다.");
 		return "redirect:/admin/content/artists";
 	}
 
@@ -76,7 +84,7 @@ public class AdminCmsPageController {
 		RedirectAttributes redirectAttributes
 	) {
 		if (artistId == null || artistId.isEmpty()) {
-			redirectAttributes.addFlashAttribute("notice", "No artist rows to apply.");
+			redirectAttributes.addFlashAttribute("notice", "적용할 아티스트 행이 없습니다.");
 			return "redirect:/admin/content/artists";
 		}
 
@@ -100,7 +108,7 @@ public class AdminCmsPageController {
 			));
 		}
 		cmsContentService.saveArtists(requests);
-		redirectAttributes.addFlashAttribute("notice", "Artist rows were applied.");
+		redirectAttributes.addFlashAttribute("notice", "아티스트 목록이 적용되었습니다.");
 		return "redirect:/admin/content/artists";
 	}
 
@@ -121,5 +129,21 @@ public class AdminCmsPageController {
 			return fallback;
 		}
 		return values.get(index);
+	}
+
+	private void addCmsStorageModel(Model model) {
+		model.addAttribute("cmsStoragePublicBaseUrl", cmsStoragePublicBaseUrl());
+	}
+
+	private String cmsStoragePublicBaseUrl() {
+		String projectUrl = storageProperties.getProjectUrl();
+		if (projectUrl == null || projectUrl.isBlank()) {
+			return "";
+		}
+		return trimTrailingSlash(projectUrl) + "/storage/v1/object/public/" + CMS_STORAGE_BUCKET + "/";
+	}
+
+	private String trimTrailingSlash(String value) {
+		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
 }

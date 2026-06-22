@@ -8,26 +8,26 @@
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar('dashboard', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('dashboard', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">Admin Dashboard</p>
+        <p class="admin-eyebrow">관리자 홈</p>
         <h2>관리자 대시보드</h2>
       </div>
       <div class="admin-header-actions">
-        <a th:href="@{/admin/ui}" class="admin-primary">일괄 UI 미리보기</a>
+        <a th:href="@{/admin/ui}" class="admin-primary">전체 UI 미리보기</a>
       </div>
     </header>
 
     <section class="admin-dashboard-hero">
       <div>
-        <p class="admin-eyebrow">Control Room</p>
+        <p class="admin-eyebrow">작업 요약</p>
         <h3>화면 편집, 데이터 관리, AI 설정을 한 곳에서 확인합니다.</h3>
-        <p>왼쪽 메뉴는 작업 영역이고, 아래 설정은 관리자 화면 자체의 공간감과 색 분리를 조절합니다.</p>
+        <p>왼쪽 메뉴에서 작업 영역을 선택하고, 아래 설정에서 관리자 화면의 공간감과 강조 색을 조절합니다.</p>
       </div>
-      <div class="admin-dashboard-metrics" aria-label="Admin status overview">
+      <div class="admin-dashboard-metrics" aria-label="관리자 상태 요약">
         <article>
           <span>사용자 화면</span>
           <strong>6</strong>
@@ -47,14 +47,14 @@
       <article class="admin-dashboard-panel">
         <header>
           <div>
-            <p class="admin-eyebrow">Admin UI Settings</p>
+            <p class="admin-eyebrow">관리자 화면 설정</p>
             <h3>관리자 화면 조절</h3>
           </div>
         </header>
 
         <div class="admin-dashboard-controls">
           <fieldset>
-            <legend>공간 분리</legend>
+            <legend>공간 구분</legend>
             <label>
               <input type="radio" name="adminTone" value="layered" data-admin-setting="tone" checked>
               <span>레이어 분리</span>
@@ -65,7 +65,7 @@
             </label>
             <label>
               <input type="radio" name="adminTone" value="paper" data-admin-setting="tone">
-              <span>문서형 밝게</span>
+              <span>문서처럼 밝게</span>
             </label>
           </fieldset>
 
@@ -82,9 +82,9 @@
           </fieldset>
 
           <fieldset>
-            <legend>관리자 지향 색</legend>
+            <legend>관리자 강조 색</legend>
             <label>
-              <span>사용자 영역 프레임 색</span>
+              <span>작업 영역 테두리 색</span>
               <input type="color" name="adminAccent" value="#2f6f64" data-admin-setting="accent">
             </label>
           </fieldset>
@@ -110,23 +110,23 @@
       <article class="admin-dashboard-panel">
         <header>
           <div>
-            <p class="admin-eyebrow">Work Areas</p>
+            <p class="admin-eyebrow">작업 바로가기</p>
             <h3>작업 구역</h3>
           </div>
         </header>
 
         <div class="admin-dashboard-links">
           <a th:href="@{/admin/ui}">
-            <strong>사용자 환경 관리</strong>
+            <strong>사용자 화면 관리</strong>
             <span>전체 페이지 미리보기, 화면 비율, 테마 비교</span>
           </a>
           <a th:href="@{/admin/content/home}">
             <strong>화면 내용 편집</strong>
-            <span>홈/아티스트 문구와 이미지 편집</span>
+            <span>홈과 아티스트 화면의 문구와 이미지 편집</span>
           </a>
           <a th:href="@{/admin/data}">
             <strong>데이터 관리</strong>
-            <span>상품, 저장소, 관리 데이터 진입</span>
+            <span>굿즈, 이미지 저장소, 관리 데이터 진입</span>
           </a>
           <a th:href="@{/admin/ai}">
             <strong>AI 챗봇 관리</strong>

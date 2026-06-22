@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Size;
 
 public class AdminStorageBucketForm {
 
-	@NotBlank
-	@Size(max = 63)
-	@Pattern(regexp = "^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$", message = "Use lowercase letters, numbers, dots, underscores, or hyphens.")
+	@NotBlank(message = "Bucket 이름은 필수입니다.")
+	@Size(max = 63, message = "Bucket 이름은 63자 이하로 입력하세요.")
+	@Pattern(regexp = "^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$", message = "소문자, 숫자, 점, 밑줄, 하이픈만 사용할 수 있습니다.")
 	private String bucketName;
 
 	private boolean publicBucket = true;

@@ -4,10 +4,10 @@ import jakarta.validation.constraints.NotBlank;
 
 public class AdminStoragePathForm {
 
-	@NotBlank
+	@NotBlank(message = "Bucket 선택은 필수입니다.")
 	private String bucketName;
 
-	@NotBlank
+	@NotBlank(message = "Path는 필수입니다.")
 	private String path;
 
 	public String getBucketName() {

@@ -3,29 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>데이터 관리 미리보기</title>
+  <title>데이터 관리 지도</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar('data-overview', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('data-overview', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">Data Management Map</p>
-        <h2>데이터 관리 미리보기</h2>
+        <p class="admin-eyebrow">데이터 관리</p>
+        <h2>데이터 관리 지도</h2>
       </div>
     </header>
 
-    <section class="admin-data-grid" aria-label="Data management areas">
+    <section class="admin-data-grid" aria-label="데이터 관리 영역">
       <article class="admin-data-card" th:each="area : ${dataAreas}">
         <div>
-          <strong th:text="${area.title()}">상품 데이터</strong>
-          <p th:text="${area.description()}">상품명, 가격, 태그</p>
+          <strong th:text="${area.title()}">굿즈 데이터</strong>
+          <p th:text="${area.description()}">굿즈명, 가격, 태그</p>
         </div>
         <footer>
-          <span th:text="${area.status()}">운영 가능</span>
+          <span th:text="${area.status()}">관리 가능</span>
           <a th:if="${area.href() != null and !area.href().isBlank()}" th:href="${area.href()}">관리하기</a>
         </footer>
       </article>

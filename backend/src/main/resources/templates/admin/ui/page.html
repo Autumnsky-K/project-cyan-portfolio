@@ -8,16 +8,16 @@
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar(${currentKey}, 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar(${currentKey}, 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
         <p class="admin-eyebrow" th:text="${page.route()}">/</p>
-        <h2 th:text="${page.title()}">홈 페이지 미리보기</h2>
+        <h2 th:text="${page.title()}">화면 미리보기</h2>
       </div>
       <div class="admin-header-actions">
-        <a th:href="@{/admin/ui}">일괄 UI 미리보기</a>
+        <a th:href="@{/admin/ui}">전체 UI 미리보기</a>
         <a th:if="${page.implemented()}" th:href="${page.previewUrl()}" target="_blank" rel="noreferrer">새 창으로 열기</a>
       </div>
     </header>
@@ -35,7 +35,7 @@
 
     <section class="admin-preview-placeholder large" th:if="${!page.implemented()}">
       <strong>아직 연결된 사용자 화면이 없습니다.</strong>
-      <span th:text="${page.purpose()}">마이페이지 개인정보 영역</span>
+      <span th:text="${page.purpose()}">사용자 화면 영역</span>
       <a th:href="@{/admin/ui}">목록으로 돌아가기</a>
     </section>
   </section>

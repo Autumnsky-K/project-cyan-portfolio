@@ -35,7 +35,7 @@ public class SupabaseUsageCounter {
 
 	private void increment(String event) {
 		writeCount.incrementAndGet();
-		lastEvent.set(event == null || event.isBlank() ? "Supabase write" : event.trim());
+		lastEvent.set(event == null || event.isBlank() ? "Supabase 작업" : event.trim());
 		lastEventAt.set(Instant.now());
 	}
 }

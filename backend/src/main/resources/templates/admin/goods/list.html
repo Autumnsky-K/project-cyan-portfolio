@@ -3,51 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Goods Admin</title>
+  <title>굿즈 정보 관리</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">Store Management</p>
-        <h2>Goods</h2>
+        <p class="admin-eyebrow">상품 데이터 관리</p>
+        <h2>굿즈 정보 관리</h2>
       </div>
       <div class="admin-header-actions">
-        <a th:href="@{/goods}">View Store</a>
-        <a class="admin-primary" th:href="@{/admin/goods/new}">New Goods</a>
+        <a th:href="@{/goods}">굿즈 화면 열기</a>
+        <a class="admin-primary" th:href="@{/admin/goods/new}">굿즈 등록</a>
       </div>
     </header>
 
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+    <div class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}"></div>
 
-    <section class="admin-stats" aria-label="Goods status">
+    <section class="admin-stats" aria-label="굿즈 현황">
       <article>
-        <span>Total goods</span>
+        <span>전체 굿즈</span>
         <strong th:text="${goodsPage.totalElements()}">0</strong>
       </article>
       <article>
-        <span>Current page</span>
+        <span>현재 페이지</span>
         <strong th:text="${goodsPage.totalPages() > 0 ? goodsPage.page() + 1 : 0}">0</strong>
       </article>
       <article>
-        <span>Rows visible</span>
+        <span>표시 행 수</span>
         <strong th:text="${#lists.size(goodsPage.content())}">0</strong>
       </article>
     </section>
 
-    <form class="admin-toolbar" method="get" th:action="@{/admin/goods}" aria-label="Goods admin filters">
+    <form class="admin-toolbar" method="get" th:action="@{/admin/goods}" aria-label="굿즈 필터">
       <label>
-        <span>Search</span>
-        <input type="search" name="q" placeholder="Search goods" th:value="${q}">
+        <span>검색</span>
+        <input type="search" name="q" placeholder="굿즈명 검색" th:value="${q}">
       </label>
       <label>
-        <span>Artist</span>
+        <span>아티스트</span>
         <select name="artistId">
-          <option value="">All artists</option>
+          <option value="">전체 아티스트</option>
           <option th:each="artist : ${filters.artists()}"
                   th:value="${artist.value()}"
                   th:text="${artist.label()}"
@@ -55,9 +56,9 @@
         </select>
       </label>
       <label>
-        <span>Category</span>
+        <span>카테고리</span>
         <select name="categoryId">
-          <option value="">All categories</option>
+          <option value="">전체 카테고리</option>
           <option th:each="category : ${filters.categories()}"
                   th:value="${category.value()}"
                   th:text="${category.label()}"
@@ -65,96 +66,247 @@
         </select>
       </label>
       <label>
-        <span>Sort</span>
+        <span>정렬</span>
         <select name="sort">
-          <option value="createdAt,desc" th:selected="${sort == 'createdAt,desc'}">Newest</option>
-          <option value="goodsName,asc" th:selected="${sort == 'goodsName,asc'}">Name A to Z</option>
-          <option value="price,asc" th:selected="${sort == 'price,asc'}">Price low to high</option>
-          <option value="price,desc" th:selected="${sort == 'price,desc'}">Price high to low</option>
+          <option value="createdAt,desc" th:selected="${sort == 'createdAt,desc'}">최근 등록순</option>
+          <option value="goodsName,asc" th:selected="${sort == 'goodsName,asc'}">이름 오름차순</option>
+          <option value="price,asc" th:selected="${sort == 'price,asc'}">낮은 가격순</option>
+          <option value="price,desc" th:selected="${sort == 'price,desc'}">높은 가격순</option>
         </select>
       </label>
-      <button type="submit">Apply</button>
+      <button type="submit">적용</button>
     </form>
 
-    <section class="admin-table-panel" aria-label="Goods table">
-      <div class="admin-state" th:if="${#lists.isEmpty(goodsPage.content())}">No goods match these filters.</div>
+    <form class="admin-bulk-form"
+          method="post"
+          th:action="@{/admin/goods/bulk}"
+          data-goods-bulk-form>
+      <input type="hidden" name="q" th:value="${q}">
+      <input type="hidden" name="artistId" th:value="${artistId}">
+      <input type="hidden" name="categoryId" th:value="${categoryId}">
+      <input type="hidden" name="sort" th:value="${sort}">
+      <input type="hidden" name="page" th:value="${goodsPage.page()}">
+      <datalist id="admin-bulk-artist-options">
+        <option value="아티스트 없음" data-value=""></option>
+        <option th:each="artist : ${filters.artists()}"
+                th:value="${artist.label()}"
+                th:attr="data-value=${artist.value()}"></option>
+      </datalist>
+      <datalist id="admin-bulk-category-options">
+        <option value="카테고리 없음" data-value=""></option>
+        <option th:each="category : ${filters.categories()}"
+                th:value="${category.label()}"
+                th:attr="data-value=${category.value()}"></option>
+      </datalist>
+      <datalist id="admin-bulk-status-options">
+        <option th:each="status : ${salesStatuses}"
+                th:value="${salesStatusLabels.get(status) ?: status}"
+                th:attr="data-value=${status}"></option>
+      </datalist>
 
-      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(goodsPage.content())}">
-        <table class="admin-goods-table">
-          <thead>
-          <tr>
-            <th>Image</th>
-            <th>Name</th>
-            <th>Artist</th>
-            <th>Category</th>
-            <th>Price</th>
-            <th>Status</th>
-            <th>Stock</th>
-            <th>Tags</th>
-            <th>Actions</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr th:each="item : ${goodsPage.content()}" th:attr="data-goods-id=${item.goodsId()}">
-            <td>
-              <div class="admin-thumb" th:aria-label="${item.name()} + ' image'">
-                <img th:if="${item.imageUrl()}" th:src="${item.imageUrl()}" alt="">
-                <span th:if="${item.imageUrl() == null or item.imageUrl().isBlank()}"
-                      th:text="${item.categoryName() ?: 'Goods'}">Goods</span>
-              </div>
-            </td>
-            <td>
-              <strong th:text="${item.name()}">Goods name</strong>
-              <span th:text="'#' + ${item.goodsId()}">#0</span>
-            </td>
-            <td th:text="${item.artistName() ?: '-'}">-</td>
-            <td th:text="${item.categoryName() ?: '-'}">-</td>
-            <td th:text="${'KRW ' + #numbers.formatInteger(item.price() ?: 0, 0, 'COMMA')}">KRW 0</td>
-            <td>
-              <form class="inline-form" method="post" th:action="@{/admin/goods/{goodsId}/status(goodsId=${item.goodsId()})}">
-                <select name="salesStatus" aria-label="Sales status">
-                  <option th:each="status : ${salesStatuses}"
-                          th:value="${status}"
-                          th:text="${status}"
-                          th:selected="${status == item.salesStatus()}"></option>
-                </select>
-                <button type="submit">Save</button>
-              </form>
-            </td>
-            <td>
-              <form class="inline-form compact-form" method="post" th:action="@{/admin/goods/{goodsId}/stock(goodsId=${item.goodsId()})}">
-                <input type="number"
-                       name="stockCount"
-                       min="0"
-                       th:value="${stockCounts[item.goodsId()] ?: 0}"
-                       aria-label="Stock count">
-                <button type="submit">Save</button>
-              </form>
-            </td>
-            <td>
-              <div class="admin-tag-list">
-                <span th:each="tag : ${item.tags()}" th:text="${tag}">TAG</span>
-                <span th:if="${#lists.isEmpty(item.tags())}">-</span>
-              </div>
-            </td>
-            <td>
-              <div class="admin-actions">
-                <a th:href="@{/goods/{goodsId}(goodsId=${item.goodsId()})}">View</a>
-                <a th:href="@{/admin/goods/{goodsId}/edit(goodsId=${item.goodsId()})}">Edit</a>
-                <form method="post" th:action="@{/admin/goods/{goodsId}/delete(goodsId=${item.goodsId()})}">
-                  <button type="submit">Delete</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <section class="admin-bulk-toolbar" aria-label="굿즈 일괄 수정 도구">
+        <div class="admin-bulk-selection">
+          <label class="admin-bulk-check-label">
+            <input type="checkbox" data-goods-bulk-master>
+            <span>현재 페이지</span>
+          </label>
+          <button type="button" data-goods-bulk-select-all>전체선택</button>
+          <button type="button" data-goods-bulk-clear>전체해제</button>
+          <span class="admin-bulk-count"><span data-goods-bulk-count>0</span>개 선택</span>
+        </div>
 
-    <nav class="admin-pagination" th:if="${goodsPage.totalPages() > 0}" aria-label="Admin goods pagination">
+        <div class="admin-bulk-field-tools">
+          <div class="admin-bulk-tool-pair">
+            <label>
+              <span>아티스트 일괄</span>
+              <input type="text"
+                     list="admin-bulk-artist-options"
+                     data-goods-bulk-choice="artist"
+                     placeholder="허용된 아티스트">
+            </label>
+            <button type="button" data-goods-bulk-apply-choice="artist">넣기</button>
+          </div>
+          <div class="admin-bulk-tool-pair">
+            <label>
+              <span>카테고리 일괄</span>
+              <input type="text"
+                     list="admin-bulk-category-options"
+                     data-goods-bulk-choice="category"
+                     placeholder="허용된 카테고리">
+            </label>
+            <button type="button" data-goods-bulk-apply-choice="category">넣기</button>
+          </div>
+          <div class="admin-bulk-tool-pair">
+            <label>
+              <span>판매 상태 일괄</span>
+              <input type="text"
+                     list="admin-bulk-status-options"
+                     data-goods-bulk-choice="status"
+                     placeholder="판매 상태">
+            </label>
+            <button type="button" data-goods-bulk-apply-choice="status">넣기</button>
+          </div>
+          <div class="admin-bulk-tool-pair">
+            <label>
+              <span>태그 일괄</span>
+              <input type="text" data-goods-bulk-tags placeholder="#태그 #태그">
+            </label>
+            <button type="button" data-goods-bulk-apply-tags>넣기</button>
+          </div>
+        </div>
+
+        <button class="admin-primary" type="submit">상품 갱신 반영</button>
+      </section>
+
+      <section class="admin-table-panel" aria-label="굿즈 일괄 수정 표">
+        <div class="admin-state" th:if="${#lists.isEmpty(bulkRows)}">조건에 맞는 굿즈가 없습니다.</div>
+
+        <div class="admin-table-scroll" th:if="${!#lists.isEmpty(bulkRows)}">
+          <table class="admin-goods-table admin-bulk-table">
+            <thead>
+            <tr>
+              <th>선택</th>
+              <th>썸네일</th>
+              <th>이름</th>
+              <th>가격</th>
+              <th>아티스트</th>
+              <th>카테고리</th>
+              <th>판매 상태</th>
+              <th>재고</th>
+              <th>태그</th>
+              <th>관리</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr class="admin-bulk-row"
+                th:each="row : ${bulkRows}"
+                th:classappend="${defaultGoodsChecked} ? ' is-selected'"
+                th:attr="data-goods-id=${row.goodsId()}">
+              <td class="admin-bulk-select-cell">
+                <input class="admin-bulk-checkbox"
+                       type="checkbox"
+                       name="selectedGoodsId"
+                       th:value="${row.goodsId()}"
+                       th:checked="${defaultGoodsChecked}">
+                <input type="hidden" name="goodsId" th:value="${row.goodsId()}">
+                <input type="hidden" name="imageUrl" th:value="${row.imageUrl()}">
+                <a class="admin-bulk-id-link"
+                   th:href="@{/admin/goods/{goodsId}/edit(goodsId=${row.goodsId()})}"
+                   th:text="'#' + ${row.goodsId()}">#0</a>
+              </td>
+              <td>
+                <div class="admin-thumb" th:aria-label="${row.name()} + ' 이미지'">
+                  <img th:if="${row.imageUrl()}" th:src="${row.imageUrl()}" alt="">
+                  <span th:if="${row.imageUrl() == null or row.imageUrl().isBlank()}"
+                        th:text="${row.categoryLabel()}">굿즈</span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell">
+                  <input class="admin-bulk-input"
+                         type="text"
+                         name="name"
+                         required
+                         th:value="${row.name()}"
+                         th:attr="data-original=${row.name()},data-original-label=${row.name()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell admin-bulk-number">
+                  <input class="admin-bulk-input"
+                         type="number"
+                         name="price"
+                         min="0"
+                         required
+                         th:value="${row.price()}"
+                         th:attr="data-original=${row.price()},data-original-label=${row.price()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell">
+                  <input class="admin-bulk-input admin-bulk-choice-input"
+                         type="text"
+                         list="admin-bulk-artist-options"
+                         data-choice-kind="artist"
+                         th:value="${row.artistLabel()}"
+                         th:attr="data-original=${row.artistLabel()},data-original-label=${row.artistLabel()}">
+                  <input type="hidden"
+                         name="rowArtistId"
+                         data-choice-value="artist"
+                         th:value="${row.artistId() == null ? '' : row.artistId()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell">
+                  <input class="admin-bulk-input admin-bulk-choice-input"
+                         type="text"
+                         list="admin-bulk-category-options"
+                         data-choice-kind="category"
+                         th:value="${row.categoryLabel()}"
+                         th:attr="data-original=${row.categoryLabel()},data-original-label=${row.categoryLabel()}">
+                  <input type="hidden"
+                         name="rowCategoryId"
+                         data-choice-value="category"
+                         th:value="${row.categoryId() == null ? '' : row.categoryId()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell">
+                  <input class="admin-bulk-input admin-bulk-choice-input"
+                         type="text"
+                         list="admin-bulk-status-options"
+                         data-choice-kind="status"
+                         th:value="${row.salesStatusLabel()}"
+                         th:attr="data-original=${row.salesStatusLabel()},data-original-label=${row.salesStatusLabel()}">
+                  <input type="hidden"
+                         name="salesStatus"
+                         data-choice-value="status"
+                         th:value="${row.salesStatus()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell admin-bulk-number">
+                  <input class="admin-bulk-input"
+                         type="number"
+                         name="stockCount"
+                         min="0"
+                         th:value="${row.stockCount()}"
+                         th:attr="data-original=${row.stockCount()},data-original-label=${row.stockCount()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-bulk-cell admin-bulk-tags">
+                  <input class="admin-bulk-input"
+                         type="text"
+                         name="tagsText"
+                         placeholder="#태그 #태그"
+                         th:value="${row.tagsText()}"
+                         th:attr="data-original=${row.tagsText()},data-original-label=${row.tagsText().isBlank() ? '비어 있음' : row.tagsText()}">
+                  <span class="admin-bulk-original" data-original-preview hidden></span>
+                </div>
+              </td>
+              <td>
+                <div class="admin-actions admin-bulk-actions">
+                  <a th:href="@{/goods/{goodsId}(goodsId=${row.goodsId()})}">보기</a>
+                  <a th:href="@{/admin/goods/{goodsId}/edit(goodsId=${row.goodsId()})}">상세</a>
+                </div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </form>
+
+    <nav class="admin-pagination" th:if="${goodsPage.totalPages() > 0}" aria-label="굿즈 페이지 이동">
       <a th:classappend="${goodsPage.page() <= 0} ? ' is-disabled'"
-         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() - 1})}">Previous</a>
+         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() - 1})}">이전</a>
       <div class="admin-page-list">
         <a th:each="pageNumber : ${pageNumbers}"
            th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${pageNumber})}"
@@ -162,10 +314,11 @@
            th:text="${pageNumber + 1}">1</a>
       </div>
       <a th:classappend="${goodsPage.page() >= goodsPage.totalPages() - 1} ? ' is-disabled'"
-         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() + 1})}">Next</a>
-      <span th:text="${'Page ' + (goodsPage.page() + 1) + ' of ' + goodsPage.totalPages()}">Page 1 of 1</span>
+         th:href="@{/admin/goods(q=${q},artistId=${artistId},categoryId=${categoryId},sort=${sort},page=${goodsPage.page() + 1})}">다음</a>
+      <span th:text="${(goodsPage.page() + 1) + ' / ' + goodsPage.totalPages() + ' 페이지'}">1 / 1 페이지</span>
     </nav>
   </section>
 </main>
+<script th:src="@{/admin/goods-bulk.js}"></script>
 </body>
 </html>

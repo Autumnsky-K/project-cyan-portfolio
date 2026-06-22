@@ -235,6 +235,15 @@ function updatePreview() {
   previewFrame.srcdoc = pageRoot.dataset.cmsPage === 'artists' ? buildArtistsPreview() : buildHomePreview()
 }
 
+function cmsStoragePublicUrl(file) {
+  const baseUrl = pageRoot?.dataset.cmsStoragePublicBaseUrl || ''
+  if (!baseUrl || !file?.name) {
+    return ''
+  }
+  const objectName = file.name.trim().replace(/\s+/g, '-')
+  return baseUrl + encodeURIComponent(objectName)
+}
+
 function handleImageInput(input) {
   const targetName = input.dataset.imageTarget
   const rowImageTarget = input.closest('tr')?.querySelector('[data-artist-field="imageUrl"]')
@@ -245,12 +254,12 @@ function handleImageInput(input) {
   if (!target || !file) {
     return
   }
-  const reader = new FileReader()
-  reader.onload = () => {
-    target.value = reader.result
-    updatePreview()
+  const publicUrl = cmsStoragePublicUrl(file)
+  if (!publicUrl) {
+    return
   }
-  reader.readAsDataURL(file)
+  target.value = publicUrl
+  updatePreview()
 }
 
 document.querySelectorAll('input').forEach((input) => {

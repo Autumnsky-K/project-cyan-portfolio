@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>일괄 UI 미리보기</title>
+  <title>전체 UI 미리보기</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ui-all', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ui-all', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">User Experience Control</p>
-        <h2>일괄 UI 미리보기</h2>
+        <p class="admin-eyebrow">사용자 화면 관리</p>
+        <h2>전체 UI 미리보기</h2>
       </div>
       <div class="admin-header-actions">
         <a th:href="@{/admin/content/home}">홈 내용 편집</a>
@@ -24,15 +24,15 @@
     <section class="admin-ui-workbench"
              data-preview-layout="grid"
              data-preview-viewport="desktop"
-             aria-label="User page preview workbench">
+             aria-label="사용자 화면 미리보기 작업 영역">
       <div class="admin-preview-stage">
-        <nav class="admin-preview-anchor-nav" aria-label="Preview page anchors">
+        <nav class="admin-preview-anchor-nav" aria-label="미리보기 화면 바로가기">
           <a th:each="page : ${pages}"
              th:href="${'#' + page.key()}"
-             th:text="${page.title()}">홈 페이지 미리보기</a>
+             th:text="${page.title()}">화면 미리보기</a>
         </nav>
 
-        <section class="admin-preview-grid" aria-label="User page previews">
+        <section class="admin-preview-grid" aria-label="사용자 화면 미리보기">
           <article class="admin-preview-card"
                    th:each="page : ${pages}"
                    th:id="${page.key()}"
@@ -44,7 +44,7 @@
 
             <header>
               <div>
-                <strong th:text="${page.title()}">홈 페이지 미리보기</strong>
+                <strong th:text="${page.title()}">화면 미리보기</strong>
                 <p th:text="${page.purpose()}">화면 목적</p>
               </div>
               <a th:href="${'#' + page.key()}" data-preview-focus-link>크게 보기</a>
@@ -79,7 +79,7 @@
         </section>
       </div>
 
-      <aside class="admin-ui-settings" aria-label="UI preview settings">
+      <aside class="admin-ui-settings" aria-label="UI 미리보기 설정">
         <section class="admin-ui-setting-panel">
           <h3>미리보기 배열</h3>
           <label>
@@ -100,36 +100,36 @@
           </label>
           <label>
             <input type="radio" name="previewViewport" value="cinema">
-            <span>데스크탑 21:9</span>
+            <span>데스크톱 21:9</span>
           </label>
           <label>
             <input type="radio" name="previewViewport" value="desktop" checked>
-            <span>데스크탑 16:9</span>
+            <span>데스크톱 16:9</span>
           </label>
         </section>
 
         <section class="admin-ui-setting-panel">
-          <h3>사용자 페이지 테마</h3>
+          <h3>사용자 화면 테마</h3>
           <label>
-            <span>사용자 대표색</span>
+            <span>기본색</span>
             <input type="color" name="themePrimary" value="#111111">
           </label>
           <label>
-            <span>사용자 강조색</span>
+            <span>강조색</span>
             <input type="color" name="themeAccent" value="#2f6f64">
           </label>
           <label>
-            <span>사용자 배경색</span>
+            <span>배경색</span>
             <input type="color" name="themeBackground" value="#ffffff">
           </label>
           <label>
-            <span>사용자 글자 크기</span>
+            <span>글자 크기</span>
             <input type="range" name="themeFontSize" min="13" max="20" value="16">
           </label>
           <label>
-            <span>사용자 글꼴</span>
+            <span>글꼴</span>
             <select name="themeFontFamily">
-              <option value="var(--admin-font-family, Arial, 'Noto Sans KR', sans-serif)">첨부한 폰트 사용</option>
+              <option value="var(--admin-font-family, Arial, 'Noto Sans KR', sans-serif)">첨부된 폰트 사용</option>
               <option value="Arial, 'Noto Sans KR', sans-serif">기본 산세리프</option>
               <option value="'Segoe UI', Arial, sans-serif">영문 산세리프</option>
               <option value="Georgia, serif">세리프</option>
@@ -156,7 +156,7 @@
           </label>
           <label>
             <input type="radio" name="themeApplyScope" value="checked">
-            <span>체크한 화면만 적용</span>
+            <span>선택한 화면만 적용</span>
           </label>
         </section>
       </aside>

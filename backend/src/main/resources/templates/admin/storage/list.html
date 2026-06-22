@@ -3,91 +3,173 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Storage Admin</title>
+  <title>이미지 저장소 관리</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
-  <aside th:replace="~{admin/fragments/sidebar :: sidebar('storage', 'admin-sidebar', 'admin-eyebrow', 'Admin')}"></aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('storage', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">Supabase Storage</p>
-        <h2>Storage</h2>
+        <p class="admin-eyebrow">Supabase 이미지 저장소</p>
+        <h2>이미지 저장소 관리</h2>
       </div>
       <div class="admin-header-actions">
-        <a th:href="@{/admin/goods}">Goods Admin</a>
+        <a th:href="@{/admin/goods}">굿즈 관리</a>
       </div>
     </header>
 
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
     <div class="admin-notice admin-notice-error" th:if="${storageError}" th:text="${storageError}"></div>
+    <div class="admin-notice admin-notice-error" th:if="${goodsImageError}" th:text="${goodsImageError}"></div>
 
-    <form class="admin-form" method="post" th:object="${bucketForm}" th:action="@{/admin/storage/buckets}">
-      <section class="admin-form-grid">
+    <section class="admin-upload-panel"
+             data-storage-upload
+             th:attr="data-upload-endpoint=@{/admin/storage/uploads}">
+      <div class="admin-upload-header">
+        <div>
+          <p class="admin-eyebrow">굿즈 이미지 업로드 대기열</p>
+          <h3>폴더 이미지 업로드</h3>
+        </div>
+        <div class="admin-upload-status">
+          <strong data-upload-status-title>대기 중</strong>
+          <span data-upload-status-meta>폴더를 선택하면 파일을 하나씩 업로드합니다.</span>
+        </div>
+      </div>
+
+      <div class="admin-upload-controls">
         <label>
-          <span>Bucket Name</span>
-          <input type="text" th:field="*{bucketName}" placeholder="goods-images" required>
-          <small th:if="${#fields.hasErrors('bucketName')}" th:errors="*{bucketName}"></small>
+          <span>Bucket</span>
+          <input type="text" data-upload-bucket th:value="${goodsImageBucket}" required>
         </label>
+        <label>
+          <span>Path</span>
+          <input type="text" data-upload-path th:value="${goodsImagePath}" required>
+        </label>
+        <label class="admin-upload-file-control">
+          <span>폴더</span>
+          <input type="file" data-upload-files accept="image/*" webkitdirectory directory multiple>
+          <small>하위 폴더 구조는 지정한 저장 경로 아래에 유지됩니다. 같은 이름과 byte 수가 같으면 덮어쓰고, 더 큰 파일은 (2)처럼 새 이름으로 저장합니다.</small>
+        </label>
+      </div>
 
-        <label class="admin-check-label">
-          <span>Access</span>
-          <span class="admin-check-inline">
-            <input type="checkbox" th:field="*{publicBucket}">
-            <span>Public bucket</span>
-          </span>
-        </label>
-      </section>
+      <div class="admin-upload-progress" aria-hidden="true">
+        <span data-upload-progress-bar></span>
+      </div>
 
       <div class="admin-form-actions">
-        <button class="admin-primary" type="submit">Create Bucket</button>
+        <button class="admin-primary" type="button" data-upload-start disabled>업로드 시작</button>
+        <button type="button" data-upload-cancel disabled>취소</button>
       </div>
+
+      <ul class="admin-upload-queue" data-upload-queue></ul>
+    </section>
+
+    <section class="admin-storage-library" aria-label="업로드된 굿즈 이미지">
+      <div class="admin-upload-header">
+        <div>
+          <p class="admin-eyebrow">굿즈 이미지 보관함</p>
+          <h3>업로드된 굿즈 이미지</h3>
+        </div>
+        <a th:href="@{/admin/goods/new}">굿즈 등록</a>
+      </div>
+      <div class="admin-image-tree"
+           data-storage-image-library
+           data-image-tree
+           data-empty-label="업로드된 굿즈 이미지가 없습니다."
+           th:attr="data-root-label=${goodsImageBucket}">
+        <div data-image-tree-root></div>
+        <div data-image-tree-source hidden>
+          <button type="button"
+                  class="admin-image-library-item"
+                  th:each="image : ${goodsImages}"
+                  th:attr="data-image-url=${image.publicUrl()},data-image-path=${image.path()},title=${image.path()}">
+            <img th:src="${image.publicUrl()}" alt="">
+            <span th:text="${image.path()}">goods/example.png</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <form class="admin-form admin-form-disabled" method="post" th:object="${bucketForm}" th:action="@{/admin/storage/buckets}" aria-disabled="true">
+      <div>
+        <p class="admin-eyebrow">Bucket 생성 잠금</p>
+        <p class="admin-control-help">Bucket은 현재 추가 생성하지 않습니다. 이미 생성된 Bucket 안에서 Path만 생성하세요.</p>
+      </div>
+      <fieldset class="admin-disabled-fieldset" disabled>
+        <section class="admin-form-grid">
+          <label>
+            <span>Bucket 이름</span>
+            <input id="bucketCreateName"
+                   type="text"
+                   name="bucketName"
+                   th:value="*{bucketName}"
+                   placeholder="goods-image"
+                   required>
+          </label>
+
+          <label class="admin-check-label">
+            <span>접근 권한</span>
+            <span class="admin-check-inline">
+              <input type="checkbox" th:field="*{publicBucket}">
+              <span>공개 Bucket</span>
+            </span>
+          </label>
+        </section>
+
+        <div class="admin-form-actions">
+          <button class="admin-primary" type="submit" disabled>Bucket 생성</button>
+        </div>
+      </fieldset>
     </form>
 
     <form class="admin-form" method="post" th:object="${pathForm}" th:action="@{/admin/storage/paths}">
       <section class="admin-form-grid">
         <label>
           <span>Bucket</span>
-          <select th:field="*{bucketName}" required>
-            <option value="">Select bucket</option>
-            <option th:each="bucket : ${buckets}" th:value="${bucket.name()}" th:text="${bucket.name()}"></option>
+          <select id="pathBucketName" name="bucketName" required>
+            <option value="">Bucket 선택</option>
+            <option th:each="bucket : ${buckets}"
+                    th:value="${bucket.name()}"
+                    th:text="${bucket.name()}"
+                    th:selected="${pathForm.bucketName != null and bucket.name() == pathForm.bucketName}"></option>
           </select>
           <small th:if="${#fields.hasErrors('bucketName')}" th:errors="*{bucketName}"></small>
         </label>
 
         <label>
           <span>Path</span>
-          <input type="text" th:field="*{path}" placeholder="goods/photocard" required>
+          <input type="text" th:field="*{path}" placeholder="goods/genshin_impact" required>
           <small th:if="${#fields.hasErrors('path')}" th:errors="*{path}"></small>
         </label>
       </section>
 
       <div class="admin-form-actions">
-        <button class="admin-primary" type="submit">Create Path</button>
+        <button class="admin-primary" type="submit">Path 생성</button>
       </div>
     </form>
 
-    <section class="admin-table-panel" aria-label="Supabase storage buckets">
-      <div class="admin-state" th:if="${#lists.isEmpty(buckets)}">No buckets found.</div>
+    <section class="admin-table-panel" aria-label="Supabase Storage Bucket 목록">
+      <div class="admin-state" th:if="${#lists.isEmpty(buckets)}">등록된 Bucket이 없습니다.</div>
 
       <div class="admin-table-scroll" th:if="${!#lists.isEmpty(buckets)}">
         <table class="admin-goods-table admin-storage-table">
           <thead>
           <tr>
-            <th>Name</th>
+            <th>이름</th>
             <th>ID</th>
-            <th>Access</th>
-            <th>Created</th>
-            <th>Updated</th>
+            <th>접근 권한</th>
+            <th>생성일</th>
+            <th>수정일</th>
           </tr>
           </thead>
           <tbody>
           <tr th:each="bucket : ${buckets}">
             <td><strong th:text="${bucket.name()}">bucket</strong></td>
             <td th:text="${bucket.id()}">bucket</td>
-            <td th:text="${bucket.publicBucket() == true ? 'PUBLIC' : 'PRIVATE'}">PUBLIC</td>
+            <td th:text="${bucket.publicBucket() == true ? '공개' : '비공개'}">공개</td>
             <td th:text="${bucket.createdAt() ?: '-'}">-</td>
             <td th:text="${bucket.updatedAt() ?: '-'}">-</td>
           </tr>
@@ -97,5 +179,7 @@
     </section>
   </section>
 </main>
+<script th:src="@{/admin/image-library-tree.js}"></script>
+<script th:src="@{/admin/storage-admin.js}"></script>
 </body>
 </html>
