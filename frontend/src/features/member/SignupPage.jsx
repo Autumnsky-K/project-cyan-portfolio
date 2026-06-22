@@ -37,7 +37,6 @@ function SignupPage() {
     phone: '',
     address: '',
     email: '',
-    loginId: '',
     password: '',
     passwordConfirm: '',
   })
@@ -101,8 +100,8 @@ function SignupPage() {
   const validateStepTwo = () => {
     const isRequiredAgreed = REQUIRED_TERMS.every((term) => agreements[term.id])
 
-    if (!form.loginId || !form.password || !form.passwordConfirm) {
-      setError('아이디와 비밀번호를 모두 입력해주세요.')
+    if (!form.password || !form.passwordConfirm) {
+      setError('비밀번호를 모두 입력해주세요.')
       return false
     }
 
