@@ -144,11 +144,12 @@ export function useStoreFlow(options = {}) {
               String(target.goodsId) === String(item.goodsId),
           )
           if (product) {
-            return { ...product, quantity: item.quantity }
+            return { ...product, cartItemKey: item.cartItemKey, quantity: item.quantity }
           }
 
           return {
             id: String(item.goodsId),
+            cartItemKey: item.cartItemKey,
             goodsId: item.goodsId,
             name: item.name,
             artist: item.artistName,
@@ -318,23 +319,23 @@ export function useStoreFlow(options = {}) {
   }
 
   function increaseQuantity(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.goodsId ?? item.id, item.quantity + 1)
+      updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
     }
   }
 
   function decreaseQuantity(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.goodsId ?? item.id, item.quantity - 1)
+      updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
     }
   }
 
   function removeFromCart(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      removeCartItem(item.goodsId ?? item.id)
+      removeCartItem(item.cartItemKey)
     }
   }
 

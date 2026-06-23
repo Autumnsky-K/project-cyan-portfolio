@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import CartNavLink from '../../features/cart/CartNavLink'
 import './Header.css'
 
 const NAV_ITEMS = [
@@ -24,6 +25,10 @@ export default function Header() {
       <nav className="site-nav" aria-label="Store navigation">
         {NAV_ITEMS.map((item) => {
           const isCurrent = isCurrentPath(pathname, item.to)
+
+          if (item.to === '/cart') {
+            return <CartNavLink key={item.to} current={isCurrent} />
+          }
 
           return (
             <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to}>

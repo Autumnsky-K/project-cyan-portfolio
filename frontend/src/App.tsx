@@ -47,7 +47,7 @@ function AppShell() {
           <Route path="/" element={<Navigate replace to="/goods" />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
-          <Route path="/cart" element={<Store />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
