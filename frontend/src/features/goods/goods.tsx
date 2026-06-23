@@ -6,7 +6,7 @@ import {
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
-import GoodsCards, { type GoodsViewMode } from './GoodsCards'
+import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
   type GoodsFilterGroup,
@@ -25,8 +25,6 @@ import Header from '../../shared/components/Header'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
-type GoodsSection = 'all' | 'favorites'
-
 function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
   return [...new Map(
     options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
@@ -42,6 +40,10 @@ function GoodsPage() {
     setSort,
     page,
     setPage,
+    section: activeSection,
+    setSection: setActiveSection,
+    viewMode,
+    setViewMode,
     selectedFilters,
     setSelectedFilters,
     requestParams,
@@ -55,8 +57,6 @@ function GoodsPage() {
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<GoodsViewMode>('grid')
-  const [activeSection, setActiveSection] = useState<GoodsSection>('all')
   const {
     goods: favoriteGoods,
     status: favoritesStatus,
