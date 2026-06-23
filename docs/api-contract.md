@@ -261,6 +261,15 @@
 - 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
 - 상태: [x] 동결
 
+#### [POST] /api/goods/{goodsId}/views
+- 설명: 로그인 사용자의 상품 상세 조회 이력 기록
+- 인증 필요: Y
+- 요청 path: `goodsId` (bigint)
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `204 No Content`
+- 동작: 같은 회원과 상품의 최근 10분 이내 조회가 있으면 중복 저장하지 않고 `204`를 반환한다.
+- 상태: [x] additive
+
 #### [GET] /api/goods/recommendation-candidates
 - 설명: AI 답변의 근거로 사용할 판매 가능한 상품 후보 조회
 - 인증 필요: N
@@ -457,6 +466,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
 | 2026-06-23 | v0.1.11 | auth | additive | Spring API에서 Supabase JWKS 기반 JWT 검증과 현재 회원 컨텍스트를 사용하는 인증 기준 추가 | 강승민 |
 | 2026-06-23 | v0.1.12 | goods | additive | `GET /api/goods`에 `goodsIds` 필터를 추가하고 즐겨찾기 목록이 상품 상세 API 대신 상품 목록 API를 사용하도록 변경 | Codex |
+| 2026-06-23 | v0.2.0 | goods/member | additive | 로그인 회원의 상품 상세 조회를 기록하는 `POST /api/goods/{goodsId}/views` 추가, 동일 상품 10분 중복 기록 방지 | Codex |
 | 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
 |  |  |  |  |  |  |

@@ -1,3 +1,9 @@
+import {
+  apiFetch,
+  hasSpringApiSession,
+  parseApiResponse,
+} from '../shared/api/springApiClient'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin}/api`
 
 export type GoodsSummary = {
@@ -109,6 +115,15 @@ export async function fetchGoodsDetail(goodsId: string | number | undefined, opt
   }
 
   return response.json()
+}
+
+export async function recordGoodsView(goodsId: string | number): Promise<void> {
+  if (!(await hasSpringApiSession())) {
+    return
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/views`, { method: 'POST' })
+  await parseApiResponse(response, 'Failed to record goods view.')
 }
 
 export async function fetchRelatedGoods(
