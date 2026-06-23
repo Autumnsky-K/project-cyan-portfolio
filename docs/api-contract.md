@@ -430,10 +430,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-19 | v0.1.6 | ai | additive | WebSocket `text-input` 요청에 optional `context.cartItems` 장바구니 요약 추가 | 강승민 |
 | 2026-06-19 | v0.1.7 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 | 2026-06-22 | v0.1.8 | goods/ai | additive | AI 추천 후보용 `GET /api/goods/recommendation-candidates`와 Spring 카탈로그 기반 ACTION 검증 추가 | Codex |
-<<<<<<< HEAD
 | 2026-06-22 | v0.1.8 | goods | additive | 추천 검색 alias에 아티스트 그룹 FK를 추가하고 그룹·카테고리 등 서로 다른 검색 차원을 AND로 적용 | Codex |
-=======
 | 2026-06-22 | v0.1.9 | member | additive | 이메일 회원가입 요청에 `address`, `agreements`를 추가하고 Spring이 Supabase Auth Admin API로 유저를 생성하도록 회원가입 책임을 명시 | Codex |
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
->>>>>>> dev
 |  |  |  |  |  |  |
