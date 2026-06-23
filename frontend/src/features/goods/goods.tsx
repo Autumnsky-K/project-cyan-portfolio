@@ -34,7 +34,7 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
 }
 
 function GoodsPage() {
-  const { favoriteIds, isFavorite, toggleFavorite } = useGoodsFavorites()
+  const { favoriteIds, isFavorite, toggleFavorite, retainFavorites } = useGoodsFavorites()
   const {
     query,
     setQuery,
@@ -61,7 +61,7 @@ function GoodsPage() {
     goods: favoriteGoods,
     status: favoritesStatus,
     error: favoritesError,
-  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds)
+  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds, retainFavorites)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)

@@ -22,9 +22,18 @@ export function useGoodsFavorites(repository: FavoritesRepository = localFavorit
     )
   }, [])
 
+  const retainFavorites = useCallback((existingGoodsIds: number[]) => {
+    const existingGoodsIdSet = new Set(existingGoodsIds)
+    setFavoriteIds((current) => {
+      const retained = current.filter((goodsId) => existingGoodsIdSet.has(goodsId))
+      return retained.length === current.length ? current : retained
+    })
+  }, [])
+
   return {
     favoriteIds,
     isFavorite: (goodsId: number) => favoriteIdSet.has(goodsId),
     toggleFavorite,
+    retainFavorites,
   }
 }

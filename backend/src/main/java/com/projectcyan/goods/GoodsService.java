@@ -58,10 +58,12 @@ public class GoodsService {
 		String categoryIds,
 		String tag,
 		String tags,
+		String goodsIds,
 		int page,
 		int size,
 		String sort
 	) {
+		List<Long> selectedGoodsIds = parseIds(goodsIds);
 		List<Long> selectedArtistIds = parseIds(artistIds);
 		if (artistId != null) {
 			selectedArtistIds.add(artistId);
@@ -78,7 +80,8 @@ public class GoodsService {
 		}
 
 		Specification<Goods> specification = Specification
-			.where(GoodsSpecifications.containsKeyword(q))
+			.where(GoodsSpecifications.hasGoodsIds(selectedGoodsIds))
+			.and(GoodsSpecifications.containsKeyword(q))
 			.and(GoodsSpecifications.hasArtists(selectedArtistIds))
 			.and(GoodsSpecifications.hasCategories(selectedCategoryIds))
 			.and(GoodsSpecifications.hasTags(selectedTags));
