@@ -111,6 +111,7 @@ export type GoodsQueryParams = {
   categoryIds?: string
   artistIds?: string
   tags?: string
+  goodsIds?: string
 }
 
 type FetchOptions = RequestInit

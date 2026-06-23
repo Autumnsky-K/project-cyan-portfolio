@@ -182,7 +182,8 @@
 #### [GET] /api/goods
 - 설명: 상품 목록 (태그 필터 가능)
 - 인증 필요: N
-- 요청 query: ?tag=PHOTOCARD&page=0&size=20&sort=createdAt,desc
+- 요청 query: `?tag=PHOTOCARD&page=0&size=20&sort=createdAt,desc`
+- 추가 query: `goodsIds` (comma-separated 상품 ID, 즐겨찾기 등 특정 상품 목록 조회)
 - 응답 (동결 필드): 페이지 객체(§1.5), content = goods 요약 배열
 - 상태: [x] 동결
 ```
@@ -433,4 +434,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-22 | v0.1.8 | goods | additive | 추천 검색 alias에 아티스트 그룹 FK를 추가하고 그룹·카테고리 등 서로 다른 검색 차원을 AND로 적용 | Codex |
 | 2026-06-22 | v0.1.9 | member | additive | 이메일 회원가입 요청에 `address`, `agreements`를 추가하고 Spring이 Supabase Auth Admin API로 유저를 생성하도록 회원가입 책임을 명시 | Codex |
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
+| 2026-06-23 | v0.1.10 | goods | additive | `GET /api/goods`에 `goodsIds` 필터를 추가하고 즐겨찾기 목록이 상품 상세 API 대신 상품 목록 API를 사용하도록 변경 | Codex |
 |  |  |  |  |  |  |
