@@ -1,6 +1,5 @@
 package com.projectcyan.goods;
 
-import java.time.Instant;
 import java.util.List;
 
 public record GoodsDetailResponse(
@@ -17,30 +16,14 @@ public record GoodsDetailResponse(
 	String salesStatus,
 	Boolean isBestSeller,
 	Boolean aiPickDefault,
-	String saleType,
-	Instant saleStartAt,
-	Instant saleEndAt,
 	String purchaseState,
 	String purchaseMessage,
-	GoodsShippingResponse shipping,
-	List<GoodsOptionGroupResponse> optionGroups,
-	List<GoodsVariantResponse> variants,
-	GoodsNoticesResponse notices,
 	Double averageRating,
 	Long reviewCount
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
 		return from(
 			goods,
-			new GoodsDetailMetadata(
-				"STANDARD",
-				null,
-				null,
-				new GoodsShippingResponse(3000, "Project Cyan Delivery", "국내", null),
-				new GoodsNoticesResponse(null, null, null),
-				List.of(),
-				List.of()
-			),
 			goods.getStockCount() != null && goods.getStockCount() > 0 ? "AVAILABLE" : "SOLD_OUT",
 			goods.getStockCount() != null && goods.getStockCount() > 0
 				? "구매 가능한 상품입니다."
@@ -51,7 +34,6 @@ public record GoodsDetailResponse(
 
 	public static GoodsDetailResponse from(
 		Goods goods,
-		GoodsDetailMetadata metadata,
 		String purchaseState,
 		String purchaseMessage,
 		GoodsReviewSummary reviewSummary
@@ -70,15 +52,8 @@ public record GoodsDetailResponse(
 			goods.getSalesStatus(),
 			goods.getBestSeller(),
 			goods.getAiPickDefault(),
-			metadata.saleType(),
-			metadata.saleStartAt(),
-			metadata.saleEndAt(),
 			purchaseState,
 			purchaseMessage,
-			metadata.shipping(),
-			metadata.optionGroups(),
-			metadata.variants(),
-			metadata.notices(),
 			reviewSummary.averageRating(),
 			reviewSummary.reviewCount()
 		);
