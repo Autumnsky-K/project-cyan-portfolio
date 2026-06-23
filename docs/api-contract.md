@@ -62,6 +62,27 @@
 - Base URL(배포): `__________`
 - 모든 요청/응답 `Content-Type: application/json; charset=utf-8`
 - 인증 필요 API 헤더: `Authorization: Bearer <Supabase access_token>`
+- Spring은 Supabase JWKS로 access token을 검증하고, JWT `sub`를 `public.member.member_uuid`로 사용한다.
+
+인증 실패:
+
+```json
+{
+  "code": "AUTH_UNAUTHORIZED",
+  "message": "로그인이 필요합니다.",
+  "status": 401
+}
+```
+
+토큰은 유효하지만 회원 row가 없을 때:
+
+```json
+{
+  "code": "MEMBER_NOT_REGISTERED",
+  "message": "회원 정보가 등록되어 있지 않습니다.",
+  "status": 403
+}
+```
 
 ### 1.3 공통 응답 형태
 
@@ -430,4 +451,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-22 | v0.1.8 | goods/ai | additive | AI 추천 후보용 `GET /api/goods/recommendation-candidates`와 Spring 카탈로그 기반 ACTION 검증 추가 | Codex |
 | 2026-06-22 | v0.1.9 | member | additive | 이메일 회원가입 요청에 `address`, `agreements`를 추가하고 Spring이 Supabase Auth Admin API로 유저를 생성하도록 회원가입 책임을 명시 | Codex |
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
+| 2026-06-23 | v0.1.11 | auth | additive | Spring API에서 Supabase JWKS 기반 JWT 검증과 현재 회원 컨텍스트를 사용하는 인증 기준 추가 | Codex |
 |  |  |  |  |  |  |
