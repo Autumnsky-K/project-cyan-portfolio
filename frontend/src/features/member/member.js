@@ -2,38 +2,6 @@ import { supabase, supabaseConfigError } from '../../api/supabaseClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 
-const FAVORITE_ARTISTS = [
-  {
-    artistId: 1,
-    name: 'aespa',
-    imageUrl: '',
-  },
-  {
-    artistId: 2,
-    name: 'NCT',
-    imageUrl: '',
-  },
-  {
-    artistId: 3,
-    name: 'RIIZE',
-    imageUrl: '',
-  },
-  {
-    artistId: 4,
-    name: 'Red Velvet',
-    imageUrl: '',
-  },
-  {
-    artistId: 5,
-    name: 'SHINee',
-    imageUrl: '',
-  },
-  {
-    artistId: 6,
-    name: 'EXO',
-    imageUrl: '',
-  },
-]
 
 const MY_PAGE_DUMMY_DATA = {
   orders: [
@@ -176,6 +144,21 @@ function writeStoredJson(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value))
 }
 
+function pickAddressFromRow(row) {
+  if (!row) {
+    return ''
+  }
+
+  return (
+    row.address ??
+    row.address_line ??
+    row.address1 ??
+    row.road_address ??
+    row.detail_address ??
+    ''
+  )
+}
+
 export function loginMember(form) {
   checkSupabaseConfig()
 
@@ -265,6 +248,10 @@ export async function signupMember(form) {
     throw new Error(error.message)
   }
 
+  if (data.session && data.user?.id && form.address) {
+    await updateMemberAddress(data.user.id, form.address)
+  }
+
   return {
     member: {
       name: form.name,
@@ -336,10 +323,22 @@ export async function getCurrentMember() {
     return null
   }
 
+  const { data: memberRow, error: memberError } = await supabase
+    .from('member')
+    .select('member_uuid, name, phone, email')
+    .eq('member_uuid', data.user.id)
+    .maybeSingle()
+
+  if (memberError) {
+    throw new Error(memberError.message)
+  }
+
   return {
     userId: data.user.id,
-    email: data.user.email,
+    email: memberRow?.email ?? data.user.email,
+    phone: memberRow?.phone ?? data.user.user_metadata?.phone ?? '',
     name:
+      memberRow?.name ??
       data.user.user_metadata?.name ??
       data.user.user_metadata?.full_name ??
       data.user.user_metadata?.nickname ??
@@ -351,12 +350,67 @@ export function getArtistOptions() {
   return FAVORITE_ARTISTS
 }
 
+async function getMemberId(userId) {
+  const { data, error } = await supabase
+    .from('member')
+    .select('member_id')
+    .eq('member_uuid', userId)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.member_id
+}
+
 export async function getFavoriteArtistIds(userId) {
-  return readStoredJson(getStorageKey(userId, 'favoriteArtists'), [])
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { data, error } = await supabase
+    .from('member_artist')
+    .select('artist_id')
+    .eq('member_id', memberId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.map((row) => row.artist_id)
 }
 
 export async function saveFavoriteArtists(userId, artistIds) {
-  writeStoredJson(getStorageKey(userId, 'favoriteArtists'), artistIds)
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { error: deleteError } = await supabase
+    .from('member_artist')
+    .delete()
+    .eq('member_id', memberId)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  if (artistIds.length === 0) {
+    return artistIds
+  }
+
+  const rows = artistIds.map((artistId) => ({
+    member_id: memberId,
+    artist_id: artistId,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('member_artist')
+    .insert(rows)
+44
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
 
   return artistIds
 }
@@ -369,7 +423,7 @@ export async function getMyPageSummary() {
   }
 
   const favoriteArtistIds = await getFavoriteArtistIds(member.userId)
-  const address = readStoredJson(getStorageKey(member.userId, 'address'), '')
+  const address = await getMemberAddress(member.userId)
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
     null,
@@ -406,7 +460,44 @@ export async function logoutMember() {
 }
 
 export async function updateMemberAddress(userId, address) {
-  writeStoredJson(getStorageKey(userId, 'address'), address)
+  checkSupabaseConfig()
+
+  const { error: deleteError } = await supabase
+    .from('member_address')
+    .delete()
+    .eq('member_uuid', userId)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  const { error: insertError } = await supabase
+    .from('member_address')
+    .insert({
+      member_uuid: userId,
+      address,
+    })
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
 
   return address
+}
+
+export async function getMemberAddress(userId) {
+  checkSupabaseConfig()
+
+  const { data, error } = await supabase
+    .from('member_address')
+    .select('*')
+    .eq('member_uuid', userId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return pickAddressFromRow(data)
 }

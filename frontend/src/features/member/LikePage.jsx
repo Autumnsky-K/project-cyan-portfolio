@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   getArtistOptions,
   getCurrentMember,
@@ -9,9 +9,11 @@ import {
 import './AccountPages.css'
 
 function LikePage() {
+  const location = useLocation()
   const navigate = useNavigate()
-  const artists = getArtistOptions()
+  const isEditMode = location.pathname === '/likes/artists'
   const [member, setMember] = useState(null)
+  const [artists, setArtists] = useState([])
   const [selectedArtistIds, setSelectedArtistIds] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -30,15 +32,21 @@ function LikePage() {
           return
         }
 
-        const favoriteArtistIds = await getFavoriteArtistIds(currentMember.userId)
+        const [artistOptions, favoriteArtistIds] = await Promise.all([
+          getArtistOptions(),
+          getFavoriteArtistIds(currentMember.userId),
+        ])
 
         if (isMounted) {
           setMember(currentMember)
+          setArtists(artistOptions)
           setSelectedArtistIds(favoriteArtistIds)
         }
       } catch (loadError) {
+        console.error(loadError)
+
         if (isMounted) {
-          setError(loadError.message)
+          setError('관심 아티스트 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
         }
       } finally {
         if (isMounted) {
@@ -74,14 +82,15 @@ function LikePage() {
       await saveFavoriteArtists(member.userId, selectedArtistIds)
       navigate('/mypage')
     } catch (saveError) {
-      setError(saveError.message)
+      console.error(saveError)
+      setError('관심 아티스트를 저장하지 못했습니다. 잠시 후 다시 시도해주세요.')
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleActionButtonClick = () => {
-    if (hasSelectedArtists) {
+    if (isEditMode || hasSelectedArtists) {
       handleSave()
       return
     }
@@ -91,7 +100,9 @@ function LikePage() {
 
   let actionButtonText = '건너뛰기'
 
-  if (hasSelectedArtists) {
+  if (isEditMode) {
+    actionButtonText = isSaving ? '수정 중...' : '수정완료'
+  } else if (hasSelectedArtists) {
     actionButtonText = isSaving ? '저장 중...' : '저장하기'
   }
 
@@ -110,7 +121,7 @@ function LikePage() {
       <div className="account-shell like-shell">
         <section className="like-panel" aria-label="관심 아티스트 선택">
           <div className="account-heading">
-            <h1>관심 아티스트를 선택해주세요</h1>
+            <h1>{isEditMode ? '관심 아티스트를 수정해주세요' : '관심 아티스트를 선택해주세요'}</h1>
           </div>
 
           {error && (
@@ -142,7 +153,7 @@ function LikePage() {
               className="account-button like-action-button"
               type="button"
               onClick={handleActionButtonClick}
-              disabled={hasSelectedArtists && isSaving}
+              disabled={isSaving}
             >
               {actionButtonText}
             </button>

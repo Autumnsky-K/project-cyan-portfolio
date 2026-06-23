@@ -167,8 +167,10 @@ function MyPage() {
           setSummary(myPageSummary)
         }
       } catch (loadError) {
+        console.error(loadError)
+
         if (isMounted) {
-          setError(loadError.message)
+          setError('마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
         }
       } finally {
         if (isMounted) {
@@ -202,7 +204,8 @@ function MyPage() {
       await logoutMember()
       navigate('/login')
     } catch (logoutError) {
-      setError(logoutError.message)
+      console.error(logoutError)
+      setError('로그아웃하지 못했습니다. 잠시 후 다시 시도해주세요.')
     }
   }
 
@@ -254,7 +257,7 @@ function MyPage() {
     <main className="account-page">
       <div className="account-shell">
         <nav className="account-topbar" aria-label="마이페이지 이동">
-          <Link to="/like">관심 아티스트</Link>
+          <Link to="/likes/artists">관심 아티스트</Link>
           <Link to="/goods">굿즈</Link>
         </nav>
 
