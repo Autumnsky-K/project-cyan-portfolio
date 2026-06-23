@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.1.6` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.0` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -457,4 +457,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
 | 2026-06-23 | v0.1.11 | auth | additive | Spring API에서 Supabase JWKS 기반 JWT 검증과 현재 회원 컨텍스트를 사용하는 인증 기준 추가 | 강승민 |
 | 2026-06-23 | v0.1.12 | goods | additive | `GET /api/goods`에 `goodsIds` 필터를 추가하고 즐겨찾기 목록이 상품 상세 API 대신 상품 목록 API를 사용하도록 변경 | Codex |
+| 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
+| 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
 |  |  |  |  |  |  |

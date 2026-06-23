@@ -18,12 +18,6 @@
 .purchase-info div { display: grid; grid-template-columns: 88px 1fr; gap: 14px; }
 .purchase-info dt { color: var(--goods-muted); }
 .purchase-info dd { margin: 0; text-align: right; }
-.option-group { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; }
-.option-group legend { margin-bottom: 10px; font-weight: 700; }
-.option-group > div { display: flex; flex-wrap: wrap; gap: 8px; }
-.option-group button { min-width: 70px; padding: 10px 14px; border: 1px solid var(--goods-line); border-radius: 4px; background: #fff; cursor: pointer; }
-.option-group button[aria-pressed="true"] { border-color: #111; background: #111; color: #fff; }
-.option-group button:disabled { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
 .purchase-selection, .purchase-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .purchase-selection { padding: 14px; background: var(--goods-soft); }
 .detail-quantity { display: grid; grid-template-columns: 34px 38px 34px; align-items: center; text-align: center; }
@@ -36,7 +30,7 @@
 .purchase-button:disabled { background: #c8c8c8; cursor: not-allowed; }
 .purchase-feedback { text-align: center; color: #3153b8; font-size: 14px; font-weight: 700; }
 .detail-tabs { padding: 54px 42px; }
-.detail-tab-list { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--goods-line); }
+.detail-tab-list { display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--goods-line); }
 .detail-tab-list button { padding: 16px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
 .detail-tab-list button[aria-selected="true"] { border-color: #111; }
 .detail-tab-panel { padding: 36px 8px; }
@@ -44,8 +38,6 @@
 .detail-tab-panel p { color: var(--goods-muted); line-height: 1.8; }
 .detail-long-image { display: grid; place-items: center; margin-top: 36px; padding: 32px; background: var(--goods-soft); }
 .detail-long-image img { width: min(100%, 720px); max-height: 1100px; object-fit: contain; }
-.notice-list { display: grid; gap: 20px; }
-.notice-list article { padding-bottom: 20px; border-bottom: 1px solid var(--goods-line); }
 .goods-reviews { display: grid; gap: 28px; }
 .review-summary { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(260px, 1.3fr); gap: 28px; padding: 28px; background: var(--goods-soft); }
 .review-score { display: grid; align-content: center; justify-items: center; gap: 6px; padding-right: 28px; border-right: 1px solid var(--goods-line); text-align: center; }

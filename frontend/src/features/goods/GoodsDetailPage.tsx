@@ -15,7 +15,7 @@ import './goods-detail.css'
 import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
-type DetailTab = 'intro' | 'notice' | 'reviews'
+type DetailTab = 'intro' | 'reviews'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
@@ -190,9 +190,6 @@ function GoodsDetailPage() {
                   <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
                     상품 소개
                   </button>
-                  <button aria-selected={activeTab === 'notice'} role="tab" type="button" onClick={() => setActiveTab('notice')}>
-                    안내 사항
-                  </button>
                   <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
                     리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
                   </button>
@@ -200,7 +197,7 @@ function GoodsDetailPage() {
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
                     <h2>{goods.name}</h2>
-                    <p>{goods.description || goods.notices?.intro || '상품 소개가 준비 중입니다.'}</p>
+                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
@@ -210,12 +207,6 @@ function GoodsDetailPage() {
                         />
                       )}
                     </div>
-                  </div>
-                ) : activeTab === 'notice' ? (
-                  <div className="detail-tab-panel notice-list" role="tabpanel">
-                    <article><h2>배송 안내</h2><p>{goods.notices?.delivery}</p></article>
-                    <article><h2>취소·변경 안내</h2><p>{goods.notices?.cancel}</p></article>
-                    <article><h2>배송 범위</h2><p>{goods.shipping?.note}</p></article>
                   </div>
                 ) : (
                   <div className="detail-tab-panel" role="tabpanel">
