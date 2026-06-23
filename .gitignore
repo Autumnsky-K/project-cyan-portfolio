@@ -66,6 +66,9 @@ out/
 # 개인 오버라이드
 *.local.md
 
+*.zip
+*.7z
+
 # Node / React
 node_modules/
 dist/

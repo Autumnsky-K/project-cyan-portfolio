@@ -3,126 +3,212 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title th:text="${mode == 'create' ? 'New Goods' : 'Edit Goods'}">Goods Form</title>
+  <title th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 수정'}">굿즈 입력</title>
+  <link rel="stylesheet" th:href="@{/webjars/quill/2.0.3/dist/quill.snow.css}">
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
-  <aside class="admin-sidebar" aria-label="Admin navigation">
-    <div>
-      <p class="admin-eyebrow">Project Cyan</p>
-      <h1>Admin</h1>
-    </div>
-    <nav>
-      <a aria-current="page" th:href="@{/admin/goods}">Goods</a>
-      <a th:href="@{/admin/storage}">Storage</a>
-      <span>Orders</span>
-      <span>Members</span>
-    </nav>
-  </aside>
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">Store Management</p>
-        <h2 th:text="${mode == 'create' ? 'New Goods' : 'Edit Goods'}">Goods</h2>
+        <p class="admin-eyebrow">상품 데이터 관리</p>
+        <h2 th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 수정'}">굿즈</h2>
       </div>
       <div class="admin-header-actions">
-        <a th:href="@{/admin/goods}">Back to List</a>
+        <a th:href="@{/admin/goods}">목록으로 돌아가기</a>
       </div>
     </header>
 
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
 
-    <form class="admin-form" method="post"
-          th:object="${form}"
-          th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}">
-      <section class="admin-form-grid">
-        <label>
-          <span>Goods ID</span>
-          <input type="number" th:field="*{goodsId}" th:readonly="${mode != 'create'}" placeholder="Auto when empty">
-        </label>
-
-        <label>
-          <span>Name</span>
-          <input type="text" th:field="*{name}" required>
-          <small th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
-        </label>
-
-        <label>
-          <span>Price</span>
-          <input type="number" min="0" th:field="*{price}" required>
-          <small th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></small>
-        </label>
-
-        <label>
-          <span>Sales Status</span>
-          <select th:field="*{salesStatus}" required>
-            <option th:each="status : ${salesStatuses}" th:value="${status}" th:text="${status}"></option>
-          </select>
-          <small th:if="${#fields.hasErrors('salesStatus')}" th:errors="*{salesStatus}"></small>
-        </label>
-
-        <label>
-          <span>Artist</span>
-          <select th:field="*{artistId}">
-            <option value="">No artist</option>
-            <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
-          </select>
-        </label>
-
-        <label>
-          <span>Category</span>
-          <select th:field="*{categoryId}">
-            <option value="">No category</option>
-            <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
-          </select>
-        </label>
-
-        <label>
-          <span>Stock</span>
-          <input type="number" min="0" th:field="*{stockCount}">
-          <small th:if="${#fields.hasErrors('stockCount')}" th:errors="*{stockCount}"></small>
-        </label>
-
-        <label>
-          <span>Image URL</span>
-          <input type="url" th:field="*{imageUrl}" placeholder="https://example.com/goods.jpg">
-        </label>
-      </section>
-
-      <label class="admin-wide-field">
-        <span>Description</span>
-        <textarea rows="5" th:field="*{description}"></textarea>
-      </label>
-
-      <section class="admin-checks" aria-label="Goods flags">
-        <label>
-          <input type="checkbox" th:field="*{bestSeller}">
-          <span>Best seller</span>
-        </label>
-        <label>
-          <input type="checkbox" th:field="*{aiPickDefault}">
-          <span>AI pick default</span>
-        </label>
-      </section>
-
-      <section class="admin-tag-options" aria-label="Goods tags">
-        <span>Tags</span>
-        <div>
-          <label th:each="tag : ${filters.tags()}">
-            <input type="checkbox" th:field="*{tags}" th:value="${tag.value()}">
-            <span th:text="${tag.label()}">TAG</span>
-          </label>
+    <section class="admin-goods-editor"
+             data-goods-editor
+             th:attr="data-upload-endpoint=@{/admin/storage/uploads},data-upload-bucket=${goodsImageBucket},data-upload-path=${goodsImagePath}">
+      <aside class="admin-goods-image-panel">
+        <div class="admin-upload-header">
+          <div>
+            <p class="admin-eyebrow">굿즈 이미지</p>
+            <h3>이미지 저장소</h3>
+          </div>
+          <a th:href="@{/admin/storage}">저장소 관리</a>
         </div>
-      </section>
 
-      <div class="admin-form-actions">
-        <button class="admin-primary" type="submit" th:text="${mode == 'create' ? 'Create Goods' : 'Save Goods'}">Save</button>
-        <a th:href="@{/admin/goods}">Cancel</a>
-      </div>
-    </form>
+        <div class="admin-goods-direct-upload">
+          <label>
+            <span>직접 업로드</span>
+            <input type="file" accept="image/*" data-goods-direct-file>
+          </label>
+          <small data-goods-upload-status>준비됨</small>
+        </div>
+
+        <div class="admin-notice admin-notice-error" th:if="${imageLibraryError}" th:text="${imageLibraryError}"></div>
+
+        <div class="admin-image-tree admin-goods-image-tree"
+             data-goods-image-library
+             data-image-tree
+             data-empty-label="업로드된 이미지가 없습니다."
+             th:attr="data-root-label=${goodsImageBucket}">
+          <div data-image-tree-root></div>
+          <div data-image-tree-source hidden>
+            <button type="button"
+                    class="admin-image-library-item"
+                    draggable="true"
+                    th:each="image : ${goodsImages}"
+                    th:attr="data-image-url=${image.publicUrl()},data-image-path=${image.path()},title=${image.path()}">
+              <img th:src="${image.publicUrl()}" alt="">
+              <span th:text="${image.path()}">goods/example.png</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <form class="admin-form admin-goods-form" method="post"
+            th:object="${form}"
+            th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}">
+        <section class="admin-form-grid">
+          <label>
+            <span>굿즈 ID</span>
+            <input type="number" th:field="*{goodsId}" th:readonly="${mode != 'create'}" placeholder="비워두면 자동 생성">
+          </label>
+
+          <label>
+            <span>이름</span>
+            <input type="text" th:field="*{name}" required>
+            <small th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></small>
+          </label>
+
+          <label>
+            <span>가격</span>
+            <input type="number" min="0" th:field="*{price}" required>
+            <small th:if="${#fields.hasErrors('price')}" th:errors="*{price}"></small>
+          </label>
+
+          <label>
+            <span>판매 상태</span>
+            <select th:field="*{salesStatus}" required>
+              <option th:each="status : ${salesStatuses}"
+                      th:value="${status}"
+                      th:text="${salesStatusLabels.get(status) ?: status}"></option>
+            </select>
+            <small th:if="${#fields.hasErrors('salesStatus')}" th:errors="*{salesStatus}"></small>
+          </label>
+
+          <label>
+            <span>아티스트</span>
+            <select th:field="*{artistId}">
+              <option value="">아티스트 없음</option>
+              <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
+            </select>
+          </label>
+
+          <label>
+            <span>카테고리</span>
+            <select th:field="*{categoryId}">
+              <option value="">카테고리 없음</option>
+              <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
+            </select>
+          </label>
+
+          <label>
+            <span>재고</span>
+            <input type="number" min="0" th:field="*{stockCount}">
+            <small th:if="${#fields.hasErrors('stockCount')}" th:errors="*{stockCount}"></small>
+          </label>
+
+          <label>
+            <span>이미지 URL</span>
+            <input type="url" th:field="*{imageUrl}" data-goods-image-url placeholder="https://example.com/goods.jpg">
+          </label>
+        </section>
+
+        <label class="admin-wide-field">
+          <span>상세 설명</span>
+          <textarea class="admin-description-source" th:field="*{description}"></textarea>
+          <div id="goods-description-editor" class="admin-quill-editor"></div>
+          <small>저장할 때 HTML을 정리해서 저장합니다.</small>
+        </label>
+
+        <section class="admin-checks" aria-label="굿즈 표시 옵션">
+          <label>
+            <input type="checkbox" th:field="*{bestSeller}">
+            <span>베스트셀러 표시</span>
+          </label>
+          <label>
+            <input type="checkbox" th:field="*{aiPickDefault}">
+            <span>AI 추천 기본값</span>
+          </label>
+        </section>
+
+        <section class="admin-tag-options" aria-label="굿즈 태그">
+          <span>태그</span>
+          <div>
+            <label th:each="tag : ${filters.tags()}">
+              <input type="checkbox" th:field="*{tags}" th:value="${tag.value()}">
+              <span th:text="${tag.label()}">TAG</span>
+            </label>
+          </div>
+        </section>
+
+        <div class="admin-form-actions">
+          <button class="admin-primary" type="submit" th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 저장'}">저장</button>
+          <a th:href="@{/admin/goods}">취소</a>
+        </div>
+      </form>
+    </section>
   </section>
 </main>
+<script th:src="@{/webjars/quill/2.0.3/dist/quill.js}"></script>
+<script>
+  const descriptionField = document.querySelector('.admin-description-source')
+  const editorElement = document.querySelector('#goods-description-editor')
+  const QuillConstructor = typeof Quill !== 'undefined' ? Quill : window.Quill
+
+  if (descriptionField && editorElement && QuillConstructor) {
+    const quill = new QuillConstructor(editorElement, {
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['blockquote', 'code-block', 'link'],
+          [{ align: [] }],
+          ['clean'],
+        ],
+      },
+      placeholder: '상품 상세 내용을 작성하세요.',
+      theme: 'snow',
+    })
+
+    if (descriptionField.value) {
+      quill.clipboard.dangerouslyPasteHTML(descriptionField.value)
+    }
+
+    function insertGoodsDescriptionImage(url) {
+      if (!url) {
+        return
+      }
+      const range = quill.getSelection(true)
+      const index = range ? range.index : Math.max(0, quill.getLength() - 1)
+      quill.insertEmbed(index, 'image', url, 'user')
+      quill.insertText(index + 1, '\n', 'user')
+      quill.setSelection(index + 2, 0, 'silent')
+    }
+
+    editorElement.addEventListener('goods:image-insert', (event) => {
+      insertGoodsDescriptionImage(event.detail?.url)
+    })
+
+    window.goodsDescriptionQuill = quill
+
+    descriptionField.form?.addEventListener('submit', () => {
+      descriptionField.value = quill.getSemanticHTML()
+    })
+  }
+</script>
+<script th:src="@{/admin/image-library-tree.js}"></script>
+<script th:src="@{/admin/goods-form.js}"></script>
 </body>
 </html>

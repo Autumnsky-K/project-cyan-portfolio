@@ -17,7 +17,7 @@ public record AdminGoodsRequest(
 	@NotBlank String salesStatus,
 	Boolean isBestSeller,
 	Boolean aiPickDefault,
-	@Min(0) Integer stockCount,
+	@Min(value = 0, message = "재고는 0 이상이어야 합니다.") Integer stockCount,
 	List<String> tags
 ) {
 }

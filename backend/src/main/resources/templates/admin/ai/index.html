@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 챗봇 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">챗봇 관리</p>
+        <h2>AI 챗봇 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/}">스토어 열기</a>
+      </div>
+    </header>
+
+    <section class="admin-stats" aria-label="AI 챗봇 상태">
+      <article>
+        <span>제공 방식</span>
+        <strong>로컬</strong>
+      </article>
+      <article>
+        <span>Endpoint</span>
+        <strong>8000</strong>
+      </article>
+      <article>
+        <span>실행 모드</span>
+        <strong>개발</strong>
+      </article>
+    </section>
+
+    <section class="admin-table-panel" aria-label="AI 챗봇 관리 항목">
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table admin-ai-table">
+          <thead>
+          <tr>
+            <th>영역</th>
+            <th>상태</th>
+            <th>관리 대상</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td><strong>챗봇</strong></td>
+            <td>준비됨</td>
+            <td>대화 응답 흐름</td>
+          </tr>
+          <tr>
+            <td><strong>동작</strong></td>
+            <td>준비됨</td>
+            <td>이동, 강조 표시, 장바구니 동작</td>
+          </tr>
+          <tr>
+            <td><strong>프롬프트</strong></td>
+            <td>예정</td>
+            <td>상황별 말투와 응답 규칙</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

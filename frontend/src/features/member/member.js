@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../api/supabaseClient'
+import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 
@@ -249,27 +250,33 @@ export async function exchangeAuthCodeForSession(code) {
 export async function signupMember(form) {
   checkSupabaseConfig()
 
-  // 일반 회원가입도 Supabase Auth를 거쳐 member_uuid를 auth.users.id와 맞춥니다.
-  const { data, error } = await supabase.auth.signUp({
-    email: form.email,
-    password: form.password,
-    options: {
-      data: {
-        name: form.name,
-        phone: form.phone,
-      },
-    },
+  const response = await apiFetch('/members/signup', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: form.email,
+      password: form.password,
+      name: form.name,
+      phone: form.phone,
+      address: form.address,
+      agreements: form.agreements,
+    }),
   })
 
-  if (error) {
-    throw new Error(error.message)
+  const member = await parseApiResponse(response, '회원가입에 실패했습니다.')
+  const { error: loginError } = await supabase.auth.signInWithPassword({
+    email: form.email,
+    password: form.password,
+  })
+
+  if (loginError) {
+    throw new Error(`회원가입은 완료됐지만 로그인에 실패했습니다. ${loginError.message}`)
   }
 
   return {
     member: {
-      name: form.name,
-      email: form.email,
-      userId: data.user?.id,
+      name: member.name,
+      email: member.email,
+      userId: member.userId,
     },
   }
 }
