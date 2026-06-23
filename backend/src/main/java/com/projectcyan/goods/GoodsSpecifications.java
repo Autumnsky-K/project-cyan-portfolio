@@ -12,6 +12,15 @@ final class GoodsSpecifications {
 	private GoodsSpecifications() {
 	}
 
+	static Specification<Goods> hasGoodsIds(Collection<Long> goodsIds) {
+		return (root, query, builder) -> {
+			if (goodsIds == null || goodsIds.isEmpty()) {
+				return builder.conjunction();
+			}
+			return root.get("goodsId").in(goodsIds);
+		};
+	}
+
 	static Specification<Goods> containsKeyword(String keyword) {
 		return (root, query, builder) -> {
 			if (keyword == null || keyword.isBlank()) {

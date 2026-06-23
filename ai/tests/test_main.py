@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
+from project_cyan_ai.goods_catalog import (
+    CatalogGroundedChatResponseProvider,
+    extract_max_price,
+)
 from project_cyan_ai.providers import (
     ClaudeChatResponseProvider,
     MockChatResponseProvider,
@@ -45,9 +49,14 @@ def isolate_ai_settings(monkeypatch, tmp_path):
         "PROJECT_CYAN_CLAUDE_MODEL",
         "PROJECT_CYAN_OLV_GATEWAY_URL",
         "PROJECT_CYAN_OLV_API_KEY",
+        "PROJECT_CYAN_SPRING_API_URL",
         "PROJECT_CYAN_GOODS_API_BASE_URL",
     ):
         monkeypatch.delenv(env_name, raising=False)
+    monkeypatch.setenv(
+        "PROJECT_CYAN_SPRING_API_URL",
+        "http://127.0.0.1:1/api",
+    )
 
 
 class FakeOlvClient:
@@ -188,11 +197,56 @@ class FakeHttpResponse:
         return json.dumps(self.payload).encode("utf-8")
 
 
+class FakeGoodsCatalogClient:
+    def __init__(self, candidates):
+        self.candidates = candidates
+        self.received_texts = []
+
+    def search_candidates(self, text):
+        self.received_texts.append(text)
+        return self.candidates
+
+
 def test_health_returns_ok():
     response = client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_extract_max_price_supports_korean_amounts():
+    assert extract_max_price("5만원 이하 키링 추천") == 50_000
+    assert extract_max_price("가격 35,000원 상품") == 35_000
+
+
+def test_catalog_grounding_uses_real_candidate_id_for_mock_provider():
+    catalog = FakeGoodsCatalogClient(
+        [{"goodsId": 42, "name": "aespa Photocard Set"}]
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response("에스파 포카 상품 추천해줘")
+
+    assert catalog.received_texts == ["에스파 포카 상품 추천해줘"]
+    assert response.actions == [
+        NavigateAction(path="/goods/42"),
+        HighlightAction(selector="[data-goods-id='42']"),
+    ]
+
+
+def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
+    catalog = FakeGoodsCatalogClient([{"goodsId": 42, "name": "Allowed Goods"}])
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient('추천 [ACTION:navigate path="/goods/999"]')
+    )
+    provider = CatalogGroundedChatResponseProvider(delegate, catalog)
+
+    response = provider.build_response("상품 추천해줘")
+
+    assert response.actions == []
 
 
 def test_client_text_input_requires_frozen_type():

@@ -1,25 +1,23 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { CartProvider } from './features/cart/cartStore'
 
 import AuthCallbackPage from './features/member/AuthCallbackPage'
+import ArtistPage from './features/artist/artist'
 import ForgotPasswordPage from './features/member/ForgotPasswordPage'
-import LikePage from './features/member/LikePage'
-
-import ArtistPage from './features/artist/artist.tsx'
 import CartPage from './features/cart/CartPage'
-import { CartProvider } from './features/cart/cartStore'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
+import LikePage from './features/member/LikePage'
 import LoginPage from './features/member/LoginPage.jsx'
-import MyPage from './features/member/MyPage'
-import ResetPasswordPage from './features/member/ResetPasswordPage'
-import SignupPage from './features/member/SignupPage.jsx'
-import VtuberChatbot from './features/vtuber/VtuberChatbot.tsx'
-import ArtistPage from './features/artist/artist.tsx'
 import PaymentCancel from './pages/PaymentCancel.jsx'
 import PaymentFail from './pages/PaymentFail.jsx'
 import PaymentSuccess from './pages/PaymentSuccess.jsx'
 import Store from './pages/Store.jsx'
+import MyPage from './features/member/MyPage'
+import ResetPasswordPage from './features/member/ResetPasswordPage'
+import SignupPage from './features/member/SignupPage.jsx'
+import VtuberChatbot from './features/vtuber/VtuberChatbot'
 
 function AppShell() {
   const { pathname } = useLocation()

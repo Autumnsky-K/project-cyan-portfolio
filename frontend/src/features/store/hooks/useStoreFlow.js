@@ -21,13 +21,13 @@ import {
   markExpired,
   markFailed,
 } from '../services/paymentResultService'
-import { loadCart, saveCart } from '../storage/cartStorage'
 import { loadOrders, saveOrder as persistOrder } from '../storage/orderStorage'
 import {
   clearPendingPayment,
   loadPendingPayment,
   savePendingPayment,
 } from '../storage/paymentStorage'
+import { useCart } from '../../cart/useCart'
 import {
   ORDER_STATUS,
   PAYMENT_METHODS,
@@ -38,6 +38,13 @@ import {
   isPendingPaymentExpired,
   normalizeProduct,
 } from '../utils/storeUtils'
+
+const DEFAULT_MEMBER_ID = import.meta.env.VITE_DEV_MEMBER_ID ?? ''
+
+function normalizeMemberId(value) {
+  const memberId = String(value ?? '').trim()
+  return /^\d+$/.test(memberId) ? Number(memberId) : memberId
+}
 
 function markLocalDevOrders(orders) {
   return orders.map((order) => ({
@@ -75,15 +82,27 @@ async function fetchCartOrders() {
   return fetchRemoteOrders()
 }
 
-export function useStoreFlow() {
+export function useStoreFlow(options = {}) {
+  const {
+    allowLocalFallback = false,
+    defaultMemberId = DEFAULT_MEMBER_ID,
+    fetchOrderHistory = false,
+  } = options
+  const {
+    items: sharedCartItems,
+    addCartItem,
+    updateCartItemQuantity,
+    removeCartItem,
+    clearCart,
+  } = useCart()
   const [storeProducts, setStoreProducts] = useState([])
   const [productStatus, setProductStatus] = useState('loading')
   const [productMessage, setProductMessage] = useState('')
-  const [cart, setCart] = useState(loadCart)
   const [orders, setOrders] = useState([])
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState({
+    memberId: defaultMemberId || DEFAULT_MEMBER_ID,
     name: '',
     email: '',
     phone: '',
@@ -105,17 +124,43 @@ export function useStoreFlow() {
   )
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
 
+  useEffect(() => {
+    if (!defaultMemberId) return
+
+    setCheckoutForm((currentForm) =>
+      currentForm.memberId
+        ? currentForm
+        : { ...currentForm, memberId: defaultMemberId },
+    )
+  }, [defaultMemberId])
+
   const cartItems = useMemo(
     () =>
-      cart
+      sharedCartItems
         .map((item) => {
           const product = storeProducts.find(
-            (target) => target.id === item.productId,
+            (target) =>
+              String(target.id) === String(item.goodsId) ||
+              String(target.goodsId) === String(item.goodsId),
           )
-          return product ? { ...product, quantity: item.quantity } : null
+          if (product) {
+            return { ...product, cartItemKey: item.cartItemKey, quantity: item.quantity }
+          }
+
+          return {
+            id: String(item.goodsId),
+            cartItemKey: item.cartItemKey,
+            goodsId: item.goodsId,
+            name: item.name,
+            artist: item.artistName,
+            description: item.categoryName,
+            image: item.imageUrl || '',
+            price: item.price,
+            quantity: item.quantity,
+          }
         })
         .filter(Boolean),
-    [cart, storeProducts],
+    [sharedCartItems, storeProducts],
   )
 
   const totalQuantity = useMemo(
@@ -170,6 +215,13 @@ export function useStoreFlow() {
       setOrders(normalizeRemoteOrders(remoteOrders))
       setOrderHistoryMessage('')
     } catch (error) {
+      if (!allowLocalFallback) {
+        console.error('[Cart] Orders API failed.', error)
+        setOrders([])
+        setOrderHistoryMessage('Order history is unavailable.')
+        return
+      }
+
       console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
       setOrders(markLocalDevOrders(loadOrders()))
       setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
@@ -177,6 +229,12 @@ export function useStoreFlow() {
   }
 
   useEffect(() => {
+    if (!fetchOrderHistory) {
+      setOrders([])
+      setOrderHistoryMessage('')
+      return undefined
+    }
+
     let ignore = false
 
     fetchCartOrders()
@@ -187,6 +245,13 @@ export function useStoreFlow() {
       })
       .catch((error) => {
         if (ignore) return
+        if (!allowLocalFallback) {
+          console.error('[Cart] Orders API failed.', error)
+          setOrders([])
+          setOrderHistoryMessage('Order history is unavailable.')
+          return
+        }
+
         console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
         setOrders(markLocalDevOrders(loadOrders()))
         setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
@@ -195,7 +260,7 @@ export function useStoreFlow() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [allowLocalFallback, fetchOrderHistory])
 
   function useFallbackProducts() {
     setStoreProducts(fallbackProducts)
@@ -224,10 +289,6 @@ export function useStoreFlow() {
   }, [pendingPayment])
 
   useEffect(() => {
-    saveCart(cart)
-  }, [cart])
-
-  useEffect(() => {
     if (pendingPayment) {
       savePendingPayment(pendingPayment)
       return
@@ -237,19 +298,20 @@ export function useStoreFlow() {
   }, [pendingPayment])
 
   function addToCart(productId) {
-    setCart((currentCart) => {
-      const cartItem = currentCart.find((item) => item.productId === productId)
+    const product = storeProducts.find((item) => String(item.id) === String(productId))
 
-      if (!cartItem) {
-        return [...currentCart, { productId, quantity: 1 }]
-      }
+    if (product) {
+      addCartItem({
+        goodsId: product.goodsId ?? product.id,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.image,
+        artistName: product.artist,
+        categoryName: product.description,
+        tags: [],
+      })
+    }
 
-      return currentCart.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      )
-    })
     setErrors([])
     setMessage('')
     setPaymentStatus(ORDER_STATUS.CREATED)
@@ -257,31 +319,24 @@ export function useStoreFlow() {
   }
 
   function increaseQuantity(productId) {
-    setCart((currentCart) =>
-      currentCart.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      ),
-    )
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
+    if (item) {
+      updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
+    }
   }
 
   function decreaseQuantity(productId) {
-    setCart((currentCart) =>
-      currentCart
-        .map((item) =>
-          item.productId === productId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    )
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
+    if (item) {
+      updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
+    }
   }
 
   function removeFromCart(productId) {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.productId !== productId),
-    )
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
+    if (item) {
+      removeCartItem(item.cartItemKey)
+    }
   }
 
   function updateCheckoutForm(field, value) {
@@ -296,6 +351,7 @@ export function useStoreFlow() {
     const nextErrors = []
 
     if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
+    if (!checkoutForm.memberId.trim()) nextErrors.push('Enter a member ID.')
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
     if (!checkoutForm.phone.trim()) nextErrors.push('Enter a phone number.')
@@ -307,11 +363,13 @@ export function useStoreFlow() {
 
   function buildOrder(status = ORDER_STATUS.CREATED) {
     const orderId = createOrderId()
+    const memberId = normalizeMemberId(checkoutForm.memberId)
 
     return {
       orderId,
       orderNumber: orderId,
       partnerOrderId: `PARTNER-${orderId}`,
+      memberId,
       items: cartItems.map((item) => ({
         productId: item.id,
         goodsId: item.goodsId,
@@ -324,6 +382,7 @@ export function useStoreFlow() {
       totalQuantity,
       totalPrice,
       customer: {
+        memberId,
         name: checkoutForm.name.trim(),
         email: checkoutForm.email.trim(),
         phone: checkoutForm.phone.trim(),
@@ -340,7 +399,7 @@ export function useStoreFlow() {
   function savePaidOrder(order) {
     setOrders((currentOrders) => [order, ...currentOrders])
     setCompletedOrder(order)
-    setCart([])
+    clearCart()
     setPendingPayment(null)
     setErrors([])
     setPaymentStatus(ORDER_STATUS.PAID)
@@ -379,6 +438,13 @@ export function useStoreFlow() {
       savePaidOrder(paidOrder)
       await loadOrderHistory()
     } catch (error) {
+      if (!allowLocalFallback) {
+        console.error('[Cart] Order API save failed.', error)
+        setPaymentStatus(ORDER_STATUS.PAYMENT_FAILED)
+        setMessage('Order save failed. Please try again later.')
+        return
+      }
+
       console.error('[Cart] Order API save failed. Falling back to local preview.', error)
       const paidOrder = buildMockPaidOrder(pendingOrder)
       const nextOrders = persistOrder({ ...paidOrder, source: 'local-dev' })

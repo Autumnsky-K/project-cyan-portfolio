@@ -6,16 +6,16 @@ import {
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
-import CartNavLink from '../cart/CartNavLink'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import './goods.css'
 import './goods-detail.css'
+import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
-type DetailTab = 'intro' | 'notice' | 'reviews'
+type DetailTab = 'intro' | 'reviews'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
@@ -148,17 +148,7 @@ function GoodsDetailPage() {
 
   return (
     <main className="goods-page goods-detail-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">Project Cyan Store</p>
-          <h1>상품 상세</h1>
-        </div>
-        <nav className="store-nav" aria-label="스토어 메뉴">
-          <Link to="/artists">아티스트</Link>
-          <Link to="/goods" aria-current="page">굿즈</Link>
-          <CartNavLink />
-        </nav>
-      </header>
+      <Header />
 
       <section className="detail-toolbar">
         <Link className="detail-action" to="/goods">← 상품 목록</Link>
@@ -200,9 +190,6 @@ function GoodsDetailPage() {
                   <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
                     상품 소개
                   </button>
-                  <button aria-selected={activeTab === 'notice'} role="tab" type="button" onClick={() => setActiveTab('notice')}>
-                    안내 사항
-                  </button>
                   <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
                     리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
                   </button>
@@ -210,7 +197,7 @@ function GoodsDetailPage() {
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
                     <h2>{goods.name}</h2>
-                    <p>{goods.description || goods.notices?.intro || '상품 소개가 준비 중입니다.'}</p>
+                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
@@ -220,12 +207,6 @@ function GoodsDetailPage() {
                         />
                       )}
                     </div>
-                  </div>
-                ) : activeTab === 'notice' ? (
-                  <div className="detail-tab-panel notice-list" role="tabpanel">
-                    <article><h2>배송 안내</h2><p>{goods.notices?.delivery}</p></article>
-                    <article><h2>취소·변경 안내</h2><p>{goods.notices?.cancel}</p></article>
-                    <article><h2>배송 범위</h2><p>{goods.shipping?.note}</p></article>
                   </div>
                 ) : (
                   <div className="detail-tab-panel" role="tabpanel">

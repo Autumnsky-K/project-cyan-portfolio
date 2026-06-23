@@ -7,10 +7,12 @@ import {
 } from '../constants/status'
 import { markCanceled } from '../features/store/services/paymentResultService'
 import { clearPendingPayment } from '../features/store/storage/paymentStorage'
+import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import './Store.css'
 
 function PaymentCancel() {
   const [searchParams] = useSearchParams()
+  const access = useCurrentMemberAccess()
   const orderId = searchParams.get('orderId')
   const [result, setResult] = useState({
     userMessage: 'Confirming payment cancellation.',
@@ -19,10 +21,20 @@ function PaymentCancel() {
   })
 
   useEffect(() => {
+    if (access.isLoading) {
+      return undefined
+    }
+
     let ignore = false
 
     cancelKakaoPay(orderId)
-      .catch(() => markCanceled(orderId))
+      .catch((error) => {
+        if (access.isAdmin) {
+          return markCanceled(orderId)
+        }
+
+        throw error
+      })
       .then((data) => {
         if (ignore) return
         clearPendingPayment()
@@ -44,7 +56,7 @@ function PaymentCancel() {
     return () => {
       ignore = true
     }
-  }, [orderId])
+  }, [access.isAdmin, access.isLoading, orderId])
 
   const paymentStatus = normalizePaymentStatus(
     result.data?.paymentStatus || PAYMENT_CONTRACT_STATUS.CANCELED,
@@ -72,11 +84,13 @@ function PaymentCancel() {
             Back to cart
           </Link>
         </div>
-        <details className="developer-debug">
-          <summary>Developer debug</summary>
-          <p>{result.developerMessage || '-'}</p>
-          <pre>{JSON.stringify(result.data, null, 2)}</pre>
-        </details>
+        {access.isAdmin && (
+          <details className="developer-debug">
+            <summary>Developer debug</summary>
+            <p>{result.developerMessage || '-'}</p>
+            <pre>{JSON.stringify(result.data, null, 2)}</pre>
+          </details>
+        )}
       </section>
     </main>
   )

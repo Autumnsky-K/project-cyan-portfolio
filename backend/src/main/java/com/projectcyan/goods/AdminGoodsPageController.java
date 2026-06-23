@@ -1,9 +1,17 @@
 package com.projectcyan.goods;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.projectcyan.storage.AdminStoragePageController;
+import com.projectcyan.storage.SupabaseStorageException;
+import com.projectcyan.storage.SupabaseStorageService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -12,36 +20,40 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
-import jakarta.validation.Valid;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Controller
 public class AdminGoodsPageController {
 
 	private static final int PAGE_SIZE = 12;
 	private static final List<String> SALES_STATUSES = List.of("ON_SALE", "SOLD_OUT", "HIDDEN", "DISCONTINUED");
+	private static final Map<String, String> SALES_STATUS_LABELS = Map.of(
+		"ON_SALE", "판매중",
+		"SOLD_OUT", "품절",
+		"HIDDEN", "숨김",
+		"DISCONTINUED", "판매 중단"
+	);
 
 	private final GoodsService goodsService;
 	private final AdminGoodsService adminGoodsService;
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
+	private final SupabaseStorageService supabaseStorageService;
 
 	public AdminGoodsPageController(
 		GoodsService goodsService,
 		AdminGoodsService adminGoodsService,
 		GoodsRepository goodsRepository,
-		GoodsStockRepository goodsStockRepository
+		GoodsStockRepository goodsStockRepository,
+		SupabaseStorageService supabaseStorageService
 	) {
 		this.goodsService = goodsService;
 		this.adminGoodsService = adminGoodsService;
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
-	}
-
-	@GetMapping("/admin")
-	public String redirectAdmin() {
-		return "redirect:/admin/goods";
+		this.supabaseStorageService = supabaseStorageService;
 	}
 
 	@GetMapping("/admin/goods")
@@ -61,11 +73,13 @@ public class AdminGoodsPageController {
 			null,
 			null,
 			null,
+			null,
 			page,
 			PAGE_SIZE,
 			sort
 		);
 
+		Map<Long, Integer> stockCounts = stockCounts(goodsPage.content());
 		model.addAttribute("goodsPage", goodsPage);
 		model.addAttribute("filters", goodsService.findGoodsFilters());
 		model.addAttribute("q", q == null ? "" : q);
@@ -74,7 +88,10 @@ public class AdminGoodsPageController {
 		model.addAttribute("sort", sort);
 		model.addAttribute("pageNumbers", pageNumbers(goodsPage.page(), goodsPage.totalPages()));
 		model.addAttribute("salesStatuses", SALES_STATUSES);
-		model.addAttribute("stockCounts", stockCounts(goodsPage.content()));
+		model.addAttribute("salesStatusLabels", SALES_STATUS_LABELS);
+		model.addAttribute("stockCounts", stockCounts);
+		model.addAttribute("bulkRows", bulkRows(goodsPage.content(), stockCounts));
+		model.addAttribute("defaultGoodsChecked", hasActiveGoodsFilter(q, artistId, categoryId));
 		return "admin/goods/list";
 	}
 
@@ -112,7 +129,7 @@ public class AdminGoodsPageController {
 		}
 
 		GoodsDetailResponse saved = adminGoodsService.createGoods(form.toRequest());
-		redirectAttributes.addFlashAttribute("notice", "Goods created.");
+		redirectAttributes.addFlashAttribute("notice", "굿즈가 등록되었습니다.");
 		return "redirect:/admin/goods/" + saved.goodsId() + "/edit";
 	}
 
@@ -132,8 +149,54 @@ public class AdminGoodsPageController {
 		}
 
 		adminGoodsService.updateGoods(goodsId, form.toRequest());
-		redirectAttributes.addFlashAttribute("notice", "Goods updated.");
+		redirectAttributes.addFlashAttribute("notice", "굿즈 정보가 저장되었습니다.");
 		return "redirect:/admin/goods/" + goodsId + "/edit";
+	}
+
+	@PostMapping("/admin/goods/bulk")
+	public String bulkUpdateGoods(
+		@RequestParam(required = false) List<Long> selectedGoodsId,
+		@RequestParam(required = false) List<Long> goodsId,
+		@RequestParam(required = false) List<String> name,
+		@RequestParam(required = false) List<String> price,
+		@RequestParam(required = false) List<String> rowArtistId,
+		@RequestParam(required = false) List<String> rowCategoryId,
+		@RequestParam(required = false) List<String> salesStatus,
+		@RequestParam(required = false) List<String> stockCount,
+		@RequestParam(required = false) List<String> imageUrl,
+		@RequestParam(required = false) List<String> tagsText,
+		@RequestParam(required = false) String q,
+		@RequestParam(required = false) Long artistId,
+		@RequestParam(required = false) Long categoryId,
+		@RequestParam(defaultValue = "createdAt,desc") String sort,
+		@RequestParam(defaultValue = "0") int page,
+		RedirectAttributes redirectAttributes
+	) {
+		try {
+			List<AdminGoodsBulkRow> selectedRows = selectedBulkRows(
+				selectedGoodsId,
+				goodsId,
+				name,
+				price,
+				rowArtistId,
+				rowCategoryId,
+				salesStatus,
+				stockCount,
+				imageUrl,
+				tagsText
+			);
+			if (selectedRows.isEmpty()) {
+				redirectAttributes.addFlashAttribute("error", "선택된 굿즈가 없습니다.");
+				return redirectToGoods(q, artistId, categoryId, sort, page);
+			}
+			int updatedCount = adminGoodsService.bulkUpdateGoods(selectedRows);
+			redirectAttributes.addFlashAttribute("notice", updatedCount + "개 굿즈가 갱신되었습니다.");
+		} catch (ResponseStatusException exception) {
+			String message = exception.getReason() == null ? "굿즈 갱신 중 오류가 발생했습니다." : exception.getReason();
+			redirectAttributes.addFlashAttribute("error", message);
+		}
+
+		return redirectToGoods(q, artistId, categoryId, sort, page);
 	}
 
 	@PostMapping("/admin/goods/{goodsId}/status")
@@ -143,7 +206,7 @@ public class AdminGoodsPageController {
 		RedirectAttributes redirectAttributes
 	) {
 		adminGoodsService.updateSalesStatus(goodsId, new GoodsStatusUpdateRequest(salesStatus));
-		redirectAttributes.addFlashAttribute("notice", "Sales status updated.");
+		redirectAttributes.addFlashAttribute("notice", "판매 상태가 저장되었습니다.");
 		return "redirect:/admin/goods";
 	}
 
@@ -153,21 +216,159 @@ public class AdminGoodsPageController {
 		@RequestParam Integer stockCount,
 		RedirectAttributes redirectAttributes
 	) {
+		if (stockCount < 0) {
+			redirectAttributes.addFlashAttribute("error", "재고는 0 이상이어야 합니다.");
+			return "redirect:/admin/goods";
+		}
 		adminGoodsService.updateStock(goodsId, new GoodsStockUpdateRequest(stockCount));
-		redirectAttributes.addFlashAttribute("notice", "Stock updated.");
+		redirectAttributes.addFlashAttribute("notice", "재고가 저장되었습니다.");
 		return "redirect:/admin/goods";
 	}
 
-	@PostMapping("/admin/goods/{goodsId}/delete")
-	public String deleteGoods(@PathVariable Long goodsId, RedirectAttributes redirectAttributes) {
-		adminGoodsService.deleteGoods(goodsId);
-		redirectAttributes.addFlashAttribute("notice", "Goods discontinued.");
+	@PostMapping("/admin/goods/{goodsId}/discontinue")
+	public String discontinueGoods(@PathVariable Long goodsId, RedirectAttributes redirectAttributes) {
+		adminGoodsService.discontinueGoods(goodsId);
+		redirectAttributes.addFlashAttribute("notice", "굿즈가 판매 중단 처리되었습니다.");
 		return "redirect:/admin/goods";
+	}
+
+	private List<AdminGoodsBulkRow> bulkRows(List<GoodsSummaryResponse> goods, Map<Long, Integer> stockCounts) {
+		return goods.stream()
+			.map(item -> new AdminGoodsBulkRow(
+				item.goodsId(),
+				item.name(),
+				item.price(),
+				item.artistId(),
+				item.artistName() == null ? "아티스트 없음" : item.artistName(),
+				item.categoryId(),
+				item.categoryName() == null ? "카테고리 없음" : item.categoryName(),
+				item.salesStatus(),
+				SALES_STATUS_LABELS.getOrDefault(item.salesStatus(), item.salesStatus()),
+				stockCounts.getOrDefault(item.goodsId(), 0),
+				item.imageUrl(),
+				formatTags(item.tags())
+			))
+			.toList();
+	}
+
+	private List<AdminGoodsBulkRow> selectedBulkRows(
+		List<Long> selectedGoodsId,
+		List<Long> goodsId,
+		List<String> name,
+		List<String> price,
+		List<String> rowArtistId,
+		List<String> rowCategoryId,
+		List<String> salesStatus,
+		List<String> stockCount,
+		List<String> imageUrl,
+		List<String> tagsText
+	) {
+		Set<Long> selectedIds = selectedGoodsId == null ? Set.of() : new HashSet<>(selectedGoodsId);
+		if (goodsId == null || goodsId.isEmpty()) {
+			return List.of();
+		}
+		List<AdminGoodsBulkRow> rows = new ArrayList<>();
+		for (int index = 0; index < goodsId.size(); index++) {
+			Long rowGoodsId = goodsId.get(index);
+			if (!selectedIds.contains(rowGoodsId)) {
+				continue;
+			}
+			rows.add(new AdminGoodsBulkRow(
+				rowGoodsId,
+				stringAt(name, index),
+				integerAt(price, index, "가격"),
+				nullableLongAt(rowArtistId, index, "아티스트"),
+				null,
+				nullableLongAt(rowCategoryId, index, "카테고리"),
+				null,
+				stringAt(salesStatus, index),
+				null,
+				integerAt(stockCount, index, "재고"),
+				stringAt(imageUrl, index),
+				stringAt(tagsText, index)
+			));
+		}
+		return rows;
+	}
+
+	private boolean hasActiveGoodsFilter(String q, Long artistId, Long categoryId) {
+		return (q != null && !q.isBlank()) || artistId != null || categoryId != null;
+	}
+
+	private String redirectToGoods(String q, Long artistId, Long categoryId, String sort, int page) {
+		UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/admin/goods");
+		if (q != null && !q.isBlank()) {
+			builder.queryParam("q", q.trim());
+		}
+		if (artistId != null) {
+			builder.queryParam("artistId", artistId);
+		}
+		if (categoryId != null) {
+			builder.queryParam("categoryId", categoryId);
+		}
+		builder.queryParam("sort", sort == null || sort.isBlank() ? "createdAt,desc" : sort);
+		builder.queryParam("page", Math.max(page, 0));
+		return "redirect:" + builder.build().encode().toUriString();
+	}
+
+	private String stringAt(List<String> values, int index) {
+		if (values == null || index >= values.size()) {
+			return "";
+		}
+		String value = values.get(index);
+		return value == null ? "" : value;
+	}
+
+	private Integer integerAt(List<String> values, int index, String label) {
+		String value = stringAt(values, index);
+		if (value.isBlank()) {
+			return 0;
+		}
+		try {
+			return Integer.parseInt(value.trim());
+		} catch (NumberFormatException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, label + " 값이 올바르지 않습니다.");
+		}
+	}
+
+	private Long nullableLongAt(List<String> values, int index, String label) {
+		String value = stringAt(values, index);
+		if (value.isBlank()) {
+			return null;
+		}
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, label + " 값이 올바르지 않습니다.");
+		}
+	}
+
+	private String formatTags(List<String> tags) {
+		if (tags == null || tags.isEmpty()) {
+			return "";
+		}
+		return tags.stream()
+			.filter(tag -> tag != null && !tag.isBlank())
+			.map(tag -> "#" + tag.trim())
+			.collect(Collectors.joining(" "));
 	}
 
 	private void addFormOptions(Model model) {
 		model.addAttribute("filters", goodsService.findGoodsFilters());
 		model.addAttribute("salesStatuses", SALES_STATUSES);
+		model.addAttribute("salesStatusLabels", SALES_STATUS_LABELS);
+		model.addAttribute("goodsImageBucket", AdminStoragePageController.GOODS_IMAGE_BUCKET);
+		model.addAttribute("goodsImagePath", AdminStoragePageController.GOODS_IMAGE_PATH);
+		try {
+			model.addAttribute("goodsImages", supabaseStorageService.listImageObjects(
+				AdminStoragePageController.GOODS_IMAGE_BUCKET,
+				AdminStoragePageController.GOODS_IMAGE_PATH,
+				1000
+			));
+		} catch (SupabaseStorageException exception) {
+			model.addAttribute("goodsImages", List.of());
+			model.addAttribute("imageLibraryError", exception.getMessage());
+		}
 	}
 
 	private Map<Long, Integer> stockCounts(List<GoodsSummaryResponse> goods) {

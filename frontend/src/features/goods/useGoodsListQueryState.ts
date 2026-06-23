@@ -3,6 +3,9 @@ import type { GoodsQueryParams } from '../../api/goods'
 import type { GoodsFilterParam, GoodsSelectedFilters } from './GoodsFilterUi'
 import { useDebouncedValue } from './useDebouncedValue'
 
+export type GoodsSection = 'all' | 'favorites'
+export type GoodsViewMode = 'grid' | 'list'
+
 const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
 const EMPTY_FILTERS: GoodsSelectedFilters = { categoryIds: [], artistIds: [], tags: [] }
 
@@ -24,6 +27,8 @@ function readState() {
     query: params.get('q') ?? '',
     sort: ALLOWED_SORTS.has(requestedSort) ? requestedSort : 'createdAt,desc',
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
+    section: params.get('section') === 'favorites' ? 'favorites' as const : 'all' as const,
+    viewMode: params.get('view') === 'list' ? 'list' as const : 'grid' as const,
     selectedFilters: {
       categoryIds: readFilterParam(params, 'categories'),
       artistIds: readFilterParam(params, 'artists'),
@@ -32,7 +37,14 @@ function readState() {
   }
 }
 
-function createUrl(query: string, sort: string, page: number, filters: GoodsSelectedFilters) {
+function createUrl(
+  query: string,
+  sort: string,
+  page: number,
+  filters: GoodsSelectedFilters,
+  section: GoodsSection,
+  viewMode: GoodsViewMode,
+) {
   const params = new URLSearchParams()
   if (query.trim()) params.set('q', query.trim())
   if (sort !== 'createdAt,desc') params.set('sort', sort)
@@ -40,6 +52,8 @@ function createUrl(query: string, sort: string, page: number, filters: GoodsSele
   if (filters.categoryIds.length) params.set('categories', filters.categoryIds.join(';'))
   if (filters.artistIds.length) params.set('artists', filters.artistIds.join(';'))
   if (filters.tags.length) params.set('tags', filters.tags.join(';'))
+  if (section === 'favorites') params.set('section', 'favorites')
+  if (viewMode === 'list') params.set('view', 'list')
   return `${window.location.pathname}${params.size ? `?${params.toString()}` : ''}`
 }
 
@@ -48,6 +62,8 @@ export function useGoodsListQueryState() {
   const [query, setQuery] = useState(initialState.query)
   const [sort, setSort] = useState(initialState.sort)
   const [page, setPage] = useState(initialState.page)
+  const [section, setSection] = useState<GoodsSection>(initialState.section)
+  const [viewMode, setViewMode] = useState<GoodsViewMode>(initialState.viewMode)
   const [selectedFilters, setSelectedFilters] = useState(initialState.selectedFilters)
   const committedQueryRef = useRef(initialState.query.trim())
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -68,8 +84,10 @@ export function useGoodsListQueryState() {
       sort,
       page,
       selectedFilters,
+      section,
+      viewMode,
     ))
-  }, [page, selectedFilters, sort])
+  }, [page, section, selectedFilters, sort, viewMode])
 
   useEffect(() => {
     function restoreHistoryState() {
@@ -78,6 +96,8 @@ export function useGoodsListQueryState() {
       setQuery(restored.query)
       setSort(restored.sort)
       setPage(restored.page)
+      setSection(restored.section)
+      setViewMode(restored.viewMode)
       setSelectedFilters(restored.selectedFilters)
     }
 
@@ -107,7 +127,14 @@ export function useGoodsListQueryState() {
     const normalizedValue = value.trim()
     if (normalizedValue === committedQueryRef.current) return
     committedQueryRef.current = normalizedValue
-    window.history.pushState(null, '', createUrl(normalizedValue, sort, 0, selectedFilters))
+    window.history.pushState(null, '', createUrl(
+      normalizedValue,
+      sort,
+      0,
+      selectedFilters,
+      section,
+      viewMode,
+    ))
   }
 
   return {
@@ -117,6 +144,10 @@ export function useGoodsListQueryState() {
     setSort,
     page,
     setPage,
+    section,
+    setSection,
+    viewMode,
+    setViewMode,
     selectedFilters,
     setSelectedFilters,
     requestParams,

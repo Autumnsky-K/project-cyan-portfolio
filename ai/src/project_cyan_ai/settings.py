@@ -24,6 +24,10 @@ class ProjectCyanAiSettings(BaseSettings):
         alias="PROJECT_CYAN_OLV_GATEWAY_URL",
     )
     olv_api_key: str | None = Field(default=None, alias="PROJECT_CYAN_OLV_API_KEY")
+    spring_api_url: str = Field(
+        default="http://localhost:8080/api",
+        alias="PROJECT_CYAN_SPRING_API_URL",
+    )
     goods_api_base_url: str = Field(
         default="http://localhost:8080/api",
         alias="PROJECT_CYAN_GOODS_API_BASE_URL",

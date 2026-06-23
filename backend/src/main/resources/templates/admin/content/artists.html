@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>아티스트 화면 내용 편집</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/content-admin.css}">
+</head>
+<body>
+<main class="admin-page"
+      data-cms-page="artists"
+      th:attr="data-cms-storage-public-base-url=${cmsStoragePublicBaseUrl}">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('content-artists', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">실시간 미리보기 관리</p>
+        <h2>아티스트 화면 내용 편집</h2>
+      </div>
+      <div class="admin-header-actions">
+        <button class="admin-primary admin-apply-page-button" type="submit" form="artistsPageForm">아티스트 화면 적용</button>
+        <button class="admin-primary admin-apply-page-button" type="submit" form="artistRowsForm">아티스트 목록 적용</button>
+        <a th:href="@{/artists}">아티스트 화면 열기</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+
+    <section class="cms-workbench">
+      <div class="cms-sheet-stack">
+        <form id="artistsPageForm"
+              class="cms-sheet-panel"
+              method="post"
+              th:action="@{/admin/content/artists/page}"
+              data-confirm-submit
+              data-confirm-form-title="아티스트 화면">
+          <div class="cms-panel-heading">
+            <h3>문구·이미지 입력</h3>
+          </div>
+          <input type="hidden" name="primaryColor" data-preview-input="primaryColor" th:value="${page.primaryColor()}">
+          <input type="hidden" name="accentColor" data-preview-input="accentColor" th:value="${page.accentColor()}">
+          <input type="hidden" name="backgroundColor" data-preview-input="backgroundColor" th:value="${page.backgroundColor()}">
+          <table class="cms-sheet">
+            <thead>
+            <tr>
+              <th>항목</th>
+              <th>입력</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <th>상단 보조 문구</th>
+              <td><input name="eyebrow" data-preview-input="eyebrow" data-confirm-group="문구" data-confirm-label="상단 보조 문구" th:value="${page.eyebrow()}" th:data-fallback-value="${page.eyebrow()}" th:placeholder="${page.eyebrow()}"></td>
+            </tr>
+            <tr>
+              <th>제목</th>
+              <td><input name="title" data-preview-input="title" data-confirm-group="문구" data-confirm-label="제목" th:value="${page.title()}" th:data-fallback-value="${page.title()}" th:placeholder="${page.title()}"></td>
+            </tr>
+            <tr>
+              <th>섹션 제목</th>
+              <td><input name="summaryTitle" data-preview-input="summaryTitle" data-confirm-group="문구" data-confirm-label="섹션 제목" th:value="${page.summaryTitle()}" th:data-fallback-value="${page.summaryTitle()}" th:placeholder="${page.summaryTitle()}"></td>
+            </tr>
+            <tr>
+              <th>섹션 설명</th>
+              <td><input name="summaryBody" data-preview-input="summaryBody" data-confirm-group="문구" data-confirm-label="섹션 설명" th:value="${page.summaryBody()}" th:data-fallback-value="${page.summaryBody()}" th:placeholder="${page.summaryBody()}"></td>
+            </tr>
+            <tr>
+              <th>헤더 이미지</th>
+              <td>
+                <input name="heroImageUrl" data-preview-input="heroImageUrl" data-confirm-group="이미지" data-confirm-label="헤더 이미지" th:value="${page.heroImageUrl()}" th:data-fallback-value="${page.heroImageUrl()}" th:placeholder="${page.heroImageUrl() ?: '현재 이미지 없음'}">
+                <input class="cms-file-input" type="file" accept="image/*" data-image-target="heroImageUrl">
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </form>
+
+        <form id="artistRowsForm"
+              class="cms-sheet-panel"
+              method="post"
+              th:action="@{/admin/content/artists}"
+              data-confirm-submit
+              data-confirm-form-title="아티스트 목록">
+          <div class="cms-panel-heading">
+            <h3>아티스트 목록</h3>
+          </div>
+          <div class="cms-table-scroll">
+            <table class="cms-sheet cms-artist-sheet">
+              <thead>
+              <tr>
+                <th>노출</th>
+                <th>정렬</th>
+                <th>ID</th>
+                <th>이름</th>
+                <th>그룹</th>
+                <th>데뷔일</th>
+                <th>이미지</th>
+                <th>소개</th>
+                <th>컬렉션</th>
+              </tr>
+              </thead>
+              <tbody id="artistRows">
+              <tr th:each="artist : ${artists}">
+                <td>
+                  <input type="checkbox"
+                         name="visibleArtistId"
+                         data-artist-visible
+                         th:value="${artist.artistId()}"
+                         th:checked="${artist.visible()}">
+                </td>
+                <td><input type="number" name="sortOrder" data-artist-field="sortOrder" th:value="${artist.sortOrder()}" th:data-fallback-value="${artist.sortOrder()}" th:placeholder="${artist.sortOrder()}"></td>
+                <td><input name="artistId" data-artist-field="artistId" th:value="${artist.artistId()}" readonly></td>
+                <td><input name="name" data-artist-field="name" th:value="${artist.name()}" th:data-fallback-value="${artist.name()}" th:placeholder="${artist.name()}"></td>
+                <td><input name="groupName" data-artist-field="groupName" th:value="${artist.groupName()}" th:data-fallback-value="${artist.groupName()}" th:placeholder="${artist.groupName() ?: '현재 그룹 없음'}"></td>
+                <td><input type="date" name="debutDate" data-artist-field="debutDate" th:value="${artist.debutDate()}" th:data-fallback-value="${artist.debutDate()}"></td>
+                <td>
+                  <input name="imageUrl" data-artist-field="imageUrl" th:value="${artist.imageUrl()}" th:data-fallback-value="${artist.imageUrl()}" th:placeholder="${artist.imageUrl() ?: '현재 이미지 없음'}">
+                  <input class="cms-file-input" type="file" accept="image/*" data-row-image>
+                </td>
+                <td><input name="lore" data-artist-field="lore" th:value="${artist.lore()}" th:data-fallback-value="${artist.lore()}" th:placeholder="${artist.lore() ?: '현재 소개 없음'}"></td>
+                <td><input name="collections" data-artist-field="collections" th:value="${artist.collections()}" th:data-fallback-value="${artist.collections()}" th:placeholder="${artist.collections() ?: '현재 컬렉션 없음'}"></td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </form>
+      </div>
+
+      <section class="cms-preview-panel" aria-label="아티스트 화면 미리보기">
+        <div class="cms-panel-heading">
+          <h3>실시간 미리보기</h3>
+          <span>적용 전</span>
+        </div>
+        <iframe id="cmsPreview" title="아티스트 화면 실시간 미리보기"></iframe>
+      </section>
+    </section>
+  </section>
+</main>
+<script th:src="@{/admin/content-admin.js}"></script>
+</body>
+</html>

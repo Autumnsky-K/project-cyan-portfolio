@@ -19,49 +19,8 @@ export type GoodsDetail = GoodsSummary & {
   description?: string | null
   artistId?: number | null
   stockCount?: number | null
-  saleType?: string | null
-  saleStartAt?: string | null
-  saleEndAt?: string | null
   purchaseState?: string | null
   purchaseMessage?: string | null
-  shipping?: GoodsShipping | null
-  optionGroups?: GoodsOptionGroup[]
-  variants?: GoodsVariant[]
-  notices?: GoodsNotices | null
-}
-
-export type GoodsShipping = {
-  fee: number
-  carrier: string
-  scope: string
-  note: string
-}
-
-export type GoodsOptionValue = {
-  optionValueId: number
-  name: string
-}
-
-export type GoodsOptionGroup = {
-  optionGroupId: number
-  key: string
-  name: string
-  values: GoodsOptionValue[]
-}
-
-export type GoodsVariant = {
-  variantId: number
-  sku: string
-  additionalPrice: number
-  stockCount: number
-  active: boolean
-  selections: Record<string, string>
-}
-
-export type GoodsNotices = {
-  intro: string
-  cancel: string
-  delivery: string
 }
 
 export type GoodsReview = {
@@ -111,6 +70,7 @@ export type GoodsQueryParams = {
   categoryIds?: string
   artistIds?: string
   tags?: string
+  goodsIds?: string
 }
 
 type FetchOptions = RequestInit

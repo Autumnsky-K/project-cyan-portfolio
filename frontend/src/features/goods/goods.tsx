@@ -1,5 +1,4 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   fetchGoods,
   fetchGoodsFilters,
@@ -7,8 +6,7 @@ import {
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
-import CartNavLink from '../cart/CartNavLink'
-import GoodsCards, { type GoodsViewMode } from './GoodsCards'
+import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
   type GoodsFilterGroup,
@@ -23,11 +21,10 @@ import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
+import Header from '../../shared/components/Header'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
-type GoodsSection = 'all' | 'favorites'
-
 function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
   return [...new Map(
     options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
@@ -35,7 +32,7 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
 }
 
 function GoodsPage() {
-  const { favoriteIds, isFavorite, toggleFavorite } = useGoodsFavorites()
+  const { favoriteIds, isFavorite, toggleFavorite, retainFavorites } = useGoodsFavorites()
   const {
     query,
     setQuery,
@@ -43,6 +40,10 @@ function GoodsPage() {
     setSort,
     page,
     setPage,
+    section: activeSection,
+    setSection: setActiveSection,
+    viewMode,
+    setViewMode,
     selectedFilters,
     setSelectedFilters,
     requestParams,
@@ -56,13 +57,11 @@ function GoodsPage() {
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<GoodsViewMode>('grid')
-  const [activeSection, setActiveSection] = useState<GoodsSection>('all')
   const {
     goods: favoriteGoods,
     status: favoritesStatus,
     error: favoritesError,
-  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds)
+  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds, retainFavorites)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)
@@ -199,19 +198,7 @@ function GoodsPage() {
 
   return (
     <main className="goods-page">
-      <header className="store-header">
-        <div>
-          <p className="eyebrow">SM Universe Store</p>
-          <h1>Goods</h1>
-        </div>
-        <nav className="store-nav" aria-label="Store navigation">
-          <Link to="/artists">Artists</Link>
-          <Link to="/goods" aria-current="page">
-            Goods
-          </Link>
-          <CartNavLink />
-        </nav>
-      </header>
+      <Header />
 
       <nav className="goods-section-tabs" aria-label="Goods sections">
         <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>

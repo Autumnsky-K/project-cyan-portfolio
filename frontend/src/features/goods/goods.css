@@ -12,37 +12,6 @@
   text-align: left;
 }
 
-.store-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px;
-  border-bottom: 1px solid var(--goods-line);
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--goods-muted);
-  font-size: 14px;
-  text-transform: uppercase;
-}
-
-.store-header h1 {
-  margin: 0;
-  color: var(--goods-ink);
-  font-size: 44px;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.store-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.store-nav a,
 .store-toolbar input,
 .store-toolbar select,
 .filter-panel button,
@@ -56,17 +25,6 @@
   background: #ffffff;
   color: var(--goods-text);
   font: inherit;
-}
-
-.store-nav a {
-  padding: 8px 12px;
-  text-decoration: none;
-}
-
-.store-nav a[aria-current='page'] {
-  border-color: var(--goods-ink);
-  background: var(--goods-ink);
-  color: #ffffff;
 }
 
 .goods-rating-summary {
@@ -471,7 +429,6 @@ button.goods-rating-summary {
 .goods-card h3 {
   display: -webkit-box;
   min-width: 0;
-  min-height: 2.5em;
   overflow: hidden;
   margin: 0;
   color: var(--goods-ink);
@@ -496,6 +453,7 @@ button.goods-rating-summary {
 .goods-card p {
   min-width: 0;
   overflow: hidden;
+  margin: 0;
   color: var(--goods-muted);
   font-size: 14px;
   text-overflow: ellipsis;
@@ -508,16 +466,16 @@ button.goods-rating-summary {
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
-  overflow: hidden;
-  max-height: 28px;
 }
 
 .tag-row span {
+  box-sizing: border-box;
   padding: 4px 7px;
   border: 1px solid var(--goods-line);
   border-radius: 4px;
   color: var(--goods-muted);
   font-size: 12px;
+  line-height: 1.2;
 }
 
 .card-footer strong {
@@ -739,15 +697,9 @@ button.goods-rating-summary {
 }
 
 @media (max-width: 900px) {
-  .store-header,
   .store-toolbar,
   .goods-content {
     padding-inline: 20px;
-  }
-
-  .store-header {
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .store-toolbar,
@@ -774,17 +726,11 @@ button.goods-rating-summary {
     padding-inline: 20px;
   }
 
-  .store-header h1 {
-    font-size: 36px;
-  }
-
-  .store-nav,
   .result-summary {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .store-nav a,
   .view-toggle {
     width: 100%;
   }

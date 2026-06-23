@@ -1,7 +1,6 @@
 package com.projectcyan.goods;
 
 import java.util.ArrayList;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +28,6 @@ public class GoodsService {
 	private final GoodsCategoryRepository goodsCategoryRepository;
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
-	private final GoodsDetailDataRepository goodsDetailDataRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
 
 	public GoodsService(
@@ -38,7 +36,6 @@ public class GoodsService {
 		GoodsCategoryRepository goodsCategoryRepository,
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
-		GoodsDetailDataRepository goodsDetailDataRepository,
 		GoodsReviewRepository goodsReviewRepository
 	) {
 		this.goodsRepository = goodsRepository;
@@ -46,7 +43,6 @@ public class GoodsService {
 		this.goodsCategoryRepository = goodsCategoryRepository;
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
-		this.goodsDetailDataRepository = goodsDetailDataRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
 	}
 
@@ -58,10 +54,12 @@ public class GoodsService {
 		String categoryIds,
 		String tag,
 		String tags,
+		String goodsIds,
 		int page,
 		int size,
 		String sort
 	) {
+		List<Long> selectedGoodsIds = parseIds(goodsIds);
 		List<Long> selectedArtistIds = parseIds(artistIds);
 		if (artistId != null) {
 			selectedArtistIds.add(artistId);
@@ -78,7 +76,8 @@ public class GoodsService {
 		}
 
 		Specification<Goods> specification = Specification
-			.where(GoodsSpecifications.containsKeyword(q))
+			.where(GoodsSpecifications.hasGoodsIds(selectedGoodsIds))
+			.and(GoodsSpecifications.containsKeyword(q))
 			.and(GoodsSpecifications.hasArtists(selectedArtistIds))
 			.and(GoodsSpecifications.hasCategories(selectedCategoryIds))
 			.and(GoodsSpecifications.hasTags(selectedTags));
@@ -113,11 +112,9 @@ public class GoodsService {
 		goods.setStockCount(goodsStockRepository.findById(goodsId)
 			.map(GoodsStock::getCurrentStock)
 			.orElse(0));
-		GoodsDetailMetadata metadata = goodsDetailDataRepository.findMetadata(goodsId);
-		PurchaseAvailability availability = purchaseAvailability(goods, metadata);
+		PurchaseAvailability availability = purchaseAvailability(goods);
 		return GoodsDetailResponse.from(
 			goods,
-			metadata,
 			availability.state(),
 			availability.message(),
 			goodsReviewRepository.findSummary(goodsId)
@@ -268,14 +265,7 @@ public class GoodsService {
 		return Sort.by(direction, property);
 	}
 
-	private PurchaseAvailability purchaseAvailability(Goods goods, GoodsDetailMetadata metadata) {
-		Instant now = Instant.now();
-		if (metadata.saleStartAt() != null && now.isBefore(metadata.saleStartAt())) {
-			return new PurchaseAvailability("UPCOMING", "판매 시작 전입니다.");
-		}
-		if (metadata.saleEndAt() != null && now.isAfter(metadata.saleEndAt())) {
-			return new PurchaseAvailability("ENDED", "판매가 종료되었습니다.");
-		}
+	private PurchaseAvailability purchaseAvailability(Goods goods) {
 		String salesStatus = goods.getSalesStatus() == null
 			? ""
 			: goods.getSalesStatus().trim().toUpperCase(Locale.ROOT);
@@ -288,12 +278,9 @@ public class GoodsService {
 		if ("SOLD_OUT".equals(salesStatus)) {
 			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
-		boolean hasStock = metadata.variants().isEmpty()
-			? goods.getStockCount() != null && goods.getStockCount() > 0
-			: metadata.variants().stream()
-				.anyMatch(variant -> Boolean.TRUE.equals(variant.active()) && variant.stockCount() > 0);
+		boolean hasStock = goods.getStockCount() != null && goods.getStockCount() > 0;
 		if (!hasStock) {
-			return new PurchaseAvailability("SOLD_OUT", "모든 옵션이 품절되었습니다.");
+			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
 		return new PurchaseAvailability("AVAILABLE", "구매 가능한 상품입니다.");
 	}

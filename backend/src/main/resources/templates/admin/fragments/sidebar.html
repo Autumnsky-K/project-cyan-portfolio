@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<aside th:fragment="sidebar(current, sidebarClass, eyebrowClass, heading)"
+       th:class="${sidebarClass}"
+       aria-label="관리자 메뉴">
+  <div>
+    <p th:class="${eyebrowClass}">Project Cyan</p>
+    <h1>관리자</h1>
+    <div class="admin-supabase-status"
+         th:classappend="${supabaseUsage.hasWrites() ? ' is-active' : ' is-idle'}"
+         aria-live="polite">
+      <strong th:text="${supabaseUsage.hasWrites() ? 'Supabase 전송 완료 (건수: ' + supabaseUsage.writeCount + ')' : 'Supabase 전송 대기 (건수: 0)'}">Supabase 전송 대기 (건수: 0)</strong>
+      <span th:if="${supabaseUsage.hasWrites()}" th:text="${'최근 작업: ' + supabaseUsage.lastEvent}">최근 작업: 상품 등록</span>
+    </div>
+    <div class="admin-spring-status" aria-live="polite">
+      <strong>Spring 서버 확인</strong>
+      <span>localhost:8080 응답 중</span>
+    </div>
+  </div>
+
+  <nav class="admin-nav-tree">
+    <a class="admin-nav-root"
+       th:href="@{/admin}"
+       th:attr="aria-current=${current == 'dashboard'} ? 'page' : null">관리자 대시보드</a>
+
+    <details class="admin-nav-group"
+             th:attr="open=${#strings.startsWith(current, 'ui-')} ? 'open' : null">
+      <summary class="admin-nav-parent">사용자 화면 관리</summary>
+      <div class="admin-nav-children">
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui}"
+           th:attr="aria-current=${current == 'ui-all'} ? 'page' : null"
+           data-ui-preview-all>전체 UI 미리보기</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui#home}"
+           data-ui-preview-anchor="home">홈 화면 미리보기</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui#artists}"
+           data-ui-preview-anchor="artists">아티스트 화면 미리보기</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui#goods}"
+           data-ui-preview-anchor="goods">굿즈 화면 미리보기</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui#member-profile}"
+           data-ui-preview-anchor="member-profile">회원 프로필 화면 미리보기</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ui#shipping}"
+           data-ui-preview-anchor="shipping">배송 화면 미리보기</a>
+      </div>
+    </details>
+
+    <details class="admin-nav-group"
+             th:attr="open=${#strings.startsWith(current, 'content-')} ? 'open' : null">
+      <summary class="admin-nav-parent">화면 내용 편집</summary>
+      <div class="admin-nav-children">
+        <a class="admin-nav-child"
+           th:href="@{/admin/content/home}"
+           th:attr="aria-current=${current == 'content-home'} ? 'page' : null">홈 문구·이미지 편집</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/content/artists}"
+           th:attr="aria-current=${current == 'content-artists'} ? 'page' : null">아티스트 문구·이미지 편집</a>
+      </div>
+    </details>
+
+    <details class="admin-nav-group"
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'storage'} ? 'open' : null">
+      <summary class="admin-nav-parent">데이터 관리</summary>
+      <div class="admin-nav-children">
+        <a class="admin-nav-child"
+           th:href="@{/admin/data}"
+           th:attr="aria-current=${current == 'data-overview'} ? 'page' : null">데이터 관리 지도</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/goods}"
+           th:attr="aria-current=${current == 'goods'} ? 'page' : null">굿즈 정보 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/storage}"
+           th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>
+      </div>
+    </details>
+
+    <details class="admin-nav-group"
+             th:attr="open=${current == 'ai'} ? 'open' : null">
+      <summary class="admin-nav-parent">AI 챗봇 관리</summary>
+      <div class="admin-nav-children">
+        <a class="admin-nav-child"
+           th:href="@{/admin/ai}"
+           th:attr="aria-current=${current == 'ai'} ? 'page' : null">챗봇 행동 관리</a>
+      </div>
+    </details>
+  </nav>
+
+  <script>
+    (() => {
+      const storageKeys = {
+        tone: 'projectCyanAdminTone',
+        density: 'projectCyanAdminDensity',
+        accent: 'projectCyanAdminAccent',
+        fontName: 'projectCyanAdminFontName',
+      }
+      const dbName = 'projectCyanAdminUi'
+      const storeName = 'assets'
+      const fontRecordId = 'adminFont'
+      const attachedFontFamily = 'ProjectCyanAttachedFont'
+      let currentFontUrl = null
+
+      const openAssetDb = () => new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1)
+        request.onupgradeneeded = () => {
+          const db = request.result
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id' })
+          }
+        }
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+
+      const withAssetStore = async (mode, callback) => {
+        const db = await openAssetDb()
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(storeName, mode)
+          const store = transaction.objectStore(storeName)
+          const result = callback(store)
+          transaction.oncomplete = () => {
+            db.close()
+            resolve(result)
+          }
+          transaction.onerror = () => {
+            db.close()
+            reject(transaction.error)
+          }
+        })
+      }
+
+      const readFontRecord = () => withAssetStore('readonly', (store) => new Promise((resolve, reject) => {
+        const request = store.get(fontRecordId)
+        request.onsuccess = () => resolve(request.result || null)
+        request.onerror = () => reject(request.error)
+      }))
+
+      const saveFontRecord = (file) => withAssetStore('readwrite', (store) => {
+        store.put({
+          id: fontRecordId,
+          name: file.name,
+          type: file.type,
+          file,
+          updatedAt: Date.now(),
+        })
+      })
+
+      const clearFontRecord = () => withAssetStore('readwrite', (store) => {
+        store.delete(fontRecordId)
+      })
+
+      const updateFontStatus = (name, message) => {
+        document.querySelectorAll('[data-admin-font-name]').forEach((target) => {
+          target.textContent = name || message || '첨부된 폰트 없음'
+        })
+      }
+
+      const clearCurrentFontUrl = () => {
+        if (currentFontUrl) {
+          URL.revokeObjectURL(currentFontUrl)
+          currentFontUrl = null
+        }
+      }
+
+      const applyFontBlob = async (blob, name) => {
+        clearCurrentFontUrl()
+        currentFontUrl = URL.createObjectURL(blob)
+        const fontFace = new FontFace(attachedFontFamily, `url(${currentFontUrl})`)
+        await fontFace.load()
+        document.fonts.add(fontFace)
+        document.documentElement.style.setProperty(
+          '--admin-font-family',
+          `"${attachedFontFamily}", Arial, "Noto Sans KR", sans-serif`
+        )
+        localStorage.setItem(storageKeys.fontName, name)
+        updateFontStatus(name)
+
+        document.querySelectorAll('.admin-ui-workbench').forEach((workbench) => {
+          workbench.style.setProperty(
+            '--admin-preview-theme-font-family',
+            'var(--admin-font-family, Arial, "Noto Sans KR", sans-serif)'
+          )
+        })
+      }
+
+      const removeAttachedFont = async () => {
+        clearCurrentFontUrl()
+        localStorage.removeItem(storageKeys.fontName)
+        document.documentElement.style.removeProperty('--admin-font-family')
+        updateFontStatus(null)
+        await clearFontRecord()
+      }
+
+      const restoreAttachedFont = async () => {
+        const savedName = localStorage.getItem(storageKeys.fontName)
+        if (savedName) {
+          updateFontStatus(savedName, '폰트 불러오는 중')
+        }
+
+        try {
+          const record = await readFontRecord()
+          if (record?.file) {
+            await applyFontBlob(record.file, record.name)
+          } else {
+            updateFontStatus(null)
+          }
+        } catch (error) {
+          console.warn('Failed to restore admin font.', error)
+          updateFontStatus(null, '폰트 불러오기 실패')
+        }
+      }
+
+      const applyAdminUiSettings = () => {
+        const root = document.documentElement
+        root.dataset.adminTone = localStorage.getItem(storageKeys.tone) || 'layered'
+        root.dataset.adminDensity = localStorage.getItem(storageKeys.density) || 'comfortable'
+        root.style.setProperty('--admin-accent', localStorage.getItem(storageKeys.accent) || '#2f6f64')
+      }
+
+      const fieldCurrentValue = (field) => {
+        if (field.type === 'checkbox') {
+          return field.checked ? '선택' : '해제'
+        }
+        if (field.type === 'file') {
+          return field.files?.[0]?.name || ''
+        }
+        return field.value || field.dataset.fallbackValue || ''
+      }
+
+      const fieldInitialValue = (field) => {
+        if (field.type === 'checkbox') {
+          return field.defaultChecked ? '선택' : '해제'
+        }
+        if (field.type === 'file') {
+          return ''
+        }
+        return field.defaultValue || field.dataset.fallbackValue || ''
+      }
+
+      const fieldGroup = (field) => {
+        if (field.dataset.confirmGroup) {
+          return field.dataset.confirmGroup
+        }
+        if (field.type === 'color') {
+          return '색상'
+        }
+        if (field.type === 'file' || /image|url/i.test(field.name || '')) {
+          return '이미지'
+        }
+        if (field.type === 'checkbox') {
+          return '노출 여부'
+        }
+        if (field.type === 'number' || /order|sort/i.test(field.name || '')) {
+          return '순서'
+        }
+        return '문구'
+      }
+
+      const fieldLabel = (field) => {
+        if (field.dataset.confirmLabel) {
+          return field.dataset.confirmLabel
+        }
+        const row = field.closest('tr')
+        const rowHeader = row?.querySelector('th')?.textContent?.trim()
+        if (rowHeader) {
+          const artistId = row.querySelector('[name="artistId"]')?.value
+          return artistId ? `${rowHeader} (${artistId})` : rowHeader
+        }
+        const label = field.closest('label')?.querySelector('span')?.textContent?.trim()
+        return label || field.name || '필드'
+      }
+
+      const buildConfirmMessage = (form) => {
+        const groupedChanges = new Map()
+        const fields = Array.from(form.querySelectorAll('input, textarea, select'))
+          .filter((field) => field.name && field.type !== 'hidden')
+
+        fields.forEach((field) => {
+          const beforeValue = fieldInitialValue(field)
+          const afterValue = fieldCurrentValue(field)
+          if (beforeValue === afterValue) {
+            return
+          }
+
+          const group = fieldGroup(field)
+          if (!groupedChanges.has(group)) {
+            groupedChanges.set(group, [])
+          }
+          groupedChanges.get(group).push(`${fieldLabel(field)}\n${beforeValue || '(비어 있음)'} -> ${afterValue || '(비어 있음)'}`)
+        })
+
+        const title = form.dataset.confirmFormTitle || '페이지'
+        const lines = [`${title}을 적용하시겠습니까?`, '', '[적용하면 변경되는 목록]']
+
+        if (groupedChanges.size === 0) {
+          lines.push('감지된 변경 없음')
+        } else {
+          groupedChanges.forEach((changes, group) => {
+            lines.push(group)
+            changes.forEach((change) => lines.push(change))
+            lines.push('')
+          })
+        }
+
+        return lines.join('\n')
+      }
+
+      const bindConfirmForms = () => {
+        document.querySelectorAll('form[data-confirm-submit]').forEach((form) => {
+          if (form.dataset.confirmBound === 'true') {
+            return
+          }
+          form.dataset.confirmBound = 'true'
+          form.addEventListener('submit', (event) => {
+            if (!window.confirm(buildConfirmMessage(form))) {
+              event.preventDefault()
+            }
+          })
+        })
+      }
+
+      const updateUiPreviewAnchorState = () => {
+        const isUiPreviewPage = window.location.pathname.replace(/\/$/, '') === '/admin/ui'
+        const activeKey = isUiPreviewPage ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : ''
+        const allLink = document.querySelector('[data-ui-preview-all]')
+
+        if (allLink) {
+          if (isUiPreviewPage && !activeKey) {
+            allLink.setAttribute('aria-current', 'page')
+          } else if (isUiPreviewPage) {
+            allLink.removeAttribute('aria-current')
+          }
+        }
+
+        document.querySelectorAll('[data-ui-preview-anchor]').forEach((link) => {
+          if (isUiPreviewPage && activeKey && link.dataset.uiPreviewAnchor === activeKey) {
+            link.setAttribute('aria-current', 'page')
+          } else {
+            link.removeAttribute('aria-current')
+          }
+        })
+      }
+
+      const bindAdminUiControls = () => {
+        document.querySelectorAll('[data-admin-setting]').forEach((control) => {
+          const setting = control.dataset.adminSetting
+
+          if (setting === 'fontFile') {
+            control.addEventListener('change', async () => {
+              const [file] = control.files || []
+              if (!file) {
+                return
+              }
+              try {
+                updateFontStatus(file.name, '폰트 저장 중')
+                await saveFontRecord(file)
+                await applyFontBlob(file, file.name)
+              } catch (error) {
+                console.warn('Failed to attach admin font.', error)
+                updateFontStatus(null, '폰트 첨부 실패')
+              }
+            })
+            return
+          }
+
+          const key = storageKeys[setting]
+          if (!key) {
+            return
+          }
+
+          const savedValue = localStorage.getItem(key)
+          if (savedValue && control.type === 'radio') {
+            control.checked = control.value === savedValue
+          } else if (savedValue) {
+            control.value = savedValue
+          }
+
+          control.addEventListener('input', () => {
+            if (control.type === 'radio' && !control.checked) {
+              return
+            }
+            localStorage.setItem(key, control.value)
+            applyAdminUiSettings()
+          })
+        })
+
+        document.querySelectorAll('[data-admin-font-clear]').forEach((button) => {
+          button.addEventListener('click', async () => {
+            try {
+              await removeAttachedFont()
+            } catch (error) {
+              console.warn('Failed to clear admin font.', error)
+            }
+          })
+        })
+      }
+
+      applyAdminUiSettings()
+      restoreAttachedFont()
+      document.addEventListener('DOMContentLoaded', () => {
+        bindAdminUiControls()
+        bindConfirmForms()
+        updateUiPreviewAnchorState()
+      })
+      window.addEventListener('hashchange', updateUiPreviewAnchorState)
+    })()
+  </script>
+</aside>
+</body>
+</html>

@@ -11,11 +11,11 @@ public class AdminGoodsForm {
 
 	private Long goodsId;
 
-	@NotBlank
+	@NotBlank(message = "이름은 필수입니다.")
 	private String name;
 
-	@NotNull
-	@Min(0)
+	@NotNull(message = "가격은 필수입니다.")
+	@Min(value = 0, message = "가격은 0 이상이어야 합니다.")
 	private Integer price;
 
 	private String description;
@@ -26,14 +26,14 @@ public class AdminGoodsForm {
 
 	private Long categoryId;
 
-	@NotBlank
+	@NotBlank(message = "판매 상태는 필수입니다.")
 	private String salesStatus = "ON_SALE";
 
 	private boolean bestSeller;
 
 	private boolean aiPickDefault;
 
-	@Min(0)
+	@Min(value = 0, message = "재고는 0 이상이어야 합니다.")
 	private Integer stockCount = 0;
 
 	private List<String> tags = new ArrayList<>();
