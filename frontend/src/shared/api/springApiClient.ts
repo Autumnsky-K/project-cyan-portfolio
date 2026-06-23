@@ -31,6 +31,10 @@ async function getAccessToken(): Promise<string> {
   return data.session?.access_token ?? ''
 }
 
+export async function hasSpringApiSession(): Promise<boolean> {
+  return Boolean(await getAccessToken())
+}
+
 async function buildHeaders(
   body: BodyInit | null | undefined,
   headers: HeadersInit = {},

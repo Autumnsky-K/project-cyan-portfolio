@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
   fetchRelatedGoods,
+  recordGoodsView,
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
@@ -89,6 +90,7 @@ function GoodsDetailPage() {
         const detail = await fetchGoodsDetail(goodsId, { signal: controller.signal })
         setGoods(detail)
         setStatus('data')
+        void recordGoodsView(detail.goodsId).catch(() => undefined)
       } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === 'AbortError') return
         setError(loadError instanceof Error ? loadError.message : '상품 정보를 불러오지 못했습니다.')

@@ -48,6 +48,19 @@ class SupabaseJwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void protectsGoodsViewHistoryRequest() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/goods/1001/views");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(response.getContentAsString()).contains("AUTH_UNAUTHORIZED");
+		verifyNoInteractions(jwtVerifier, memberRepository, filterChain);
+	}
+
+	@Test
 	void rejectsValidTokenWithoutMemberRow() throws Exception {
 		UUID userId = UUID.randomUUID();
 		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/orders");
