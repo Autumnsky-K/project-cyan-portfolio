@@ -1,39 +1,60 @@
 import { useEffect, useState } from 'react'
-import { fetchGoodsDetail, type GoodsSummary } from '../../api/goods'
+import { fetchGoods, type GoodsSummary } from '../../api/goods'
 
 export type FavoriteGoodsStatus = 'idle' | 'loading' | 'data' | 'error'
 
-export function useFavoriteGoods(active: boolean, favoriteIds: number[]) {
+export function useFavoriteGoods(
+  active: boolean,
+  favoriteIds: number[],
+  retainFavorites: (existingGoodsIds: number[]) => void,
+) {
   const [goods, setGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<FavoriteGoodsStatus>('idle')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!active || favoriteIds.length === 0) return undefined
+    if (!active) return undefined
+    if (favoriteIds.length === 0) {
+      return undefined
+    }
 
     const controller = new AbortController()
-    Promise.resolve()
-      .then(() => {
-        if (controller.signal.aborted) return []
-        setStatus('loading')
-        setError('')
-        return Promise.all(
-          favoriteIds.map((goodsId) => fetchGoodsDetail(goodsId, { signal: controller.signal })),
+    async function loadFavorites() {
+      setStatus('loading')
+      setError('')
+
+      try {
+        const response = await fetchGoods(
+          {
+            goodsIds: favoriteIds.join(','),
+            page: 0,
+            size: Math.min(favoriteIds.length, 100),
+          },
+          { signal: controller.signal },
         )
-      })
-      .then((items) => {
         if (controller.signal.aborted) return
-        setGoods(items)
+
+        const goodsById = new Map(response.content.map((item) => [item.goodsId, item]))
+        const orderedGoods = favoriteIds.flatMap((goodsId) => {
+          const item = goodsById.get(goodsId)
+          return item ? [item] : []
+        })
+        setGoods(orderedGoods)
+        retainFavorites(orderedGoods.map((item) => item.goodsId))
         setStatus('data')
-      })
-      .catch((loadError) => {
+      } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === 'AbortError') return
         setError(loadError instanceof Error ? loadError.message : 'Failed to load favorite goods.')
         setStatus('error')
-      })
+      }
+    }
+
+    loadFavorites()
 
     return () => controller.abort()
-  }, [active, favoriteIds])
+  }, [active, favoriteIds, retainFavorites])
 
-  return { goods, status, error }
+  return favoriteIds.length === 0
+    ? { goods: [], status: 'idle' as const, error: '' }
+    : { goods, status, error }
 }

@@ -73,6 +73,7 @@ public class AdminGoodsPageController {
 			null,
 			null,
 			null,
+			null,
 			page,
 			PAGE_SIZE,
 			sort

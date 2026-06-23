@@ -32,15 +32,18 @@ class GoodsRecommendationServiceTest {
 
 	@Test
 	void expandsAliasesAndReturnsMatchingSaleableGoods() {
-		Goods goods = goods(42L, "aespa Photocard Set", 35_000, "ON_SALE", 7L, "aespa", "Photocard", "PHOTOCARD");
+		Goods goods = goods(
+			42L, "aespa Photocard Set", 35_000, "ON_SALE",
+			7L, "aespa", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
 		GoodsStock stock = new GoodsStock(goods, 10);
 		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(goods));
 		when(goodsStockRepository.findByGoodsIdIn(List.of(42L)))
 			.thenReturn(List.of(stock));
 		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
 			.thenReturn(List.of(
-				new SearchAliasMatch("에스파", 7L, null, null, null),
-				new SearchAliasMatch("포카", null, null, 11L, "PHOTOCARD")
+				new SearchAliasMatch("에스파", 7L, null, null, null, null),
+				new SearchAliasMatch("포카", null, null, null, 11L, "PHOTOCARD")
 			));
 
 		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
@@ -62,10 +65,102 @@ class GoodsRecommendationServiceTest {
 	}
 
 	@Test
+	void requiresGroupAndCategoryAliasesToMatchTogether() {
+		Goods exactMatch = goods(
+			42L, "aespa Photocard Set", 35_000, "ON_SALE",
+			101L, "Karina", 10L, "aespa", 1L, "Photocard", "PHOTOCARD"
+		);
+		Goods groupOnly = goods(
+			43L, "aespa Lightstick", 45_000, "ON_SALE",
+			102L, "Winter", 10L, "aespa", 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods categoryOnly = goods(
+			44L, "Other Photocard Set", 25_000, "ON_SALE",
+			201L, "Other Artist", 20L, "Other Group", 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock exactMatchStock = new GoodsStock(exactMatch, 10);
+		GoodsStock groupOnlyStock = new GoodsStock(groupOnly, 10);
+		GoodsStock categoryOnlyStock = new GoodsStock(categoryOnly, 10);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(exactMatch, groupOnly, categoryOnly));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(42L, 43L, 44L)))
+			.thenReturn(List.of(
+				exactMatchStock,
+				groupOnlyStock,
+				categoryOnlyStock
+			));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(
+				new SearchAliasMatch("에스파", null, 10L, null, null, null),
+				new SearchAliasMatch("포토카드", null, null, 1L, null, null)
+			));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"에스파 포토카드",
+			null,
+			null,
+			null,
+			null,
+			null,
+			0,
+			10,
+			"relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(42L);
+		assertThat(response.content().getFirst().matchedFields())
+			.contains("artistGroup", "categoryName");
+	}
+
+	@Test
+	void resolvesMultiWordGroupAliasInsideQuery() {
+		Goods goods = goods(
+			45L, "Group One Photocard", 15_000, "ON_SALE",
+			1L, "Artist A", 1L, "Group One", 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock stock = new GoodsStock(goods, 10);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(goods));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(45L)))
+			.thenReturn(List.of(stock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.argThat(
+			aliases -> aliases.contains("group one") && aliases.contains("photocard")
+		))).thenReturn(List.of(
+			new SearchAliasMatch("group one", null, 1L, null, null, null),
+			new SearchAliasMatch("photocard", null, null, 1L, null, null)
+		));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"group one photocard",
+			null,
+			null,
+			null,
+			null,
+			null,
+			0,
+			10,
+			"relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(45L);
+	}
+
+	@Test
 	void appliesPriceStockAndExcludedIdHardFilters() {
-		Goods affordable = goods(1L, "Affordable Keyring", 20_000, "ON_SALE", null, null, "Keyring", "KEYRING");
-		Goods expensive = goods(2L, "Expensive Keyring", 60_000, "ON_SALE", null, null, "Keyring", "KEYRING");
-		Goods soldOut = goods(3L, "Sold Out Keyring", 10_000, "ON_SALE", null, null, "Keyring", "KEYRING");
+		Goods affordable = goods(
+			1L, "Affordable Keyring", 20_000, "ON_SALE",
+			null, null, null, null, null, "Keyring", "KEYRING"
+		);
+		Goods expensive = goods(
+			2L, "Expensive Keyring", 60_000, "ON_SALE",
+			null, null, null, null, null, "Keyring", "KEYRING"
+		);
+		Goods soldOut = goods(
+			3L, "Sold Out Keyring", 10_000, "ON_SALE",
+			null, null, null, null, null, "Keyring", "KEYRING"
+		);
 		GoodsStock affordableStock = new GoodsStock(affordable, 5);
 		GoodsStock expensiveStock = new GoodsStock(expensive, 5);
 		GoodsStock soldOutStock = new GoodsStock(soldOut, 0);
@@ -102,6 +197,9 @@ class GoodsRecommendationServiceTest {
 		String status,
 		Long artistId,
 		String artistName,
+		Long groupId,
+		String groupName,
+		Long categoryId,
 		String categoryName,
 		String tagName
 	) {
@@ -119,10 +217,18 @@ class GoodsRecommendationServiceTest {
 			Artist artist = mock(Artist.class);
 			when(artist.getArtistId()).thenReturn(artistId);
 			when(artist.getArtistName()).thenReturn(artistName);
+			if (groupId != null) {
+				ArtistGroup artistGroup = mock(ArtistGroup.class);
+				when(artistGroup.getGroupId()).thenReturn(groupId);
+				when(artistGroup.getGroupName()).thenReturn(groupName);
+				when(artist.getArtistGroup()).thenReturn(artistGroup);
+				when(artist.getGroupName()).thenReturn(groupName);
+			}
 			when(goods.getArtist()).thenReturn(artist);
 		}
 		if (categoryName != null) {
 			GoodsCategory category = mock(GoodsCategory.class);
+			when(category.getCategoryId()).thenReturn(categoryId);
 			when(category.getCategoryName()).thenReturn(categoryName);
 			when(goods.getCategory()).thenReturn(category);
 		}

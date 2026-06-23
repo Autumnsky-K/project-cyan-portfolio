@@ -32,11 +32,14 @@ public class GoodsController {
 		@RequestParam(required = false) String categoryIds,
 		@RequestParam(required = false) String tag,
 		@RequestParam(required = false) String tags,
+		@RequestParam(required = false) String goodsIds,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size,
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
-		return goodsService.findGoods(q, artistId, artistIds, categoryId, categoryIds, tag, tags, page, size, sort);
+		return goodsService.findGoods(
+			q, artistId, artistIds, categoryId, categoryIds, tag, tags, goodsIds, page, size, sort
+		);
 	}
 
 	@GetMapping("/recommendation-candidates")
