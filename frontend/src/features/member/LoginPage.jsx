@@ -22,6 +22,18 @@ function LoginPage() {
   const [error, setError] = useState(() => getAuthError(location))
 
   useEffect(() => {
+    if (!error) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setError('')
+    }, 2000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [error])
+
+  useEffect(() => {
     if (getAuthError(location)) {
       navigate('/login', { replace: true, state: null })
     }
@@ -47,8 +59,8 @@ function LoginPage() {
       const result = await loginMember(form)
       setMessage(`${result.member.email} 계정으로 로그인되었습니다.`)
       navigate('/like')
-    } catch (loginError) {
-      setError(loginError.message)
+    } catch {
+      setError('아이디와 비밀번호가 일치하지 않습니다.')
     } finally {
       setIsLoading(false)
       setLoadingProvider('')
@@ -72,6 +84,14 @@ function LoginPage() {
 
   return (
     <main className="login-page">
+      {error && (
+        <div className="login-alert-backdrop">
+          <div className="login-alert-dialog" role="alert">
+            {error}
+          </div>
+        </div>
+      )}
+
       <section className="login-card" aria-label="로그인">
         <div className="login-header">
           <div className="login-logo" aria-hidden="true"></div>
@@ -104,12 +124,6 @@ function LoginPage() {
               required
             />
           </label>
-
-          {error && (
-            <p className="login-feedback login-feedback-error" role="alert">
-              {error}
-            </p>
-          )}
 
           {message && (
             <p className="login-feedback login-feedback-success" role="status">
