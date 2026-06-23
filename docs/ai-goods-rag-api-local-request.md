@@ -92,6 +92,7 @@ search_alias
 - aliasText
 - normalizedAlias
 - artistId
+- groupId
 - categoryId
 - tagId
 ```
@@ -104,24 +105,25 @@ search_alias
 | `aliasText` | string | 사용자가 입력할 수 있는 표현. 예: `에스파`, `포카`, `photocard` |
 | `normalizedAlias` | string | NFKC, trim, lowercase가 적용된 Spring 조회 키 |
 | `artistId` | bigint/null | `artist.artist_id` FK |
+| `groupId` | bigint/null | `artist_group.group_id` FK |
 | `categoryId` | bigint/null | `goods_category.category_id` FK |
 | `tagId` | bigint/null | `tag.tag_id` FK |
 
 예시 데이터:
 
-| aliasText | artistId | categoryId | tagId |
-|-----------|----------|------------|-------|
-| `에스파` | `7` | null | null |
-| `aespa` | `7` | null | null |
-| `포카` | null | null | 포토카드 태그 ID |
-| `포토카드` | null | null | 포토카드 태그 ID |
-| `photocard` | null | null | 포토카드 태그 ID |
-| `키링` | null | 키링 카테고리 ID | null |
+| aliasText | artistId | groupId | categoryId | tagId |
+|-----------|----------|---------|------------|-------|
+| `에스파` | null | aespa 그룹 ID | null | null |
+| `aespa` | null | aespa 그룹 ID | null | null |
+| `포카` | null | null | Photocard 카테고리 ID | null |
+| `포토카드` | null | null | Photocard 카테고리 ID | null |
+| `photocard` | null | null | Photocard 카테고리 ID | null |
+| `키링` | null | null | 키링 카테고리 ID | null |
 
 권장 제약:
 
 ```sql
-check (num_nonnulls(artist_id, category_id, tag_id) = 1)
+check (num_nonnulls(artist_id, group_id, category_id, tag_id) = 1)
 ```
 
 ### 현재 Spring 구현이 기대하는 실제 DB 컬럼
@@ -134,12 +136,13 @@ search_alias
 - alias_text text not null
 - normalized_alias text not null
 - artist_id bigint null references artist(artist_id)
+- group_id bigint null references artist_group(group_id)
 - category_id bigint null references goods_category(category_id)
 - tag_id bigint null references tag(tag_id)
 ```
 
-- alias 하나는 아티스트, 카테고리, 태그 중 정확히 하나에 연결한다.
-- Spring은 `public.search_alias`와 `artist_id`, `category_id`, `tag_id` FK 컬럼이 존재한다고 가정한다.
+- alias 하나는 아티스트, 아티스트 그룹, 카테고리, 태그 중 정확히 하나에 연결한다.
+- Spring은 `public.search_alias`와 `artist_id`, `group_id`, `category_id`, `tag_id` FK 컬럼이 존재한다고 가정한다.
 - 이 테이블은 Spring JDBC 전용으로 사용하고 Supabase Data API의 `anon`, `authenticated` 역할에는 노출하지 않는 것을 권장한다.
 
 ### recommendation-candidates에서의 사용 방식
@@ -149,17 +152,18 @@ search_alias
 예:
 
 ```text
-사용자 요청: 에스파 포카 추천해줘
+사용자 요청: 에스파 포토카드
 추출/확장:
-- 에스파 -> `artist_id=7`
-- 포카 -> 포토카드의 `tag_id`
+- 에스파 -> aespa의 `group_id`
+- 포토카드 -> Photocard의 `category_id`
 ```
 
-이후 백엔드는 아래 후보를 함께 고려한다.
+이후 백엔드는 alias 차원별 조건을 적용한다.
 
-- `artistId=7`인 상품
-- `tagName=PHOTOCARD`인 상품
-- 상품명/카테고리/아티스트명에 원문 키워드가 포함된 상품
+- 같은 차원의 여러 alias는 OR로 처리한다.
+- 그룹, 카테고리, 태그처럼 서로 다른 차원은 AND로 처리한다.
+- 따라서 aespa 그룹 소속 아티스트의 상품이면서 Photocard 카테고리인 상품만 후보가 된다.
+- alias로 인식되지 않은 원문은 상품명/카테고리/아티스트명/그룹명/태그 관련도에 사용한다.
 
 단, 가격, 재고, 판매 상태, `excludeGoodsIds`는 hard filter로 유지한다.
 
