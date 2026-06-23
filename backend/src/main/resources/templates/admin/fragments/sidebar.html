@@ -5,6 +5,11 @@
        th:class="${sidebarClass}"
        aria-label="관리자 메뉴">
   <div>
+    <button class="admin-sidebar-toggle"
+            type="button"
+            data-admin-sidebar-toggle
+            title="사이드바 접기"
+            aria-label="사이드바 접기">◀</button>
     <p th:class="${eyebrowClass}">Project Cyan</p>
     <h1>관리자</h1>
     <div class="admin-supabase-status"
@@ -90,6 +95,17 @@
     </details>
   </nav>
 
+  <nav class="admin-rail-nav" aria-label="빠른 관리자 메뉴">
+    <a th:href="@{/admin}" title="대시보드" aria-label="대시보드">D</a>
+    <a th:href="@{/admin/ui}" title="UI 전체" aria-label="UI 전체">U</a>
+    <a th:href="@{/admin/ui#home}" title="홈 화면" aria-label="홈 화면">H</a>
+    <a th:href="@{/admin/ui#artists}" title="아티스트" aria-label="아티스트">A</a>
+    <a th:href="@{/admin/goods}" title="굿즈" aria-label="굿즈">G</a>
+    <a th:href="@{/admin/data}" title="데이터" aria-label="데이터">DB</a>
+    <a th:href="@{/admin/storage}" title="저장소" aria-label="저장소">S</a>
+    <a th:href="@{/admin/ai}" title="AI" aria-label="AI">AI</a>
+  </nav>
+
   <script>
     (() => {
       const storageKeys = {
@@ -97,12 +113,52 @@
         density: 'projectCyanAdminDensity',
         accent: 'projectCyanAdminAccent',
         fontName: 'projectCyanAdminFontName',
+        sidebar: 'projectCyanAdminSidebar',
       }
       const dbName = 'projectCyanAdminUi'
       const storeName = 'assets'
       const fontRecordId = 'adminFont'
       const attachedFontFamily = 'ProjectCyanAttachedFont'
+      const adminIdleTimeoutMs = 60 * 60 * 1000
       let currentFontUrl = null
+      let adminIdleTimer = null
+
+      const adminNextPath = () => {
+        const path = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        return path.startsWith('/admin') && !path.startsWith('//') ? path : '/admin'
+      }
+
+      const logoutForIdleTimeout = () => {
+        const next = encodeURIComponent(adminNextPath())
+        const loginUrl = `/admin/login?next=${next}`
+        const body = new Blob([], { type: 'application/x-www-form-urlencoded' })
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/admin/auth/logout', body)
+          window.location.href = loginUrl
+          return
+        }
+
+        fetch('/admin/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          keepalive: true,
+        }).finally(() => {
+          window.location.href = loginUrl
+        })
+      }
+
+      const resetAdminIdleTimer = () => {
+        window.clearTimeout(adminIdleTimer)
+        adminIdleTimer = window.setTimeout(logoutForIdleTimeout, adminIdleTimeoutMs)
+      }
+
+      const bindAdminIdleLogout = () => {
+        ;['pointerdown', 'keydown', 'wheel', 'touchstart', 'input', 'scroll'].forEach((eventName) => {
+          window.addEventListener(eventName, resetAdminIdleTimer, { passive: true })
+        })
+        resetAdminIdleTimer()
+      }
 
       const openAssetDb = () => new Promise((resolve, reject) => {
         const request = indexedDB.open(dbName, 1)
@@ -218,7 +274,30 @@
         const root = document.documentElement
         root.dataset.adminTone = localStorage.getItem(storageKeys.tone) || 'layered'
         root.dataset.adminDensity = localStorage.getItem(storageKeys.density) || 'comfortable'
+        root.dataset.adminSidebar = localStorage.getItem(storageKeys.sidebar) || 'full'
         root.style.setProperty('--admin-accent', localStorage.getItem(storageKeys.accent) || '#2f6f64')
+      }
+
+      const applyAdminSidebarState = () => {
+        const root = document.documentElement
+        const collapsed = root.dataset.adminSidebar === 'rail'
+        document.querySelectorAll('[data-admin-sidebar-toggle]').forEach((button) => {
+          button.textContent = collapsed ? '▶' : '◀'
+          button.title = collapsed ? '사이드바 펼치기' : '사이드바 접기'
+          button.setAttribute('aria-label', button.title)
+        })
+      }
+
+      const bindAdminSidebarToggle = () => {
+        document.querySelectorAll('[data-admin-sidebar-toggle]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const nextMode = document.documentElement.dataset.adminSidebar === 'rail' ? 'full' : 'rail'
+            localStorage.setItem(storageKeys.sidebar, nextMode)
+            applyAdminUiSettings()
+            applyAdminSidebarState()
+          })
+        })
+        applyAdminSidebarState()
       }
 
       const fieldCurrentValue = (field) => {
@@ -402,8 +481,10 @@
       applyAdminUiSettings()
       restoreAttachedFont()
       document.addEventListener('DOMContentLoaded', () => {
+        bindAdminSidebarToggle()
         bindAdminUiControls()
         bindConfirmForms()
+        bindAdminIdleLogout()
         updateUiPreviewAnchorState()
       })
       window.addEventListener('hashchange', updateUiPreviewAnchorState)

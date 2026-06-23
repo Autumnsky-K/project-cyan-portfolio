@@ -1,13 +1,13 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CartProvider } from './features/cart/cartStore'
 
 import AuthCallbackPage from './features/member/AuthCallbackPage'
 import ArtistPage from './features/artist/artist'
 import ForgotPasswordPage from './features/member/ForgotPasswordPage'
-import CartPage from './features/cart/CartPage'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
+import HomePage from './features/home/HomePage'
 import LikePage from './features/member/LikePage'
 import LoginPage from './features/member/LoginPage.jsx'
 import PaymentCancel from './pages/PaymentCancel.jsx'
@@ -21,7 +21,7 @@ import VtuberChatbot from './features/vtuber/VtuberChatbot'
 
 function AppShell() {
   const { pathname } = useLocation()
-  const hideVtuber = pathname === '/login' || pathname === '/signup'
+  const hideVtuber = pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname === '/artists'
 
   useEffect(() => {
     const pageName = pathname.startsWith('/goods/')
@@ -44,7 +44,7 @@ function AppShell() {
     <>
       <div id="content">
         <Routes>
-          <Route path="/" element={<Navigate replace to="/goods" />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
           <Route path="/cart" element={<Store />} />

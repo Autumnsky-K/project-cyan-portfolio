@@ -21,6 +21,7 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
+		adminAuthService.ensureAuthenticated(request, response);
 		if (adminAuthService.isAuthenticated(request.getSession(false))) {
 			return true;
 		}

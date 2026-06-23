@@ -1,6 +1,7 @@
 package com.projectcyan.admin.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -20,22 +21,36 @@ public class AdminAuthController {
 	}
 
 	@GetMapping("/admin/login")
-	public String loginPage(@RequestParam(required = false) String next, Model model) {
-		model.addAttribute("next", safeNextPath(next));
+	public String loginPage(
+		@RequestParam(required = false) String next,
+		Model model,
+		HttpServletRequest request,
+		HttpServletResponse response
+	) {
+		String safeNext = safeNextPath(next);
+		adminAuthService.ensureAuthenticated(request, response);
+		if (adminAuthService.isAuthenticated(request.getSession(false))) {
+			return "redirect:" + safeNext;
+		}
+		model.addAttribute("next", safeNext);
 		return "admin/login";
 	}
 
 	@GetMapping("/admin/auth/status")
-	public ResponseEntity<AdminAuthService.AdminLoginStatus> status(HttpServletRequest request) {
-		return ResponseEntity.ok(adminAuthService.status(request));
+	public ResponseEntity<AdminAuthService.AdminLoginStatus> status(
+		HttpServletRequest request,
+		HttpServletResponse response
+	) {
+		return ResponseEntity.ok(adminAuthService.status(request, response));
 	}
 
 	@PostMapping("/admin/auth/login")
 	public ResponseEntity<AdminAuthService.AdminLoginStatus> login(
 		@RequestBody(required = false) AdminAuthService.AdminLoginRequest loginRequest,
-		HttpServletRequest request
+		HttpServletRequest request,
+		HttpServletResponse response
 	) {
-		AdminAuthService.AdminLoginStatus status = adminAuthService.login(request, loginRequest);
+		AdminAuthService.AdminLoginStatus status = adminAuthService.login(request, response, loginRequest);
 		if (status.authenticated()) {
 			return ResponseEntity.ok(status);
 		}
@@ -44,8 +59,8 @@ public class AdminAuthController {
 	}
 
 	@PostMapping("/admin/auth/logout")
-	public String logout(HttpServletRequest request) {
-		adminAuthService.logout(request);
+	public String logout(HttpServletRequest request, HttpServletResponse response) {
+		adminAuthService.logout(request, response);
 		return "redirect:/admin/login";
 	}
 
