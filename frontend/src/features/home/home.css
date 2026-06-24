@@ -423,31 +423,110 @@ body.cyan-home-active::-webkit-scrollbar {
   padding: 86px max(38px, calc((100vw - 1220px) / 2)) 56px;
 }
 
-.home-artist-signal-grid {
-  display: flex;
-  align-items: flex-end;
+.home-artists-panel {
+  --artist-deck-card-width: clamp(168px, 16vw, 252px);
+  --artist-deck-step: calc(var(--artist-deck-card-width) + 24px);
+  --artist-deck-width: min(100%, 1320px);
+
+  justify-items: center;
+  gap: clamp(16px, 3svh, 34px);
+  padding-right: max(38px, calc((100vw - 1320px) / 2));
+  padding-left: max(38px, calc((100vw - 1320px) / 2));
+}
+
+.home-artists-panel .home-section-heading {
+  width: var(--artist-deck-width);
+  z-index: 160;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-self: end;
+  text-align: center;
+}
+
+.home-artists-panel .home-section-heading h2 {
+  font-size: clamp(42px, 7vw, 96px);
+  text-wrap: balance;
+}
+
+.home-artist-signal-deck {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: var(--artist-deck-width);
   min-height: 0;
-  padding-left: 8%;
+  isolation: isolate;
+}
+
+.home-artist-signal-deck::before {
+  content: '';
+  position: absolute;
+  inset: 4% 2% 9%;
+  z-index: 0;
+  border: 1px solid rgb(0 213 255 / 20%);
+  background:
+    linear-gradient(90deg, transparent 0 12%, rgb(0 213 255 / 16%) 12.1% 12.3%, transparent 12.4% 100%),
+    linear-gradient(90deg, transparent 0 50%, rgb(255 47 202 / 13%) 50.1% 50.3%, transparent 50.4% 100%);
+  clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.home-artist-deck-stack {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: min(62svh, 590px);
+  min-height: min(430px, calc(100svh - 190px));
 }
 
 .home-artist-signal {
-  position: relative;
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: var(--deck-z);
   display: block;
-  flex: 0 0 auto;
-  width: 240px;
-  height: min(520px, calc(100svh - 230px));
-  min-height: 350px;
-  margin-left: -34px;
+  width: var(--artist-deck-card-width);
+  height: auto;
+  max-height: min(590px, calc(100svh - 190px));
+  aspect-ratio: 0.48;
+  margin-left: 0;
   overflow: hidden;
   color: #ffffff;
   text-decoration: none;
   clip-path: polygon(17% 0, 100% 0, 83% 100%, 0 100%);
-  filter: drop-shadow(0 28px 30px rgb(0 0 0 / 48%));
-  transform: translateY(18px) rotate(-1deg);
+  opacity: var(--deck-opacity);
+  filter:
+    saturate(1.08)
+    drop-shadow(0 28px 30px rgb(0 0 0 / 48%));
+  transform:
+    translateX(calc(-50% + (var(--deck-slot) * var(--artist-deck-step))))
+    translateY(calc(-50% + var(--deck-drop)))
+    rotate(var(--deck-tilt))
+    scale(var(--deck-scale));
+  transform-origin: 50% 72%;
+  transition:
+    opacity 500ms ease,
+    filter 500ms ease;
+  will-change: opacity;
 }
 
-.home-artist-signal:nth-child(2n) {
-  transform: translateY(-10px) rotate(2deg);
+.home-artist-signal[data-active='true'] {
+  opacity: 1;
+  filter:
+    saturate(1.2)
+    drop-shadow(0 0 18px rgb(0 213 255 / 40%))
+    drop-shadow(0 32px 36px rgb(0 0 0 / 56%));
+}
+
+.home-artist-signal:hover,
+.home-artist-signal:focus-visible {
+  opacity: 1;
+  filter:
+    saturate(1.22)
+    drop-shadow(0 0 20px rgb(255 47 202 / 38%))
+    drop-shadow(0 34px 38px rgb(0 0 0 / 58%));
+  outline: none;
 }
 
 .home-page.home-artist-routing .home-artist-signal {
@@ -458,7 +537,7 @@ body.cyan-home-active::-webkit-scrollbar {
 }
 
 .home-page.home-artist-routing .home-artist-signal[data-routing='true'] {
-  z-index: 8;
+  z-index: 180;
   opacity: 1;
   animation: home-artist-signal-launch 560ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   filter:
@@ -902,15 +981,27 @@ body.cyan-home-active::-webkit-scrollbar {
 
 @keyframes home-artist-signal-launch {
   0% {
-    transform: translateY(18px) rotate(-1deg) scale(1);
+    transform:
+      translateX(calc(-50% + (var(--deck-slot) * var(--artist-deck-step))))
+      translateY(calc(-50% + var(--deck-drop)))
+      rotate(var(--deck-tilt))
+      scale(var(--deck-scale));
   }
 
   48% {
-    transform: translate(8vw, 4vh) rotate(1.2deg) scale(1.08);
+    transform:
+      translateX(calc(-50% + (var(--deck-slot) * var(--artist-deck-step)) + 8vw))
+      translateY(calc(-50% + var(--deck-drop) + 4vh))
+      rotate(1.2deg)
+      scale(1.08);
   }
 
   100% {
-    transform: translate(24vw, 16vh) rotate(3deg) scale(1.22);
+    transform:
+      translateX(calc(-50% + (var(--deck-slot) * var(--artist-deck-step)) + 24vw))
+      translateY(calc(-50% + var(--deck-drop) + 16vh))
+      rotate(3deg)
+      scale(1.22);
   }
 }
 
@@ -945,12 +1036,6 @@ body.cyan-home-active::-webkit-scrollbar {
   .home-section-heading h2,
   .home-footer h2 {
     font-size: 48px;
-  }
-
-  .home-artist-signal {
-    width: 190px;
-    height: calc(100svh - 170px);
-    min-height: 250px;
   }
 
   .home-goods-slit {
@@ -1018,13 +1103,11 @@ body.cyan-home-active::-webkit-scrollbar {
     padding-bottom: 28px;
   }
 
-  .home-artist-signal,
   .home-goods-slit {
     height: calc(100svh - 142px);
     min-height: 210px;
   }
 
-  .home-artist-signal strong,
   .home-goods-slit strong {
     font-size: 22px;
   }
@@ -1038,10 +1121,6 @@ body.cyan-home-active::-webkit-scrollbar {
   .home-section-heading h2,
   .home-footer h2 {
     font-size: 52px;
-  }
-
-  .home-artist-signal {
-    width: 200px;
   }
 
   .home-goods-slit {
@@ -1111,7 +1190,6 @@ body.cyan-home-active::-webkit-scrollbar {
     font-size: 40px;
   }
 
-  .home-artist-signal-grid,
   .home-goods-strip {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1119,20 +1197,8 @@ body.cyan-home-active::-webkit-scrollbar {
     scrollbar-width: none;
   }
 
-  .home-artist-signal-grid::-webkit-scrollbar,
   .home-goods-strip::-webkit-scrollbar {
     display: none;
-  }
-
-  .home-artist-signal {
-    width: 180px;
-    height: 360px;
-    min-height: 360px;
-    margin-left: -18px;
-  }
-
-  .home-artist-signal:first-child {
-    margin-left: 0;
   }
 
   .home-goods-slit {
@@ -1195,12 +1261,6 @@ body.cyan-home-active::-webkit-scrollbar {
   .home-section-heading h2,
   .home-footer h2 {
     font-size: 34px;
-  }
-
-  .home-artist-signal {
-    width: 156px;
-    height: 302px;
-    min-height: 302px;
   }
 
   .home-goods-slit {

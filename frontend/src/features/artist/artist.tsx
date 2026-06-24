@@ -509,7 +509,12 @@ function ArtistPage() {
             </div>
             <div className="artist-profile-copy">
               <p className="artist-eyebrow">{artist.area}</p>
-              <h2>{artist.name}</h2>
+              <h2 className="artist-profile-name">
+                <span className="artist-profile-name-faded">{artist.name}</span>
+                <span className="artist-profile-name-solid" aria-hidden="true">
+                  {artist.name}
+                </span>
+              </h2>
               <div className="artist-signal-card">
                 <span>{artist.signal}</span>
                 <strong>{artist.groupName}</strong>

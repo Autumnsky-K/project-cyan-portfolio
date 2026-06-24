@@ -201,6 +201,9 @@ function HomePage() {
   const [artists, setArtists] = useState<CmsArtistProfile[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [routingArtistId, setRoutingArtistId] = useState<string | null>(null)
+  const [artistDeckActiveIndex, setArtistDeckActiveIndex] = useState(0)
+  const [artistDeckPaused, setArtistDeckPaused] = useState(false)
+  const [artistDeckViewportWidth, setArtistDeckViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth))
 
   useEffect(() => {
     const controller = new AbortController()
@@ -267,6 +270,18 @@ function HomePage() {
   }, [])
 
   useEffect(() => {
+    function handleWindowResize() {
+      setArtistDeckViewportWidth(window.innerWidth)
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+
+    return () => {
+      window.removeEventListener('resize', handleWindowResize)
+    }
+  }, [])
+
+  useEffect(() => {
     function scrollToHashPanel(behavior: ScrollBehavior = 'auto') {
       const hashId = decodeURIComponent(window.location.hash.replace(/^#/, ''))
       if (!hashId.startsWith('home-')) {
@@ -319,8 +334,37 @@ function HomePage() {
 
   const artistGroups = useMemo<HomeArtist[]>(() => {
     const managedArtists = artists.filter((artist) => !isDemoArtist(artist)).map(toHomeArtist)
-    return (managedArtists.length ? managedArtists : fallbackArtists).slice(0, 6)
+    return (managedArtists.length ? managedArtists : fallbackArtists).slice(0, 7)
   }, [artists])
+
+  useEffect(() => {
+    setArtistDeckActiveIndex((currentIndex) => {
+      if (!artistGroups.length) {
+        return 0
+      }
+
+      return currentIndex % artistGroups.length
+    })
+  }, [artistGroups.length])
+
+  useEffect(() => {
+    if (artistGroups.length <= 1 || artistDeckPaused || routingArtistRef.current) {
+      return undefined
+    }
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (motionQuery.matches) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setArtistDeckActiveIndex((currentIndex) => (currentIndex + 1) % artistGroups.length)
+    }, 5000)
+
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [artistDeckPaused, artistGroups.length])
 
   const physicalGoods = useMemo(() => {
     const physical = goods.filter((item) => !isDigitalGoods(item))
@@ -361,6 +405,18 @@ function HomePage() {
   }, [goods])
 
   const statusLabel = status === 'loading' ? 'Loading' : status === 'error' ? 'Offline' : 'Live'
+  const artistDeckCardWidth = Math.min(252, Math.max(168, artistDeckViewportWidth * 0.16))
+  const artistDeckSideGuard = Math.min(180, Math.max(60, artistDeckViewportWidth * 0.12))
+  const artistDeckGapCount = Math.max(artistGroups.length - 1, 1)
+  const artistDeckOpenStep = artistDeckCardWidth + 24
+  const artistDeckMinStep = artistDeckCardWidth * 0.34
+  const artistDeckFitStep = (artistDeckViewportWidth - artistDeckSideGuard - artistDeckCardWidth) / artistDeckGapCount
+  const artistDeckStep = Math.max(artistDeckMinStep, Math.min(artistDeckOpenStep, artistDeckFitStep))
+  const artistDeckStyle = {
+    '--artist-count': artistGroups.length,
+    '--artist-deck-card-width': `${artistDeckCardWidth}px`,
+    '--artist-deck-step': `${artistDeckStep}px`,
+  } as CSSProperties
 
   function moveHomePageByDelta(deltaY: number) {
     if (routingArtistRef.current) {
@@ -405,6 +461,7 @@ function HomePage() {
     event.preventDefault()
     window.clearTimeout(artistRouteTimerRef.current)
     routingArtistRef.current = true
+    setArtistDeckPaused(true)
     setRoutingArtistId(String(artistId))
 
     artistRouteTimerRef.current = window.setTimeout(() => {
@@ -455,24 +512,59 @@ function HomePage() {
 
       <section className="home-panel home-artists-panel" id="home-2" aria-labelledby="home-artists-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Artist Groups</p>
-          <h2 id="home-artists-title">Registered Artist Signals</h2>
+          <p className="home-eyebrow">Cyan Idol Network</p>
+          <h2 id="home-artists-title">Artist Signals</h2>
         </div>
-        <div className="home-artist-signal-grid">
-          {artistGroups.map((artist) => (
-            <Link
-              className="home-artist-signal"
-              data-routing={routingArtistId === String(artist.artistId) ? 'true' : undefined}
-              key={artist.artistId}
-              onClick={(event) => handleArtistSignalClick(event, `/artists#artist-${artist.artistId}`, artist.artistId)}
-              to={`/artists#artist-${artist.artistId}`}
-            >
-              {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <span>{initials(artist.name)}</span>}
-              <small>{artist.signal}</small>
-              <strong>{artist.name}</strong>
-              <em>{artist.groupName}</em>
-            </Link>
-          ))}
+        <div
+          className="home-artist-signal-deck"
+          onBlur={(event) => {
+            const nextFocus = event.relatedTarget
+            if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus)) {
+              setArtistDeckPaused(false)
+            }
+          }}
+          onFocus={() => setArtistDeckPaused(true)}
+          onMouseEnter={() => setArtistDeckPaused(true)}
+          onMouseLeave={() => setArtistDeckPaused(false)}
+          style={artistDeckStyle}
+        >
+          <div className="home-artist-deck-stack" aria-label="Artist signals">
+            {artistGroups.map((artist, index) => {
+              const count = artistGroups.length
+              const slot = count ? index - (count - 1) / 2 : 0
+              const depth = Math.abs(slot)
+              const isActive = index === artistDeckActiveIndex
+              const deckOpacity = isActive ? 1 : Math.max(0.78, 0.92 - depth * 0.04)
+              const deckZ = isActive ? 140 : 80 + index
+
+              return (
+                <Link
+                  className="home-artist-signal"
+                  data-active={isActive ? 'true' : undefined}
+                  data-routing={routingArtistId === String(artist.artistId) ? 'true' : undefined}
+                  key={artist.artistId}
+                  onClick={(event) => handleArtistSignalClick(event, `/artists#artist-${artist.artistId}`, artist.artistId)}
+                  style={
+                    {
+                      '--deck-depth': depth,
+                      '--deck-drop': '0px',
+                      '--deck-opacity': deckOpacity,
+                      '--deck-scale': 1,
+                      '--deck-slot': slot,
+                      '--deck-tilt': '0deg',
+                      '--deck-z': deckZ,
+                    } as CSSProperties
+                  }
+                  to={`/artists#artist-${artist.artistId}`}
+                >
+                  {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <span>{initials(artist.name)}</span>}
+                  <small>{artist.signal}</small>
+                  <strong>{artist.name}</strong>
+                  <em>{artist.groupName}</em>
+                </Link>
+              )
+            })}
+          </div>
         </div>
       </section>
 
