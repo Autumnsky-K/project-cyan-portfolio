@@ -96,7 +96,8 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 			return false;
 		}
 
-		return path.startsWith("/api/orders")
+		return path.startsWith("/api/cart")
+			|| path.startsWith("/api/orders")
 			|| path.startsWith("/api/payments")
 			|| path.startsWith("/api/members");
 	}
