@@ -104,7 +104,6 @@ function Store() {
             cartItems={store.cartItems}
             cartStatus={store.cartStatus}
             isCartEmpty={store.isCartEmpty}
-            isCartSignedIn={store.isCartSignedIn}
             totalPrice={store.totalPrice}
             totalQuantity={store.totalQuantity}
             onDecreaseQuantity={store.decreaseQuantity}
@@ -125,6 +124,7 @@ function Store() {
                 allowDevPayment={isAdmin}
                 allowManualPaymentActions={isAdmin}
                 checkoutForm={store.checkoutForm}
+                hasBlockingCartIssue={store.hasBlockingCartIssue}
                 isCartEmpty={store.isCartEmpty}
                 isPaymentProcessing={store.isPaymentProcessing}
                 message={store.message}
