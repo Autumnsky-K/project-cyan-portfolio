@@ -33,8 +33,8 @@ class GoodsRecommendationServiceTest {
 	@Test
 	void expandsAliasesAndReturnsMatchingSaleableGoods() {
 		Goods goods = goods(
-			42L, "aespa Photocard Set", 35_000, "ON_SALE",
-			7L, "aespa", null, null, 1L, "Photocard", "PHOTOCARD"
+			42L, "Artist A Photocard", 35_000, "ON_SALE",
+			1L, "Artist A", null, null, 1L, "Photocard", "PHOTOCARD"
 		);
 		GoodsStock stock = new GoodsStock(goods, 10);
 		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(goods));
@@ -42,12 +42,12 @@ class GoodsRecommendationServiceTest {
 			.thenReturn(List.of(stock));
 		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
 			.thenReturn(List.of(
-				new SearchAliasMatch("에스파", 7L, null, null, null, null),
-				new SearchAliasMatch("포카", null, null, null, 11L, "PHOTOCARD")
+				new SearchAliasMatch("artist a", 1L, null, null, null, null),
+				new SearchAliasMatch("photocard", null, null, null, 11L, "PHOTOCARD")
 			));
 
 		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
-			"에스파 포카 추천해줘",
+			"Artist A Photocard 추천해줘",
 			null,
 			null,
 			null,
@@ -67,16 +67,16 @@ class GoodsRecommendationServiceTest {
 	@Test
 	void requiresGroupAndCategoryAliasesToMatchTogether() {
 		Goods exactMatch = goods(
-			42L, "aespa Photocard Set", 35_000, "ON_SALE",
-			101L, "Karina", 10L, "aespa", 1L, "Photocard", "PHOTOCARD"
+			42L, "Artist A Photocard", 35_000, "ON_SALE",
+			1L, "Artist A", 1L, "Group One", 1L, "Photocard", "PHOTOCARD"
 		);
 		Goods groupOnly = goods(
-			43L, "aespa Lightstick", 45_000, "ON_SALE",
-			102L, "Winter", 10L, "aespa", 3L, "Lightstick", "LIGHTSTICK"
+			43L, "Artist B Lightstick", 45_000, "ON_SALE",
+			2L, "Artist B", 1L, "Group One", 3L, "Lightstick", "LIGHTSTICK"
 		);
 		Goods categoryOnly = goods(
-			44L, "Other Photocard Set", 25_000, "ON_SALE",
-			201L, "Other Artist", 20L, "Other Group", 1L, "Photocard", "PHOTOCARD"
+			44L, "Artist C Photocard", 25_000, "ON_SALE",
+			3L, "Artist C", 2L, "Group Two", 1L, "Photocard", "PHOTOCARD"
 		);
 		GoodsStock exactMatchStock = new GoodsStock(exactMatch, 10);
 		GoodsStock groupOnlyStock = new GoodsStock(groupOnly, 10);
@@ -90,12 +90,12 @@ class GoodsRecommendationServiceTest {
 			));
 		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
 			.thenReturn(List.of(
-				new SearchAliasMatch("에스파", null, 10L, null, null, null),
-				new SearchAliasMatch("포토카드", null, null, 1L, null, null)
+				new SearchAliasMatch("group one", null, 1L, null, null, null),
+				new SearchAliasMatch("photocard", null, null, 1L, null, null)
 			));
 
 		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
-			"에스파 포토카드",
+			"group one photocard",
 			null,
 			null,
 			null,
@@ -145,6 +145,80 @@ class GoodsRecommendationServiceTest {
 		assertThat(response.content())
 			.extracting(GoodsRecommendationResponse::goodsId)
 			.containsExactly(45L);
+	}
+
+	@Test
+	void qOnlyArtistNameMatchesRecommendationFieldsWithoutAiPreprocessing() {
+		Goods artistMatch = goods(
+			45L, "Artist A Photocard", 15_000, "ON_SALE",
+			1L, "Artist A", 1L, "Group One", 1L, "Photocard", "PHOTOCARD"
+		);
+		Goods otherArtist = goods(
+			46L, "Artist B Photocard", 18_000, "ON_SALE",
+			2L, "Artist B", 1L, "Group One", 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock artistMatchStock = new GoodsStock(artistMatch, 10);
+		GoodsStock otherArtistStock = new GoodsStock(otherArtist, 10);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(artistMatch, otherArtist));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(45L, 46L)))
+			.thenReturn(List.of(artistMatchStock, otherArtistStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"Artist A",
+			null,
+			null,
+			null,
+			null,
+			null,
+			0,
+			10,
+			"relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(45L);
+		assertThat(response.content().getFirst().matchedFields())
+			.contains("name", "artistName");
+	}
+
+	@Test
+	void qOnlyPhotocardMatchesCategoryAndTagFieldsWithoutAiPreprocessing() {
+		Goods photocard = goods(
+			45L, "Artist A Photocard", 15_000, "ON_SALE",
+			1L, "Artist A", 1L, "Group One", 1L, "Photocard", "PHOTOCARD"
+		);
+		Goods lightstick = goods(
+			46L, "Artist A Lightstick", 45_000, "ON_SALE",
+			1L, "Artist A", 1L, "Group One", 3L, "Lightstick", "LIGHTSTICK"
+		);
+		GoodsStock photocardStock = new GoodsStock(photocard, 10);
+		GoodsStock lightstickStock = new GoodsStock(lightstick, 10);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(photocard, lightstick));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(45L, 46L)))
+			.thenReturn(List.of(photocardStock, lightstickStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"photocard",
+			null,
+			null,
+			null,
+			null,
+			null,
+			0,
+			10,
+			"relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(45L);
+		assertThat(response.content().getFirst().matchedFields())
+			.contains("name", "categoryName", "tags");
 	}
 
 	@Test
