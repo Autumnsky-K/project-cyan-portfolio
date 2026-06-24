@@ -122,7 +122,7 @@ function VtuberChatbotShell({
   const chatbotRef = useRef<HTMLElement>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const removeDragListenersRef = useRef<(() => void) | null>(null)
-  const shouldSuppressClickRef = useRef(false)
+  const shouldSuppressRestoreClickRef = useRef(false)
   const [settings, setSettings] = useState<ChatbotSettings>(loadChatbotSettings)
   const [isDesktopViewport, setIsDesktopViewport] = useState(isDesktopDragViewport)
   const [isDragging, setIsDragging] = useState(false)
@@ -223,13 +223,7 @@ function VtuberChatbotShell({
     setSettings((currentSettings) => ({ ...currentSettings, isHidden: true }))
   }
 
-  function handleShowClick(event: ReactMouseEvent<HTMLButtonElement>) {
-    if (shouldSuppressClickRef.current) {
-      shouldSuppressClickRef.current = false
-      event.preventDefault()
-      return
-    }
-
+  function showChatbot() {
     const chatbotElement = chatbotRef.current
 
     if (!chatbotElement) {
@@ -248,22 +242,6 @@ function VtuberChatbotShell({
         position: clampChatbotPosition(currentSettings.position, chatbotElement),
       }
     })
-  }
-
-  function handleShowPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    handleDragPointerDown(event)
-  }
-
-  function handleShowPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
-    handleDragPointerMove(event)
-  }
-
-  function handleShowPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
-    handleDragPointerUp(event)
-  }
-
-  function handleShowPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
-    handleDragPointerUp(event)
   }
 
   function updateChatbotPosition(event: PointerEvent) {
@@ -297,23 +275,26 @@ function VtuberChatbotShell({
     }))
   }
 
-  function stopDragging() {
-    if (dragStateRef.current?.didMove) {
-      shouldSuppressClickRef.current = true
+  function stopDragging(): boolean {
+    const didMove = dragStateRef.current?.didMove === true
+
+    if (didMove) {
+      shouldSuppressRestoreClickRef.current = true
     }
 
     removeDragListenersRef.current?.()
     removeDragListenersRef.current = null
     dragStateRef.current = null
     setIsDragging(false)
+
+    return didMove
   }
 
-  function handleDragPointerDown(event: ReactPointerEvent<HTMLElement>) {
-    if (
-      !isDesktopViewport ||
-      event.button !== 0 ||
-      (!settings.isHidden && isDragExcludedTarget(event.target))
-    ) {
+  function startDragging(
+    event: ReactPointerEvent<HTMLElement>,
+    options: { preventDefault: boolean } = { preventDefault: true },
+  ) {
+    if (!isDesktopViewport || event.button !== 0) {
       return
     }
 
@@ -352,7 +333,18 @@ function VtuberChatbotShell({
 
     setIsDragging(true)
     event.currentTarget.setPointerCapture(event.pointerId)
-    event.preventDefault()
+
+    if (options.preventDefault) {
+      event.preventDefault()
+    }
+  }
+
+  function handleDragPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (settings.isHidden || isDragExcludedTarget(event.target)) {
+      return
+    }
+
+    startDragging(event)
   }
 
   function handleDragPointerMove(event: ReactPointerEvent<HTMLElement>) {
@@ -373,6 +365,52 @@ function VtuberChatbotShell({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
+  }
+
+  function handleRestorePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+    startDragging(event, { preventDefault: false })
+  }
+
+  function handleRestorePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+    handleDragPointerMove(event)
+  }
+
+  function handleRestorePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+
+    if (isDragging) {
+      stopDragging()
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function handleRestorePointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+
+    if (!isDragging) {
+      return
+    }
+
+    stopDragging()
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function handleRestoreClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    if (shouldSuppressRestoreClickRef.current) {
+      shouldSuppressRestoreClickRef.current = false
+      event.preventDefault()
+      return
+    }
+
+    showChatbot()
   }
 
   return (
@@ -397,11 +435,11 @@ function VtuberChatbotShell({
           <button
             className="vtuber-restore-button"
             type="button"
-            onClick={handleShowClick}
-            onPointerDown={handleShowPointerDown}
-            onPointerMove={handleShowPointerMove}
-            onPointerUp={handleShowPointerUp}
-            onPointerCancel={handleShowPointerCancel}
+            onClick={handleRestoreClick}
+            onPointerDown={handleRestorePointerDown}
+            onPointerMove={handleRestorePointerMove}
+            onPointerUp={handleRestorePointerUp}
+            onPointerCancel={handleRestorePointerCancel}
             aria-label="Show chatbot"
             title="챗봇 보기"
           >
