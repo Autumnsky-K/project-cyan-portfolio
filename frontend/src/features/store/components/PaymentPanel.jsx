@@ -19,6 +19,7 @@ function getPaymentStatusLabel(status) {
 
 function PaymentPanel({
   checkoutForm,
+  hasBlockingCartIssue = false,
   isCartEmpty,
   isPaymentProcessing,
   message,
@@ -108,7 +109,13 @@ function PaymentPanel({
         </p>
       )}
 
-      <button disabled={isCartEmpty || isPaymentProcessing} type="submit">
+      {hasBlockingCartIssue && (
+        <p className="status-message" aria-live="polite">
+          Resolve cart item issues before checkout.
+        </p>
+      )}
+
+      <button disabled={isCartEmpty || hasBlockingCartIssue || isPaymentProcessing} type="submit">
         {isPaymentProcessing
           ? 'Preparing payment...'
           : visiblePaymentMethod === PAYMENT_METHODS.KAKAO_PAY

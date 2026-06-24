@@ -124,6 +124,7 @@ function Store() {
                 allowDevPayment={isAdmin}
                 allowManualPaymentActions={isAdmin}
                 checkoutForm={store.checkoutForm}
+                hasBlockingCartIssue={store.hasBlockingCartIssue}
                 isCartEmpty={store.isCartEmpty}
                 isPaymentProcessing={store.isPaymentProcessing}
                 message={store.message}

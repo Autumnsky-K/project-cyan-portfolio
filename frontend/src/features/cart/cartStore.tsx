@@ -14,6 +14,7 @@ import { CartContext, type CartContextValue, type CartGoodsInput, type CartItem 
 
 const CART_STORAGE_KEY = 'project-cyan-cart'
 const LOCAL_CART_ITEM_ID = 0
+const LOCAL_CART_KEY_PREFIX = 'local:'
 
 type CartProviderProps = {
   children: ReactNode
@@ -35,7 +36,16 @@ function isCartItem(value: unknown): value is CartItem {
     Array.isArray(item.tags) &&
     typeof item.quantity === 'number' &&
     (item.maxQuantity === null || typeof item.maxQuantity === 'number') &&
-    typeof item.shippingFee === 'number'
+    typeof item.shippingFee === 'number' &&
+    (
+      item.cartIssue === undefined ||
+      item.cartIssue === null ||
+      (
+        typeof item.cartIssue === 'object' &&
+        typeof item.cartIssue.code === 'string' &&
+        typeof item.cartIssue.message === 'string'
+      )
+    )
   )
 }
 
@@ -75,6 +85,7 @@ function normalizeLocalCartItem(goods: CartGoodsInput, quantity = 1): CartItem {
     shippingFee: Number(goods.shippingFee ?? 0),
     purchaseState: 'LOCAL',
     purchaseMessage: null,
+    cartIssue: null,
   }
 }
 
@@ -110,6 +121,20 @@ function removeLocalCartItem(currentItems: CartItem[], cartItemKey: string): Car
   return currentItems.filter((item) => item.cartItemKey !== cartItemKey)
 }
 
+function isLocalCartItem(item: CartItem): boolean {
+  return item.cartItemKey.startsWith(LOCAL_CART_KEY_PREFIX)
+}
+
+function withCartIssue(item: CartItem, error: unknown): CartItem {
+  return {
+    ...item,
+    cartIssue: {
+      code: 'MERGE_FAILED',
+      message: getCartErrorMessage(error, '장바구니에 담을 수 없습니다. 수량을 수정하거나 삭제해 주세요.'),
+    },
+  }
+}
+
 function toCartItem(item: CartApiItem): CartItem {
   return {
     cartItemId: item.cartItemId,
@@ -128,6 +153,7 @@ function toCartItem(item: CartApiItem): CartItem {
     shippingFee: 0,
     purchaseState: item.purchaseState ?? null,
     purchaseMessage: item.purchaseMessage ?? null,
+    cartIssue: null,
   }
 }
 
@@ -153,6 +179,25 @@ export function CartProvider({ children }: CartProviderProps) {
     setIsSignedIn(false)
   }, [])
 
+  const mergeLocalCartToServer = useCallback(async (): Promise<CartItem[]> => {
+    const localItems = readLocalCartItems()
+    let latestCart: CartApiResponse | null = null
+    const failedItems: CartItem[] = []
+
+    for (const item of localItems) {
+      try {
+        latestCart = await addRemoteCartItem(item.goodsId, Math.max(1, item.quantity))
+      } catch (cartError) {
+        failedItems.push(withCartIssue(item, cartError))
+      }
+    }
+
+    writeLocalCartItems(failedItems)
+
+    const serverCart = latestCart ?? await fetchCart()
+    return [...toCartItems(serverCart), ...failedItems]
+  }, [])
+
   const refreshCart = useCallback(async () => {
     if (!(await hasSpringApiSession())) {
       setItems(readLocalCartItems())
@@ -167,14 +212,13 @@ export function CartProvider({ children }: CartProviderProps) {
     setIsSignedIn(true)
 
     try {
-      const cart = await fetchCart()
-      setItems(toCartItems(cart))
+      setItems(await mergeLocalCartToServer())
       setStatus('data')
     } catch (cartError) {
       setError(getCartErrorMessage(cartError, 'Failed to load cart.'))
       setStatus('error')
     }
-  }, [])
+  }, [mergeLocalCartToServer])
 
   useEffect(() => {
     void refreshCart()
@@ -217,7 +261,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
     try {
       const cart = await addRemoteCartItem(goods.goodsId, Math.max(1, quantity))
-      setItems(toCartItems(cart))
+      setItems([...toCartItems(cart), ...readLocalCartItems()])
       setStatus('data')
     } catch (cartError) {
       setError(getCartErrorMessage(cartError, 'Failed to add cart item.'))
@@ -235,6 +279,43 @@ export function CartProvider({ children }: CartProviderProps) {
 
     setError('')
     setIsSignedIn(true)
+
+    if (String(cartItemKey).startsWith(LOCAL_CART_KEY_PREFIX)) {
+      const localItems = readLocalCartItems()
+      const targetItem = localItems.find((item) => item.cartItemKey === cartItemKey)
+
+      if (!targetItem) {
+        await refreshCart()
+        return
+      }
+
+      if (quantity <= 0) {
+        writeLocalCartItems(removeLocalCartItem(localItems, cartItemKey))
+        await refreshCart()
+        return
+      }
+
+      try {
+        const cart = await addRemoteCartItem(targetItem.goodsId, Math.max(1, quantity))
+        const nextLocalItems = removeLocalCartItem(localItems, cartItemKey)
+        writeLocalCartItems(nextLocalItems)
+        setItems([...toCartItems(cart), ...nextLocalItems])
+        setStatus('data')
+      } catch (cartError) {
+        const nextLocalItems = localItems.map((item) =>
+          item.cartItemKey === cartItemKey
+            ? withCartIssue({ ...item, quantity: Math.max(1, quantity) }, cartError)
+            : item,
+        )
+        writeLocalCartItems(nextLocalItems)
+        setItems((currentItems) => [
+          ...currentItems.filter((item) => !isLocalCartItem(item)),
+          ...nextLocalItems,
+        ])
+        setStatus('data')
+      }
+      return
+    }
 
     if (quantity <= 0) {
       try {
@@ -269,6 +350,12 @@ export function CartProvider({ children }: CartProviderProps) {
     setError('')
     setIsSignedIn(true)
 
+    if (String(cartItemKey).startsWith(LOCAL_CART_KEY_PREFIX)) {
+      writeLocalCartItems(removeLocalCartItem(readLocalCartItems(), cartItemKey))
+      await refreshCart()
+      return
+    }
+
     try {
       await removeRemoteCartItem(cartItemKey)
       await refreshCart()
@@ -290,6 +377,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
     try {
       await clearRemoteCart()
+      writeLocalCartItems([])
       setItems([])
       setStatus('data')
     } catch (cartError) {
@@ -299,19 +387,33 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   }, [replaceLocalItems])
 
+  const hasBlockingIssue = useMemo(() => items.some((item) => Boolean(item.cartIssue)), [items])
+
   const value = useMemo<CartContextValue>(
     () => ({
       items,
       status,
       error,
       isSignedIn,
+      hasBlockingIssue,
       refreshCart,
       addCartItem,
       updateCartItemQuantity,
       removeCartItem,
       clearCart,
     }),
-    [addCartItem, clearCart, error, isSignedIn, items, refreshCart, removeCartItem, status, updateCartItemQuantity],
+    [
+      addCartItem,
+      clearCart,
+      error,
+      hasBlockingIssue,
+      isSignedIn,
+      items,
+      refreshCart,
+      removeCartItem,
+      status,
+      updateCartItemQuantity,
+    ],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

@@ -35,6 +35,11 @@ function CartPanel({
                 <div>
                   <strong>{item.name}</strong>
                   <span>{formatPrice(item.price)}</span>
+                  {item.cartIssue && (
+                    <p className="cart-item-issue" role="status">
+                      {item.cartIssue.message}
+                    </p>
+                  )}
                 </div>
                 <div className="cart-controls">
                   <button type="button" onClick={() => onDecreaseQuantity(cartItemKey)}>

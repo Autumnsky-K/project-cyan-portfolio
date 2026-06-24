@@ -93,6 +93,7 @@ export function useStoreFlow(options = {}) {
     status: cartStatus,
     error: cartError,
     isSignedIn: isCartSignedIn,
+    hasBlockingIssue: hasBlockingCartIssue,
     addCartItem,
     updateCartItemQuantity,
     removeCartItem,
@@ -147,7 +148,12 @@ export function useStoreFlow(options = {}) {
               String(target.goodsId) === String(item.goodsId),
           )
           if (product) {
-            return { ...product, cartItemKey: item.cartItemKey, quantity: item.quantity }
+            return {
+              ...product,
+              cartIssue: item.cartIssue,
+              cartItemKey: item.cartItemKey,
+              quantity: item.quantity,
+            }
           }
 
           return {
@@ -160,6 +166,7 @@ export function useStoreFlow(options = {}) {
             image: item.imageUrl || '',
             price: item.price,
             quantity: item.quantity,
+            cartIssue: item.cartIssue,
           }
         })
         .filter(Boolean),
@@ -371,6 +378,7 @@ export function useStoreFlow(options = {}) {
 
     if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
     if (!isCartSignedIn) nextErrors.push('Sign in to checkout with your cart.')
+    if (hasBlockingCartIssue) nextErrors.push('Resolve cart item issues before checkout.')
     if (!checkoutForm.memberId.trim()) nextErrors.push('Enter a member ID.')
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
@@ -619,6 +627,7 @@ export function useStoreFlow(options = {}) {
     errors,
     isCartEmpty,
     isCartSignedIn,
+    hasBlockingCartIssue,
     isPaymentProcessing,
     lastKakaoReadyDebug,
     lastKakaoReadyError,
