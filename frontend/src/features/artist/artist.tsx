@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
+import CartNavLink from '../cart/CartNavLink'
 
 import './artist.css'
 
@@ -84,7 +85,7 @@ function ArtistPage(): ReactElement {
             Artists
           </Link>
           <Link to="/goods">Goods</Link>
-          <Link to="/cart">Cart</Link>
+          <CartNavLink />
         </nav>
       </header>
 
