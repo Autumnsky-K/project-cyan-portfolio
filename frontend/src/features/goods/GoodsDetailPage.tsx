@@ -11,6 +11,7 @@ import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
+import { useGoodsFavorites } from './useGoodsFavorites'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
@@ -30,6 +31,10 @@ function GoodsDetailPage() {
   const shareFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
+  const {
+    isFavorite,
+    toggleFavorite,
+  } = useGoodsFavorites()
 
   useLayoutEffect(() => {
     const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
@@ -222,6 +227,8 @@ function GoodsDetailPage() {
               key={goods.goodsId}
               goods={goods}
               onReviewClick={() => setActiveTab('reviews')}
+              isFavorite={isFavorite(goods.goodsId)}
+              onFavoriteToggle={() => void toggleFavorite(goods.goodsId)}
             />
           </section>
 
