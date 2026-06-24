@@ -15,15 +15,16 @@
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: 180px minmax(220px, 300px);
+  grid-template-columns: 156px minmax(220px, 300px);
   grid-template-rows: auto auto;
   align-items: end;
-  gap: 12px;
+  gap: 10px 0;
   max-width: calc(100vw - 32px);
   color: var(--vtuber-text);
   font: 15px/1.4 var(--sans);
   text-align: left;
-  pointer-events: none;
+  cursor: grab;
+  pointer-events: auto;
   touch-action: none;
   user-select: none;
 }
@@ -35,6 +36,7 @@
 .vtuber-chatbot[data-is-hidden='true'] {
   display: block;
   max-width: none;
+  cursor: default;
 }
 
 .vtuber-stage,
@@ -46,17 +48,17 @@
 
 .vtuber-controls {
   display: inline-flex;
-  grid-column: 1 / -1;
+  grid-column: 2;
   justify-self: end;
-  gap: 6px;
 }
 
-.vtuber-drag-handle,
 .vtuber-hide-button,
 .vtuber-restore-button {
   display: inline-grid;
   place-items: center;
+  width: 34px;
   min-height: 34px;
+  padding: 0;
   border: 1px solid var(--vtuber-line);
   border-radius: 4px;
   background: var(--vtuber-panel);
@@ -68,56 +70,63 @@
   cursor: pointer;
 }
 
-.vtuber-drag-handle,
-.vtuber-hide-button {
-  width: 34px;
-  padding: 0;
-}
-
-.vtuber-drag-handle {
-  cursor: grab;
-}
-
-.vtuber-chatbot.is-dragging .vtuber-drag-handle {
+.vtuber-chatbot.is-dragging {
   cursor: grabbing;
 }
 
-.vtuber-drag-handle[aria-disabled='true'] {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.vtuber-drag-handle span,
-.vtuber-hide-button span {
+.vtuber-hide-button span,
+.vtuber-restore-button span {
   position: relative;
   display: block;
-  width: 14px;
+  width: 18px;
   height: 14px;
-}
-
-.vtuber-drag-handle span {
-  background:
-    radial-gradient(circle, currentColor 0 2px, transparent 2.5px) 0 0 / 7px 7px;
-  opacity: 0.72;
 }
 
 .vtuber-hide-button span::before {
   content: '';
   position: absolute;
-  top: 6px;
-  left: 1px;
-  width: 12px;
-  height: 2px;
+  top: 2px;
+  left: 0;
+  width: 18px;
+  height: 11px;
+  border: 2px solid currentColor;
   border-radius: 999px;
+}
+
+.vtuber-hide-button span::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: currentColor;
 }
 
-.vtuber-restore-button {
-  min-width: 88px;
-  padding: 7px 12px;
+.vtuber-restore-button span::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 0;
+  width: 18px;
+  height: 8px;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0 0 999px 999px;
 }
 
-.vtuber-drag-handle:focus-visible,
+.vtuber-restore-button span::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 2px;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(-12deg);
+}
+
 .vtuber-hide-button:focus-visible,
 .vtuber-restore-button:focus-visible {
   outline: 2px solid var(--vtuber-accent);
@@ -126,10 +135,14 @@
 
 .vtuber-stage {
   position: relative;
+  z-index: 1;
   display: grid;
   justify-items: center;
+  grid-column: 1;
+  grid-row: 2;
   width: 180px;
   height: 236px;
+  transform: translateX(42px);
 }
 
 .vtuber-live2d {
@@ -311,7 +324,11 @@
 }
 
 .vtuber-panel {
+  position: relative;
+  z-index: 2;
   display: grid;
+  grid-column: 2;
+  grid-row: 2;
   gap: 10px;
 }
 
@@ -390,6 +407,7 @@
 .vtuber-form input {
   min-width: 0;
   padding: 8px 10px;
+  cursor: text;
 }
 
 .vtuber-form input:focus-visible,
@@ -400,6 +418,7 @@
 
 .vtuber-form button {
   padding: 8px 12px;
+  cursor: pointer;
   font-weight: 700;
 }
 
@@ -433,21 +452,27 @@
     grid-template-columns: 92px minmax(0, 1fr);
     grid-template-rows: auto auto;
     max-width: none;
+    cursor: default;
     touch-action: auto;
     user-select: auto;
   }
 
   .vtuber-controls {
+    grid-column: 1 / -1;
     justify-self: end;
   }
 
-  .vtuber-drag-handle {
-    display: none;
-  }
-
   .vtuber-stage {
+    grid-column: 1;
+    grid-row: 2;
     width: 92px;
     height: 132px;
+    transform: none;
+  }
+
+  .vtuber-panel {
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .vtuber-live2d-container {

@@ -98,6 +98,13 @@ function isDesktopDragViewport(): boolean {
   )
 }
 
+function isDragExcludedTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest('button, input, textarea, select, a'))
+  )
+}
+
 function VtuberChatbotShell({
   actionsCount,
   bubbleText,
@@ -246,8 +253,13 @@ function VtuberChatbotShell({
     setIsDragging(false)
   }
 
-  function handleDragPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (!isDesktopViewport || event.button !== 0) {
+  function handleDragPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (
+      settings.isHidden ||
+      !isDesktopViewport ||
+      event.button !== 0 ||
+      isDragExcludedTarget(event.target)
+    ) {
       return
     }
 
@@ -286,7 +298,7 @@ function VtuberChatbotShell({
     event.preventDefault()
   }
 
-  function handleDragPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+  function handleDragPointerMove(event: ReactPointerEvent<HTMLElement>) {
     if (!isDragging || !dragStateRef.current) {
       return
     }
@@ -294,7 +306,7 @@ function VtuberChatbotShell({
     updateChatbotPosition(event.nativeEvent)
   }
 
-  function handleDragPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+  function handleDragPointerUp(event: ReactPointerEvent<HTMLElement>) {
     if (!isDragging) {
       return
     }
@@ -317,6 +329,10 @@ function VtuberChatbotShell({
       data-is-hidden={settings.isHidden}
       data-model-url={character.modelUrl}
       data-position-mode={shouldUseCustomPosition ? 'custom' : 'default'}
+      onPointerDown={handleDragPointerDown}
+      onPointerMove={handleDragPointerMove}
+      onPointerUp={handleDragPointerUp}
+      onPointerCancel={handleDragPointerUp}
       style={chatbotStyle}
     >
       {settings.isHidden ? (
@@ -325,25 +341,13 @@ function VtuberChatbotShell({
           type="button"
           onClick={handleShowClick}
           aria-label="Show chatbot"
+          title="챗봇 보기"
         >
-          챗봇 보기
+          <span aria-hidden="true" />
         </button>
       ) : (
         <>
           <div className="vtuber-controls" aria-label="Chatbot controls">
-            <button
-              className="vtuber-drag-handle"
-              type="button"
-              aria-label="Move chatbot"
-              aria-disabled={!isDesktopViewport}
-              title="챗봇 이동"
-              onPointerDown={handleDragPointerDown}
-              onPointerMove={handleDragPointerMove}
-              onPointerUp={handleDragPointerUp}
-              onPointerCancel={handleDragPointerUp}
-            >
-              <span aria-hidden="true" />
-            </button>
             <button
               className="vtuber-hide-button"
               type="button"
