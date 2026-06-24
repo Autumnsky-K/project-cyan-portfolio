@@ -32,6 +32,53 @@ TEN_THOUSAND_WON_PATTERN = re.compile(r"(\d+)\s*만\s*원")
 WON_PATTERN = re.compile(r"(\d[\d,]*)\s*원")
 GOODS_PATH_PATTERN = re.compile(r"^/goods/(\d+)$")
 GOODS_SELECTOR_PATTERN = re.compile(r"data-goods-id=['\"](\d+)['\"]")
+UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
+FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
+FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
+KOREAN_NUMBER_WORDS = {
+    "첫": 1,
+    "한": 1,
+    "하나": 1,
+    "두": 2,
+    "둘": 2,
+    "세": 3,
+    "셋": 3,
+    "네": 4,
+    "넷": 4,
+    "다섯": 5,
+    "여섯": 6,
+    "일곱": 7,
+    "여덟": 8,
+    "아홉": 9,
+    "열": 10,
+    "열한": 11,
+    "열하나": 11,
+    "열두": 12,
+    "열둘": 12,
+    "열세": 13,
+    "열셋": 13,
+    "열네": 14,
+    "열넷": 14,
+    "열다섯": 15,
+    "열여섯": 16,
+    "열일곱": 17,
+    "열여덟": 18,
+    "열아홉": 19,
+    "스무": 20,
+    "스물": 20,
+}
+KOREAN_NUMBER_WORD_PATTERN = "|".join(
+    re.escape(word)
+    for word in sorted(KOREAN_NUMBER_WORDS, key=len, reverse=True)
+)
+DIGIT_SELECTION_PATTERN = re.compile(r"(\d+)\s*(?:번|번째)")
+KOREAN_SELECTION_PATTERN = re.compile(
+    rf"({KOREAN_NUMBER_WORD_PATTERN})\s*(?:번째|째)"
+)
+DIGIT_COUNT_ALL_PATTERN = re.compile(r"(\d+)\s*개\s*다")
+KOREAN_COUNT_ALL_PATTERN = re.compile(
+    rf"({KOREAN_NUMBER_WORD_PATTERN})\s*(?:개\s*)?다"
+)
 
 
 class GoodsCatalogClient(Protocol):
@@ -78,18 +125,27 @@ class CatalogGroundedChatResponseProvider:
     ):
         self.delegate = delegate
         self.catalog_client = catalog_client
+        self.recent_recommendation_candidates: list[dict[str, Any]] = []
 
     def build_response(
         self,
         text: str,
         context: dict[str, Any] | None = None,
     ) -> FullTextMessage:
+        follow_up_response = build_follow_up_cart_response(
+            text,
+            self.recent_recommendation_candidates,
+        )
+        if follow_up_response is not None:
+            return follow_up_response
+
         if not has_product_intent(text):
             return self.delegate.build_response(text, context)
 
         candidates = self.catalog_client.search_candidates(text)
         if candidates is None:
             return self.delegate.build_response(text, context)
+        self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
         if not candidates:
             return FullTextMessage(
                 text="조건에 맞는 판매 가능한 상품을 찾지 못했어요.",
@@ -118,6 +174,124 @@ class CatalogGroundedChatResponseProvider:
 
 def has_product_intent(text: str) -> bool:
     return any(keyword in text for keyword in PRODUCT_INTENT_KEYWORDS)
+
+
+def build_follow_up_cart_response(
+    text: str,
+    recent_candidates: list[dict[str, Any]],
+) -> FullTextMessage | None:
+    result = select_follow_up_candidates(text, recent_candidates)
+    if result is None:
+        return None
+
+    status, selection = result
+    if status == "ambiguous":
+        return FullTextMessage(text=FOLLOW_UP_AMBIGUOUS_TEXT, actions=[])
+
+    if not selection:
+        return FullTextMessage(text=FOLLOW_UP_EMPTY_TEXT, actions=[])
+
+    count = len(selection)
+    response_text = (
+        "방금 추천한 상품을 장바구니에 담을게요."
+        if count == 1
+        else f"방금 추천한 {count}개 상품을 장바구니에 담을게요."
+    )
+    return FullTextMessage(
+        text=response_text,
+        actions=[AddToCartAction(goodsId=str(candidate["goodsId"])) for candidate in selection],
+    )
+
+
+def select_follow_up_candidates(
+    text: str,
+    recent_candidates: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]] | None:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    if not is_cart_follow_up_text(normalized_text):
+        return None
+
+    selected_indexes = extract_selected_indexes(normalized_text)
+    if selected_indexes:
+        return "selected", [
+            recent_candidates[index]
+            for index in selected_indexes
+            if index < len(recent_candidates)
+        ]
+
+    expected_count = extract_count_qualified_all(normalized_text)
+    if expected_count is not None:
+        if not recent_candidates:
+            return "selected", []
+        if expected_count == len(recent_candidates):
+            return "selected", recent_candidates
+        return "ambiguous", []
+
+    if any(keyword in normalized_text for keyword in UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS):
+        return "selected", recent_candidates
+
+    return None
+
+
+def extract_selected_indexes(normalized_text: str) -> list[int]:
+    numbers = [
+        int(match.group(1))
+        for match in DIGIT_SELECTION_PATTERN.finditer(normalized_text)
+    ]
+    numbers.extend(
+        KOREAN_NUMBER_WORDS[match.group(1)]
+        for match in KOREAN_SELECTION_PATTERN.finditer(normalized_text)
+    )
+    return to_zero_based_unique_indexes(numbers)
+
+
+def extract_count_qualified_all(normalized_text: str) -> int | None:
+    digit_match = DIGIT_COUNT_ALL_PATTERN.search(normalized_text)
+    if digit_match:
+        return int(digit_match.group(1))
+
+    korean_match = KOREAN_COUNT_ALL_PATTERN.search(normalized_text)
+    if korean_match:
+        return KOREAN_NUMBER_WORDS[korean_match.group(1)]
+
+    return None
+
+
+def to_zero_based_unique_indexes(numbers: list[int]) -> list[int]:
+    indexes = []
+    seen = set()
+    for number in numbers:
+        index = number - 1
+        if index < 0 or index in seen:
+            continue
+        indexes.append(index)
+        seen.add(index)
+    return indexes
+
+
+def is_cart_follow_up_text(normalized_text: str) -> bool:
+    return "담" in normalized_text or "장바구니" in normalized_text
+
+
+def normalize_recent_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    recent_candidates = []
+    for candidate in candidates:
+        if candidate.get("goodsId") is None:
+            continue
+        recent_candidates.append(
+            {
+                key: candidate.get(key)
+                for key in (
+                    "goodsId",
+                    "name",
+                    "price",
+                    "tags",
+                    "artistName",
+                    "categoryName",
+                )
+            }
+        )
+    return recent_candidates
 
 
 def extract_max_price(text: str) -> int | None:

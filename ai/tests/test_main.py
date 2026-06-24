@@ -1,4 +1,5 @@
 import json
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,6 +8,7 @@ from pydantic import ValidationError
 from project_cyan_ai.main import app
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
+    HttpGoodsCatalogClient,
     extract_max_price,
 )
 from project_cyan_ai.providers import (
@@ -149,12 +151,12 @@ class FakeGoodsClient:
             "goods": [
                 {
                     "goodsId": "42",
-                    "name": "aespa 포토카드",
+                    "name": "Artist A Photocard",
                     "price": 35000,
                     "imageUrl": "https://cdn.example.test/42.jpg",
-                    "tags": ["PHOTOCARD", "AESPA"],
-                    "artistName": "aespa",
-                    "categoryName": "포토카드",
+                    "tags": ["PHOTOCARD"],
+                    "artistName": "Artist A",
+                    "categoryName": "Photocard",
                 }
             ],
             "page": 0,
@@ -171,15 +173,15 @@ class FakeGoodsClient:
 
         return {
             "goodsId": str(goods_id),
-            "name": "aespa 포토카드",
+            "name": "Artist A Photocard",
             "price": 35000,
             "imageUrl": "https://cdn.example.test/42.jpg",
-            "tags": ["PHOTOCARD", "AESPA"],
-            "description": "한정판 포토카드",
-            "artistId": 7,
+            "tags": ["PHOTOCARD"],
+            "description": "Artist A collectible photocard",
+            "artistId": 1,
             "stockCount": 5,
-            "artistName": "aespa",
-            "categoryName": "포토카드",
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
         }
 
 
@@ -207,6 +209,48 @@ class FakeGoodsCatalogClient:
         return self.candidates
 
 
+class FakeWebSocketGoodsCatalogClient:
+    candidates = [
+        {
+            "goodsId": 1005,
+            "name": "Tour Poster A2",
+            "price": 12000,
+            "tags": ["POSTER"],
+            "artistName": "Artist C",
+            "categoryName": "Poster",
+        },
+        {
+            "goodsId": 1006,
+            "name": "Character Plush",
+            "price": 32000,
+            "tags": ["PLUSH"],
+            "artistName": "Artist C",
+            "categoryName": "Plush",
+        },
+    ]
+
+    def __init__(self, spring_api_url):
+        self.spring_api_url = spring_api_url
+        self.received_texts = []
+
+    def search_candidates(self, text):
+        self.received_texts.append(text)
+        return self.candidates
+
+
+THREE_RECENT_CANDIDATES = [
+    *FakeWebSocketGoodsCatalogClient.candidates,
+    {
+        "goodsId": 1007,
+        "name": "Trading Card Pack",
+        "price": 8000,
+        "tags": ["PHOTOCARD"],
+        "artistName": "Artist C",
+        "categoryName": "Photocard",
+    },
+]
+
+
 def test_health_returns_ok():
     response = client.get("/health")
 
@@ -221,20 +265,98 @@ def test_extract_max_price_supports_korean_amounts():
 
 def test_catalog_grounding_uses_real_candidate_id_for_mock_provider():
     catalog = FakeGoodsCatalogClient(
-        [{"goodsId": 42, "name": "aespa Photocard Set"}]
+        [{"goodsId": 42, "name": "Artist A Photocard"}]
     )
     provider = CatalogGroundedChatResponseProvider(
         delegate=MockChatResponseProvider(),
         catalog_client=catalog,
     )
 
-    response = provider.build_response("에스파 포카 상품 추천해줘")
+    response = provider.build_response("Artist A Photocard 상품 추천해줘")
 
-    assert catalog.received_texts == ["에스파 포카 상품 추천해줘"]
+    assert catalog.received_texts == ["Artist A Photocard 상품 추천해줘"]
     assert response.actions == [
         NavigateAction(path="/goods/42"),
         HighlightAction(selector="[data-goods-id='42']"),
     ]
+
+
+def test_http_goods_catalog_client_calls_recommendation_candidates(monkeypatch):
+    captured_requests = []
+
+    def fake_urlopen(request, timeout):
+        captured_requests.append({"url": request.full_url, "timeout": timeout})
+        return FakeHttpResponse(
+            {
+                "content": [
+                    {
+                        "goodsId": 42,
+                        "name": "Artist A Photocard",
+                        "price": 35000,
+                        "imageUrl": "https://cdn.example.test/42.jpg",
+                        "tags": ["PHOTOCARD"],
+                        "artistName": "Artist A",
+                        "categoryName": "Photocard",
+                        "salesStatus": "ON_SALE",
+                        "stockCount": 5,
+                    }
+                ],
+                "page": 0,
+                "size": 10,
+                "totalElements": 1,
+                "totalPages": 1,
+            }
+        )
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+
+    response = HttpGoodsCatalogClient("http://backend.test/api").search_candidates(
+        "Artist A Photocard 상품 추천해줘"
+    )
+
+    parsed_url = urlparse(captured_requests[0]["url"])
+    query = parse_qs(parsed_url.query)
+    assert parsed_url.geturl().startswith(
+        "http://backend.test/api/goods/recommendation-candidates?"
+    )
+    assert query == {
+        "q": ["Artist A Photocard 상품 추천해줘"],
+        "page": ["0"],
+        "size": ["10"],
+        "sort": ["relevance,desc"],
+    }
+    assert captured_requests[0]["timeout"] == 2.0
+    assert response == [
+        {
+            "goodsId": 42,
+            "name": "Artist A Photocard",
+            "price": 35000,
+            "imageUrl": "https://cdn.example.test/42.jpg",
+            "tags": ["PHOTOCARD"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 5,
+        }
+    ]
+
+
+def test_http_goods_catalog_client_sends_extracted_max_price(monkeypatch):
+    captured_urls = []
+
+    def fake_urlopen(request, timeout):
+        captured_urls.append(request.full_url)
+        return FakeHttpResponse({"content": []})
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+
+    response = HttpGoodsCatalogClient("http://backend.test/api").search_candidates(
+        "Artist A Photocard 50,000원 이하 상품 추천해줘"
+    )
+
+    query = parse_qs(urlparse(captured_urls[0]).query)
+    assert query["maxPrice"] == ["50000"]
+    assert response == []
 
 
 def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
@@ -249,6 +371,149 @@ def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
     assert response.actions == []
 
 
+def test_catalog_grounding_adds_all_recent_candidates_to_cart_on_follow_up():
+    catalog = FakeGoodsCatalogClient(FakeWebSocketGoodsCatalogClient.candidates)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("Artist C 굿즈 추천해줘")
+    response = provider.build_response("둘 다 담아줘")
+
+    assert catalog.received_texts == ["Artist C 굿즈 추천해줘"]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 2개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1006"},
+        ],
+    }
+
+
+def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    assert provider.build_response("첫 번째 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+        ],
+    }
+    assert provider.build_response("2번 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1006"},
+        ],
+    }
+    assert provider.build_response("세 번째 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+    }
+
+
+def test_catalog_grounding_adds_multiple_numbered_candidates_to_cart_on_follow_up():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("Artist C 굿즈 추천해줘")
+    response = provider.build_response("1번 3번 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 2개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+    }
+
+
+def test_catalog_grounding_uses_count_qualified_all_only_when_count_matches():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    assert provider.build_response("세 개 다 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 3개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1006"},
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+    }
+    assert provider.build_response("셋 다 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 3개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1006"},
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+    }
+    assert provider.build_response("둘 다 담아줘").model_dump() == {
+        "type": "full-text",
+        "text": "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요.",
+        "actions": [],
+    }
+
+
+def test_catalog_grounding_adds_all_recent_candidates_for_unqualified_all_words():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("Artist C 굿즈 추천해줘")
+    response = provider.build_response("전부 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 3개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1006"},
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+    }
+
+
+def test_catalog_grounding_returns_empty_follow_up_message_without_recent_candidates():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response("둘 다 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요.",
+        "actions": [],
+    }
+
+
 def test_client_text_input_requires_frozen_type():
     with pytest.raises(ValidationError):
         ClientTextInput.model_validate({"type": "ping", "text": "안녕"})
@@ -258,16 +523,16 @@ def test_client_text_input_accepts_optional_cart_context():
     message = ClientTextInput.model_validate(
         {
             "type": "text-input",
-            "text": "에스파 포토카드 추천해줘",
+            "text": "Artist A Photocard 추천해줘",
             "context": {
                 "cartItems": [
                     {
                         "goodsId": 42,
-                        "name": "aespa OST 포토카드 세트",
+                        "name": "Artist A Photocard",
                         "quantity": 1,
-                        "tags": ["PHOTOCARD", "AESPA"],
-                        "artistName": "aespa",
-                        "categoryName": "포토카드",
+                        "tags": ["PHOTOCARD"],
+                        "artistName": "Artist A",
+                        "categoryName": "Photocard",
                     }
                 ]
             },
@@ -278,11 +543,11 @@ def test_client_text_input_accepts_optional_cart_context():
         "cartItems": [
             {
                 "goodsId": 42,
-                "name": "aespa OST 포토카드 세트",
+                "name": "Artist A Photocard",
                 "quantity": 1,
-                "tags": ["PHOTOCARD", "AESPA"],
-                "artistName": "aespa",
-                "categoryName": "포토카드",
+                "tags": ["PHOTOCARD"],
+                "artistName": "Artist A",
+                "categoryName": "Photocard",
             }
         ]
     }
@@ -423,12 +688,12 @@ def test_goods_api_client_normalizes_search_page(monkeypatch):
                 "content": [
                     {
                         "goodsId": 42,
-                        "name": "aespa 포토카드",
+                        "name": "Artist A Photocard",
                         "price": 35000,
                         "imageUrl": "https://cdn.example.test/42.jpg",
-                        "tags": ["PHOTOCARD", "AESPA"],
-                        "artistName": "aespa",
-                        "categoryName": "포토카드",
+                        "tags": ["PHOTOCARD"],
+                        "artistName": "Artist A",
+                        "categoryName": "Photocard",
                     }
                 ],
                 "page": 0,
@@ -441,22 +706,22 @@ def test_goods_api_client_normalizes_search_page(monkeypatch):
     monkeypatch.setattr("project_cyan_ai.tools.urlopen", fake_urlopen)
 
     response = GoodsApiClient("http://backend.test/api").search_goods(
-        "aespa",
+        "Artist A",
         {"tag": "PHOTOCARD", "size": 10},
     )
 
     assert captured_urls == [
-        "http://backend.test/api/goods?page=0&size=10&q=aespa&tag=PHOTOCARD"
+        "http://backend.test/api/goods?page=0&size=10&q=Artist+A&tag=PHOTOCARD"
     ]
     assert response["goods"] == [
         {
             "goodsId": "42",
-            "name": "aespa 포토카드",
+            "name": "Artist A Photocard",
             "price": 35000,
             "imageUrl": "https://cdn.example.test/42.jpg",
-            "tags": ["PHOTOCARD", "AESPA"],
-            "artistName": "aespa",
-            "categoryName": "포토카드",
+            "tags": ["PHOTOCARD"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
             "salesStatus": None,
             "isBestSeller": None,
             "aiPickDefault": None,
@@ -470,12 +735,12 @@ def test_goods_api_client_normalizes_detail(monkeypatch):
         lambda request, timeout: FakeHttpResponse(
             {
                 "goodsId": 42,
-                "name": "aespa 포토카드",
+                "name": "Artist A Photocard",
                 "price": 35000,
                 "imageUrl": "https://cdn.example.test/42.jpg",
-                "tags": ["PHOTOCARD", "AESPA"],
-                "description": "한정판 포토카드",
-                "artistId": 7,
+                "tags": ["PHOTOCARD"],
+                "description": "Artist A collectible photocard",
+                "artistId": 1,
                 "stockCount": 5,
             }
         ),
@@ -484,8 +749,8 @@ def test_goods_api_client_normalizes_detail(monkeypatch):
     response = GoodsApiClient("http://backend.test/api").get_goods_detail("42")
 
     assert response["goodsId"] == "42"
-    assert response["description"] == "한정판 포토카드"
-    assert response["artistId"] == 7
+    assert response["description"] == "Artist A collectible photocard"
+    assert response["artistId"] == 1
     assert response["stockCount"] == 5
 
 
@@ -496,7 +761,7 @@ def test_goods_api_client_wraps_failures_without_leaking_details(monkeypatch):
     monkeypatch.setattr("project_cyan_ai.tools.urlopen", fake_urlopen)
 
     with pytest.raises(GoodsToolError) as exc_info:
-        GoodsApiClient("http://backend.test/api").search_goods("aespa")
+        GoodsApiClient("http://backend.test/api").search_goods("Artist A")
 
     assert "secret-backend-token" not in str(exc_info.value)
 
@@ -710,13 +975,13 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
                         "type": "function_call",
                         "name": "search_goods",
                         "call_id": "call-search-1",
-                        "arguments": '{"query":"에스파 포토카드","options":{"size":5}}',
+                        "arguments": '{"query":"Artist A Photocard","options":{"size":5}}',
                     }
                 ]
             },
             {
                 "output_text": (
-                    "에스파 포토카드 추천드려요. "
+                    "Artist A Photocard를 추천드려요. "
                     '[ACTION:navigate path="/goods/42"] '
                     '[ACTION:highlight selector="[data-goods-id=\'42\']"]'
                 )
@@ -730,7 +995,7 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
     )
 
     response = provider.build_response(
-        "에스파 포토카드 추천해줘",
+        "Artist A Photocard 추천해줘",
         {
             "cartItems": [
                 {
@@ -738,7 +1003,7 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
                     "name": "이미 담은 상품",
                     "quantity": 1,
                     "tags": [],
-                    "artistName": "aespa",
+                    "artistName": "Artist A",
                     "categoryName": "Goods",
                 }
             ]
@@ -746,7 +1011,7 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
     )
 
     assert fake_goods_client.search_calls == [
-        {"query": "에스파 포토카드", "options": {"size": 5}}
+        {"query": "Artist A Photocard", "options": {"size": 5}}
     ]
     assert len(fake_client.received_response_requests) == 2
     assert fake_client.received_response_requests[0]["tools"][0]["name"] == "search_goods"
@@ -760,12 +1025,12 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
                 "goods": [
                     {
                         "goodsId": "42",
-                        "name": "aespa 포토카드",
+                        "name": "Artist A Photocard",
                         "price": 35000,
                         "imageUrl": "https://cdn.example.test/42.jpg",
-                        "tags": ["PHOTOCARD", "AESPA"],
-                        "artistName": "aespa",
-                        "categoryName": "포토카드",
+                        "tags": ["PHOTOCARD"],
+                        "artistName": "Artist A",
+                        "categoryName": "Photocard",
                     }
                 ],
                 "page": 0,
@@ -778,7 +1043,7 @@ def test_openai_provider_handles_function_call_loop_with_goods_tools():
     }
     assert response.model_dump() == {
         "type": "full-text",
-        "text": "에스파 포토카드 추천드려요.",
+        "text": "Artist A Photocard를 추천드려요.",
         "actions": [
             {"type": "navigate", "path": "/goods/42"},
             {"type": "highlight", "selector": "[data-goods-id='42']"},
@@ -834,7 +1099,7 @@ def test_openai_provider_filters_hallucinated_goods_ids_from_actions():
                         "type": "function_call",
                         "name": "search_goods",
                         "call_id": "call-search-1",
-                        "arguments": '{"query":"에스파"}',
+                        "arguments": '{"query":"Artist A"}',
                     }
                 ]
             },
@@ -853,7 +1118,7 @@ def test_openai_provider_filters_hallucinated_goods_ids_from_actions():
         shopping_tools=ShoppingTools(FakeGoodsClient()),
     )
 
-    response = provider.build_response("에스파 추천해줘")
+    response = provider.build_response("Artist A 추천해줘")
 
     assert response.model_dump() == {
         "type": "full-text",
@@ -873,7 +1138,7 @@ def test_openai_provider_falls_back_when_goods_tool_fails_without_leaking_detail
                         "type": "function_call",
                         "name": "search_goods",
                         "call_id": "call-search-1",
-                        "arguments": '{"query":"에스파"}',
+                        "arguments": '{"query":"Artist A"}',
                     }
                 ]
             }
@@ -886,7 +1151,7 @@ def test_openai_provider_falls_back_when_goods_tool_fails_without_leaking_detail
         shopping_tools=ShoppingTools(fake_goods_client),
     )
 
-    response = provider.build_response("에스파 추천해줘")
+    response = provider.build_response("Artist A 추천해줘")
 
     assert response.model_dump() == {
         "type": "full-text",
@@ -1008,6 +1273,65 @@ def test_client_ws_combines_mock_actions_when_keywords_overlap():
             {"type": "highlight", "selector": "[data-goods-id='1002']"},
             {"type": "addToCart", "goodsId": "1002"},
         ],
+    }
+
+
+def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "Artist C 굿즈 추천해줘"})
+        recommendation_response = websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "둘 다 담아줘"})
+        follow_up_response = websocket.receive_json()
+
+    assert recommendation_response == {
+        "type": "full-text",
+        "text": "Tour Poster A2을 추천해요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/1005"},
+            {"type": "highlight", "selector": "[data-goods-id='1005']"},
+        ],
+    }
+    assert follow_up_response == {
+        "type": "full-text",
+        "text": "방금 추천한 2개 상품을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "addToCart", "goodsId": "1005"},
+            {"type": "addToCart", "goodsId": "1006"},
+        ],
+    }
+
+
+def test_client_ws_does_not_share_recent_candidates_across_connections(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "Artist C 굿즈 추천해줘"})
+        websocket.receive_json()
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "둘 다 담아줘"})
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요.",
+        "actions": [],
     }
 
 
