@@ -4,6 +4,8 @@ from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from pydantic import ValidationError
+
 from project_cyan_ai.schemas.ws import (
     AddToCartAction,
     ActionPayload,
@@ -491,7 +493,7 @@ def build_action(action_name: str, attrs: dict[str, str]) -> ActionPayload | Non
 
         if action_name == "addToCart":
             return AddToCartAction(goodsId=attrs["goodsId"])
-    except (KeyError, ValueError):
+    except (KeyError, ValueError, ValidationError):
         return None
 
     return None
