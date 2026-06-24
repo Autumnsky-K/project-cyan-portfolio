@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
@@ -72,23 +73,13 @@ public class GoodsReviewRepository {
 			: "created_at desc, review_id desc";
 		List<GoodsReviewResponse> reviews = jdbcTemplate.query(
 			"""
-			select review_id, rating, author_name, option_label, content, created_at
+			select review_id, member_id, rating, author_name, option_label, content, created_at, updated_at
 			from goods_review
 			where goods_id = ?
 			order by %s
 			limit ? offset ?
 			""".formatted(orderBy),
-			(resultSet, rowNumber) -> {
-				Timestamp createdAt = resultSet.getTimestamp("created_at");
-				return new GoodsReviewResponse(
-					resultSet.getLong("review_id"),
-					resultSet.getInt("rating"),
-					resultSet.getString("author_name"),
-					resultSet.getString("option_label"),
-					resultSet.getString("content"),
-					createdAt == null ? null : createdAt.toInstant()
-				);
-			},
+			(resultSet, rowNumber) -> mapReview(resultSet, null),
 			goodsId,
 			size,
 			offset
@@ -102,10 +93,105 @@ public class GoodsReviewRepository {
 		return new PageResponse<>(reviews, page, size, totalElements, totalPages);
 	}
 
+	public Optional<GoodsReviewResponse> findMemberReview(Long goodsId, Long memberId) {
+		if (!hasReviewTable()) {
+			return Optional.empty();
+		}
+
+		List<GoodsReviewResponse> reviews = jdbcTemplate.query(
+			"""
+			select review_id, member_id, rating, author_name, option_label, content, created_at, updated_at
+			from goods_review
+			where goods_id = ? and member_id = ?
+			limit 1
+			""",
+			(resultSet, rowNumber) -> mapReview(resultSet, memberId),
+			goodsId,
+			memberId
+		);
+		return reviews.stream().findFirst();
+	}
+
+	public GoodsReviewResponse createReview(
+		Long goodsId,
+		Long memberId,
+		String authorName,
+		Integer rating,
+		String optionLabel,
+		String content
+	) {
+		return jdbcTemplate.queryForObject(
+			"""
+			insert into goods_review (goods_id, member_id, rating, author_name, option_label, content)
+			values (?, ?, ?, ?, ?, ?)
+			returning review_id, member_id, rating, author_name, option_label, content, created_at, updated_at
+			""",
+			(resultSet, rowNumber) -> mapReview(resultSet, memberId),
+			goodsId,
+			memberId,
+			rating,
+			authorName,
+			optionLabel,
+			content
+		);
+	}
+
+	public Optional<GoodsReviewResponse> updateReview(
+		Long goodsId,
+		Long reviewId,
+		Long memberId,
+		Integer rating,
+		String optionLabel,
+		String content
+	) {
+		List<GoodsReviewResponse> reviews = jdbcTemplate.query(
+			"""
+			update goods_review
+			set rating = ?, option_label = ?, content = ?, updated_at = now()
+			where goods_id = ? and review_id = ? and member_id = ?
+			returning review_id, member_id, rating, author_name, option_label, content, created_at, updated_at
+			""",
+			(resultSet, rowNumber) -> mapReview(resultSet, memberId),
+			rating,
+			optionLabel,
+			content,
+			goodsId,
+			reviewId,
+			memberId
+		);
+		return reviews.stream().findFirst();
+	}
+
+	public boolean deleteReview(Long goodsId, Long reviewId, Long memberId) {
+		return jdbcTemplate.update(
+			"delete from goods_review where goods_id = ? and review_id = ? and member_id = ?",
+			goodsId,
+			reviewId,
+			memberId
+		) > 0;
+	}
+
 	private boolean hasReviewTable() {
 		return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
 			"select to_regclass('public.goods_review') is not null",
 			Boolean.class
 		));
+	}
+
+	private GoodsReviewResponse mapReview(java.sql.ResultSet resultSet, Long currentMemberId) throws java.sql.SQLException {
+		Timestamp createdAt = resultSet.getTimestamp("created_at");
+		Timestamp updatedAt = resultSet.getTimestamp("updated_at");
+		Long memberId = resultSet.getObject("member_id", Long.class);
+		return new GoodsReviewResponse(
+			resultSet.getLong("review_id"),
+			memberId,
+			resultSet.getInt("rating"),
+			resultSet.getString("author_name"),
+			resultSet.getString("option_label"),
+			resultSet.getString("content"),
+			createdAt == null ? null : createdAt.toInstant(),
+			updatedAt == null ? null : updatedAt.toInstant(),
+			currentMemberId != null && currentMemberId.equals(memberId)
+		);
 	}
 }
