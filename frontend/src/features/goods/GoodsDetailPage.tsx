@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
   fetchRelatedGoods,
@@ -7,6 +7,7 @@ import {
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
@@ -22,6 +23,7 @@ type DetailTab = 'intro' | 'reviews'
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const [goods, setGoods] = useState<GoodsDetail | null>(null)
   const [relatedGoods, setRelatedGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<DetailStatus>('loading')
@@ -35,6 +37,20 @@ function GoodsDetailPage() {
     isFavorite,
     toggleFavorite,
   } = useGoodsFavorites()
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+
+  const navigateToLogin = useCallback(() => {
+    window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
+    navigate('/login', { state: { from: loginReturnTo } })
+  }, [loginReturnTo, navigate])
+
+  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    await toggleFavorite(targetGoodsId)
+  }, [navigateToLogin, toggleFavorite])
 
   useLayoutEffect(() => {
     const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
@@ -228,7 +244,7 @@ function GoodsDetailPage() {
               goods={goods}
               onReviewClick={() => setActiveTab('reviews')}
               isFavorite={isFavorite(goods.goodsId)}
-              onFavoriteToggle={() => void toggleFavorite(goods.goodsId)}
+              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
             />
           </section>
 

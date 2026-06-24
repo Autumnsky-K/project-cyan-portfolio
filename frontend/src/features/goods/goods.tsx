@@ -1,4 +1,5 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   fetchGoods,
   fetchGoodsFilters,
@@ -6,6 +7,7 @@ import {
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
@@ -31,6 +33,8 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
 }
 
 function GoodsPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const {
     favoriteIds,
     favoriteGoods,
@@ -72,6 +76,45 @@ function GoodsPage() {
   const goodsResultsRef = useRef<HTMLDivElement | null>(null)
   const searchScrollPositionRef = useRef<number | null>(null)
   const openGoodsDetail = useGoodsScrollRestoration(status)
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+
+  const navigateToLogin = useCallback(() => {
+    window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
+    navigate('/login', { state: { from: loginReturnTo } })
+  }, [loginReturnTo, navigate])
+
+  const handleFavoriteToggle = useCallback(async (goodsId: number) => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    await toggleFavorite(goodsId)
+  }, [navigateToLogin, toggleFavorite])
+
+  const showFavorites = useCallback(async () => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    setActiveSection('favorites')
+  }, [navigateToLogin, setActiveSection])
+
+  useEffect(() => {
+    if (activeSection !== 'favorites') return
+
+    let ignore = false
+    async function redirectSignedOutFavoriteSection() {
+      if (!(await hasSpringApiSession()) && !ignore) {
+        navigateToLogin()
+      }
+    }
+
+    void redirectSignedOutFavoriteSection()
+
+    return () => {
+      ignore = true
+    }
+  }, [activeSection, navigateToLogin])
 
   useLayoutEffect(() => {
     if (status !== 'empty' || searchScrollPositionRef.current === null) {
@@ -206,7 +249,7 @@ function GoodsPage() {
         <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>
           All goods
         </button>
-        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => setActiveSection('favorites')}>
+        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => void showFavorites()}>
           Favorites <span>{favoriteIds.length}</span>
         </button>
       </nav>
@@ -290,7 +333,7 @@ function GoodsPage() {
                   items={goods}
                   viewMode={viewMode}
                   isFavorite={isFavorite}
-                  toggleFavorite={toggleFavorite}
+                  toggleFavorite={handleFavoriteToggle}
                   onOpenDetail={openGoodsDetail}
                 />
               </div>
@@ -345,7 +388,7 @@ function GoodsPage() {
               items={favoriteGoods}
               viewMode={viewMode}
               isFavorite={isFavorite}
-              toggleFavorite={toggleFavorite}
+              toggleFavorite={handleFavoriteToggle}
               onOpenDetail={openGoodsDetail}
             />
           )}

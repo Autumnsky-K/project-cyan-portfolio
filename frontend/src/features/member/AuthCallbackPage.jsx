@@ -12,6 +12,15 @@ function getLoginUrlWithError(message) {
   return `/login?${params.toString()}`
 }
 
+function getReturnTo() {
+  const storedReturnTo = window.sessionStorage.getItem('project-cyan:login-return-to')
+  window.sessionStorage.removeItem('project-cyan:login-return-to')
+
+  return typeof storedReturnTo === 'string' && storedReturnTo.startsWith('/') && !storedReturnTo.startsWith('//')
+    ? storedReturnTo
+    : '/like'
+}
+
 function AuthCallbackPage() {
   const navigate = useNavigate()
   const hasStarted = useRef(false)
@@ -38,14 +47,14 @@ function AuthCallbackPage() {
 
         if (code) {
           await exchangeAuthCodeForSession(code)
-          navigate('/like', { replace: true })
+          navigate(getReturnTo(), { replace: true })
           return
         }
 
         const member = await getCurrentMember()
 
         if (member) {
-          navigate('/like', { replace: true })
+          navigate(getReturnTo(), { replace: true })
           return
         }
 

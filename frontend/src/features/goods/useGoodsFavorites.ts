@@ -20,7 +20,7 @@ export function useGoodsFavorites() {
     setError('')
     if (!(await hasSpringApiSession())) {
       setFavoriteGoods([])
-      setStatus('signedOut')
+      setStatus('idle')
       return
     }
 
@@ -48,9 +48,7 @@ export function useGoodsFavorites() {
 
   const toggleFavorite = useCallback(async (goodsId: number) => {
     if (!(await hasSpringApiSession())) {
-      setStatus('signedOut')
-      setError('로그인 후 즐겨찾기를 사용할 수 있습니다.')
-      return
+      return false
     }
 
     const wasFavorite = favoriteIdSet.has(goodsId)
@@ -66,15 +64,17 @@ export function useGoodsFavorites() {
     try {
       if (wasFavorite) {
         await removeGoodsFavorite(goodsId)
-        return
+        return true
       }
 
       await addGoodsFavorite(goodsId)
       await loadFavorites()
+      return true
     } catch (favoriteError) {
       setFavoriteGoods(previousGoods)
       setError(favoriteError instanceof Error ? favoriteError.message : 'Failed to update favorite goods.')
       setStatus('error')
+      return true
     }
   }, [favoriteGoods, favoriteIdSet, loadFavorites])
 
