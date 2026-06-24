@@ -5,12 +5,15 @@ import java.util.List;
 import com.projectcyan.member.auth.AuthenticatedMember;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -141,5 +144,49 @@ public class GoodsController {
 	@GetMapping("/{goodsId}/reviews/summary")
 	public GoodsReviewSummary findGoodsReviewSummary(@PathVariable Long goodsId) {
 		return goodsService.findGoodsReviewSummary(goodsId);
+	}
+
+	@GetMapping("/{goodsId}/reviews/my")
+	public ResponseEntity<GoodsReviewResponse> findMyGoodsReview(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		GoodsReviewResponse review = goodsService.findMyGoodsReview(goodsId, currentMember.memberId());
+		return review == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(review);
+	}
+
+	@PostMapping("/{goodsId}/reviews")
+	public ResponseEntity<GoodsReviewResponse> createGoodsReview(
+		@PathVariable Long goodsId,
+		@RequestBody GoodsReviewRequest request,
+		AuthenticatedMember currentMember
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(goodsService.createGoodsReview(
+				goodsId,
+				currentMember.memberId(),
+				currentMember.name(),
+				request
+			));
+	}
+
+	@PatchMapping("/{goodsId}/reviews/{reviewId}")
+	public GoodsReviewResponse updateGoodsReview(
+		@PathVariable Long goodsId,
+		@PathVariable Long reviewId,
+		@RequestBody GoodsReviewRequest request,
+		AuthenticatedMember currentMember
+	) {
+		return goodsService.updateGoodsReview(goodsId, reviewId, currentMember.memberId(), request);
+	}
+
+	@DeleteMapping("/{goodsId}/reviews/{reviewId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteGoodsReview(
+		@PathVariable Long goodsId,
+		@PathVariable Long reviewId,
+		AuthenticatedMember currentMember
+	) {
+		goodsService.deleteGoodsReview(goodsId, reviewId, currentMember.memberId());
 	}
 }
