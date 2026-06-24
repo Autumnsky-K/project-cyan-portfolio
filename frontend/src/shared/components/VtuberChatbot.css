@@ -34,9 +34,8 @@
 }
 
 .vtuber-chatbot[data-is-hidden='true'] {
-  display: block;
-  max-width: none;
   cursor: default;
+  pointer-events: none;
 }
 
 .vtuber-stage,
@@ -78,53 +77,35 @@
 .vtuber-restore-button span {
   position: relative;
   display: block;
-  width: 18px;
+  width: 14px;
   height: 14px;
 }
 
 .vtuber-hide-button span::before {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 0;
-  width: 18px;
-  height: 11px;
-  border: 2px solid currentColor;
-  border-radius: 999px;
-}
-
-.vtuber-hide-button span::after {
-  content: '';
-  position: absolute;
   top: 6px;
-  left: 7px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.vtuber-restore-button span::before {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 0;
-  width: 18px;
-  height: 8px;
-  border-bottom: 2px solid currentColor;
-  border-radius: 0 0 999px 999px;
-}
-
-.vtuber-restore-button span::after {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 2px;
-  width: 14px;
+  left: 1px;
+  width: 12px;
   height: 2px;
   border-radius: 999px;
   background: currentColor;
-  transform: rotate(-12deg);
+}
+
+.vtuber-restore-button span::before,
+.vtuber-restore-button span::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 1px;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.vtuber-restore-button span::after {
+  transform: rotate(90deg);
 }
 
 .vtuber-hide-button:focus-visible,

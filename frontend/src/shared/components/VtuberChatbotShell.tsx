@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type FormEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
   useEffect,
@@ -36,12 +37,16 @@ type ChatbotSettings = {
 }
 
 type DragState = {
+  didMove: boolean
   offsetX: number
   offsetY: number
+  startX: number
+  startY: number
 }
 
 const CHATBOT_SETTINGS_STORAGE_KEY = 'project-cyan.vtuber-chatbot.settings'
 const DESKTOP_DRAG_MIN_WIDTH = 721
+const DRAG_CLICK_TOLERANCE_PX = 4
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   isHidden: false,
@@ -117,6 +122,7 @@ function VtuberChatbotShell({
   const chatbotRef = useRef<HTMLElement>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const removeDragListenersRef = useRef<(() => void) | null>(null)
+  const shouldSuppressClickRef = useRef(false)
   const [settings, setSettings] = useState<ChatbotSettings>(loadChatbotSettings)
   const [isDesktopViewport, setIsDesktopViewport] = useState(isDesktopDragViewport)
   const [isDragging, setIsDragging] = useState(false)
@@ -217,8 +223,47 @@ function VtuberChatbotShell({
     setSettings((currentSettings) => ({ ...currentSettings, isHidden: true }))
   }
 
-  function handleShowClick() {
-    setSettings((currentSettings) => ({ ...currentSettings, isHidden: false }))
+  function handleShowClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    if (shouldSuppressClickRef.current) {
+      shouldSuppressClickRef.current = false
+      event.preventDefault()
+      return
+    }
+
+    const chatbotElement = chatbotRef.current
+
+    if (!chatbotElement) {
+      setSettings((currentSettings) => ({ ...currentSettings, isHidden: false }))
+      return
+    }
+
+    setSettings((currentSettings) => {
+      if (!currentSettings.position || !isDesktopViewport) {
+        return { ...currentSettings, isHidden: false }
+      }
+
+      return {
+        ...currentSettings,
+        isHidden: false,
+        position: clampChatbotPosition(currentSettings.position, chatbotElement),
+      }
+    })
+  }
+
+  function handleShowPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    handleDragPointerDown(event)
+  }
+
+  function handleShowPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    handleDragPointerMove(event)
+  }
+
+  function handleShowPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    handleDragPointerUp(event)
+  }
+
+  function handleShowPointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+    handleDragPointerUp(event)
   }
 
   function updateChatbotPosition(event: PointerEvent) {
@@ -231,6 +276,12 @@ function VtuberChatbotShell({
     if (!chatbotElement) {
       return
     }
+
+    const didMove =
+      dragStateRef.current.didMove ||
+      Math.abs(event.clientX - dragStateRef.current.startX) > DRAG_CLICK_TOLERANCE_PX ||
+      Math.abs(event.clientY - dragStateRef.current.startY) > DRAG_CLICK_TOLERANCE_PX
+    dragStateRef.current.didMove = didMove
 
     const nextPosition = clampChatbotPosition(
       {
@@ -247,6 +298,10 @@ function VtuberChatbotShell({
   }
 
   function stopDragging() {
+    if (dragStateRef.current?.didMove) {
+      shouldSuppressClickRef.current = true
+    }
+
     removeDragListenersRef.current?.()
     removeDragListenersRef.current = null
     dragStateRef.current = null
@@ -255,10 +310,9 @@ function VtuberChatbotShell({
 
   function handleDragPointerDown(event: ReactPointerEvent<HTMLElement>) {
     if (
-      settings.isHidden ||
       !isDesktopViewport ||
       event.button !== 0 ||
-      isDragExcludedTarget(event.target)
+      (!settings.isHidden && isDragExcludedTarget(event.target))
     ) {
       return
     }
@@ -271,8 +325,11 @@ function VtuberChatbotShell({
 
     const chatbotRect = chatbotElement.getBoundingClientRect()
     dragStateRef.current = {
+      didMove: false,
       offsetX: event.clientX - chatbotRect.left,
       offsetY: event.clientY - chatbotRect.top,
+      startX: event.clientX,
+      startY: event.clientY,
     }
 
     function handleWindowPointerMove(pointerEvent: PointerEvent) {
@@ -336,15 +393,21 @@ function VtuberChatbotShell({
       style={chatbotStyle}
     >
       {settings.isHidden ? (
-        <button
-          className="vtuber-restore-button"
-          type="button"
-          onClick={handleShowClick}
-          aria-label="Show chatbot"
-          title="챗봇 보기"
-        >
-          <span aria-hidden="true" />
-        </button>
+        <div className="vtuber-controls" aria-label="Chatbot controls">
+          <button
+            className="vtuber-restore-button"
+            type="button"
+            onClick={handleShowClick}
+            onPointerDown={handleShowPointerDown}
+            onPointerMove={handleShowPointerMove}
+            onPointerUp={handleShowPointerUp}
+            onPointerCancel={handleShowPointerCancel}
+            aria-label="Show chatbot"
+            title="챗봇 보기"
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
       ) : (
         <>
           <div className="vtuber-controls" aria-label="Chatbot controls">
