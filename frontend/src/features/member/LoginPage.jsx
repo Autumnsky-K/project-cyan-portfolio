@@ -9,6 +9,16 @@ function getAuthError(location) {
   return location.state?.authError ?? params.get('authError') ?? ''
 }
 
+function safeReturnTo(value) {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+    ? value
+    : '/like'
+}
+
+function getReturnTo(location) {
+  return safeReturnTo(location.state?.from ?? window.sessionStorage.getItem('project-cyan:login-return-to'))
+}
+
 function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -46,7 +56,9 @@ function LoginPage() {
     try {
       const result = await loginMember(form)
       setMessage(`${result.member.email} 계정으로 로그인되었습니다.`)
-      navigate('/like')
+      const returnTo = getReturnTo(location)
+      window.sessionStorage.removeItem('project-cyan:login-return-to')
+      navigate(returnTo, { replace: true })
     } catch (loginError) {
       setError(loginError.message)
     } finally {
@@ -62,6 +74,7 @@ function LoginPage() {
     setError('')
 
     try {
+      window.sessionStorage.setItem('project-cyan:login-return-to', getReturnTo(location))
       await loginWithKakao()
     } catch (loginError) {
       setError(loginError.message)

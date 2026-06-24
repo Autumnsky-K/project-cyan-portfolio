@@ -11,7 +11,7 @@ type GoodsCardsProps = {
   items: GoodsSummary[]
   viewMode: GoodsViewMode
   isFavorite: (goodsId: number) => boolean
-  toggleFavorite: (goodsId: number) => void
+  toggleFavorite: (goodsId: number) => void | Promise<void>
   onOpenDetail: (event: MouseEvent<HTMLAnchorElement>, goodsId: number) => void
 }
 

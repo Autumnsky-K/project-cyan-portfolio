@@ -5,7 +5,6 @@ import { CartProvider } from './features/cart/cartStore'
 import AuthCallbackPage from './features/member/AuthCallbackPage'
 import ArtistPage from './features/artist/artist'
 import ForgotPasswordPage from './features/member/ForgotPasswordPage'
-import CartPage from './features/cart/CartPage'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
 import LikePage from './features/member/LikePage'
@@ -47,7 +46,7 @@ function AppShell() {
           <Route path="/" element={<Navigate replace to="/goods" />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
-          <Route path="/cart" element={<CartPage />} />
+          <Route path="/cart" element={<Store />} />
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
