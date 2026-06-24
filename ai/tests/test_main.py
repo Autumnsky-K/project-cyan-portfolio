@@ -27,6 +27,8 @@ from project_cyan_ai.tools import (
 )
 from project_cyan_ai.schemas.ws import (
     AddToCartAction,
+    CLIENT_CART_ITEMS_MAX_LENGTH,
+    CLIENT_TEXT_MAX_LENGTH,
     ClientTextInput,
     FullTextMessage,
     HighlightAction,
@@ -519,6 +521,41 @@ def test_client_text_input_requires_frozen_type():
         ClientTextInput.model_validate({"type": "ping", "text": "안녕"})
 
 
+def test_client_text_input_rejects_blank_or_oversized_text():
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate({"type": "text-input", "text": "   "})
+
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate(
+            {"type": "text-input", "text": "a" * (CLIENT_TEXT_MAX_LENGTH + 1)}
+        )
+
+
+def test_client_text_input_rejects_extra_fields_and_oversized_context():
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate(
+            {"type": "text-input", "text": "안녕", "unexpected": True}
+        )
+
+    cart_items = [
+        {
+            "goodsId": index,
+            "name": f"Goods {index}",
+            "quantity": 1,
+            "tags": [],
+        }
+        for index in range(CLIENT_CART_ITEMS_MAX_LENGTH + 1)
+    ]
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate(
+            {
+                "type": "text-input",
+                "text": "안녕",
+                "context": {"cartItems": cart_items},
+            }
+        )
+
+
 def test_client_text_input_accepts_optional_cart_context():
     message = ClientTextInput.model_validate(
         {
@@ -617,6 +654,27 @@ def test_full_text_message_rejects_extra_action_field():
                 ],
             }
         )
+
+
+def test_full_text_message_rejects_unsafe_action_targets():
+    unsafe_actions = [
+        {"type": "navigate", "path": "https://evil.example"},
+        {"type": "navigate", "path": "/admin"},
+        {"type": "navigate", "path": "/goods/not-a-number"},
+        {"type": "highlight", "selector": "body"},
+        {"type": "highlight", "selector": "[data-artist-id='7']"},
+        {"type": "addToCart", "goodsId": "../admin"},
+    ]
+
+    for action in unsafe_actions:
+        with pytest.raises(ValidationError):
+            FullTextMessage.model_validate(
+                {
+                    "type": "full-text",
+                    "text": "안녕",
+                    "actions": [action],
+                }
+            )
 
 
 def test_chat_response_provider_factory_returns_mock_provider_by_default():
@@ -754,6 +812,16 @@ def test_goods_api_client_normalizes_detail(monkeypatch):
     assert response["stockCount"] == 5
 
 
+def test_goods_api_client_rejects_non_numeric_detail_id(monkeypatch):
+    def fake_urlopen(request, timeout):
+        raise AssertionError("urlopen should not be called")
+
+    monkeypatch.setattr("project_cyan_ai.tools.urlopen", fake_urlopen)
+
+    with pytest.raises(GoodsToolError):
+        GoodsApiClient("http://backend.test/api").get_goods_detail("../admin")
+
+
 def test_goods_api_client_wraps_failures_without_leaking_details(monkeypatch):
     def fake_urlopen(request, timeout):
         raise OSError("secret-backend-token")
@@ -844,7 +912,9 @@ def test_parse_action_tags_removes_tags_and_builds_actions():
 def test_parse_action_tags_ignores_invalid_actions():
     response = parse_action_tags(
         '안내할게요. [ACTION:unknown value="1002"] '
-        '[ACTION:navigate] [ACTION:addToCart goodsId="1002"]'
+        '[ACTION:navigate] [ACTION:navigate path="/admin"] '
+        '[ACTION:highlight selector="body"] [ACTION:addToCart goodsId="../admin"] '
+        '[ACTION:addToCart goodsId="1002"]'
     )
 
     assert response.model_dump() == {
@@ -1361,3 +1431,22 @@ def test_client_ws_rejects_invalid_text_input():
         "type": "error",
         "message": "Invalid text-input message.",
     }
+
+
+def test_client_ws_rejects_blank_or_oversized_text_input():
+    invalid_payloads = [
+        {"type": "text-input", "text": "   "},
+        {"type": "text-input", "text": "a" * (CLIENT_TEXT_MAX_LENGTH + 1)},
+    ]
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        for payload in invalid_payloads:
+            websocket.send_json(payload)
+            response = websocket.receive_json()
+            assert response == {
+                "type": "error",
+                "message": "Invalid text-input message.",
+            }

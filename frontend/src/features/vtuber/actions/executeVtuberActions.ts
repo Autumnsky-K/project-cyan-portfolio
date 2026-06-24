@@ -11,6 +11,9 @@ import {
 const HIGHLIGHT_CLASS_NAME = 'vtuber-action-highlight'
 const HIGHLIGHT_DURATION_MS = 2200
 const ROUTE_SETTLE_DELAY_MS = 160
+const GOODS_ID_PATTERN = /^\d+$/
+const GOODS_PATH_PATTERN = /^\/goods\/\d+$/
+const GOODS_SELECTOR_PATTERN = /^\[data-goods-id=(['"])\d+\1\]$/
 
 type CartGoods = {
   goodsId: string | number
@@ -36,17 +39,24 @@ function isNavigateAction(action: VtuberAction): action is NavigateAction {
   return (
     action.type === 'navigate' &&
     typeof action.path === 'string' &&
-    action.path.startsWith('/') &&
-    !action.path.startsWith('//')
+    GOODS_PATH_PATTERN.test(action.path)
   )
 }
 
 function isHighlightAction(action: VtuberAction): action is HighlightAction {
-  return action.type === 'highlight' && typeof action.selector === 'string' && action.selector.trim().length > 0
+  return (
+    action.type === 'highlight' &&
+    typeof action.selector === 'string' &&
+    GOODS_SELECTOR_PATTERN.test(action.selector)
+  )
 }
 
 function isAddToCartAction(action: VtuberAction): action is AddToCartAction {
-  return action.type === 'addToCart' && typeof action.goodsId === 'string' && action.goodsId.trim().length > 0
+  return (
+    action.type === 'addToCart' &&
+    typeof action.goodsId === 'string' &&
+    GOODS_ID_PATTERN.test(action.goodsId.trim())
+  )
 }
 
 function delay(ms: number): Promise<void> {

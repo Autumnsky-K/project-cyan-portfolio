@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -6,6 +7,7 @@ from urllib.request import Request, urlopen
 
 GOODS_API_TIMEOUT_SECONDS = 5.0
 DEFAULT_GOODS_PAGE_SIZE = 10
+GOODS_ID_PATTERN = re.compile(r"^\d+$")
 
 
 class GoodsToolError(RuntimeError):
@@ -86,7 +88,11 @@ class GoodsApiClient:
         }
 
     def get_goods_detail(self, goods_id: str | int) -> dict[str, Any]:
-        payload = self._get_json(f"/goods/{goods_id}")
+        normalized_goods_id = str(goods_id).strip()
+        if not GOODS_ID_PATTERN.fullmatch(normalized_goods_id):
+            raise GoodsToolError("Invalid goodsId.")
+
+        payload = self._get_json(f"/goods/{normalized_goods_id}")
         normalized = normalize_goods(payload)
 
         if normalized is None:

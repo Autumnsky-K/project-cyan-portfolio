@@ -1,6 +1,6 @@
 from typing import Any, Literal, TypeAlias, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 CLIENT_TEXT_INPUT_TYPE = "text-input"
 SERVER_FULL_TEXT_TYPE = "full-text"
@@ -9,13 +9,15 @@ SERVER_ERROR_TYPE = "error"
 ACTION_NAVIGATE_TYPE = "navigate"
 ACTION_HIGHLIGHT_TYPE = "highlight"
 ACTION_ADD_TO_CART_TYPE = "addToCart"
+CLIENT_TEXT_MAX_LENGTH = 1000
+CLIENT_CART_ITEMS_MAX_LENGTH = 50
 
 
 class NavigateAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["navigate"] = ACTION_NAVIGATE_TYPE
-    path: str
+    path: str = Field(pattern=r"^/goods/\d+$")
 
 
 class HighlightAction(BaseModel):
@@ -24,24 +26,53 @@ class HighlightAction(BaseModel):
     type: Literal["highlight"] = ACTION_HIGHLIGHT_TYPE
     selector: str
 
+    @field_validator("selector")
+    @classmethod
+    def validate_goods_selector(cls, value: str) -> str:
+        if (
+            value.startswith("[data-goods-id='")
+            and value.endswith("']")
+            and value.removeprefix("[data-goods-id='").removesuffix("']").isdigit()
+        ):
+            return value
+        if (
+            value.startswith('[data-goods-id="')
+            and value.endswith('"]')
+            and value.removeprefix('[data-goods-id="').removesuffix('"]').isdigit()
+        ):
+            return value
+        raise ValueError("selector must target a numeric data-goods-id")
+
 
 class AddToCartAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["addToCart"] = ACTION_ADD_TO_CART_TYPE
-    goodsId: str
+    goodsId: str = Field(pattern=r"^\d+$")
 
 
 ActionPayload: TypeAlias = Union[NavigateAction, HighlightAction, AddToCartAction]
 
 
 class ClientTextInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: Literal["text-input"] = CLIENT_TEXT_INPUT_TYPE
-    text: str
+    text: str = Field(min_length=1, max_length=CLIENT_TEXT_MAX_LENGTH)
     context: "ClientContext | None" = None
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        stripped_value = value.strip()
+        if not stripped_value:
+            raise ValueError("text must not be blank")
+        return stripped_value
 
 
 class CartContextItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     goodsId: str | int
     name: str
     quantity: int
@@ -51,7 +82,12 @@ class CartContextItem(BaseModel):
 
 
 class ClientContext(BaseModel):
-    cartItems: list[CartContextItem] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    cartItems: list[CartContextItem] = Field(
+        default_factory=list,
+        max_length=CLIENT_CART_ITEMS_MAX_LENGTH,
+    )
 
 
 class FullTextMessage(BaseModel):
