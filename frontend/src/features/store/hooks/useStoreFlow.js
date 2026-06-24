@@ -39,11 +39,9 @@ import {
   normalizeProduct,
 } from '../utils/storeUtils'
 
-const DEFAULT_MEMBER_ID = import.meta.env.VITE_DEV_MEMBER_ID ?? ''
-
 function normalizeMemberId(value) {
   const memberId = String(value ?? '').trim()
-  return /^\d+$/.test(memberId) ? Number(memberId) : memberId
+  return /^\d+$/.test(memberId) ? Number(memberId) : null
 }
 
 function markLocalDevOrders(orders) {
@@ -85,7 +83,7 @@ async function fetchCartOrders() {
 export function useStoreFlow(options = {}) {
   const {
     allowLocalFallback = false,
-    defaultMemberId = DEFAULT_MEMBER_ID,
+    defaultMemberId = null,
     fetchOrderHistory = false,
   } = options
   const {
@@ -106,7 +104,7 @@ export function useStoreFlow(options = {}) {
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState({
-    memberId: defaultMemberId || DEFAULT_MEMBER_ID,
+    memberId: defaultMemberId == null ? '' : String(defaultMemberId),
     name: '',
     email: '',
     phone: '',
@@ -129,13 +127,17 @@ export function useStoreFlow(options = {}) {
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
 
   useEffect(() => {
-    if (!defaultMemberId) return
+    if (!defaultMemberId) return undefined
 
-    setCheckoutForm((currentForm) =>
-      currentForm.memberId
-        ? currentForm
-        : { ...currentForm, memberId: defaultMemberId },
-    )
+    const timerId = window.setTimeout(() => {
+      setCheckoutForm((currentForm) =>
+        currentForm.memberId
+          ? currentForm
+          : { ...currentForm, memberId: String(defaultMemberId) },
+      )
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [defaultMemberId])
 
   const cartItems = useMemo(
@@ -379,7 +381,9 @@ export function useStoreFlow(options = {}) {
     if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
     if (!isCartSignedIn) nextErrors.push('Sign in to checkout with your cart.')
     if (hasBlockingCartIssue) nextErrors.push('Resolve cart item issues before checkout.')
-    if (!checkoutForm.memberId.trim()) nextErrors.push('Enter a member ID.')
+    if (!normalizeMemberId(checkoutForm.memberId)) {
+      nextErrors.push('The logged-in member profile is unavailable.')
+    }
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
     if (!checkoutForm.phone.trim()) nextErrors.push('Enter a phone number.')

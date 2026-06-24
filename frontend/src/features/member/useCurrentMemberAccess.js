@@ -1,105 +1,64 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../../api/supabaseClient'
 import { getCurrentMember } from './member'
-
-const ACCESS_MODE_STORAGE_KEY = 'project-cyan:store-access-mode'
-const TEMP_MEMBER_ID = import.meta.env.VITE_DEV_MEMBER_ID ?? '1'
-
-function readStoredAccessMode() {
-  try {
-    const value = window.localStorage.getItem(ACCESS_MODE_STORAGE_KEY)
-    return value === 'admin' || value === 'user' ? value : 'user'
-  } catch {
-    return 'user'
-  }
-}
-
-function writeStoredAccessMode(mode) {
-  try {
-    window.localStorage.setItem(ACCESS_MODE_STORAGE_KEY, mode)
-  } catch {
-    // Ignore storage failures and keep the in-memory mode.
-  }
-}
-
-function readAdminEmails() {
-  return (import.meta.env.VITE_ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean)
-}
 
 function hasAdminRole(member) {
   const role = String(member?.role ?? '').toUpperCase()
   return role === 'ADMIN' || role === 'ROLE_ADMIN' || member?.isAdmin === true
 }
 
-function isConfiguredAdmin(member) {
-  if (!member?.email) {
-    return false
-  }
-
-  return readAdminEmails().includes(member.email.toLowerCase())
-}
-
-function createTemporaryMember(mode) {
-  return {
-    userId: `temporary-${mode}`,
-    memberId: TEMP_MEMBER_ID,
-    email: `${mode}@project-cyan.local`,
-    name: mode === 'admin' ? 'Temporary Admin' : 'Temporary User',
-    role: mode === 'admin' ? 'ADMIN' : 'USER',
-    isAdmin: mode === 'admin',
-  }
-}
-
 export function useCurrentMemberAccess() {
-  const [accessMode, setAccessModeState] = useState(readStoredAccessMode)
   const [state, setState] = useState({
     isLoading: true,
     member: null,
     isAdmin: false,
+    error: '',
   })
 
+  const loadMember = useCallback(async () => {
+    try {
+      const member = await getCurrentMember()
+      setState({
+        isLoading: false,
+        member,
+        isAdmin: hasAdminRole(member),
+        error: '',
+      })
+    } catch (error) {
+      setState({
+        isLoading: false,
+        member: null,
+        isAdmin: false,
+        error: error instanceof Error ? error.message : '회원 정보를 불러오지 못했습니다.',
+      })
+    }
+  }, [])
+
   useEffect(() => {
-    let ignore = false
+    let active = true
+    const timerId = window.setTimeout(() => {
+      if (active) void loadMember()
+    }, 0)
 
-    getCurrentMember()
-      .then((member) => {
-        if (ignore) return
-        const nextMember = member ?? createTemporaryMember(accessMode)
-        const detectedAdmin = hasAdminRole(nextMember) || isConfiguredAdmin(nextMember)
+    if (!supabase) {
+      return () => {
+        active = false
+        window.clearTimeout(timerId)
+      }
+    }
 
-        setState({
-          isLoading: false,
-          member: nextMember,
-          isAdmin: accessMode === 'admin' || (accessMode !== 'user' && detectedAdmin),
-        })
-      })
-      .catch(() => {
-        if (ignore) return
-        const nextMember = createTemporaryMember(accessMode)
-
-        setState({
-          isLoading: false,
-          member: nextMember,
-          isAdmin: accessMode === 'admin',
-        })
-      })
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      window.setTimeout(() => {
+        if (active) void loadMember()
+      }, 0)
+    })
 
     return () => {
-      ignore = true
+      active = false
+      window.clearTimeout(timerId)
+      data.subscription.unsubscribe()
     }
-  }, [accessMode])
+  }, [loadMember])
 
-  function setAccessMode(mode) {
-    const nextMode = mode === 'admin' ? 'admin' : 'user'
-    writeStoredAccessMode(nextMode)
-    setAccessModeState(nextMode)
-  }
-
-  return {
-    ...state,
-    accessMode,
-    setAccessMode,
-  }
+  return state
 }

@@ -32,10 +32,6 @@ export type CartItem = {
   shippingFee: number
   purchaseState?: string | null
   purchaseMessage?: string | null
-  cartIssue?: {
-    code: string
-    message: string
-  } | null
 }
 
 export type CartContextValue = {
@@ -43,7 +39,9 @@ export type CartContextValue = {
   status: 'idle' | 'loading' | 'data' | 'error' | 'signedOut'
   error: string
   isSignedIn: boolean
-  hasBlockingIssue: boolean
+  authLoading: boolean
+  isAuthenticated: boolean
+  authUserId: string | null
   refreshCart: () => Promise<void>
   addCartItem: (goods: CartGoodsInput, quantity?: number) => Promise<void>
   updateCartItemQuantity: (cartItemKey: CartItem['cartItemKey'], quantity: number) => Promise<void>
