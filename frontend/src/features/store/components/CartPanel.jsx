@@ -5,7 +5,6 @@ function CartPanel({
   cartItems,
   cartStatus = 'idle',
   isCartEmpty,
-  isCartSignedIn = false,
   totalPrice,
   totalQuantity,
   onDecreaseQuantity,
@@ -22,8 +21,6 @@ function CartPanel({
       </div>
       {cartStatus === 'loading' ? (
         <p>Loading cart...</p>
-      ) : cartStatus === 'signedOut' || !isCartSignedIn ? (
-        <p>Login is required to use your personal cart.</p>
       ) : cartStatus === 'error' ? (
         <p>{cartError || 'Unable to load cart.'}</p>
       ) : isCartEmpty ? (
@@ -38,6 +35,11 @@ function CartPanel({
                 <div>
                   <strong>{item.name}</strong>
                   <span>{formatPrice(item.price)}</span>
+                  {item.cartIssue && (
+                    <p className="cart-item-issue" role="status">
+                      {item.cartIssue.message}
+                    </p>
+                  )}
                 </div>
                 <div className="cart-controls">
                   <button type="button" onClick={() => onDecreaseQuantity(cartItemKey)}>
