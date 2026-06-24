@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Link } from 'react-router-dom'
+import Header from '../../shared/components/Header'
 
 import './artist.css'
 
@@ -74,19 +74,7 @@ const artists: Artist[] = [
 function ArtistPage(): ReactElement {
   return (
     <main className="artist-page">
-      <header className="artist-header">
-        <div>
-          <p className="artist-eyebrow">Cyan</p>
-          <h1>Artists</h1>
-        </div>
-        <nav className="artist-nav" aria-label="Store navigation">
-          <Link to="/artists" aria-current="page">
-            Artists
-          </Link>
-          <Link to="/goods">Goods</Link>
-          <Link to="/cart">Cart</Link>
-        </nav>
-      </header>
+      <Header />
 
       <section className="artist-toolbar" aria-label="Artist search and sort">
         <label className="artist-search">

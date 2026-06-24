@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import Header from '../../shared/components/Header'
 import { getMyPageSummary, logoutMember } from './member'
 import './AccountPages.css'
 
@@ -219,6 +220,7 @@ function MyPage() {
   if (isLoading) {
     return (
       <main className="account-page">
+        <Header />
         <section className="account-shell account-card account-panel">
           <p className="mypage-empty">마이페이지 정보를 불러오는 중입니다.</p>
         </section>
@@ -255,12 +257,8 @@ function MyPage() {
 
   return (
     <main className="account-page">
+      <Header />
       <div className="account-shell">
-        <nav className="account-topbar" aria-label="마이페이지 이동">
-          <Link to="/likes/artists">관심 아티스트</Link>
-          <Link to="/goods">굿즈</Link>
-        </nav>
-
         <section className="account-card">
           <div className="account-panel">
             <div className="mypage-profile">
