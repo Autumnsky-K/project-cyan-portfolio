@@ -12,7 +12,19 @@ const PURCHASE_STATE_LABELS: Record<string, string> = {
   UNAVAILABLE: '구매 불가',
 }
 
-function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onReviewClick?: () => void }) {
+type GoodsPurchasePanelProps = {
+  goods: GoodsDetail
+  onReviewClick?: () => void
+  isFavorite?: boolean
+  onFavoriteToggle?: () => void
+}
+
+function GoodsPurchasePanel({
+  goods,
+  onReviewClick,
+  isFavorite = false,
+  onFavoriteToggle,
+}: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [feedback, setFeedback] = useState('')
@@ -55,9 +67,21 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
   return (
     <aside className="purchase-panel">
       <div className="purchase-heading">
-        <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
-          {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
-        </span>
+        <div className="purchase-heading-top">
+          <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
+            {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
+          </span>
+          <button
+            className="detail-favorite-button"
+            type="button"
+            aria-label={isFavorite ? `${goods.name} 즐겨찾기 해제` : `${goods.name} 즐겨찾기 추가`}
+            aria-pressed={isFavorite}
+            onClick={onFavoriteToggle}
+          >
+            <span aria-hidden="true">{isFavorite ? '♥' : '♡'}</span>
+            <span className="detail-favorite-label">{isFavorite ? '찜 해제' : '찜하기'}</span>
+          </button>
+        </div>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
         <GoodsRatingSummary

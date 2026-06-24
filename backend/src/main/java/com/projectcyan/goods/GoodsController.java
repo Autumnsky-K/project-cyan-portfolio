@@ -3,6 +3,7 @@ package com.projectcyan.goods;
 import java.util.List;
 
 import com.projectcyan.member.auth.AuthenticatedMember;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,15 +20,18 @@ public class GoodsController {
 	private final GoodsService goodsService;
 	private final GoodsRecommendationService goodsRecommendationService;
 	private final GoodsViewHistoryService goodsViewHistoryService;
+	private final GoodsFavoriteService goodsFavoriteService;
 
 	public GoodsController(
 		GoodsService goodsService,
 		GoodsRecommendationService goodsRecommendationService,
-		GoodsViewHistoryService goodsViewHistoryService
+		GoodsViewHistoryService goodsViewHistoryService,
+		GoodsFavoriteService goodsFavoriteService
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
 		this.goodsViewHistoryService = goodsViewHistoryService;
+		this.goodsFavoriteService = goodsFavoriteService;
 	}
 
 	@GetMapping
@@ -79,9 +83,32 @@ public class GoodsController {
 		return goodsService.findGoodsFilters();
 	}
 
+	@GetMapping("/favorites")
+	public List<GoodsSummaryResponse> findFavoriteGoods(AuthenticatedMember currentMember) {
+		return goodsFavoriteService.findFavoriteGoods(currentMember.memberId());
+	}
+
 	@GetMapping("/{goodsId}")
 	public GoodsDetailResponse findGoodsDetail(@PathVariable Long goodsId) {
 		return goodsService.findGoodsDetail(goodsId);
+	}
+
+	@PostMapping("/{goodsId}/favorites")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void addFavorite(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		goodsFavoriteService.addFavorite(currentMember.memberId(), goodsId);
+	}
+
+	@DeleteMapping("/{goodsId}/favorites")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void removeFavorite(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		goodsFavoriteService.removeFavorite(currentMember.memberId(), goodsId);
 	}
 
 	@PostMapping("/{goodsId}/views")
