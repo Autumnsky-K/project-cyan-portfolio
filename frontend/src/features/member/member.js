@@ -255,10 +255,6 @@ export async function signupMember(form) {
     throw new Error(`회원가입은 완료됐지만 로그인에 실패했습니다. ${loginError.message}`)
   }
 
-  if (data.session && data.user?.id && form.address) {
-    await updateMemberAddress(data.user.id, form.address)
-  }
-
   return {
     member: {
       name: member.name,
@@ -270,6 +266,22 @@ export async function signupMember(form) {
 
 export async function sendPasswordResetEmail(email) {
   checkSupabaseConfig()
+
+  const normalizedEmail = email.trim().toLowerCase()
+  const response = await apiFetch('/members/password-reset/eligibility', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: normalizedEmail,
+    }),
+  })
+  const eligibility = await parseApiResponse(
+    response,
+    '이메일 가입 여부를 확인하지 못했습니다.',
+  )
+
+  if (!eligibility?.exists) {
+    throw new Error('등록되어 있지 않은 이메일입니다.')
+  }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
@@ -369,8 +381,23 @@ export async function getCurrentMember() {
   }
 }
 
-export function getArtistOptions() {
-  return FAVORITE_ARTISTS
+export async function getArtistOptions() {
+  checkSupabaseConfig()
+
+  const { data, error } = await supabase
+    .from('artist')
+    .select('artist_id, artist_name')
+    .order('artist_id', { ascending: true })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.map((artist) => ({
+    artistId: artist.artist_id,
+    name: artist.artist_name,
+    imageUrl: '',
+  }))
 }
 
 async function getMemberId(userId) {
@@ -430,7 +457,6 @@ export async function saveFavoriteArtists(userId, artistIds) {
   const { error: insertError } = await supabase
     .from('member_artist')
     .insert(rows)
-44
   if (insertError) {
     throw new Error(insertError.message)
   }
@@ -446,6 +472,7 @@ export async function getMyPageSummary() {
   }
 
   const favoriteArtistIds = await getFavoriteArtistIds(member.userId)
+  const favoriteArtists = await getArtistOptions()
   const address = await getMemberAddress(member.userId)
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
@@ -461,7 +488,7 @@ export async function getMyPageSummary() {
     },
     orders: MY_PAGE_DUMMY_DATA.orders,
     recentlyViewedGoods: MY_PAGE_DUMMY_DATA.recentlyViewedGoods,
-    favoriteArtists: FAVORITE_ARTISTS.map((artist) => ({
+    favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
       status: favoriteArtistIds.includes(artist.artistId)
         ? '선택됨'
@@ -485,10 +512,12 @@ export async function logoutMember() {
 export async function updateMemberAddress(userId, address) {
   checkSupabaseConfig()
 
+  const memberId = await getMemberId(userId)
+
   const { error: deleteError } = await supabase
     .from('member_address')
     .delete()
-    .eq('member_uuid', userId)
+    .eq('member_id', memberId)
 
   if (deleteError) {
     throw new Error(deleteError.message)
@@ -497,7 +526,7 @@ export async function updateMemberAddress(userId, address) {
   const { error: insertError } = await supabase
     .from('member_address')
     .insert({
-      member_uuid: userId,
+      member_id: memberId,
       address,
     })
 
@@ -511,10 +540,12 @@ export async function updateMemberAddress(userId, address) {
 export async function getMemberAddress(userId) {
   checkSupabaseConfig()
 
+  const memberId = await getMemberId(userId)
+
   const { data, error } = await supabase
     .from('member_address')
     .select('*')
-    .eq('member_uuid', userId)
+    .eq('member_id', memberId)
     .limit(1)
     .maybeSingle()
 

@@ -24,4 +24,11 @@ public class MemberController {
 	public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
 		return memberService.signup(request);
 	}
+
+	@PostMapping("/password-reset/eligibility")
+	public PasswordResetEligibilityResponse checkPasswordResetEligibility(
+		@Valid @RequestBody PasswordResetEligibilityRequest request
+	) {
+		return memberService.checkPasswordResetEligibility(request);
+	}
 }

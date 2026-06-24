@@ -182,6 +182,17 @@
 - 인증 필요: N
 - 요청 body: { email, password, name, phone, address, agreements }
 - 응답 (동결 필드): { userId(uuid), email, name }
+- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰번호입니다.", status:409}` 반환
+- 상태: [x] 동결
+```
+
+```
+#### [POST] /api/members/password-reset/eligibility
+- 설명: 비밀번호 재설정 메일 발송 전 이메일 가입 여부 확인
+- 인증 필요: N
+- 요청 body: { email }
+- 응답 (동결 필드): { exists(boolean) }
+- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다.
 - 상태: [x] 동결
 ```
 
@@ -459,4 +470,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-23 | v0.1.12 | goods | additive | `GET /api/goods`에 `goodsIds` 필터를 추가하고 즐겨찾기 목록이 상품 상세 API 대신 상품 목록 API를 사용하도록 변경 | Codex |
 | 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
+| 2026-06-24 | v0.2.0 | member | additive | 회원가입 시 휴대폰번호를 `010-0000-0000` 형식으로 정규화하고 중복 휴대폰번호를 `MEMBER_PHONE_ALREADY_EXISTS`로 거절 | Codex |
+| 2026-06-24 | v0.2.0 | member | additive | 비밀번호 재설정 메일 발송 전 이메일 가입 여부를 확인하는 `POST /api/members/password-reset/eligibility` 추가 | Codex |
 |  |  |  |  |  |  |
