@@ -1,5 +1,4 @@
 .goods-detail-page { min-height: 100svh; background: #fff; }
-#content:has(.goods-detail-page) + .vtuber-chatbot { right: auto; left: 16px; }
 .detail-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 32px; border-bottom: 1px solid var(--goods-line); }
 .detail-share { padding: 8px 14px; border: 1px solid var(--goods-line); border-radius: 999px; background: #fff; cursor: pointer; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 430px); align-items: start; max-width: 1380px; margin: 0 auto; }
@@ -81,15 +80,6 @@
 .detail-state { margin: 32px; }
 .detail-error-state > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .detail-error-state button { min-height: 40px; padding: 7px 14px; border: 1px solid var(--goods-line); border-radius: 4px; background: #fff; font: inherit; cursor: pointer; }
-@media (max-width: 1100px) {
-  #content:has(.goods-detail-page) + .vtuber-chatbot {
-    right: auto;
-    left: 12px;
-    grid-template-columns: 88px;
-  }
-  #content:has(.goods-detail-page) + .vtuber-chatbot .vtuber-panel { display: none; }
-  #content:has(.goods-detail-page) + .vtuber-chatbot .vtuber-stage { width: 88px; }
-}
 @media (max-width: 960px) {
   .goods-detail-page { padding-bottom: 250px; }
   .detail-layout { grid-template-columns: 1fr; }
