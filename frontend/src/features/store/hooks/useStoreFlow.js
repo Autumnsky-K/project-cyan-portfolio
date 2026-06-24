@@ -370,6 +370,7 @@ export function useStoreFlow(options = {}) {
     const nextErrors = []
 
     if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
+    if (!isCartSignedIn) nextErrors.push('Sign in to checkout with your cart.')
     if (!checkoutForm.memberId.trim()) nextErrors.push('Enter a member ID.')
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')

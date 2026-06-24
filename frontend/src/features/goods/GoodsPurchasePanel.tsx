@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
 import type { GoodsDetail } from '../../api/goods'
-import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import { useCart } from '../cart/useCart'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
@@ -28,8 +26,6 @@ function GoodsPurchasePanel({
   onFavoriteToggle,
 }: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
-  const location = useLocation()
-  const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
   const [feedback, setFeedback] = useState('')
   const [isAddingCart, setIsAddingCart] = useState(false)
@@ -54,18 +50,8 @@ function GoodsPurchasePanel({
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
   }
 
-  function navigateToLogin() {
-    const returnTo = `${location.pathname}${location.search}${location.hash}`
-    window.sessionStorage.setItem('project-cyan:login-return-to', returnTo)
-    navigate('/login', { state: { from: returnTo } })
-  }
-
   async function handleAddCartItem() {
     if (!canAdd) return
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
 
     setIsAddingCart(true)
     try {

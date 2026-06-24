@@ -12,8 +12,102 @@ import { supabase } from '../../api/supabaseClient'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import { CartContext, type CartContextValue, type CartGoodsInput, type CartItem } from './cartContext'
 
+const CART_STORAGE_KEY = 'project-cyan-cart'
+const LOCAL_CART_ITEM_ID = 0
+
 type CartProviderProps = {
   children: ReactNode
+}
+
+function isCartItem(value: unknown): value is CartItem {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+
+  const item = value as Partial<CartItem>
+  return (
+    typeof item.cartItemKey === 'string' &&
+    (typeof item.goodsId === 'string' || typeof item.goodsId === 'number') &&
+    typeof item.name === 'string' &&
+    typeof item.price === 'number' &&
+    typeof item.artistName === 'string' &&
+    typeof item.categoryName === 'string' &&
+    Array.isArray(item.tags) &&
+    typeof item.quantity === 'number' &&
+    (item.maxQuantity === null || typeof item.maxQuantity === 'number') &&
+    typeof item.shippingFee === 'number'
+  )
+}
+
+function readLocalCartItems(): CartItem[] {
+  try {
+    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
+    const parsed: unknown = stored ? JSON.parse(stored) : []
+    return Array.isArray(parsed) ? parsed.filter(isCartItem) : []
+  } catch {
+    return []
+  }
+}
+
+function writeLocalCartItems(items: CartItem[]) {
+  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+}
+
+function normalizeLocalCartItem(goods: CartGoodsInput, quantity = 1): CartItem {
+  const variantId = goods.variantId ?? null
+  const maxQuantity = goods.maxQuantity == null ? null : Math.max(0, Number(goods.maxQuantity))
+  const normalizedQuantity = Math.max(1, Math.min(quantity, maxQuantity ?? 99))
+
+  return {
+    cartItemId: LOCAL_CART_ITEM_ID,
+    cartItemKey: `local:${goods.goodsId}:${variantId ?? 'default'}`,
+    goodsId: goods.goodsId,
+    variantId,
+    variantLabel: goods.variantLabel ?? '',
+    name: goods.name ?? `Goods #${goods.goodsId}`,
+    price: Number(goods.variantPrice ?? goods.price ?? 0),
+    imageUrl: goods.imageUrl ?? null,
+    artistName: goods.artistName ?? 'SM Artist',
+    categoryName: goods.categoryName ?? 'Goods',
+    tags: goods.tags ?? [],
+    quantity: normalizedQuantity,
+    maxQuantity,
+    shippingFee: Number(goods.shippingFee ?? 0),
+    purchaseState: 'LOCAL',
+    purchaseMessage: null,
+  }
+}
+
+function addLocalCartItem(currentItems: CartItem[], goods: CartGoodsInput, quantity = 1): CartItem[] {
+  const nextItem = normalizeLocalCartItem(goods, quantity)
+  const existingItem = currentItems.find((item) => item.cartItemKey === nextItem.cartItemKey)
+
+  if (!existingItem) {
+    return [...currentItems, nextItem]
+  }
+
+  return currentItems.map((item) =>
+    item.cartItemKey === nextItem.cartItemKey
+      ? {
+          ...item,
+          quantity: Math.min(item.quantity + nextItem.quantity, item.maxQuantity ?? 99),
+        }
+      : item,
+  )
+}
+
+function updateLocalCartItemQuantity(currentItems: CartItem[], cartItemKey: string, quantity: number): CartItem[] {
+  return currentItems
+    .map((item) =>
+      item.cartItemKey === cartItemKey
+        ? { ...item, quantity: Math.min(quantity, item.maxQuantity ?? 99) }
+        : item,
+    )
+    .filter((item) => item.quantity > 0)
+}
+
+function removeLocalCartItem(currentItems: CartItem[], cartItemKey: string): CartItem[] {
+  return currentItems.filter((item) => item.cartItemKey !== cartItemKey)
 }
 
 function toCartItem(item: CartApiItem): CartItem {
@@ -51,10 +145,18 @@ export function CartProvider({ children }: CartProviderProps) {
   const [error, setError] = useState('')
   const [isSignedIn, setIsSignedIn] = useState(false)
 
+  const replaceLocalItems = useCallback((nextItems: CartItem[]) => {
+    writeLocalCartItems(nextItems)
+    setItems(nextItems)
+    setStatus('data')
+    setError('')
+    setIsSignedIn(false)
+  }, [])
+
   const refreshCart = useCallback(async () => {
     if (!(await hasSpringApiSession())) {
-      setItems([])
-      setStatus('signedOut')
+      setItems(readLocalCartItems())
+      setStatus('data')
       setError('')
       setIsSignedIn(false)
       return
@@ -79,6 +181,19 @@ export function CartProvider({ children }: CartProviderProps) {
   }, [refreshCart])
 
   useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      if (event.key === CART_STORAGE_KEY && !isSignedIn) {
+        setItems(readLocalCartItems())
+        setStatus('data')
+        setError('')
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [isSignedIn])
+
+  useEffect(() => {
     if (!supabase) {
       return undefined
     }
@@ -90,21 +205,15 @@ export function CartProvider({ children }: CartProviderProps) {
     return () => data.subscription.unsubscribe()
   }, [refreshCart])
 
-  const requireSignedIn = useCallback(async () => {
-    if (await hasSpringApiSession()) {
-      setIsSignedIn(true)
+  const addCartItem = useCallback(async (goods: CartGoodsInput, quantity = 1) => {
+    if (!(await hasSpringApiSession())) {
+      const nextItems = addLocalCartItem(readLocalCartItems(), goods, Math.max(1, quantity))
+      replaceLocalItems(nextItems)
       return
     }
 
-    setIsSignedIn(false)
-    setStatus('signedOut')
-    setError('Login required.')
-    throw new Error('Login required.')
-  }, [])
-
-  const addCartItem = useCallback(async (goods: CartGoodsInput, quantity = 1) => {
-    await requireSignedIn()
     setError('')
+    setIsSignedIn(true)
 
     try {
       const cart = await addRemoteCartItem(goods.goodsId, Math.max(1, quantity))
@@ -115,11 +224,17 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [requireSignedIn])
+  }, [replaceLocalItems])
 
   const updateCartItemQuantity = useCallback(async (cartItemKey: CartItem['cartItemKey'], quantity: number) => {
-    await requireSignedIn()
+    if (!(await hasSpringApiSession())) {
+      const nextItems = updateLocalCartItemQuantity(readLocalCartItems(), cartItemKey, quantity)
+      replaceLocalItems(nextItems)
+      return
+    }
+
     setError('')
+    setIsSignedIn(true)
 
     if (quantity <= 0) {
       try {
@@ -142,11 +257,17 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [refreshCart, requireSignedIn])
+  }, [refreshCart, replaceLocalItems])
 
   const removeCartItem = useCallback(async (cartItemKey: CartItem['cartItemKey']) => {
-    await requireSignedIn()
+    if (!(await hasSpringApiSession())) {
+      const nextItems = removeLocalCartItem(readLocalCartItems(), cartItemKey)
+      replaceLocalItems(nextItems)
+      return
+    }
+
     setError('')
+    setIsSignedIn(true)
 
     try {
       await removeRemoteCartItem(cartItemKey)
@@ -156,11 +277,16 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [refreshCart, requireSignedIn])
+  }, [refreshCart, replaceLocalItems])
 
   const clearCart = useCallback(async () => {
-    await requireSignedIn()
+    if (!(await hasSpringApiSession())) {
+      replaceLocalItems([])
+      return
+    }
+
     setError('')
+    setIsSignedIn(true)
 
     try {
       await clearRemoteCart()
@@ -171,7 +297,7 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [requireSignedIn])
+  }, [replaceLocalItems])
 
   const value = useMemo<CartContextValue>(
     () => ({

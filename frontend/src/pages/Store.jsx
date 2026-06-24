@@ -104,7 +104,6 @@ function Store() {
             cartItems={store.cartItems}
             cartStatus={store.cartStatus}
             isCartEmpty={store.isCartEmpty}
-            isCartSignedIn={store.isCartSignedIn}
             totalPrice={store.totalPrice}
             totalQuantity={store.totalQuantity}
             onDecreaseQuantity={store.decreaseQuantity}
