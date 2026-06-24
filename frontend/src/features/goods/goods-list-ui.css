@@ -301,21 +301,6 @@
   opacity: 0.48;
 }
 
-@media (max-width: 1100px) {
-  #content:has(.goods-page:not(.goods-detail-page)) + .vtuber-chatbot {
-    right: 16px;
-    grid-template-columns: 88px;
-  }
-
-  #content:has(.goods-page:not(.goods-detail-page)) + .vtuber-chatbot .vtuber-panel {
-    display: none;
-  }
-
-  #content:has(.goods-page:not(.goods-detail-page)) + .vtuber-chatbot .vtuber-stage {
-    width: 88px;
-  }
-}
-
 .goods-skeleton-grid {
   pointer-events: none;
 }
