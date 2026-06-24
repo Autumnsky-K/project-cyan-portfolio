@@ -1,8 +1,11 @@
 import { formatPrice } from '../utils/storeUtils'
 
 function CartPanel({
+  cartError = '',
   cartItems,
+  cartStatus = 'idle',
   isCartEmpty,
+  isCartSignedIn = false,
   totalPrice,
   totalQuantity,
   onDecreaseQuantity,
@@ -17,7 +20,13 @@ function CartPanel({
           {totalQuantity} items / {formatPrice(totalPrice)}
         </p>
       </div>
-      {isCartEmpty ? (
+      {cartStatus === 'loading' ? (
+        <p>Loading cart...</p>
+      ) : cartStatus === 'signedOut' || !isCartSignedIn ? (
+        <p>Login is required to use your personal cart.</p>
+      ) : cartStatus === 'error' ? (
+        <p>{cartError || 'Unable to load cart.'}</p>
+      ) : isCartEmpty ? (
         <p>Your cart is empty.</p>
       ) : (
         <ul className="cart-list">

@@ -8,7 +8,14 @@ function formatPrice(value: number) {
 }
 
 function CartPage() {
-  const { items, updateCartItemQuantity, removeCartItem, clearCart } = useCart()
+  const {
+    items,
+    status,
+    error,
+    updateCartItemQuantity,
+    removeCartItem,
+    clearCart,
+  } = useCart()
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
   const shippingFee = items.reduce((maximum, item) => Math.max(maximum, item.shippingFee), 0)
@@ -26,13 +33,37 @@ function CartPage() {
               <p>{itemCount === 0 ? 'No items selected' : `${itemCount} item${itemCount > 1 ? 's' : ''} in cart`}</p>
             </div>
             {items.length > 0 && (
-              <button type="button" onClick={clearCart}>
+              <button type="button" onClick={() => void clearCart()}>
                 Clear
               </button>
             )}
           </div>
 
-          {items.length === 0 && (
+          {status === 'loading' && (
+            <div className="cart-empty">
+              <strong>Loading cart...</strong>
+              <span>Please wait while we load your cart.</span>
+            </div>
+          )}
+
+          {status === 'signedOut' && (
+            <div className="cart-empty">
+              <strong>Login required</strong>
+              <span>Sign in to use your personal cart.</span>
+              <Link className="cart-action" to="/login">
+                Sign in
+              </Link>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="cart-empty">
+              <strong>Unable to load cart</strong>
+              <span>{error || 'Try again after checking the backend API.'}</span>
+            </div>
+          )}
+
+          {status !== 'loading' && status !== 'signedOut' && status !== 'error' && items.length === 0 && (
             <div className="cart-empty">
               <strong>Your cart is empty</strong>
               <span>Add goods from the store to review them here.</span>
@@ -65,7 +96,7 @@ function CartPage() {
               <div className="quantity-control" aria-label={`${item.name} quantity`}>
                 <button
                   type="button"
-                  onClick={() => updateCartItemQuantity(item.cartItemKey, item.quantity - 1)}
+                  onClick={() => void updateCartItemQuantity(item.cartItemKey, item.quantity - 1)}
                 >
                   -
                 </button>
@@ -73,7 +104,7 @@ function CartPage() {
                 <button
                   type="button"
                   disabled={item.maxQuantity !== null && item.quantity >= item.maxQuantity}
-                  onClick={() => updateCartItemQuantity(item.cartItemKey, item.quantity + 1)}
+                  onClick={() => void updateCartItemQuantity(item.cartItemKey, item.quantity + 1)}
                 >
                   +
                 </button>
@@ -81,7 +112,7 @@ function CartPage() {
 
               <div className="cart-item-price">
                 <strong>{formatPrice(item.price * item.quantity)}</strong>
-                <button type="button" onClick={() => removeCartItem(item.cartItemKey)}>
+                <button type="button" onClick={() => void removeCartItem(item.cartItemKey)}>
                   Remove
                 </button>
               </div>
