@@ -1,15 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
   fetchRelatedGoods,
+  recordGoodsView,
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
+import { useGoodsFavorites } from './useGoodsFavorites'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
@@ -20,6 +23,7 @@ type DetailTab = 'intro' | 'reviews'
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const [goods, setGoods] = useState<GoodsDetail | null>(null)
   const [relatedGoods, setRelatedGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<DetailStatus>('loading')
@@ -29,6 +33,24 @@ function GoodsDetailPage() {
   const shareFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
+  const {
+    isFavorite,
+    toggleFavorite,
+  } = useGoodsFavorites()
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+
+  const navigateToLogin = useCallback(() => {
+    window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
+    navigate('/login', { state: { from: loginReturnTo } })
+  }, [loginReturnTo, navigate])
+
+  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    await toggleFavorite(targetGoodsId)
+  }, [navigateToLogin, toggleFavorite])
 
   useLayoutEffect(() => {
     const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
@@ -89,6 +111,7 @@ function GoodsDetailPage() {
         const detail = await fetchGoodsDetail(goodsId, { signal: controller.signal })
         setGoods(detail)
         setStatus('data')
+        void recordGoodsView(detail.goodsId).catch(() => undefined)
       } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === 'AbortError') return
         setError(loadError instanceof Error ? loadError.message : '상품 정보를 불러오지 못했습니다.')
@@ -220,6 +243,8 @@ function GoodsDetailPage() {
               key={goods.goodsId}
               goods={goods}
               onReviewClick={() => setActiveTab('reviews')}
+              isFavorite={isFavorite(goods.goodsId)}
+              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
             />
           </section>
 

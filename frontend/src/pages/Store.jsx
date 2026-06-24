@@ -15,7 +15,7 @@ function Store() {
   const isAdmin = access.isAdmin
   const store = useStoreFlow({
     allowLocalFallback: isAdmin,
-    defaultMemberId: access.member?.memberId ?? access.member?.userId,
+    defaultMemberId: access.member?.memberId,
     fetchOrderHistory: isAdmin,
   })
 
@@ -40,29 +40,6 @@ function Store() {
   return (
     <main className="store-page">
       <Header />
-
-      <section className="cart-access-bar" aria-label="Temporary access mode">
-        <div>
-          <span className="access-mode-title">Mode</span>
-          {isAdmin && <strong>Admin store debug mode</strong>}
-        </div>
-        <div className="access-mode-switch">
-          <button
-            aria-pressed={!isAdmin}
-            type="button"
-            onClick={() => access.setAccessMode('user')}
-          >
-            User
-          </button>
-          <button
-            aria-pressed={isAdmin}
-            type="button"
-            onClick={() => access.setAccessMode('admin')}
-          >
-            Admin
-          </button>
-        </div>
-      </section>
 
       <section className="store-toolbar" aria-label="Cart summary">
         <div className="cart-total">
@@ -100,7 +77,9 @@ function Store() {
           )}
 
           <CartPanel
+            cartError={store.cartError}
             cartItems={store.cartItems}
+            cartStatus={store.cartStatus}
             isCartEmpty={store.isCartEmpty}
             totalPrice={store.totalPrice}
             totalQuantity={store.totalQuantity}
@@ -116,12 +95,12 @@ function Store() {
                 checkoutForm={store.checkoutForm}
                 errors={store.errors}
                 onChange={store.updateCheckoutForm}
-                showMemberId={isAdmin}
               />
               <PaymentPanel
                 allowDevPayment={isAdmin}
                 allowManualPaymentActions={isAdmin}
                 checkoutForm={store.checkoutForm}
+                hasBlockingCartIssue={store.hasBlockingCartIssue}
                 isCartEmpty={store.isCartEmpty}
                 isPaymentProcessing={store.isPaymentProcessing}
                 message={store.message}

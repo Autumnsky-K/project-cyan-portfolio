@@ -1,16 +1,6 @@
-function CheckoutForm({ checkoutForm, errors, onChange, showMemberId = false }) {
+function CheckoutForm({ checkoutForm, errors, onChange }) {
   return (
     <div className="checkout-fields">
-      {showMemberId && (
-        <label>
-          Member ID
-          <input
-            value={checkoutForm.memberId}
-            onChange={(event) => onChange('memberId', event.target.value)}
-            placeholder="Server member id"
-          />
-        </label>
-      )}
       <label>
         Name
         <input

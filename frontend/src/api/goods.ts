@@ -1,3 +1,9 @@
+import {
+  apiFetch,
+  hasSpringApiSession,
+  parseApiResponse,
+} from '../shared/api/springApiClient'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin}/api`
 
 export type GoodsSummary = {
@@ -109,6 +115,30 @@ export async function fetchGoodsDetail(goodsId: string | number | undefined, opt
   }
 
   return response.json()
+}
+
+export async function recordGoodsView(goodsId: string | number): Promise<void> {
+  if (!(await hasSpringApiSession())) {
+    return
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/views`, { method: 'POST' })
+  await parseApiResponse(response, 'Failed to record goods view.')
+}
+
+export async function fetchFavoriteGoods(): Promise<GoodsSummary[]> {
+  const response = await apiFetch('/goods/favorites')
+  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load favorite goods.') ?? []
+}
+
+export async function addGoodsFavorite(goodsId: string | number): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'POST' })
+  await parseApiResponse(response, 'Failed to add favorite goods.')
+}
+
+export async function removeGoodsFavorite(goodsId: string | number): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'DELETE' })
+  await parseApiResponse(response, 'Failed to remove favorite goods.')
 }
 
 export async function fetchRelatedGoods(

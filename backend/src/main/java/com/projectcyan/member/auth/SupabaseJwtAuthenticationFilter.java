@@ -79,6 +79,16 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method) && "/api/members/password-reset/eligibility".equals(path)) {
 			return false;
 		}
+		if (HttpMethod.GET.matches(method) && "/api/goods/favorites".equals(path)) {
+			return true;
+		}
+		if ((HttpMethod.POST.matches(method) || HttpMethod.DELETE.matches(method))
+			&& path.matches("/api/goods/\\d+/favorites")) {
+			return true;
+		}
+		if (HttpMethod.POST.matches(method) && path.matches("/api/goods/\\d+/views")) {
+			return true;
+		}
 		if (HttpMethod.GET.matches(method) && (path.equals("/api/goods") || path.startsWith("/api/goods/"))) {
 			return false;
 		}
@@ -89,7 +99,8 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 			return false;
 		}
 
-		return path.startsWith("/api/orders")
+		return path.startsWith("/api/cart")
+			|| path.startsWith("/api/orders")
 			|| path.startsWith("/api/payments")
 			|| path.startsWith("/api/members");
 	}

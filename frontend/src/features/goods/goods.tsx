@@ -1,4 +1,5 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   fetchGoods,
   fetchGoodsFilters,
@@ -6,6 +7,7 @@ import {
   type GoodsSummary,
   type PageResponse,
 } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
@@ -15,7 +17,6 @@ import GoodsFilterUi, {
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
-import { useFavoriteGoods } from './useFavoriteGoods'
 import { useGoodsFavorites } from './useGoodsFavorites'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
@@ -32,7 +33,17 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
 }
 
 function GoodsPage() {
-  const { favoriteIds, isFavorite, toggleFavorite, retainFavorites } = useGoodsFavorites()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const {
+    favoriteIds,
+    favoriteGoods,
+    favoritesStatus,
+    favoritesError,
+    isFavorite,
+    toggleFavorite,
+    refreshFavorites,
+  } = useGoodsFavorites()
   const {
     query,
     setQuery,
@@ -57,11 +68,6 @@ function GoodsPage() {
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const {
-    goods: favoriteGoods,
-    status: favoritesStatus,
-    error: favoritesError,
-  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds, retainFavorites)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)
@@ -70,6 +76,45 @@ function GoodsPage() {
   const goodsResultsRef = useRef<HTMLDivElement | null>(null)
   const searchScrollPositionRef = useRef<number | null>(null)
   const openGoodsDetail = useGoodsScrollRestoration(status)
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+
+  const navigateToLogin = useCallback(() => {
+    window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
+    navigate('/login', { state: { from: loginReturnTo } })
+  }, [loginReturnTo, navigate])
+
+  const handleFavoriteToggle = useCallback(async (goodsId: number) => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    await toggleFavorite(goodsId)
+  }, [navigateToLogin, toggleFavorite])
+
+  const showFavorites = useCallback(async () => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    setActiveSection('favorites')
+  }, [navigateToLogin, setActiveSection])
+
+  useEffect(() => {
+    if (activeSection !== 'favorites') return
+
+    let ignore = false
+    async function redirectSignedOutFavoriteSection() {
+      if (!(await hasSpringApiSession()) && !ignore) {
+        navigateToLogin()
+      }
+    }
+
+    void redirectSignedOutFavoriteSection()
+
+    return () => {
+      ignore = true
+    }
+  }, [activeSection, navigateToLogin])
 
   useLayoutEffect(() => {
     if (status !== 'empty' || searchScrollPositionRef.current === null) {
@@ -204,7 +249,7 @@ function GoodsPage() {
         <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>
           All goods
         </button>
-        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => setActiveSection('favorites')}>
+        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => void showFavorites()}>
           Favorites <span>{favoriteIds.length}</span>
         </button>
       </nav>
@@ -288,7 +333,7 @@ function GoodsPage() {
                   items={goods}
                   viewMode={viewMode}
                   isFavorite={isFavorite}
-                  toggleFavorite={toggleFavorite}
+                  toggleFavorite={handleFavoriteToggle}
                   onOpenDetail={openGoodsDetail}
                 />
               </div>
@@ -318,11 +363,19 @@ function GoodsPage() {
             </div>
           </div>
 
-          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.min(favoriteIds.length, 6)} />}
+          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.max(3, Math.min(favoriteIds.length, 6))} />}
           {favoritesStatus === 'error' && (
-            <GoodsListState kind="error" message={favoritesError} onAction={() => setActiveSection('all')} />
+            <GoodsListState kind="error" message={favoritesError} onAction={() => void refreshFavorites()} />
           )}
-          {favoriteIds.length === 0 && (
+          {favoritesStatus === 'signedOut' && (
+            <div className="goods-state favorites-empty" role="status">
+              <span className="goods-state-mark" aria-hidden="true">♡</span>
+              <strong>Login required</strong>
+              <span>로그인 후 계정별 즐겨찾기를 사용할 수 있습니다.</span>
+              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
+            </div>
+          )}
+          {favoritesStatus !== 'signedOut' && favoriteIds.length === 0 && (
             <div className="goods-state favorites-empty" role="status">
               <span className="goods-state-mark" aria-hidden="true">♡</span>
               <strong>No favorite goods yet</strong>
@@ -335,7 +388,7 @@ function GoodsPage() {
               items={favoriteGoods}
               viewMode={viewMode}
               isFavorite={isFavorite}
-              toggleFavorite={toggleFavorite}
+              toggleFavorite={handleFavoriteToggle}
               onOpenDetail={openGoodsDetail}
             />
           )}

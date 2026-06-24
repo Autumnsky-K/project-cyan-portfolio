@@ -10,7 +10,6 @@ const SUPABASE_FUNCTIONS_URL =
         '.functions.supabase.co',
       )
     : '')
-const DEV_MEMBER_ID = import.meta.env.VITE_DEV_MEMBER_ID ?? '1'
 const KAKAO_READY_URL =
   import.meta.env.VITE_KAKAO_READY_URL ??
   (SUPABASE_FUNCTIONS_URL
@@ -61,9 +60,14 @@ export function getKakaoPayReadyDebugInfo() {
 }
 
 function buildKakaoReadyPayload(order) {
+  const memberId = order.memberId ?? order.customer?.memberId
+  if (!Number.isInteger(Number(memberId)) || Number(memberId) <= 0) {
+    throw new Error('The logged-in member profile is unavailable.')
+  }
+
   return {
     ...order,
-    memberId: order.memberId ?? order.customer?.memberId ?? DEV_MEMBER_ID,
+    memberId: Number(memberId),
     items: (order.items ?? []).map((item) => ({
       ...item,
       goodsId: item.goodsId ?? item.productId,

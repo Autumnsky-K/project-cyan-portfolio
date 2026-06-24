@@ -342,38 +342,27 @@ export async function getCurrentMember() {
     return null
   }
 
-  const { data: memberRow, error: memberError } = await supabase
-    .from('member')
-    .select('member_uuid, name, phone, email')
-    .eq('member_uuid', data.user.id)
-    .maybeSingle()
-
-  if (memberError) {
-    throw new Error(memberError.message)
-  }
-
+  const memberProfile = await parseApiResponse(
+    await apiFetch('/members/me'),
+    '회원 정보를 불러오지 못했습니다.',
+  )
   const role =
     data.user.app_metadata?.role ??
-    data.user.user_metadata?.role ??
-    data.user.user_metadata?.memberRole ??
     null
 
   return {
     userId: data.user.id,
-    memberId:
-      data.user.app_metadata?.memberId ??
-      data.user.user_metadata?.memberId ??
-      data.user.user_metadata?.member_id,
-    email: data.user.email,
-    phone: memberRow?.phone ?? data.user.user_metadata?.phone ?? '',
+    memberId: memberProfile?.memberId ?? null,
+    memberUuid: memberProfile?.memberUuid ?? data.user.id,
+    email: memberProfile?.email ?? data.user.email,
+    phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||
       role === 'ROLE_ADMIN' ||
-      data.user.app_metadata?.isAdmin === true ||
-      data.user.user_metadata?.isAdmin === true,
+      data.user.app_metadata?.isAdmin === true,
     name:
-      memberRow?.name ??
+      memberProfile?.name ??
       data.user.user_metadata?.name ??
       data.user.user_metadata?.full_name ??
       data.user.user_metadata?.nickname ??

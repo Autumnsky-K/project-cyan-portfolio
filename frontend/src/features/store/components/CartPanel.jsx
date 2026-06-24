@@ -1,7 +1,9 @@
 import { formatPrice } from '../utils/storeUtils'
 
 function CartPanel({
+  cartError = '',
   cartItems,
+  cartStatus = 'idle',
   isCartEmpty,
   totalPrice,
   totalQuantity,
@@ -17,7 +19,11 @@ function CartPanel({
           {totalQuantity} items / {formatPrice(totalPrice)}
         </p>
       </div>
-      {isCartEmpty ? (
+      {cartStatus === 'loading' ? (
+        <p>Loading cart...</p>
+      ) : cartStatus === 'error' ? (
+        <p>{cartError || 'Unable to load cart.'}</p>
+      ) : isCartEmpty ? (
         <p>Your cart is empty.</p>
       ) : (
         <ul className="cart-list">
@@ -29,6 +35,11 @@ function CartPanel({
                 <div>
                   <strong>{item.name}</strong>
                   <span>{formatPrice(item.price)}</span>
+                  {item.cartIssue && (
+                    <p className="cart-item-issue" role="status">
+                      {item.cartIssue.message}
+                    </p>
+                  )}
                 </div>
                 <div className="cart-controls">
                   <button type="button" onClick={() => onDecreaseQuantity(cartItemKey)}>

@@ -12,10 +12,23 @@ const PURCHASE_STATE_LABELS: Record<string, string> = {
   UNAVAILABLE: '구매 불가',
 }
 
-function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onReviewClick?: () => void }) {
+type GoodsPurchasePanelProps = {
+  goods: GoodsDetail
+  onReviewClick?: () => void
+  isFavorite?: boolean
+  onFavoriteToggle?: () => void
+}
+
+function GoodsPurchasePanel({
+  goods,
+  onReviewClick,
+  isFavorite = false,
+  onFavoriteToggle,
+}: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [feedback, setFeedback] = useState('')
+  const [isAddingCart, setIsAddingCart] = useState(false)
   const feedbackTimerRef = useRef<number | null>(null)
 
   useEffect(
@@ -37,27 +50,46 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
   }
 
-  function handleAddCartItem() {
+  async function handleAddCartItem() {
     if (!canAdd) return
 
-    addCartItem(
-      {
-        ...goods,
-        variantPrice: unitPrice,
-        maxQuantity,
-        shippingFee: 0,
-      },
-      selectedQuantity,
-    )
-    showFeedback('장바구니에 담았습니다.')
+    setIsAddingCart(true)
+    try {
+      await addCartItem(
+        {
+          ...goods,
+          variantPrice: unitPrice,
+          maxQuantity,
+          shippingFee: 0,
+        },
+        selectedQuantity,
+      )
+      showFeedback('장바구니에 담았습니다.')
+    } catch (cartError) {
+      showFeedback(cartError instanceof Error ? cartError.message : '장바구니에 담지 못했습니다.')
+    } finally {
+      setIsAddingCart(false)
+    }
   }
 
   return (
     <aside className="purchase-panel">
       <div className="purchase-heading">
-        <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
-          {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
-        </span>
+        <div className="purchase-heading-top">
+          <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
+            {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
+          </span>
+          <button
+            className="detail-favorite-button"
+            type="button"
+            aria-label={isFavorite ? `${goods.name} 찜 해제` : `${goods.name} 찜하기`}
+            aria-pressed={isFavorite}
+            onClick={onFavoriteToggle}
+          >
+            <span aria-hidden="true">{isFavorite ? '♥' : '♡'}</span>
+            <span className="detail-favorite-label">{isFavorite ? '찜 해제' : '찜하기'}</span>
+          </button>
+        </div>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
         <GoodsRatingSummary
@@ -84,7 +116,7 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
             type="button"
             onClick={() => setQuantity((value) => value + 1)}
           >
-            ＋
+            +
           </button>
         </div>
       </div>
@@ -96,17 +128,17 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
 
       {!canAdd && (
         <p className="purchase-message">
-          {goods.purchaseMessage || '구매 가능한 옵션을 선택해 주세요.'}
+          {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
         </p>
       )}
       <button
         className="purchase-button"
         data-add-to-cart={goods.goodsId}
-        disabled={!canAdd}
+        disabled={!canAdd || isAddingCart}
         type="button"
-        onClick={handleAddCartItem}
+        onClick={() => void handleAddCartItem()}
       >
-        장바구니 담기
+        {isAddingCart ? '담는 중...' : '장바구니 담기'}
       </button>
       {feedback && <span className="purchase-feedback" role="status">{feedback}</span>}
     </aside>

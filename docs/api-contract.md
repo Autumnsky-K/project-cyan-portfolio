@@ -272,6 +272,40 @@
 - 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
 - 상태: [x] 동결
 
+#### [POST] /api/goods/{goodsId}/views
+- 설명: 로그인 사용자의 상품 상세 조회 이력 기록
+- 인증 필요: Y
+- 요청 path: `goodsId` (bigint)
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `204 No Content`
+- 동작: 같은 회원과 상품의 최근 10분 이내 조회가 있으면 중복 저장하지 않고 `204`를 반환한다.
+- 상태: [x] additive
+
+#### [GET] /api/goods/favorites
+- 설명: 로그인 사용자의 계정별 즐겨찾기 상품 목록 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: goods 요약 배열
+- 정렬: 즐겨찾기 추가일 최신순
+- 상태: [x] additive
+
+#### [POST] /api/goods/{goodsId}/favorites
+- 설명: 로그인 사용자의 계정별 즐겨찾기 상품 추가
+- 인증 필요: Y
+- 요청 path: `goodsId` (bigint)
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `204 No Content`
+- 동작: 이미 추가된 상품이면 중복 저장하지 않고 `204`를 반환한다.
+- 상태: [x] additive
+
+#### [DELETE] /api/goods/{goodsId}/favorites
+- 설명: 로그인 사용자의 계정별 즐겨찾기 상품 제거
+- 인증 필요: Y
+- 요청 path: `goodsId` (bigint)
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `204 No Content`
+- 상태: [x] additive
+
 #### [GET] /api/goods/recommendation-candidates
 - 설명: AI 답변의 근거로 사용할 판매 가능한 상품 후보 조회
 - 인증 필요: N
@@ -297,7 +331,48 @@
 
 ---
 
-### 3.3 아티스트 (artists) — 담당: `__________`
+### 3.3 장바구니 (cart) — 담당: `__________`
+
+#### [GET] /api/cart
+- 설명: 로그인 사용자의 계정별 장바구니 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `{ cartId, items, totalQuantity, totalPrice }`
+- `items[]`: `{ cartItemId, goodsId, name, price, imageUrl, tags, artistId, artistName, categoryId, categoryName, salesStatus, stockCount, quantity, subtotal, purchaseState, purchaseMessage }`
+- 상태: [x] additive
+
+#### [POST] /api/cart/items
+- 설명: 로그인 사용자의 장바구니 상품 추가. 같은 상품이 이미 있으면 수량 증가
+- 인증 필요: Y
+- 요청 body: `{ goodsId, quantity }`
+- 응답: 갱신된 장바구니 객체
+- 비고: Spring은 DB의 상품 가격, 재고, 판매 상태를 기준으로 검증한다.
+- 상태: [x] additive
+
+#### [PATCH] /api/cart/items/{cartItemId}
+- 설명: 로그인 사용자의 장바구니 상품 수량 변경
+- 인증 필요: Y
+- 요청 path: `cartItemId` (bigint)
+- 요청 body: `{ quantity }`
+- 응답: 갱신된 장바구니 객체
+- 상태: [x] additive
+
+#### [DELETE] /api/cart/items/{cartItemId}
+- 설명: 로그인 사용자의 장바구니 상품 삭제
+- 인증 필요: Y
+- 요청 path: `cartItemId` (bigint)
+- 응답: `204 No Content`
+- 상태: [x] additive
+
+#### [DELETE] /api/cart/items
+- 설명: 로그인 사용자의 장바구니 전체 비우기
+- 인증 필요: Y
+- 응답: `204 No Content`
+- 상태: [x] additive
+
+---
+
+### 3.4 아티스트 (artists) — 담당: `__________`
 
 > AI가 "왜 이 굿즈가 의미 있나"를 설명하는 근거 공급. 추천이 `artistId`로 연결되므로 그 필드는 동결.
 
@@ -334,7 +409,7 @@
 
 ---
 
-### 3.4 주문/결제 (orders) — 담당: `__________`
+### 3.5 주문/결제 (orders) — 담당: `__________`
 
 > §2 상태 머신을 따른다. Week 1은 더미 주문으로 카카오 테스트 선행.
 
@@ -358,7 +433,7 @@
 
 ---
 
-### 3.5 AI 플랫폼 (ai) — 담당: `강승민`
+### 3.6 AI 플랫폼 (ai) — 담당: `강승민`
 
 > 캐릭터 아일랜드 ↔ OLV WebSocket. REST가 아니라 **WebSocket 메시지 형태**가 계약이다.
 
@@ -468,8 +543,11 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-22 | v0.1.10 | auth | additive | 인증 필요 API의 Bearer 토큰을 Supabase `access_token`으로 명시하고 프론트 공통 Spring API 클라이언트 기준을 추가 | Codex |
 | 2026-06-23 | v0.1.11 | auth | additive | Spring API에서 Supabase JWKS 기반 JWT 검증과 현재 회원 컨텍스트를 사용하는 인증 기준 추가 | 강승민 |
 | 2026-06-23 | v0.1.12 | goods | additive | `GET /api/goods`에 `goodsIds` 필터를 추가하고 즐겨찾기 목록이 상품 상세 API 대신 상품 목록 API를 사용하도록 변경 | Codex |
+| 2026-06-23 | v0.2.0 | goods/member | additive | 로그인 회원의 상품 상세 조회를 기록하는 `POST /api/goods/{goodsId}/views` 추가, 동일 상품 10분 중복 기록 방지 | Codex |
 | 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
 | 2026-06-24 | v0.2.0 | member | additive | 회원가입 시 휴대폰번호를 `010-0000-0000` 형식으로 정규화하고 중복 휴대폰번호를 `MEMBER_PHONE_ALREADY_EXISTS`로 거절 | Codex |
 | 2026-06-24 | v0.2.0 | member | additive | 비밀번호 재설정 메일 발송 전 이메일 가입 여부를 확인하는 `POST /api/members/password-reset/eligibility` 추가 | Codex |
+| 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
+| 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
 |  |  |  |  |  |  |
