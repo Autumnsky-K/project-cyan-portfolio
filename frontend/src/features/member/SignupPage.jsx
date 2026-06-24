@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signupMember } from './member'
+import AccountFeedbackPopup from './AccountFeedbackPopup'
+import PasswordVisibilityButton from './PasswordVisibilityButton'
 import './SignupPage.css'
 
 const REQUIRED_TERMS = [
@@ -29,6 +31,20 @@ const OPTIONAL_TERMS = [
   },
 ]
 
+function formatPhoneNumber(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+
+  if (digits.length <= 3) {
+    return digits
+  }
+
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
 function SignupPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
@@ -50,6 +66,10 @@ function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    password: false,
+    passwordConfirm: false,
+  })
 
   const allAgreementIds = [...REQUIRED_TERMS, ...OPTIONAL_TERMS].map(
     (term) => term.id,
@@ -58,10 +78,11 @@ function SignupPage() {
 
   const handleChange = (event) => {
     const { name, value } = event.target
+    const nextValue = name === 'phone' ? formatPhoneNumber(value) : value
 
     setForm((currentForm) => ({
       ...currentForm,
-      [name]: value,
+      [name]: nextValue,
     }))
   }
 
@@ -88,9 +109,21 @@ function SignupPage() {
     })
   }
 
+  const togglePasswordVisibility = (name) => {
+    setVisiblePasswords((currentVisiblePasswords) => ({
+      ...currentVisiblePasswords,
+      [name]: !currentVisiblePasswords[name],
+    }))
+  }
+
   const validateStepOne = () => {
     if (!form.name || !form.phone || !form.address || !form.email) {
       setError('이름, 휴대폰번호, 주소, 이메일을 모두 입력해주세요.')
+      return false
+    }
+
+    if (!/^010-\d{4}-\d{4}$/.test(form.phone)) {
+      setError('휴대폰번호는 010-0000-0000 형식으로 입력해주세요.')
       return false
     }
 
@@ -162,6 +195,13 @@ function SignupPage() {
 
   return (
     <main className="signup-page">
+      <AccountFeedbackPopup message={error} onDone={() => setError('')} />
+      <AccountFeedbackPopup
+        message={message}
+        type="success"
+        onDone={() => setMessage('')}
+      />
+
       <section className="signup-card" aria-label="회원가입">
         <div className="signup-header">
           <div className="signup-logo" aria-hidden="true"></div>
@@ -228,12 +268,6 @@ function SignupPage() {
                 />
               </label>
 
-              {error && (
-                <p className="signup-feedback signup-feedback-error" role="alert">
-                  {error}
-                </p>
-              )}
-
               <button className="signup-submit" type="button" onClick={handleNextStep}>
                 다음
               </button>
@@ -244,28 +278,40 @@ function SignupPage() {
             <>
               <label className="signup-field">
                 <span>비밀번호</span>
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="비밀번호를 입력하세요"
-                  autoComplete="new-password"
-                  required
-                />
+                <div className="password-input">
+                  <input
+                    type={visiblePasswords.password ? 'text' : 'password'}
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder="비밀번호를 입력하세요"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <PasswordVisibilityButton
+                    isVisible={visiblePasswords.password}
+                    onClick={() => togglePasswordVisibility('password')}
+                  />
+                </div>
               </label>
 
               <label className="signup-field">
                 <span>비밀번호 확인</span>
-                <input
-                  type="password"
-                  name="passwordConfirm"
-                  value={form.passwordConfirm}
-                  onChange={handleChange}
-                  placeholder="비밀번호를 다시 입력하세요"
-                  autoComplete="new-password"
-                  required
-                />
+                <div className="password-input">
+                  <input
+                    type={visiblePasswords.passwordConfirm ? 'text' : 'password'}
+                    name="passwordConfirm"
+                    value={form.passwordConfirm}
+                    onChange={handleChange}
+                    placeholder="비밀번호를 다시 입력하세요"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <PasswordVisibilityButton
+                    isVisible={visiblePasswords.passwordConfirm}
+                    onClick={() => togglePasswordVisibility('passwordConfirm')}
+                  />
+                </div>
               </label>
 
               <fieldset className="signup-terms">
@@ -310,18 +356,6 @@ function SignupPage() {
                   ))}
                 </div>
               </fieldset>
-
-              {error && (
-                <p className="signup-feedback signup-feedback-error" role="alert">
-                  {error}
-                </p>
-              )}
-
-              {message && (
-                <p className="signup-feedback signup-feedback-success" role="status">
-                  {message}
-                </p>
-              )}
 
               <div className="signup-actions">
                 <button
