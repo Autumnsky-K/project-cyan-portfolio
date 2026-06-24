@@ -15,7 +15,6 @@ import GoodsFilterUi, {
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
-import { useFavoriteGoods } from './useFavoriteGoods'
 import { useGoodsFavorites } from './useGoodsFavorites'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
@@ -32,7 +31,15 @@ function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
 }
 
 function GoodsPage() {
-  const { favoriteIds, isFavorite, toggleFavorite, retainFavorites } = useGoodsFavorites()
+  const {
+    favoriteIds,
+    favoriteGoods,
+    favoritesStatus,
+    favoritesError,
+    isFavorite,
+    toggleFavorite,
+    refreshFavorites,
+  } = useGoodsFavorites()
   const {
     query,
     setQuery,
@@ -57,11 +64,6 @@ function GoodsPage() {
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const {
-    goods: favoriteGoods,
-    status: favoritesStatus,
-    error: favoritesError,
-  } = useFavoriteGoods(activeSection === 'favorites', favoriteIds, retainFavorites)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
   const hasLoadedGoodsRef = useRef(false)
@@ -318,11 +320,19 @@ function GoodsPage() {
             </div>
           </div>
 
-          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.min(favoriteIds.length, 6)} />}
+          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.max(3, Math.min(favoriteIds.length, 6))} />}
           {favoritesStatus === 'error' && (
-            <GoodsListState kind="error" message={favoritesError} onAction={() => setActiveSection('all')} />
+            <GoodsListState kind="error" message={favoritesError} onAction={() => void refreshFavorites()} />
           )}
-          {favoriteIds.length === 0 && (
+          {favoritesStatus === 'signedOut' && (
+            <div className="goods-state favorites-empty" role="status">
+              <span className="goods-state-mark" aria-hidden="true">♡</span>
+              <strong>Login required</strong>
+              <span>로그인 후 계정별 즐겨찾기를 사용할 수 있습니다.</span>
+              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
+            </div>
+          )}
+          {favoritesStatus !== 'signedOut' && favoriteIds.length === 0 && (
             <div className="goods-state favorites-empty" role="status">
               <span className="goods-state-mark" aria-hidden="true">♡</span>
               <strong>No favorite goods yet</strong>
