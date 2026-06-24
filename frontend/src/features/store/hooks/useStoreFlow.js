@@ -90,6 +90,9 @@ export function useStoreFlow(options = {}) {
   } = options
   const {
     items: sharedCartItems,
+    status: cartStatus,
+    error: cartError,
+    isSignedIn: isCartSignedIn,
     addCartItem,
     updateCartItemQuantity,
     removeCartItem,
@@ -297,45 +300,61 @@ export function useStoreFlow(options = {}) {
     clearPendingPayment()
   }, [pendingPayment])
 
-  function addToCart(productId) {
+  async function addToCart(productId) {
     const product = storeProducts.find((item) => String(item.id) === String(productId))
 
     if (product) {
-      addCartItem({
-        goodsId: product.goodsId ?? product.id,
-        name: product.name,
-        price: product.price,
-        imageUrl: product.image,
-        artistName: product.artist,
-        categoryName: product.description,
-        tags: [],
-      })
+      try {
+        await addCartItem({
+          goodsId: product.goodsId ?? product.id,
+          name: product.name,
+          price: product.price,
+          imageUrl: product.image,
+          artistName: product.artist,
+          categoryName: product.description,
+          tags: [],
+        })
+        setMessage('')
+      } catch (error) {
+        setMessage(error.message || 'Failed to add cart item.')
+      }
     }
 
     setErrors([])
-    setMessage('')
     setPaymentStatus(ORDER_STATUS.CREATED)
     setCompletedOrder(null)
   }
 
-  function increaseQuantity(productId) {
+  async function increaseQuantity(productId) {
     const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
+      try {
+        await updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
+      } catch (error) {
+        setMessage(error.message || 'Failed to update cart item.')
+      }
     }
   }
 
-  function decreaseQuantity(productId) {
+  async function decreaseQuantity(productId) {
     const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
+      try {
+        await updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
+      } catch (error) {
+        setMessage(error.message || 'Failed to update cart item.')
+      }
     }
   }
 
-  function removeFromCart(productId) {
+  async function removeFromCart(productId) {
     const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      removeCartItem(item.cartItemKey)
+      try {
+        await removeCartItem(item.cartItemKey)
+      } catch (error) {
+        setMessage(error.message || 'Failed to remove cart item.')
+      }
     }
   }
 
@@ -592,10 +611,13 @@ export function useStoreFlow(options = {}) {
 
   return {
     cartItems,
+    cartError,
+    cartStatus,
     checkoutForm,
     completedOrder,
     errors,
     isCartEmpty,
+    isCartSignedIn,
     isPaymentProcessing,
     lastKakaoReadyDebug,
     lastKakaoReadyError,

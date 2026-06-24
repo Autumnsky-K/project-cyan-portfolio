@@ -16,6 +16,7 @@ export type CartGoodsInput = {
 }
 
 export type CartItem = {
+  cartItemId: number
   cartItemKey: string
   goodsId: string | number
   variantId: string | number | null
@@ -29,14 +30,20 @@ export type CartItem = {
   quantity: number
   maxQuantity: number | null
   shippingFee: number
+  purchaseState?: string | null
+  purchaseMessage?: string | null
 }
 
 export type CartContextValue = {
   items: CartItem[]
-  addCartItem: (goods: CartGoodsInput, quantity?: number) => void
-  updateCartItemQuantity: (cartItemKey: CartItem['cartItemKey'], quantity: number) => void
-  removeCartItem: (cartItemKey: CartItem['cartItemKey']) => void
-  clearCart: () => void
+  status: 'idle' | 'loading' | 'data' | 'error' | 'signedOut'
+  error: string
+  isSignedIn: boolean
+  refreshCart: () => Promise<void>
+  addCartItem: (goods: CartGoodsInput, quantity?: number) => Promise<void>
+  updateCartItemQuantity: (cartItemKey: CartItem['cartItemKey'], quantity: number) => Promise<void>
+  removeCartItem: (cartItemKey: CartItem['cartItemKey']) => Promise<void>
+  clearCart: () => Promise<void>
 }
 
 export const CartContext = createContext<CartContextValue | null>(null)

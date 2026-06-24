@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { GoodsDetail } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import { useCart } from '../cart/useCart'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
@@ -26,8 +28,11 @@ function GoodsPurchasePanel({
   onFavoriteToggle,
 }: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [quantity, setQuantity] = useState(1)
   const [feedback, setFeedback] = useState('')
+  const [isAddingCart, setIsAddingCart] = useState(false)
   const feedbackTimerRef = useRef<number | null>(null)
 
   useEffect(
@@ -49,19 +54,36 @@ function GoodsPurchasePanel({
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
   }
 
-  function handleAddCartItem() {
-    if (!canAdd) return
+  function navigateToLogin() {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`
+    window.sessionStorage.setItem('project-cyan:login-return-to', returnTo)
+    navigate('/login', { state: { from: returnTo } })
+  }
 
-    addCartItem(
-      {
-        ...goods,
-        variantPrice: unitPrice,
-        maxQuantity,
-        shippingFee: 0,
-      },
-      selectedQuantity,
-    )
-    showFeedback('장바구니에 담았습니다.')
+  async function handleAddCartItem() {
+    if (!canAdd) return
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+
+    setIsAddingCart(true)
+    try {
+      await addCartItem(
+        {
+          ...goods,
+          variantPrice: unitPrice,
+          maxQuantity,
+          shippingFee: 0,
+        },
+        selectedQuantity,
+      )
+      showFeedback('장바구니에 담았습니다.')
+    } catch (cartError) {
+      showFeedback(cartError instanceof Error ? cartError.message : '장바구니에 담지 못했습니다.')
+    } finally {
+      setIsAddingCart(false)
+    }
   }
 
   return (
@@ -74,7 +96,7 @@ function GoodsPurchasePanel({
           <button
             className="detail-favorite-button"
             type="button"
-            aria-label={isFavorite ? `${goods.name} 즐겨찾기 해제` : `${goods.name} 즐겨찾기 추가`}
+            aria-label={isFavorite ? `${goods.name} 찜 해제` : `${goods.name} 찜하기`}
             aria-pressed={isFavorite}
             onClick={onFavoriteToggle}
           >
@@ -108,7 +130,7 @@ function GoodsPurchasePanel({
             type="button"
             onClick={() => setQuantity((value) => value + 1)}
           >
-            ＋
+            +
           </button>
         </div>
       </div>
@@ -120,17 +142,17 @@ function GoodsPurchasePanel({
 
       {!canAdd && (
         <p className="purchase-message">
-          {goods.purchaseMessage || '구매 가능한 옵션을 선택해 주세요.'}
+          {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
         </p>
       )}
       <button
         className="purchase-button"
         data-add-to-cart={goods.goodsId}
-        disabled={!canAdd}
+        disabled={!canAdd || isAddingCart}
         type="button"
-        onClick={handleAddCartItem}
+        onClick={() => void handleAddCartItem()}
       >
-        장바구니 담기
+        {isAddingCart ? '담는 중...' : '장바구니 담기'}
       </button>
       {feedback && <span className="purchase-feedback" role="status">{feedback}</span>}
     </aside>

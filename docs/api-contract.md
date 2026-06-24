@@ -320,7 +320,48 @@
 
 ---
 
-### 3.3 아티스트 (artists) — 담당: `__________`
+### 3.3 장바구니 (cart) — 담당: `__________`
+
+#### [GET] /api/cart
+- 설명: 로그인 사용자의 계정별 장바구니 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `{ cartId, items, totalQuantity, totalPrice }`
+- `items[]`: `{ cartItemId, goodsId, name, price, imageUrl, tags, artistId, artistName, categoryId, categoryName, salesStatus, stockCount, quantity, subtotal, purchaseState, purchaseMessage }`
+- 상태: [x] additive
+
+#### [POST] /api/cart/items
+- 설명: 로그인 사용자의 장바구니 상품 추가. 같은 상품이 이미 있으면 수량 증가
+- 인증 필요: Y
+- 요청 body: `{ goodsId, quantity }`
+- 응답: 갱신된 장바구니 객체
+- 비고: Spring은 DB의 상품 가격, 재고, 판매 상태를 기준으로 검증한다.
+- 상태: [x] additive
+
+#### [PATCH] /api/cart/items/{cartItemId}
+- 설명: 로그인 사용자의 장바구니 상품 수량 변경
+- 인증 필요: Y
+- 요청 path: `cartItemId` (bigint)
+- 요청 body: `{ quantity }`
+- 응답: 갱신된 장바구니 객체
+- 상태: [x] additive
+
+#### [DELETE] /api/cart/items/{cartItemId}
+- 설명: 로그인 사용자의 장바구니 상품 삭제
+- 인증 필요: Y
+- 요청 path: `cartItemId` (bigint)
+- 응답: `204 No Content`
+- 상태: [x] additive
+
+#### [DELETE] /api/cart/items
+- 설명: 로그인 사용자의 장바구니 전체 비우기
+- 인증 필요: Y
+- 응답: `204 No Content`
+- 상태: [x] additive
+
+---
+
+### 3.4 아티스트 (artists) — 담당: `__________`
 
 > AI가 "왜 이 굿즈가 의미 있나"를 설명하는 근거 공급. 추천이 `artistId`로 연결되므로 그 필드는 동결.
 
@@ -357,7 +398,7 @@
 
 ---
 
-### 3.4 주문/결제 (orders) — 담당: `__________`
+### 3.5 주문/결제 (orders) — 담당: `__________`
 
 > §2 상태 머신을 따른다. Week 1은 더미 주문으로 카카오 테스트 선행.
 
@@ -381,7 +422,7 @@
 
 ---
 
-### 3.5 AI 플랫폼 (ai) — 담당: `강승민`
+### 3.6 AI 플랫폼 (ai) — 담당: `강승민`
 
 > 캐릭터 아일랜드 ↔ OLV WebSocket. REST가 아니라 **WebSocket 메시지 형태**가 계약이다.
 
@@ -495,4 +536,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
+| 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
 |  |  |  |  |  |  |

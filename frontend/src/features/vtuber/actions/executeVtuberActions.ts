@@ -23,7 +23,7 @@ type CartGoods = {
 }
 
 type ExecuteVtuberActionsOptions = {
-  addCartItem: (goods: CartGoods, quantity?: number) => void
+  addCartItem: (goods: CartGoods, quantity?: number) => void | Promise<void>
   actions: VtuberAction[]
   navigate: NavigateFunction
 }
@@ -101,7 +101,7 @@ async function addToCart(action: AddToCartAction, addCartItem: ExecuteVtuberActi
     const goods = await fetchGoodsDetail(goodsId)
 
     if (isRecord(goods) && (typeof goods.goodsId === 'string' || typeof goods.goodsId === 'number')) {
-      addCartItem(goods as CartGoods)
+      await addCartItem(goods as CartGoods)
     }
   } catch {
     return
