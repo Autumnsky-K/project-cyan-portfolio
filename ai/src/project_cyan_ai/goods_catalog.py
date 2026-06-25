@@ -299,11 +299,14 @@ class CatalogGroundedChatResponseProvider:
         }
         return FullTextMessage(
             text=response.text,
-            actions=[
-                action
-                for action in response.actions
-                if action_goods_id(action) in allowed_goods_ids
-            ],
+            actions=merge_candidate_actions(
+                [
+                    action
+                    for action in response.actions
+                    if action_goods_id(action) in allowed_goods_ids
+                ],
+                candidates,
+            ),
         )
 
 
@@ -385,6 +388,13 @@ def build_tsv_query(text: str, candidates: list[dict[str, Any]]) -> dict[str, An
         if candidate.get("artistName")
         and normalize_text(candidate["artistName"]) in normalized_text
     }
+    inferred_artist_names = infer_artist_names_from_distinctive_terms(
+        terms,
+        candidates,
+        category_keys,
+    )
+    if inferred_artist_names:
+        artist_names.update(inferred_artist_names)
     group_names = {
         candidate["groupName"]
         for candidate in candidates
@@ -472,6 +482,60 @@ def score_tsv_candidate(
         score += 6
 
     return score, sorted(matched_fields)
+
+
+def infer_artist_names_from_distinctive_terms(
+    terms: set[str],
+    candidates: list[dict[str, Any]],
+    category_keys: set[str],
+) -> set[str]:
+    ignored_terms = ignored_artist_inference_terms(category_keys)
+    matched_artist_names: set[str] = set()
+
+    for term in terms:
+        if len(term) < 2 or term in ignored_terms:
+            continue
+
+        term_artist_names = {
+            candidate["artistName"]
+            for candidate in candidates
+            if candidate.get("artistName")
+            and candidate_matches_distinctive_term(candidate, term)
+        }
+        if len(term_artist_names) == 1:
+            matched_artist_names.update(term_artist_names)
+
+    return matched_artist_names
+
+
+def ignored_artist_inference_terms(category_keys: set[str]) -> set[str]:
+    ignored_terms = {
+        "상품",
+        "굿즈",
+        "추천",
+        "찾아줘",
+        "있어",
+        "누구",
+        "거",
+        "관련",
+        "품절",
+        "아닌",
+        "가능",
+        "구매",
+        "살",
+        "수",
+    }
+    for category_key in category_keys:
+        ignored_terms.update(normalize_text(alias) for alias in CATEGORY_ALIASES[category_key])
+    return ignored_terms
+
+
+def candidate_matches_distinctive_term(candidate: dict[str, Any], term: str) -> bool:
+    fields = (
+        candidate.get("name"),
+        candidate.get("description"),
+    )
+    return any(term in normalize_text(value or "") for value in fields)
 
 
 def score_term_match(candidate: dict[str, Any], term: str) -> tuple[int, set[str]]:
@@ -802,8 +866,55 @@ def build_catalog_prompt(text: str, candidates: list[dict[str, Any]]) -> str:
         "Spring 상품 API가 반환한 추천 가능 상품 JSON:\n"
         f"{json.dumps(compact_candidates, ensure_ascii=False)}\n\n"
         "위 JSON 안의 상품만 추천하세요. JSON에 없는 goodsId를 만들지 마세요. "
-        "추천 시 실제 goodsId로 ACTION 태그를 생성하세요."
+        "추천 시 실제 goodsId로 ACTION 태그를 생성하세요. "
+        "형식은 반드시 [ACTION:navigate path=\"/goods/{goodsId}\"] 또는 "
+        "[ACTION:highlight selector=\"[data-goods-id='{goodsId}']\"] 입니다. "
+        "[ACTION:{goodsId}]처럼 숫자만 넣은 태그는 절대 쓰지 마세요."
     )
+
+
+def default_candidate_actions(candidates: list[dict[str, Any]]) -> list[NavigateAction | HighlightAction]:
+    actions: list[NavigateAction | HighlightAction] = []
+    for index, candidate in enumerate(candidates[:3]):
+        goods_id = candidate.get("goodsId")
+        if goods_id is None:
+            continue
+        normalized_goods_id = str(goods_id)
+        if not normalized_goods_id.isdigit():
+            continue
+        if index == 0:
+            actions.append(NavigateAction(path=f"/goods/{normalized_goods_id}"))
+        actions.append(HighlightAction(selector=f"[data-goods-id='{normalized_goods_id}']"))
+    return actions
+
+
+def merge_candidate_actions(
+    actions: list[Any],
+    candidates: list[dict[str, Any]],
+) -> list[Any]:
+    merged_actions = limit_navigate_actions(actions)
+    existing_keys = {
+        (action.__class__.__name__, action_goods_id(action))
+        for action in merged_actions
+    }
+    for action in default_candidate_actions(candidates):
+        key = (action.__class__.__name__, action_goods_id(action))
+        if key not in existing_keys:
+            merged_actions.append(action)
+            existing_keys.add(key)
+    return limit_navigate_actions(merged_actions)
+
+
+def limit_navigate_actions(actions: list[Any]) -> list[Any]:
+    limited_actions: list[Any] = []
+    has_navigate = False
+    for action in actions:
+        if isinstance(action, NavigateAction):
+            if has_navigate:
+                continue
+            has_navigate = True
+        limited_actions.append(action)
+    return limited_actions
 
 
 def build_mock_catalog_response(

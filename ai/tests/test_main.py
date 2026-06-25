@@ -465,6 +465,55 @@ def test_filter_tsv_candidates_allows_related_artist_group_as_secondary_results(
     assert response[1]["artistName"] == "Artist A"
 
 
+def test_filter_tsv_candidates_infers_artist_from_distinctive_product_name():
+    candidates = [
+        {
+            "goodsId": 1000,
+            "name": "샤를로트 포토카드 일수도 있음",
+            "price": 12000,
+            "tags": ["PHOTOCARD", "ARTIST_A"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 50,
+            "description": "샤를로트 관련 포토카드입니다.",
+            "aiPickDefault": True,
+            "bestSeller": False,
+        },
+        {
+            "goodsId": 1001,
+            "name": "Photocard Set Vol.1",
+            "price": 12000,
+            "tags": ["PHOTOCARD", "ARTIST_A"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 120,
+            "description": "Artist A 포토카드 세트입니다.",
+            "aiPickDefault": False,
+            "bestSeller": True,
+        },
+        {
+            "goodsId": 1007,
+            "name": "Photocard Binder",
+            "price": 15000,
+            "tags": ["PHOTOCARD", "BINDER"],
+            "artistName": "Artist D",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 60,
+            "description": "포토카드를 보관하는 바인더입니다.",
+            "aiPickDefault": False,
+            "bestSeller": False,
+        },
+    ]
+
+    response = filter_tsv_candidates("샤를로트 포토카드 추천해줘", candidates)
+
+    assert [candidate["goodsId"] for candidate in response] == [1000, 1001]
+    assert {candidate["artistName"] for candidate in response} == {"Artist A"}
+
+
 def test_tsv_goods_catalog_client_reads_local_snapshot(tmp_path):
     catalog_path = tmp_path / "goods-catalog-latest.tsv"
     catalog_path.write_text(GOODS_CATALOG_TSV, encoding="utf-8")
@@ -534,7 +583,55 @@ def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
 
     response = provider.build_response("상품 추천해줘")
 
-    assert response.actions == []
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods/42"},
+        {"type": "highlight", "selector": "[data-goods-id='42']"},
+    ]
+
+
+def test_catalog_grounding_removes_malformed_action_tags_and_adds_candidate_actions():
+    catalog = FakeGoodsCatalogClient([{"goodsId": 1001, "name": "샤를로트 포토카드"}])
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient(
+            "샤를로트 포토카드가 있어요. [ACTION:1001], [ACTION:1007]"
+        )
+    )
+    provider = CatalogGroundedChatResponseProvider(delegate, catalog)
+
+    response = provider.build_response("샤를로트 포토카드 추천해줘")
+
+    assert "[ACTION:" not in response.text
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods/1001"},
+        {"type": "highlight", "selector": "[data-goods-id='1001']"},
+    ]
+
+
+def test_catalog_grounding_limits_navigation_to_first_candidate():
+    catalog = FakeGoodsCatalogClient(
+        [
+            {"goodsId": 1001, "name": "샤를로트 포토카드"},
+            {"goodsId": 1002, "name": "Photocard Set Vol.1"},
+            {"goodsId": 1003, "name": "Photocard Binder"},
+        ]
+    )
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient(
+            '추천해요. [ACTION:navigate path="/goods/1001"] '
+            '[ACTION:navigate path="/goods/1002"] '
+            '[ACTION:navigate path="/goods/1003"]'
+        )
+    )
+    provider = CatalogGroundedChatResponseProvider(delegate, catalog)
+
+    response = provider.build_response("샤를로트 포토카드 추천해줘")
+
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods/1001"},
+        {"type": "highlight", "selector": "[data-goods-id='1001']"},
+        {"type": "highlight", "selector": "[data-goods-id='1002']"},
+        {"type": "highlight", "selector": "[data-goods-id='1003']"},
+    ]
 
 
 def test_catalog_grounding_adds_all_recent_candidates_to_cart_on_follow_up():
@@ -1095,6 +1192,18 @@ def test_parse_action_tags_ignores_invalid_actions():
         "actions": [
             {"type": "addToCart", "goodsId": "1002"},
         ],
+    }
+
+
+def test_parse_action_tags_removes_malformed_action_tags_from_text():
+    response = parse_action_tags(
+        "추천 상품이에요. [ACTION:1001], [ACTION:1007], [ACTION:1013]"
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 상품이에요.",
+        "actions": [],
     }
 
 

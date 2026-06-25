@@ -40,6 +40,7 @@ ACTION_TAG_PATTERN = re.compile(
     r"\[ACTION:(?P<name>[A-Za-z][A-Za-z0-9]*)\s*"
     r"(?P<attrs>(?:[^\]\"]|\"[^\"]*\")*)\]"
 )
+ANY_ACTION_TAG_PATTERN = re.compile(r"\[ACTION:[^\]]*\]")
 ACTION_ATTR_PATTERN = re.compile(
     r"(?P<key>[A-Za-z][A-Za-z0-9]*)=\"(?P<value>[^\"]*)\""
 )
@@ -513,6 +514,10 @@ def parse_action_tags(text: str) -> FullTextMessage:
             actions.append(action)
 
     clean_text = ACTION_TAG_PATTERN.sub("", text)
+    clean_text = ANY_ACTION_TAG_PATTERN.sub("", clean_text)
+    clean_text = re.sub(r"\s*,\s*(?=$|\n)", "", clean_text)
+    clean_text = re.sub(r"(?:,\s*){2,}", ", ", clean_text)
+    clean_text = re.sub(r"(?:\s*,\s*)+$", "", clean_text)
     clean_text = re.sub(r"[ \t]{2,}", " ", clean_text)
     clean_text = re.sub(r" *\n *", "\n", clean_text).strip()
 
