@@ -65,6 +65,7 @@ function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
 export function useVtuberWebSocket(
   initialText: string,
   cartItems: VtuberClientCartItem[] = [],
+  sessionId: number | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const closedByHookRef = useRef(false)
@@ -145,9 +146,13 @@ export function useVtuberWebSocket(
       },
     }
 
+    if (sessionId !== null) {
+      message.sessionId = sessionId
+    }
+
     socket.send(JSON.stringify(message))
     return true
-  }, [cartItems])
+  }, [cartItems, sessionId])
 
   return {
     actionBatchId,

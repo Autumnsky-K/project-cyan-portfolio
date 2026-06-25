@@ -17,6 +17,7 @@ export type VtuberCharacterConfig = {
 export type VtuberClientTextInputMessage = {
   type: 'text-input'
   text: string
+  sessionId?: number
   context?: {
     cartItems?: VtuberClientCartItem[]
   }
