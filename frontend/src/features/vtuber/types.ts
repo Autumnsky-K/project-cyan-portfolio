@@ -58,8 +58,20 @@ export type VtuberAction =
   | AddToCartAction
   | UnknownVtuberAction
 
+export type VtuberRecommendationMetadata = {
+  goodsId: string | number
+  recommendationReason?: string | null
+  rankOrder?: number
+}
+
+export type VtuberServerMetadata = {
+  recommendations?: VtuberRecommendationMetadata[]
+  [key: string]: unknown
+}
+
 export type VtuberServerMessage = {
   type: string
   text: string
   actions: VtuberAction[]
+  metadata?: VtuberServerMetadata
 }

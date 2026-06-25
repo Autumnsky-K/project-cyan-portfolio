@@ -607,6 +607,42 @@ def test_catalog_grounding_removes_malformed_action_tags_and_adds_candidate_acti
     ]
 
 
+def test_catalog_grounding_includes_recommendation_metadata():
+    catalog = FakeGoodsCatalogClient(
+        [
+            {
+                "goodsId": 1001,
+                "name": "샤를로트 포토카드",
+                "recommendationReason": "artistName, categoryName 조건과 일치하는 상품입니다.",
+            },
+            {
+                "goodsId": 1002,
+                "name": "Photocard Set Vol.1",
+                "recommendationReason": "categoryName 조건과 일치하는 상품입니다.",
+            },
+        ]
+    )
+    delegate = ClaudeChatResponseProvider(client=FakeClaudeClient("추천해요."))
+    provider = CatalogGroundedChatResponseProvider(delegate, catalog)
+
+    response = provider.build_response("샤를로트 포토카드 추천해줘")
+
+    assert response.model_dump()["metadata"] == {
+        "recommendations": [
+            {
+                "goodsId": 1001,
+                "recommendationReason": "artistName, categoryName 조건과 일치하는 상품입니다.",
+                "rankOrder": 0,
+            },
+            {
+                "goodsId": 1002,
+                "recommendationReason": "categoryName 조건과 일치하는 상품입니다.",
+                "rankOrder": 1,
+            },
+        ]
+    }
+
+
 def test_catalog_grounding_limits_navigation_to_first_candidate():
     catalog = FakeGoodsCatalogClient(
         [
@@ -1650,6 +1686,20 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
             {"type": "navigate", "path": "/goods/1005"},
             {"type": "highlight", "selector": "[data-goods-id='1005']"},
         ],
+        "metadata": {
+            "recommendations": [
+                {
+                    "goodsId": 1005,
+                    "recommendationReason": None,
+                    "rankOrder": 0,
+                },
+                {
+                    "goodsId": 1006,
+                    "recommendationReason": None,
+                    "rankOrder": 1,
+                },
+            ],
+        },
     }
     assert follow_up_response == {
         "type": "full-text",

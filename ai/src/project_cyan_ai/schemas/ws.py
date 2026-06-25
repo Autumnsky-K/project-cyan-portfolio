@@ -95,6 +95,13 @@ class FullTextMessage(BaseModel):
     type: Literal["full-text"] = SERVER_FULL_TEXT_TYPE
     text: str
     actions: list[ActionPayload] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        payload = super().model_dump(*args, **kwargs)
+        if not payload.get("metadata"):
+            payload.pop("metadata", None)
+        return payload
 
 
 class ModelConfigMessage(BaseModel):

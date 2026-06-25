@@ -307,6 +307,7 @@ class CatalogGroundedChatResponseProvider:
                 ],
                 candidates,
             ),
+            metadata=recommendation_metadata(candidates),
         )
 
 
@@ -888,6 +889,22 @@ def default_candidate_actions(candidates: list[dict[str, Any]]) -> list[Navigate
     return actions
 
 
+def recommendation_metadata(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    recommendations = []
+    for rank_order, candidate in enumerate(candidates[:3]):
+        goods_id = candidate.get("goodsId")
+        if goods_id is None:
+            continue
+        recommendations.append(
+            {
+                "goodsId": goods_id,
+                "recommendationReason": candidate.get("recommendationReason"),
+                "rankOrder": rank_order,
+            }
+        )
+    return {"recommendations": recommendations} if recommendations else {}
+
+
 def merge_candidate_actions(
     actions: list[Any],
     candidates: list[dict[str, Any]],
@@ -932,6 +949,7 @@ def build_mock_catalog_response(
     return FullTextMessage(
         text=f"{first.get('name', '추천 상품')}을 추천해요.",
         actions=actions,
+        metadata=recommendation_metadata(candidates),
     )
 
 

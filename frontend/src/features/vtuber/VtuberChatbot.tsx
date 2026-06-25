@@ -15,6 +15,10 @@ import {
   deriveVtuberDisplayState,
   VTUBER_DISPLAY_STATE_LABELS,
 } from './displayState'
+import {
+  type VtuberRecommendationMetadata,
+  type VtuberServerMetadata,
+} from './types'
 import { useVtuberWebSocket } from './useVtuberWebSocket'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
@@ -45,8 +49,21 @@ function goodsIdFromAction(action: { type: string; [key: string]: unknown }): nu
 function recommendationsFromActions(
   actions: { type: string; [key: string]: unknown }[],
   requestText: string,
+  metadata: VtuberServerMetadata,
 ): VirtualRecommendationInput[] {
   const goodsIds: number[] = []
+  const recommendations = Array.isArray(metadata.recommendations)
+    ? metadata.recommendations
+    : []
+  const recommendationByGoodsId = new Map<number, VtuberRecommendationMetadata>()
+
+  for (const recommendation of recommendations) {
+    const goodsId = Number(recommendation.goodsId)
+
+    if (Number.isInteger(goodsId) && goodsId > 0) {
+      recommendationByGoodsId.set(goodsId, recommendation)
+    }
+  }
 
   for (const action of actions) {
     const goodsId = goodsIdFromAction(action)
@@ -59,8 +76,9 @@ function recommendationsFromActions(
   return goodsIds.map((goodsId, index) => ({
     goodsId,
     requestText,
-    recommendationReason: null,
-    rankOrder: index,
+    recommendationReason:
+      recommendationByGoodsId.get(goodsId)?.recommendationReason ?? null,
+    rankOrder: recommendationByGoodsId.get(goodsId)?.rankOrder ?? index,
   }))
 }
 
@@ -73,7 +91,7 @@ function VtuberChatbot(): ReactElement {
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [speakingBatchId, setSpeakingBatchId] = useState(0)
   const [chatSessionId, setChatSessionId] = useState<number | null>(null)
-  const { actionBatchId, actions, connectionStatus, latestText, sendText } =
+  const { actionBatchId, actions, connectionStatus, latestMetadata, latestText, sendText } =
     useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items, chatSessionId)
 
   useEffect(() => {
@@ -138,7 +156,12 @@ function VtuberChatbot(): ReactElement {
         messageText: latestText,
         action: actions[0]?.type ?? null,
         actions,
-        recommendations: recommendationsFromActions(actions, requestText),
+        metadata: latestMetadata,
+        recommendations: recommendationsFromActions(
+          actions,
+          requestText,
+          latestMetadata,
+        ),
       }).catch(() => undefined)
     }
 
@@ -149,7 +172,7 @@ function VtuberChatbot(): ReactElement {
     }, SPEAKING_STATE_DURATION_MS)
 
     return () => window.clearTimeout(speakingTimerId)
-  }, [actionBatchId, actions, chatSessionId, latestText])
+  }, [actionBatchId, actions, chatSessionId, latestMetadata, latestText])
 
   useEffect(() => {
     if (actionBatchId === 0 || executedActionBatchRef.current === actionBatchId) {

@@ -5,7 +5,9 @@ import {
   type VtuberAction,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
+  type VtuberRecommendationMetadata,
   type VtuberServerMessage,
+  type VtuberServerMetadata,
 } from './types'
 
 const VTUBER_WS_PATH = '/client-ws'
@@ -14,6 +16,7 @@ type UseVtuberWebSocketResult = {
   actionBatchId: number
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
+  latestMetadata: VtuberServerMetadata
   latestText: string
   sendText: (text: string) => boolean
 }
@@ -43,6 +46,41 @@ function normalizeAction(value: unknown): VtuberAction | null {
   return { ...value, type: value.type }
 }
 
+function normalizeRecommendation(value: unknown): VtuberRecommendationMetadata | null {
+  if (!isRecord(value) || value.goodsId === undefined) {
+    return null
+  }
+
+  return {
+    goodsId: typeof value.goodsId === 'number' ? value.goodsId : String(value.goodsId),
+    recommendationReason:
+      typeof value.recommendationReason === 'string'
+        ? value.recommendationReason
+        : null,
+    rankOrder:
+      typeof value.rankOrder === 'number' && Number.isFinite(value.rankOrder)
+        ? value.rankOrder
+        : undefined,
+  }
+}
+
+function normalizeMetadata(value: unknown): VtuberServerMetadata {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return {
+    ...value,
+    recommendations: Array.isArray(value.recommendations)
+      ? value.recommendations
+        .map(normalizeRecommendation)
+        .filter((recommendation): recommendation is VtuberRecommendationMetadata => (
+          recommendation !== null
+        ))
+      : undefined,
+  }
+}
+
 function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
   if (
     !isRecord(value) ||
@@ -59,6 +97,7 @@ function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
     actions: value.actions
       .map(normalizeAction)
       .filter((action): action is VtuberAction => action !== null),
+    metadata: normalizeMetadata(value.metadata),
   }
 }
 
@@ -72,6 +111,7 @@ export function useVtuberWebSocket(
   const sawConnectionErrorRef = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
   const [latestText, setLatestText] = useState(initialText)
+  const [latestMetadata, setLatestMetadata] = useState<VtuberServerMetadata>({})
   const [actions, setActions] = useState<VtuberAction[]>([])
   const [actionBatchId, setActionBatchId] = useState(0)
 
@@ -96,6 +136,7 @@ export function useVtuberWebSocket(
         }
 
         setLatestText(message.text)
+        setLatestMetadata(message.metadata ?? {})
         setActions(message.actions)
         setActionBatchId((currentId) => currentId + 1)
       } catch {
@@ -158,6 +199,7 @@ export function useVtuberWebSocket(
     actionBatchId,
     actions,
     connectionStatus,
+    latestMetadata,
     latestText,
     sendText,
   }
