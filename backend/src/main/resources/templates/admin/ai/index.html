@@ -21,6 +21,86 @@
       </div>
     </header>
 
+    <div class="admin-notice admin-notice-success"
+         th:if="${catalogExportMessage}"
+         th:text="${catalogExportMessage}">AI 상품 카탈로그 TSV를 생성했습니다.</div>
+    <div class="admin-notice"
+         th:if="${catalogExportUrl}"
+         th:text="${catalogExportUrl}">https://example.com/goods-catalog-latest.tsv</div>
+
+    <section class="admin-stats" aria-label="AI 챗봇 상태">
+      <article>
+        <span>제공 방식</span>
+        <strong>로컬</strong>
+      </article>
+      <article>
+        <span>Endpoint</span>
+        <strong>8000</strong>
+      </article>
+      <article>
+        <span>실행 모드</span>
+        <strong>개발</strong>
+      </article>
+      <article>
+        <span>상품 카탈로그</span>
+        <strong th:text="${latestCatalogSnapshot != null && latestCatalogSnapshot.status == 'SUCCESS'} ? '준비됨' : '대기'">대기</strong>
+      </article>
+    </section>
+
+    <section class="admin-table-panel" aria-label="AI 챗봇 관리 항목">
+      <div class="admin-panel-heading">
+        <div>
+          <p class="admin-eyebrow">Catalog Snapshot</p>
+          <h3>AI 상품 카탈로그 TSV</h3>
+        </div>
+        <form method="post" th:action="@{/admin/ai/goods-catalog/export}">
+          <button class="admin-primary-button" type="submit">TSV 생성</button>
+        </form>
+      </div>
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table admin-ai-table">
+          <thead>
+          <tr>
+            <th>항목</th>
+            <th>값</th>
+            <th>비고</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td><strong>챗봇</strong></td>
+            <td>준비됨</td>
+            <td>대화 응답 흐름</td>
+          </tr>
+          <tr>
+            <td><strong>동작</strong></td>
+            <td>준비됨</td>
+            <td>이동, 강조 표시, 장바구니 동작</td>
+          </tr>
+          <tr>
+            <td><strong>프롬프트</strong></td>
+            <td>예정</td>
+            <td>상황별 말투와 응답 규칙</td>
+          </tr>
+          <tr>
+            <td><strong>최신 카탈로그</strong></td>
+            <td th:text="${latestCatalogSnapshot == null} ? '없음' : ${latestCatalogSnapshot.status}">없음</td>
+            <td th:text="${latestCatalogSnapshot == null} ? '아직 생성되지 않았습니다.' : ${latestCatalogSnapshot.generatedAt}">아직 생성되지 않았습니다.</td>
+          </tr>
+          <tr>
+            <td><strong>상품 수</strong></td>
+            <td th:text="${latestCatalogSnapshot == null} ? '-' : ${latestCatalogSnapshot.itemCount}">-</td>
+            <td th:text="${latestCatalogSnapshot == null} ? '-' : ${latestCatalogSnapshot.storagePath}">-</td>
+          </tr>
+          <tr>
+            <td><strong>URL 만료</strong></td>
+            <td th:text="${latestCatalogSnapshot == null || latestCatalogSnapshot.urlExpiresAt == null} ? '-' : ${latestCatalogSnapshot.urlExpiresAt}">-</td>
+            <td>AI 서버는 Spring API에서 최신 URL을 받아 사용합니다.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
     <section class="admin-ai-workbook">
       <aside class="admin-ai-tree-panel" aria-label="DB 수집 층위">
         <header>

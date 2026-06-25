@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    MetadataTsvGoodsCatalogClient,
+    TsvGoodsCatalogClient,
 )
 from project_cyan_ai.providers import get_chat_response_provider
 from project_cyan_ai.schemas.ws import (
@@ -25,9 +27,21 @@ async def client_ws(websocket: WebSocket):
     await websocket.accept()
     client_uid = str(uuid4())
     settings = get_settings()
+    if settings.goods_catalog_metadata_url:
+        catalog_client = MetadataTsvGoodsCatalogClient(
+            settings.goods_catalog_metadata_url,
+            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
+        )
+    elif settings.goods_catalog_tsv_url:
+        catalog_client = TsvGoodsCatalogClient(
+            settings.goods_catalog_tsv_url,
+            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
+        )
+    else:
+        catalog_client = HttpGoodsCatalogClient(settings.spring_api_url)
     response_provider = CatalogGroundedChatResponseProvider(
         delegate=get_chat_response_provider(),
-        catalog_client=HttpGoodsCatalogClient(settings.spring_api_url),
+        catalog_client=catalog_client,
     )
 
     await websocket.send_json(

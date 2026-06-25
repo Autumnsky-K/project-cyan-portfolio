@@ -32,6 +32,18 @@ class ProjectCyanAiSettings(BaseSettings):
         default="http://localhost:8080/api",
         alias="PROJECT_CYAN_GOODS_API_BASE_URL",
     )
+    goods_catalog_tsv_url: str | None = Field(
+        default=None,
+        alias="PROJECT_CYAN_GOODS_CATALOG_TSV_URL",
+    )
+    goods_catalog_metadata_url: str | None = Field(
+        default=None,
+        alias="PROJECT_CYAN_GOODS_CATALOG_METADATA_URL",
+    )
+    goods_catalog_cache_ttl_seconds: int = Field(
+        default=300,
+        alias="PROJECT_CYAN_GOODS_CATALOG_CACHE_TTL_SECONDS",
+    )
 
 
 def get_settings() -> ProjectCyanAiSettings:
