@@ -127,6 +127,21 @@ PROJECT_CYAN_SPRING_API_URL=http://localhost:8080/api
 
 Spring이 응답하지 않으면 기존 provider 응답으로 fallback합니다. Spring이 상품 후보를 반환하면 AI는 해당 응답에 포함된 `goodsId`의 ACTION만 전달합니다.
 
+데모용 TSV 카탈로그 스냅샷을 직접 읽게 하려면 아래 값을 설정합니다. 이 값이 있으면 AI 서버는 Spring 추천 API 대신 해당 TSV 파일을 읽어 후보를 먼저 좁힌 뒤 LLM provider에 전달합니다. 값은 `https://.../goods-catalog-latest.tsv` 같은 Storage 공개 URL 또는 로컬 파일 경로를 사용할 수 있습니다.
+
+```env
+PROJECT_CYAN_GOODS_CATALOG_TSV_URL=https://<storage-host>/goods-catalog-latest.tsv
+PROJECT_CYAN_GOODS_CATALOG_CACHE_TTL_SECONDS=300
+```
+
+TSV 헤더는 아래 camelCase 컬럼을 권장합니다.
+
+```text
+goodsId	name	price	artistName	groupName	categoryName	tags	salesStatus	stockCount	aiPickDefault	bestSeller	description
+```
+
+`price`와 `stockCount`는 숫자로 저장하고, `tags`는 `PHOTOCARD,ARTIST_A`처럼 한 칸 안에 comma-separated 값으로 둡니다. AI 서버는 판매 가능 상태와 재고, 가격, 아티스트/그룹/카테고리/태그 조건으로 후보를 5-20개 안쪽으로 줄인 뒤 응답합니다.
+
 ## 프론트엔드 연결
 
 프론트엔드 개발 서버를 로컬 AI 서버와 함께 실행할 때는 WebSocket URL을 환경변수로 넘깁니다.

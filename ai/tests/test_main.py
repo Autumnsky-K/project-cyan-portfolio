@@ -9,7 +9,10 @@ from project_cyan_ai.main import app
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    TsvGoodsCatalogClient,
     extract_max_price,
+    filter_tsv_candidates,
+    parse_goods_catalog_tsv,
 )
 from project_cyan_ai.providers import (
     ClaudeChatResponseProvider,
@@ -240,6 +243,20 @@ class FakeWebSocketGoodsCatalogClient:
         return self.candidates
 
 
+GOODS_CATALOG_TSV = """goodsId\tname\tprice\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
+1001\tPhotocard Set Vol.1\t12000\tArtist A\tGROUP ONE\tPhotocard\tPHOTOCARD,ARTIST_A\tON_SALE\t120\ttrue\ttrue\tArtist A 포토카드 세트입니다.
+1002\tOfficial Lightstick\t45000\tArtist A\tGROUP ONE\tLightstick\tLIGHTSTICK,ARTIST_A\tON_SALE\t35\ttrue\ttrue\tArtist A 공식 응원봉입니다.
+1003\tMini Album [Repackage]\t23000\tArtist B\tGROUP ONE\tAlbum\tALBUM,ARTIST_B\tON_SALE\t200\tfalse\tfalse\tArtist B 리패키지 미니 앨범입니다.
+1004\tLogo Hoodie\t58000\tArtist B\tGROUP ONE\tApparel\tHOODIE,ARTIST_B\tON_SALE\t18\ttrue\tfalse\tArtist B 로고 후디입니다.
+1005\tTour Poster A2\t8000\tArtist C\tGROUP TWO\tPoster\tPOSTER,ARTIST_C\tON_SALE\t80\tfalse\tfalse\tArtist C 투어 포스터입니다.
+1006\tCharacter Plush\t27000\tArtist C\tGROUP TWO\tPlush\tPLUSH,ARTIST_C\tON_SALE\t42\ttrue\tfalse\tArtist C 캐릭터 인형입니다.
+1007\tPhotocard Binder\t15000\tArtist D\tGROUP TWO\tPhotocard\tPHOTOCARD,BINDER\tON_SALE\t60\tfalse\tfalse\t포토카드를 보관하는 바인더입니다.
+1008\tConcept Album\t31000\tArtist D\tGROUP TWO\tAlbum\tALBUM,ARTIST_D\tPRE_ORDER\t100\tfalse\tfalse\tArtist D 콘셉트 앨범입니다.
+1009\tKeyring Charm\t19000\tArtist E\tGROUP THREE\tKeyring\tKEYRING,ARTIST_E\tON_SALE\t70\tfalse\ttrue\t콘서트 키링입니다.
+1010\tSold Out Photocard\t14000\tArtist E\tGROUP THREE\tPhotocard\tPHOTOCARD,ARTIST_E\tON_SALE\t0\tfalse\tfalse\t품절 포토카드입니다.
+"""
+
+
 THREE_RECENT_CANDIDATES = [
     *FakeWebSocketGoodsCatalogClient.candidates,
     {
@@ -359,6 +376,87 @@ def test_http_goods_catalog_client_sends_extracted_max_price(monkeypatch):
     query = parse_qs(urlparse(captured_urls[0]).query)
     assert query["maxPrice"] == ["50000"]
     assert response == []
+
+
+def test_parse_goods_catalog_tsv_normalizes_catalog_fields():
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    assert candidates[0]["goodsId"] == 1001
+    assert candidates[0]["price"] == 12000
+    assert candidates[0]["tags"] == ["PHOTOCARD", "ARTIST_A"]
+    assert candidates[0]["stockCount"] == 120
+    assert candidates[0]["aiPickDefault"] is True
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_goods_ids"),
+    [
+        ("포토카드 찾아줘", [1001, 1007]),
+        ("포토카드는 누구의 상품이 있어?", [1001, 1007]),
+        ("포토카드가 있어?", [1001, 1007]),
+        ("Artist A의 포토카드 있어?", [1001]),
+        ("키링은 누구 거 있어?", [1009]),
+        ("Group One 포토카드", [1001]),
+        ("3만원 이하 포토카드", [1001, 1007]),
+        ("품절 아닌 포토카드", [1001, 1007]),
+        ("Artist A 상품 추천해줘", [1001, 1002]),
+    ],
+)
+def test_filter_tsv_candidates_handles_core_recommendation_requests(
+    text,
+    expected_goods_ids,
+):
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    response = filter_tsv_candidates(text, candidates)
+
+    assert [candidate["goodsId"] for candidate in response] == expected_goods_ids
+    assert all(candidate["salesStatus"] == "ON_SALE" for candidate in response)
+    assert all(candidate["stockCount"] > 0 for candidate in response)
+
+
+def test_filter_tsv_candidates_allows_related_artist_group_as_secondary_results():
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    response = filter_tsv_candidates("Artist A 관련 굿즈 추천해줘", candidates)
+
+    assert [candidate["goodsId"] for candidate in response] == [
+        1001,
+        1002,
+        1004,
+        1003,
+    ]
+    assert response[0]["artistName"] == "Artist A"
+    assert response[1]["artistName"] == "Artist A"
+
+
+def test_tsv_goods_catalog_client_reads_local_snapshot(tmp_path):
+    catalog_path = tmp_path / "goods-catalog-latest.tsv"
+    catalog_path.write_text(GOODS_CATALOG_TSV, encoding="utf-8")
+    client = TsvGoodsCatalogClient(str(catalog_path))
+
+    response = client.search_candidates("Artist A의 포토카드 있어?")
+
+    assert response == [
+        {
+            "goodsId": 1001,
+            "name": "Photocard Set Vol.1",
+            "price": 12000,
+            "imageUrl": None,
+            "tags": ["PHOTOCARD", "ARTIST_A"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 120,
+            "recommendationReason": "artistName, categoryName, description, tags 조건과 일치하는 상품입니다.",
+            "matchedFields": [
+                "artistName",
+                "categoryName",
+                "description",
+                "tags",
+            ],
+        }
+    ]
 
 
 def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
