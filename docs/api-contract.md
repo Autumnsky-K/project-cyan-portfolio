@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.0` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.2` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -432,6 +432,22 @@
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
+- `text`는 HTML이 아닌 plain text로 취급한다. 클라이언트는 HTML 삽입 렌더링을 사용하지 않는다.
+- `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
+- `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
+
+#### [GET] /api/ai/goods-catalog/latest
+- 설명: AI 서버가 최신 TSV 상품 카탈로그 URL을 조회
+- 인증 필요: N
+- 응답:
+  - `catalogUrl`: AI 서버가 다운로드할 TSV URL
+  - `generatedAt`: TSV 생성 시각
+  - `urlExpiresAt`: URL 만료 시각
+  - `itemCount`: TSV 상품 수
+  - `fileSizeBytes`: TSV byte 크기
+  - `storageBucket`: Storage bucket
+  - `storagePath`: Storage object path
+- 상태: [x] additive
 
 #### 초기 구성
 - WebSocket endpoint: /client-ws
@@ -492,6 +508,10 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 하이라이트 | `[ACTION:highlight selector="[data-goods-id='42']"]` | 해당 카드 강조 효과 | `data-goods-id` |
 | 담기 | `[ACTION:addToCart goodsId="42"]` | 장바구니 담기 API 호출 | 장바구니 API |
 
+- ACTION 실행 대상은 숫자 `goodsId` 기반 값만 허용한다.
+  - `navigate.path`: `/goods/{goodsId}`
+  - `highlight.selector`: `[data-goods-id='{goodsId}']` 또는 `[data-goods-id="{goodsId}"]`
+  - `addToCart.goodsId`: 숫자 문자열
 - **스트레치(MVP 아님)**: 감정 표정 전환, STT 음성 입력 — Week 1 계약에서 제외
 
 ---
@@ -537,4 +557,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
+| 2026-06-24 | v0.2.1 | ai | additive | WebSocket plain text 입력 한도와 ACTION 실행 대상 allow-list 보안 규칙 추가 | 강승민 |
+| 2026-06-25 | v0.2.2 | ai/goods | additive | AI 서버가 최신 TSV 상품 카탈로그 URL을 조회하는 `GET /api/ai/goods-catalog/latest` 추가 | 강승민 |
 |  |  |  |  |  |  |

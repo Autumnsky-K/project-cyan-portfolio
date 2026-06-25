@@ -182,7 +182,7 @@ class TsvGoodsCatalogClient:
     def search_candidates(self, text: str) -> list[dict[str, Any]] | None:
         try:
             candidates = self._load_candidates()
-        except (OSError, UnicodeDecodeError, csv.Error):
+        except (OSError, UnicodeDecodeError, csv.Error, ValueError):
             return None
 
         return filter_tsv_candidates(text, candidates, self.candidate_size)
@@ -210,6 +210,46 @@ class TsvGoodsCatalogClient:
 
         with open(self.catalog_url, encoding="utf-8") as catalog_file:
             return catalog_file.read()
+
+
+class MetadataTsvGoodsCatalogClient(TsvGoodsCatalogClient):
+    def __init__(
+        self,
+        metadata_url: str,
+        timeout_seconds: float = GOODS_CATALOG_TIMEOUT_SECONDS,
+        cache_ttl_seconds: int = 300,
+        candidate_size: int = DEFAULT_CANDIDATE_SIZE,
+    ):
+        super().__init__(
+            metadata_url,
+            timeout_seconds=timeout_seconds,
+            cache_ttl_seconds=cache_ttl_seconds,
+            candidate_size=candidate_size,
+        )
+        self.metadata_url = metadata_url
+
+    def _read_catalog(self) -> str:
+        catalog_url = self._read_catalog_url()
+        request = Request(
+            catalog_url,
+            headers={"Accept": "text/tab-separated-values,text/plain,*/*"},
+            method="GET",
+        )
+        with urlopen(request, timeout=self.timeout_seconds) as response:
+            return response.read().decode("utf-8")
+
+    def _read_catalog_url(self) -> str:
+        request = Request(
+            self.metadata_url,
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        with urlopen(request, timeout=self.timeout_seconds) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        catalog_url = payload.get("catalogUrl") if isinstance(payload, dict) else None
+        if not isinstance(catalog_url, str) or not catalog_url.strip():
+            raise ValueError("Catalog metadata response does not include catalogUrl.")
+        return catalog_url
 
 
 class CatalogGroundedChatResponseProvider:

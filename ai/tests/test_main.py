@@ -9,6 +9,7 @@ from project_cyan_ai.main import app
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    MetadataTsvGoodsCatalogClient,
     TsvGoodsCatalogClient,
     extract_max_price,
     filter_tsv_candidates,
@@ -202,6 +203,11 @@ class FakeHttpResponse:
 
     def read(self):
         return json.dumps(self.payload).encode("utf-8")
+
+
+class FakeTextHttpResponse(FakeHttpResponse):
+    def read(self):
+        return self.payload.encode("utf-8")
 
 
 class FakeGoodsCatalogClient:
@@ -457,6 +463,37 @@ def test_tsv_goods_catalog_client_reads_local_snapshot(tmp_path):
             ],
         }
     ]
+
+
+def test_metadata_tsv_goods_catalog_client_reads_catalog_url_from_spring(monkeypatch):
+    captured_urls = []
+
+    def fake_urlopen(request, timeout):
+        captured_urls.append(request.full_url)
+        if request.full_url == "http://backend.test/api/ai/goods-catalog/latest":
+            return FakeHttpResponse(
+                {
+                    "catalogUrl": "https://storage.test/goods-catalog-latest.tsv",
+                    "generatedAt": "2026-06-25T03:00:00Z",
+                    "urlExpiresAt": "2026-07-02T03:00:00Z",
+                    "itemCount": 10,
+                    "storagePath": "goods-catalog-latest.tsv",
+                }
+            )
+        return FakeTextHttpResponse(GOODS_CATALOG_TSV)
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+    client = MetadataTsvGoodsCatalogClient(
+        "http://backend.test/api/ai/goods-catalog/latest"
+    )
+
+    response = client.search_candidates("키링은 누구 거 있어?")
+
+    assert captured_urls == [
+        "http://backend.test/api/ai/goods-catalog/latest",
+        "https://storage.test/goods-catalog-latest.tsv",
+    ]
+    assert [candidate["goodsId"] for candidate in response] == [1009]
 
 
 def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
