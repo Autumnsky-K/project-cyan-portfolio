@@ -488,8 +488,8 @@ button.goods-rating-summary {
 .card-footer-actions {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 76px 40px;
-  width: 122px;
+  grid-template-columns: 64px 64px 40px;
+  width: 180px;
   min-width: 0;
   gap: 6px;
 }
@@ -530,8 +530,8 @@ button.goods-rating-summary {
   }
 
   .card-footer-actions {
-    grid-template-columns: 76px 40px;
-    width: 122px;
+    grid-template-columns: 64px 64px 40px;
+    width: 180px;
   }
 }
 

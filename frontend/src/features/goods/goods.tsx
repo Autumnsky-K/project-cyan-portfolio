@@ -8,6 +8,7 @@ import {
   type PageResponse,
 } from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
+import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
@@ -410,6 +411,7 @@ function GoodsPage() {
           )}
         </section>
       )}
+      <GoodsCartSidePanel />
     </main>
   )
 }

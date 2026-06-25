@@ -8,6 +8,7 @@ import {
   type GoodsSummary,
 } from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
+import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
@@ -249,6 +250,7 @@ function GoodsDetailPage() {
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />
+          <GoodsCartSidePanel />
         </>
       )}
     </main>
