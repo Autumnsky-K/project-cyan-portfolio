@@ -1507,6 +1507,17 @@ button.admin-primary {
   font: inherit;
 }
 
+.admin-ai-save-actions {
+  padding-top: 0;
+}
+
+.admin-ai-sheet-note {
+  margin: 0 12px 12px;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .admin-ai-sheet-preview {
   max-width: 100%;
   max-height: 260px;

@@ -27,6 +27,9 @@
     <div class="admin-notice"
          th:if="${catalogExportUrl}"
          th:text="${catalogExportUrl}">https://example.com/goods-catalog-latest.tsv</div>
+    <div class="admin-notice admin-notice-success"
+         th:if="${hookPolicyMessage}"
+         th:text="${hookPolicyMessage}">AI hook 정책을 저장했습니다.</div>
 
     <section class="admin-stats" aria-label="AI 챗봇 상태">
       <article>
@@ -248,14 +251,24 @@
                 <input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="hook">
               </label>
               <button type="button" data-ai-export="hook">TSV 내보내기</button>
-              <button type="button" data-ai-reset="hook">샘플 복원</button>
+              <button type="button" data-ai-reset="hook">샘플 불러오기</button>
             </div>
+            <p class="admin-ai-sheet-note"
+               th:if="${!hasHookPolicies}">
+              저장된 Hook 정책이 없습니다. 샘플을 불러오거나 TSV를 입력한 뒤 저장해야 AI filter에 적용됩니다.
+            </p>
+            <form method="post" th:action="@{/admin/ai/hooks}" data-ai-hook-form>
+              <input type="hidden" name="hookSheetText" data-ai-hook-hidden>
+              <div class="admin-ai-sheet-actions admin-ai-save-actions">
+                <button class="admin-primary-button" type="submit">Hook 정책 저장</button>
+              </div>
+            </form>
             <div class="admin-ai-sheet-preview" aria-label="Input Output Hook 엑셀 미리보기">
               <table data-ai-sheet-preview="hook"></table>
             </div>
             <details class="admin-ai-raw-editor" open>
               <summary>원본 TSV 편집</summary>
-              <textarea spellcheck="false" data-ai-sheet-source="hook"></textarea>
+              <textarea spellcheck="false" data-ai-sheet-source="hook" th:text="${hookSheetText}"></textarea>
             </details>
           </details>
 

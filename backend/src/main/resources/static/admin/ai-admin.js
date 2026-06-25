@@ -28,12 +28,12 @@ const sampleSheets = {
     title: 'Input Output Hook 시트',
     text: [
       'hook\tcheck\tthreshold\taction\tmessage',
-      'input\tmaxLength\t500\tstop\t입력이 너무 길면 짧게 다시 요청',
-      'input\tspecialCharRatio\t30%\treview\t특수문자 반복 여부 확인',
-      'input\tnumberRatio\t45%\treview\t주문번호/가격 맥락인지 확인',
-      'input\tenglishRatio\t70%\treview\t영문 상품명 또는 비정상 입력 구분',
-      'output\tforbiddenWords\t관리자 목록\trewrite\t말풍선 출력 전 교체',
-      'output\tactionScope\t3 actions only\tfilter\t허용 액션만 남김',
+      'input\tmaxLength\t500\tstop\t입력이 너무 길어요. 500자 이하로 다시 입력해주세요.',
+      'input\tspecialCharRatio\t30%\treview\t특수문자가 많아요. 상품명이나 요청 내용을 다시 확인해주세요.',
+      'input\tnumberRatio\t45%\treview\t숫자가 많아요. 주문번호나 가격 문의인지 다시 알려주세요.',
+      'input\tenglishRatio\t70%\treview\t영문 입력이 많아요. 상품명인지 다시 확인해주세요.',
+      'output\tforbiddenWords\t관리자 목록\trewrite\t안내가 부적절해 다시 정리했어요.',
+      'output\tactionScope\tnavigate,highlight,addToCart\tfilter\t허용된 화면 동작만 실행할게요.',
     ].join('\n'),
   },
   scenario: {
@@ -116,6 +116,28 @@ function setSheet(sheetKey, textOverride) {
   renderSheetPreview(sheetKey)
 }
 
+function initializeSheet(sheetKey) {
+  const existingSource = getSheetSource(sheetKey)
+  const existingText = existingSource?.value?.trim()
+  if (existingText) {
+    setSheet(sheetKey, existingSource.value)
+    return
+  }
+  if (sheetKey === 'hook') {
+    setSheet(sheetKey, '')
+    return
+  }
+  setSheet(sheetKey)
+}
+
+function syncHookFormValue() {
+  const hookSource = getSheetSource('hook')
+  const hookHidden = document.querySelector('[data-ai-hook-hidden]')
+  if (hookSource && hookHidden) {
+    hookHidden.value = hookSource.value
+  }
+}
+
 function exportSheet(sheetKey) {
   const sheetSource = getSheetSource(sheetKey)
   if (!sheetSource) {
@@ -150,14 +172,21 @@ function syncSummaryButton(detailsElement) {
 
 if (aiAdminRoot) {
   Object.keys(sampleSheets).forEach((sheetKey) => {
-    setSheet(sheetKey)
+    initializeSheet(sheetKey)
   })
 
   document.querySelectorAll('[data-ai-sheet-source]').forEach((sheetSource) => {
     sheetSource.addEventListener('input', () => {
       renderSheetPreview(sheetSource.dataset.aiSheetSource)
+      syncHookFormValue()
     })
   })
+
+  document.querySelector('[data-ai-hook-form]')?.addEventListener('submit', () => {
+    syncHookFormValue()
+  })
+
+  syncHookFormValue()
 
   document.querySelectorAll('[data-ai-export]').forEach((button) => {
     button.addEventListener('click', () => {
