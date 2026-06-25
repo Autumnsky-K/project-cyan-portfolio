@@ -754,6 +754,14 @@ def test_client_text_input_accepts_optional_cart_context():
     }
 
 
+def test_client_text_input_accepts_optional_session_id():
+    message = ClientTextInput.model_validate(
+        {"type": "text-input", "text": "안녕", "sessionId": 42}
+    )
+
+    assert message.sessionId == 42
+
+
 def test_full_text_message_preserves_server_contract_shape():
     message = FullTextMessage(text="안녕")
 

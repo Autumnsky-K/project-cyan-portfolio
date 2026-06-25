@@ -59,6 +59,7 @@ class ClientTextInput(BaseModel):
 
     type: Literal["text-input"] = CLIENT_TEXT_INPUT_TYPE
     text: str = Field(min_length=1, max_length=CLIENT_TEXT_MAX_LENGTH)
+    sessionId: int | None = Field(default=None, ge=1)
     context: "ClientContext | None" = None
 
     @field_validator("text")
