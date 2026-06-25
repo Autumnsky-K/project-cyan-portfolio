@@ -1,5 +1,7 @@
 package com.projectcyan.checkout;
 
+import com.projectcyan.member.auth.AuthenticatedMember;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +18,10 @@ public class CheckoutController {
 	}
 
 	@PostMapping("/prepare")
-	public CheckoutPrepareResponse prepare(@RequestBody CheckoutPrepareRequest request) {
-		return checkoutService.prepare(request);
+	public CheckoutPrepareResponse prepare(
+		@RequestBody CheckoutPrepareRequest request,
+		AuthenticatedMember currentMember
+	) {
+		return checkoutService.prepare(currentMember.memberUuid(), request);
 	}
 }

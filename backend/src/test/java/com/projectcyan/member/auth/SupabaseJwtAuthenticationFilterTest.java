@@ -61,9 +61,39 @@ class SupabaseJwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void protectsCheckoutPrepareRequest() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/checkout/prepare");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(response.getContentAsString()).contains("AUTH_UNAUTHORIZED");
+		verifyNoInteractions(jwtVerifier, memberRepository, filterChain);
+	}
+
+	@Test
 	void rejectsValidTokenWithoutMemberRow() throws Exception {
 		UUID userId = UUID.randomUUID();
 		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/orders");
+		request.addHeader("Authorization", "Bearer valid-token");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+		when(jwtVerifier.verify("valid-token")).thenReturn(new VerifiedSupabaseJwt(userId));
+		when(memberRepository.findByMemberUuid(userId)).thenReturn(Optional.empty());
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(403);
+		assertThat(response.getContentAsString()).contains("MEMBER_NOT_REGISTERED");
+		verifyNoInteractions(filterChain);
+	}
+
+	@Test
+	void rejectsCheckoutPrepareWhenTokenMemberIsMissing() throws Exception {
+		UUID userId = UUID.randomUUID();
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/checkout/prepare");
 		request.addHeader("Authorization", "Bearer valid-token");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		FilterChain filterChain = mock(FilterChain.class);

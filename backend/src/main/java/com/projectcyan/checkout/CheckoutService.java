@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,9 +62,9 @@ public class CheckoutService {
 	}
 
 	@Transactional
-	public CheckoutPrepareResponse prepare(CheckoutPrepareRequest request) {
+	public CheckoutPrepareResponse prepare(UUID memberUuid, CheckoutPrepareRequest request) {
 		try {
-			return prepareInternal(request);
+			return prepareInternal(memberUuid, request);
 		} catch (ApiErrorException exception) {
 			throw exception;
 		} catch (RuntimeException exception) {
@@ -75,15 +76,15 @@ public class CheckoutService {
 		}
 	}
 
-	private CheckoutPrepareResponse prepareInternal(CheckoutPrepareRequest request) {
-		if (request == null || request.memberId() == null) {
+	private CheckoutPrepareResponse prepareInternal(UUID memberUuid, CheckoutPrepareRequest request) {
+		if (memberUuid == null || request == null) {
 			throw error("MEMBER_NOT_FOUND", "Member not found.", HttpStatus.NOT_FOUND);
 		}
 		if (!"TOSS".equalsIgnoreCase(String.valueOf(request.paymentProvider()))) {
 			throw error("CHECKOUT_PREPARE_FAILED", "Unsupported payment provider.", HttpStatus.BAD_REQUEST);
 		}
 
-		Member member = memberRepository.findById(request.memberId())
+		Member member = memberRepository.findByMemberUuid(memberUuid)
 			.orElseThrow(() -> error("MEMBER_NOT_FOUND", "Member not found.", HttpStatus.NOT_FOUND));
 		Map<Long, Integer> requestedItems = normalizeItems(request.items());
 		validateShippingAddress(request.shippingAddress());

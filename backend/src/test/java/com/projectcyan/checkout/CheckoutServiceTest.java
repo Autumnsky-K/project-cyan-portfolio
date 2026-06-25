@@ -83,14 +83,14 @@ class CheckoutServiceTest {
 	}
 
 	@Test
-	void preparesCheckout() {
+	void preparesCheckoutWithAuthenticatedMemberUuid() {
 		Member member = member();
 		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
 		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 10)));
 
-		CheckoutPrepareResponse response = checkoutService.prepare(request(item(1001L, 1)));
+		CheckoutPrepareResponse response = checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 1)));
 
 		assertThat(response.orderId()).isEqualTo(123L);
 		assertThat(response.paymentId()).isEqualTo(456L);
@@ -111,68 +111,88 @@ class CheckoutServiceTest {
 		assertThat(ReflectionTestUtils.getField(savedPaymentAttempt, "tid")).isNull();
 		assertThat(ReflectionTestUtils.getField(savedPaymentAttempt, "partnerOrderId")).isNull();
 		assertThat(ReflectionTestUtils.getField(savedPaymentAttempt, "partnerUserId")).isNull();
+		verify(memberRepository).findByMemberUuid(member.getMemberUuid());
+		verify(memberRepository, never()).findById(any());
+	}
+
+	@Test
+	void requestBodyCannotSelectAnotherMember() {
+		assertThat(CheckoutPrepareRequest.class.getRecordComponents())
+			.extracting(java.lang.reflect.RecordComponent::getName)
+			.doesNotContain("memberId");
 	}
 
 	@Test
 	void rejectsNullItems() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		Member member = member();
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 
-		assertError("INVALID_ORDER_ITEMS", () -> checkoutService.prepare(requestWithItems(null)));
+		assertError("INVALID_ORDER_ITEMS", () -> checkoutService.prepare(member.getMemberUuid(), requestWithItems(null)));
 	}
 
 	@Test
 	void rejectsEmptyItems() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		Member member = member();
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 
-		assertError("INVALID_ORDER_ITEMS", () -> checkoutService.prepare(requestWithItems(List.of())));
+		assertError("INVALID_ORDER_ITEMS", () -> checkoutService.prepare(member.getMemberUuid(), requestWithItems(List.of())));
 	}
 
 	@Test
-	void rejectsMissingMember() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.empty());
+	void rejectsMissingAuthenticatedMember() {
+		UUID memberUuid = UUID.randomUUID();
+		when(memberRepository.findByMemberUuid(memberUuid)).thenReturn(Optional.empty());
 
-		assertError("MEMBER_NOT_FOUND", () -> checkoutService.prepare(request(item(1001L, 1))));
+		assertError("MEMBER_NOT_FOUND", () -> checkoutService.prepare(memberUuid, request(item(1001L, 1))));
 	}
 
 	@Test
 	void rejectsMissingGoods() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		Member member = member();
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(999L))).thenReturn(List.of());
 
-		assertError("GOODS_NOT_FOUND", () -> checkoutService.prepare(request(item(999L, 1))));
+		assertError("GOODS_NOT_FOUND", () -> checkoutService.prepare(member.getMemberUuid(), request(item(999L, 1))));
 	}
 
 	@Test
 	void rejectsStoppedGoods() {
+		Member member = member();
 		Goods goods = goods(1001L, "Hidden Goods", 10000, "HIDDEN");
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
 
-		assertError("GOODS_NOT_SALE", () -> checkoutService.prepare(request(item(1001L, 1))));
+		assertError("GOODS_NOT_SALE", () -> checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 1))));
 	}
 
 	@Test
 	void rejectsZeroQuantity() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		Member member = member();
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 
-		assertError("INVALID_QUANTITY", () -> checkoutService.prepare(request(item(1001L, 0))));
+		assertError("INVALID_QUANTITY", () -> checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 0))));
 	}
 
 	@Test
 	void rejectsMaxPurchaseQuantityExceeded() {
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		Member member = member();
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 
-		assertError("MAX_PURCHASE_QUANTITY_EXCEEDED", () -> checkoutService.prepare(request(item(1001L, 100))));
+		assertError(
+			"MAX_PURCHASE_QUANTITY_EXCEEDED",
+			() -> checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 100)))
+		);
 	}
 
 	@Test
 	void rejectsOutOfStock() {
+		Member member = member();
 		Goods goods = goods(1001L, "Low Stock Goods", 10000, "ON_SALE");
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
 		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 1)));
 
-		assertError("OUT_OF_STOCK", () -> checkoutService.prepare(request(item(1001L, 2))));
+		assertError("OUT_OF_STOCK", () -> checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 2))));
 	}
 
 	@Test
@@ -180,28 +200,35 @@ class CheckoutServiceTest {
 		Member member = member();
 		Goods goodsA = goods(1001L, "Goods A", 10000, "ON_SALE");
 		Goods goodsB = goods(1002L, "Goods B", 7500, "ON_SALE");
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(1001L, 1002L))).thenReturn(List.of(goodsA, goodsB));
 		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L, 1002L))).thenReturn(List.of(
 			stock(goodsA, 10),
 			stock(goodsB, 10)
 		));
 
-		CheckoutPrepareResponse response = checkoutService.prepare(request(item(1001L, 2), item(1002L, 3)));
+		CheckoutPrepareResponse response = checkoutService.prepare(
+			member.getMemberUuid(),
+			request(item(1001L, 2), item(1002L, 3))
+		);
 
 		assertThat(response.amount()).isEqualByComparingTo(BigDecimal.valueOf(42500));
-		assertThat(response.orderName()).isEqualTo("Goods A 외 1건");
+		assertThat(response.orderName()).startsWith("Goods A");
 	}
 
 	@Test
 	void wrapsUnexpectedFailureAndDoesNotContinueSaving() {
+		Member member = member();
 		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
-		when(memberRepository.findById(1L)).thenReturn(Optional.of(member()));
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
 		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
 		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 10)));
 		when(storeOrderRepository.save(any(StoreOrder.class))).thenThrow(new IllegalStateException("boom"));
 
-		assertError("CHECKOUT_PREPARE_FAILED", () -> checkoutService.prepare(request(item(1001L, 1))));
+		assertError(
+			"CHECKOUT_PREPARE_FAILED",
+			() -> checkoutService.prepare(member.getMemberUuid(), request(item(1001L, 1)))
+		);
 		verify(orderItemRepository, never()).saveAll(any());
 		verify(paymentRepository, never()).save(any());
 		verify(paymentAttemptRepository, never()).save(any());
@@ -210,7 +237,7 @@ class CheckoutServiceTest {
 	@Test
 	void prepareIsTransactional() throws NoSuchMethodException {
 		Transactional transactional = CheckoutService.class
-			.getMethod("prepare", CheckoutPrepareRequest.class)
+			.getMethod("prepare", UUID.class, CheckoutPrepareRequest.class)
 			.getAnnotation(Transactional.class);
 
 		assertThat(transactional).isNotNull();
@@ -222,7 +249,6 @@ class CheckoutServiceTest {
 
 	private CheckoutPrepareRequest requestWithItems(List<CheckoutItemRequest> items) {
 		return new CheckoutPrepareRequest(
-			1L,
 			items,
 			new ShippingAddressRequest(
 				"Hong Gil-dong",
