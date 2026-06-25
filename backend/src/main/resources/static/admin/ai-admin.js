@@ -588,7 +588,13 @@ if (aiAdminRoot) {
     if (!removeButton) {
       return
     }
-    hookPolicies.splice(Number(removeButton.dataset.aiHookRemove), 1)
+    const policyIndex = Number(removeButton.dataset.aiHookRemove)
+    const policy = hookPolicies[policyIndex]
+    const policyName = policy ? `${policy.hook}/${policy.check}` : '선택한 정책'
+    if (!window.confirm(`${policyName} 정책을 삭제할까요? 저장해야 실제 정책에 반영됩니다.`)) {
+      return
+    }
+    hookPolicies.splice(policyIndex, 1)
     renderHookPolicyTable()
     syncHookFormValue()
   })
