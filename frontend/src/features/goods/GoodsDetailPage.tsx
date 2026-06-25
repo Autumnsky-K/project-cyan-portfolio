@@ -156,6 +156,7 @@ function GoodsDetailPage() {
   )
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
+  const descriptionHtml = goods?.description?.trim()
 
   async function handleShare() {
     try {
@@ -221,7 +222,14 @@ function GoodsDetailPage() {
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
                     <h2>{goods.name}</h2>
-                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
+                    {descriptionHtml ? (
+                      <div
+                        className="detail-description"
+                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                      />
+                    ) : (
+                      <p>상품 소개가 준비 중입니다.</p>
+                    )}
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
