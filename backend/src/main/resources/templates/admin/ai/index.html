@@ -246,30 +246,62 @@
               <b>접기</b>
             </summary>
             <div class="admin-ai-sheet-actions">
-              <label class="admin-ai-file-button">
-                <span>파일 불러오기</span>
-                <input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="hook">
-              </label>
-              <button type="button" data-ai-export="hook">TSV 내보내기</button>
+              <button type="button" data-ai-hook-add>정책 추가</button>
               <button type="button" data-ai-reset="hook">샘플 불러오기</button>
+              <form method="post" th:action="@{/admin/ai/hooks}" data-ai-hook-form>
+                <input type="hidden" name="hookSheetText" data-ai-hook-hidden>
+                <button class="admin-primary-button" type="submit">Hook 정책 저장</button>
+              </form>
             </div>
             <p class="admin-ai-sheet-note"
                th:if="${!hasHookPolicies}">
-              저장된 Hook 정책이 없습니다. 샘플을 불러오거나 TSV를 입력한 뒤 저장해야 AI filter에 적용됩니다.
+              저장된 Hook 정책이 없습니다. 샘플을 불러온 뒤 저장하거나 정책을 직접 추가해야 AI filter에 적용됩니다.
             </p>
-            <form method="post" th:action="@{/admin/ai/hooks}" data-ai-hook-form>
-              <input type="hidden" name="hookSheetText" data-ai-hook-hidden>
-              <div class="admin-ai-sheet-actions admin-ai-save-actions">
-                <button class="admin-primary-button" type="submit">Hook 정책 저장</button>
-              </div>
-            </form>
-            <div class="admin-ai-sheet-preview" aria-label="Input Output Hook 엑셀 미리보기">
-              <table data-ai-sheet-preview="hook"></table>
+            <div class="admin-ai-hook-table-wrap" aria-label="Input Output Hook 정책 테이블">
+              <table class="admin-ai-hook-table">
+                <colgroup>
+                  <col class="admin-ai-hook-col-hook">
+                  <col class="admin-ai-hook-col-check">
+                  <col class="admin-ai-hook-col-threshold">
+                  <col class="admin-ai-hook-col-action">
+                  <col class="admin-ai-hook-col-message">
+                  <col class="admin-ai-hook-col-manage">
+                </colgroup>
+                <thead>
+                <tr>
+                  <th>hook</th>
+                  <th>check</th>
+                  <th>threshold</th>
+                  <th>action</th>
+                  <th>message</th>
+                  <th>관리</th>
+                </tr>
+                </thead>
+                <tbody data-ai-hook-policy-table></tbody>
+              </table>
             </div>
-            <details class="admin-ai-raw-editor" open>
-              <summary>원본 TSV 편집</summary>
-              <textarea spellcheck="false" data-ai-sheet-source="hook" th:text="${hookSheetText}"></textarea>
-            </details>
+            <textarea hidden data-ai-sheet-source="hook" th:text="${hookSheetText}"></textarea>
+            <div class="admin-ai-hook-test-grid" aria-label="Hook 정책 테스트">
+              <section>
+                <h4>입력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-input
+                          placeholder="사용자 입력 예시를 넣어보세요."></textarea>
+                <button type="button" data-ai-hook-test-run="input">테스트 입력</button>
+                <output data-ai-hook-test-result="input">아직 테스트하지 않았습니다.</output>
+              </section>
+              <section>
+                <h4>출력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-output
+                          placeholder="챗봇 출력 예시를 넣어보세요."></textarea>
+                <div class="admin-ai-hook-checkboxes">
+                  <label><input type="checkbox" value="navigate" data-ai-hook-test-action checked><span>navigate</span></label>
+                  <label><input type="checkbox" value="highlight" data-ai-hook-test-action checked><span>highlight</span></label>
+                  <label><input type="checkbox" value="addToCart" data-ai-hook-test-action checked><span>addToCart</span></label>
+                </div>
+                <button type="button" data-ai-hook-test-run="output">테스트 출력</button>
+                <output data-ai-hook-test-result="output">아직 테스트하지 않았습니다.</output>
+              </section>
+            </div>
           </details>
 
           <details class="admin-ai-sheet-section" open data-ai-sheet-section="scenario">
