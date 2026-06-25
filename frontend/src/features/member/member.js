@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../api/supabaseClient'
+import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 
@@ -249,27 +250,33 @@ export async function exchangeAuthCodeForSession(code) {
 export async function signupMember(form) {
   checkSupabaseConfig()
 
-  // 일반 회원가입도 Supabase Auth를 거쳐 member_uuid를 auth.users.id와 맞춥니다.
-  const { data, error } = await supabase.auth.signUp({
-    email: form.email,
-    password: form.password,
-    options: {
-      data: {
-        name: form.name,
-        phone: form.phone,
-      },
-    },
+  const response = await apiFetch('/members/signup', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: form.email,
+      password: form.password,
+      name: form.name,
+      phone: form.phone,
+      address: form.address,
+      agreements: form.agreements,
+    }),
   })
 
-  if (error) {
-    throw new Error(error.message)
+  const member = await parseApiResponse(response, '회원가입에 실패했습니다.')
+  const { error: loginError } = await supabase.auth.signInWithPassword({
+    email: form.email,
+    password: form.password,
+  })
+
+  if (loginError) {
+    throw new Error(`회원가입은 완료됐지만 로그인에 실패했습니다. ${loginError.message}`)
   }
 
   return {
     member: {
-      name: form.name,
-      email: form.email,
-      userId: data.user?.id,
+      name: member.name,
+      email: member.email,
+      userId: member.userId,
     },
   }
 }
@@ -336,26 +343,26 @@ export async function getCurrentMember() {
     return null
   }
 
+  const memberProfile = await parseApiResponse(
+    await apiFetch('/members/me'),
+    '회원 정보를 불러오지 못했습니다.',
+  )
   const role =
     data.user.app_metadata?.role ??
-    data.user.user_metadata?.role ??
-    data.user.user_metadata?.memberRole ??
     null
 
   return {
     userId: data.user.id,
-    memberId:
-      data.user.app_metadata?.memberId ??
-      data.user.user_metadata?.memberId ??
-      data.user.user_metadata?.member_id,
-    email: data.user.email,
+    memberId: memberProfile?.memberId ?? null,
+    memberUuid: memberProfile?.memberUuid ?? data.user.id,
+    email: memberProfile?.email ?? data.user.email,
     role,
     isAdmin:
       role === 'ADMIN' ||
       role === 'ROLE_ADMIN' ||
-      data.user.app_metadata?.isAdmin === true ||
-      data.user.user_metadata?.isAdmin === true,
+      data.user.app_metadata?.isAdmin === true,
     name:
+      memberProfile?.name ??
       data.user.user_metadata?.name ??
       data.user.user_metadata?.full_name ??
       data.user.user_metadata?.nickname ??

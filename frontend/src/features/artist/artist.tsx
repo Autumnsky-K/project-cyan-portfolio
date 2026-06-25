@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import CartNavLink from '../cart/CartNavLink'
 
 import { fetchCmsArtists, fetchCmsPage, type CmsArtistProfile, type CmsPage } from '../../api/cms'
 import { applyPreviewTheme, previewTypographyStyle } from '../theme/previewTheme'
@@ -427,7 +428,7 @@ function ArtistPage() {
           Artists
         </Link>
         <Link to="/goods">Goods</Link>
-        <Link to="/cart">Cart</Link>
+        <CartNavLink />
       </nav>
 
       <nav className="artist-pager" aria-label="Artist pages">

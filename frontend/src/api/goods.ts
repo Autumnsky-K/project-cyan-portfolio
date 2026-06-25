@@ -1,3 +1,9 @@
+import {
+  apiFetch,
+  hasSpringApiSession,
+  parseApiResponse,
+} from '../shared/api/springApiClient'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin}/api`
 
 export type GoodsSummary = {
@@ -19,58 +25,20 @@ export type GoodsDetail = GoodsSummary & {
   description?: string | null
   artistId?: number | null
   stockCount?: number | null
-  saleType?: string | null
-  saleStartAt?: string | null
-  saleEndAt?: string | null
   purchaseState?: string | null
   purchaseMessage?: string | null
-  shipping?: GoodsShipping | null
-  optionGroups?: GoodsOptionGroup[]
-  variants?: GoodsVariant[]
-  notices?: GoodsNotices | null
-}
-
-export type GoodsShipping = {
-  fee: number
-  carrier: string
-  scope: string
-  note: string
-}
-
-export type GoodsOptionValue = {
-  optionValueId: number
-  name: string
-}
-
-export type GoodsOptionGroup = {
-  optionGroupId: number
-  key: string
-  name: string
-  values: GoodsOptionValue[]
-}
-
-export type GoodsVariant = {
-  variantId: number
-  sku: string
-  additionalPrice: number
-  stockCount: number
-  active: boolean
-  selections: Record<string, string>
-}
-
-export type GoodsNotices = {
-  intro: string
-  cancel: string
-  delivery: string
 }
 
 export type GoodsReview = {
   reviewId: number
+  memberId?: number | null
   rating: number
   authorName: string
   optionLabel?: string | null
   content: string
   createdAt: string
+  updatedAt?: string | null
+  ownedByCurrentMember?: boolean | null
 }
 
 export type GoodsReviewSummary = {
@@ -111,6 +79,7 @@ export type GoodsQueryParams = {
   categoryIds?: string
   artistIds?: string
   tags?: string
+  goodsIds?: string
 }
 
 type FetchOptions = RequestInit
@@ -149,6 +118,30 @@ export async function fetchGoodsDetail(goodsId: string | number | undefined, opt
   }
 
   return response.json()
+}
+
+export async function recordGoodsView(goodsId: string | number): Promise<void> {
+  if (!(await hasSpringApiSession())) {
+    return
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/views`, { method: 'POST' })
+  await parseApiResponse(response, 'Failed to record goods view.')
+}
+
+export async function fetchFavoriteGoods(): Promise<GoodsSummary[]> {
+  const response = await apiFetch('/goods/favorites')
+  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load favorite goods.') ?? []
+}
+
+export async function addGoodsFavorite(goodsId: string | number): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'POST' })
+  await parseApiResponse(response, 'Failed to add favorite goods.')
+}
+
+export async function removeGoodsFavorite(goodsId: string | number): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'DELETE' })
+  await parseApiResponse(response, 'Failed to remove favorite goods.')
 }
 
 export async function fetchRelatedGoods(
@@ -198,6 +191,46 @@ export async function fetchGoodsReviewSummary(
   }
 
   return response.json()
+}
+
+export async function fetchMyGoodsReview(goodsId: string | number | undefined): Promise<GoodsReview | null> {
+  if (!(await hasSpringApiSession())) {
+    return null
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/reviews/my`)
+  return await parseApiResponse<GoodsReview>(response, 'Failed to load my review.')
+}
+
+export async function createGoodsReview(
+  goodsId: string | number,
+  payload: { rating: number; content: string; optionLabel?: string | null },
+): Promise<GoodsReview> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return await parseApiResponse<GoodsReview>(response, 'Failed to create review.') as GoodsReview
+}
+
+export async function updateGoodsReview(
+  goodsId: string | number,
+  reviewId: string | number,
+  payload: { rating: number; content: string; optionLabel?: string | null },
+): Promise<GoodsReview> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return await parseApiResponse<GoodsReview>(response, 'Failed to update review.') as GoodsReview
+}
+
+export async function deleteGoodsReview(
+  goodsId: string | number,
+  reviewId: string | number,
+): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, { method: 'DELETE' })
+  await parseApiResponse(response, 'Failed to delete review.')
 }
 
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {

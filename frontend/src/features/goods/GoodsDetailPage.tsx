@@ -1,25 +1,29 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchGoodsDetail,
   fetchRelatedGoods,
+  recordGoodsView,
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
+import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
+import { useGoodsFavorites } from './useGoodsFavorites'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
-type DetailTab = 'intro' | 'notice' | 'reviews'
+type DetailTab = 'intro' | 'reviews'
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const [goods, setGoods] = useState<GoodsDetail | null>(null)
   const [relatedGoods, setRelatedGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<DetailStatus>('loading')
@@ -29,6 +33,24 @@ function GoodsDetailPage() {
   const shareFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
+  const {
+    isFavorite,
+    toggleFavorite,
+  } = useGoodsFavorites()
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+
+  const navigateToLogin = useCallback(() => {
+    window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
+    navigate('/login', { state: { from: loginReturnTo } })
+  }, [loginReturnTo, navigate])
+
+  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+    await toggleFavorite(targetGoodsId)
+  }, [navigateToLogin, toggleFavorite])
 
   useLayoutEffect(() => {
     const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
@@ -89,6 +111,7 @@ function GoodsDetailPage() {
         const detail = await fetchGoodsDetail(goodsId, { signal: controller.signal })
         setGoods(detail)
         setStatus('data')
+        void recordGoodsView(detail.goodsId).catch(() => undefined)
       } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === 'AbortError') return
         setError(loadError instanceof Error ? loadError.message : '상품 정보를 불러오지 못했습니다.')
@@ -190,9 +213,6 @@ function GoodsDetailPage() {
                   <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
                     상품 소개
                   </button>
-                  <button aria-selected={activeTab === 'notice'} role="tab" type="button" onClick={() => setActiveTab('notice')}>
-                    안내 사항
-                  </button>
                   <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
                     리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
                   </button>
@@ -200,7 +220,7 @@ function GoodsDetailPage() {
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
                     <h2>{goods.name}</h2>
-                    <p>{goods.description || goods.notices?.intro || '상품 소개가 준비 중입니다.'}</p>
+                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
@@ -210,12 +230,6 @@ function GoodsDetailPage() {
                         />
                       )}
                     </div>
-                  </div>
-                ) : activeTab === 'notice' ? (
-                  <div className="detail-tab-panel notice-list" role="tabpanel">
-                    <article><h2>배송 안내</h2><p>{goods.notices?.delivery}</p></article>
-                    <article><h2>취소·변경 안내</h2><p>{goods.notices?.cancel}</p></article>
-                    <article><h2>배송 범위</h2><p>{goods.shipping?.note}</p></article>
                   </div>
                 ) : (
                   <div className="detail-tab-panel" role="tabpanel">
@@ -229,6 +243,8 @@ function GoodsDetailPage() {
               key={goods.goodsId}
               goods={goods}
               onReviewClick={() => setActiveTab('reviews')}
+              isFavorite={isFavorite(goods.goodsId)}
+              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
             />
           </section>
 

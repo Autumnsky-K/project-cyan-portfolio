@@ -39,11 +39,9 @@ import {
   normalizeProduct,
 } from '../utils/storeUtils'
 
-const DEFAULT_MEMBER_ID = import.meta.env.VITE_DEV_MEMBER_ID ?? ''
-
 function normalizeMemberId(value) {
   const memberId = String(value ?? '').trim()
-  return /^\d+$/.test(memberId) ? Number(memberId) : memberId
+  return /^\d+$/.test(memberId) ? Number(memberId) : null
 }
 
 function markLocalDevOrders(orders) {
@@ -85,11 +83,15 @@ async function fetchCartOrders() {
 export function useStoreFlow(options = {}) {
   const {
     allowLocalFallback = false,
-    defaultMemberId = DEFAULT_MEMBER_ID,
+    defaultMemberId = null,
     fetchOrderHistory = false,
   } = options
   const {
     items: sharedCartItems,
+    status: cartStatus,
+    error: cartError,
+    isSignedIn: isCartSignedIn,
+    hasBlockingIssue: hasBlockingCartIssue,
     addCartItem,
     updateCartItemQuantity,
     removeCartItem,
@@ -102,7 +104,7 @@ export function useStoreFlow(options = {}) {
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState({
-    memberId: defaultMemberId || DEFAULT_MEMBER_ID,
+    memberId: defaultMemberId == null ? '' : String(defaultMemberId),
     name: '',
     email: '',
     phone: '',
@@ -125,13 +127,17 @@ export function useStoreFlow(options = {}) {
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
 
   useEffect(() => {
-    if (!defaultMemberId) return
+    if (!defaultMemberId) return undefined
 
-    setCheckoutForm((currentForm) =>
-      currentForm.memberId
-        ? currentForm
-        : { ...currentForm, memberId: defaultMemberId },
-    )
+    const timerId = window.setTimeout(() => {
+      setCheckoutForm((currentForm) =>
+        currentForm.memberId
+          ? currentForm
+          : { ...currentForm, memberId: String(defaultMemberId) },
+      )
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
   }, [defaultMemberId])
 
   const cartItems = useMemo(
@@ -144,11 +150,17 @@ export function useStoreFlow(options = {}) {
               String(target.goodsId) === String(item.goodsId),
           )
           if (product) {
-            return { ...product, quantity: item.quantity }
+            return {
+              ...product,
+              cartIssue: item.cartIssue,
+              cartItemKey: item.cartItemKey,
+              quantity: item.quantity,
+            }
           }
 
           return {
             id: String(item.goodsId),
+            cartItemKey: item.cartItemKey,
             goodsId: item.goodsId,
             name: item.name,
             artist: item.artistName,
@@ -156,6 +168,7 @@ export function useStoreFlow(options = {}) {
             image: item.imageUrl || '',
             price: item.price,
             quantity: item.quantity,
+            cartIssue: item.cartIssue,
           }
         })
         .filter(Boolean),
@@ -296,45 +309,61 @@ export function useStoreFlow(options = {}) {
     clearPendingPayment()
   }, [pendingPayment])
 
-  function addToCart(productId) {
+  async function addToCart(productId) {
     const product = storeProducts.find((item) => String(item.id) === String(productId))
 
     if (product) {
-      addCartItem({
-        goodsId: product.goodsId ?? product.id,
-        name: product.name,
-        price: product.price,
-        imageUrl: product.image,
-        artistName: product.artist,
-        categoryName: product.description,
-        tags: [],
-      })
+      try {
+        await addCartItem({
+          goodsId: product.goodsId ?? product.id,
+          name: product.name,
+          price: product.price,
+          imageUrl: product.image,
+          artistName: product.artist,
+          categoryName: product.description,
+          tags: [],
+        })
+        setMessage('')
+      } catch (error) {
+        setMessage(error.message || 'Failed to add cart item.')
+      }
     }
 
     setErrors([])
-    setMessage('')
     setPaymentStatus(ORDER_STATUS.CREATED)
     setCompletedOrder(null)
   }
 
-  function increaseQuantity(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+  async function increaseQuantity(productId) {
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.goodsId ?? item.id, item.quantity + 1)
+      try {
+        await updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
+      } catch (error) {
+        setMessage(error.message || 'Failed to update cart item.')
+      }
     }
   }
 
-  function decreaseQuantity(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+  async function decreaseQuantity(productId) {
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      updateCartItemQuantity(item.goodsId ?? item.id, item.quantity - 1)
+      try {
+        await updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
+      } catch (error) {
+        setMessage(error.message || 'Failed to update cart item.')
+      }
     }
   }
 
-  function removeFromCart(productId) {
-    const item = cartItems.find((cartItem) => String(cartItem.id) === String(productId))
+  async function removeFromCart(productId) {
+    const item = cartItems.find((cartItem) => String(cartItem.cartItemKey ?? cartItem.id) === String(productId))
     if (item) {
-      removeCartItem(item.goodsId ?? item.id)
+      try {
+        await removeCartItem(item.cartItemKey)
+      } catch (error) {
+        setMessage(error.message || 'Failed to remove cart item.')
+      }
     }
   }
 
@@ -350,7 +379,11 @@ export function useStoreFlow(options = {}) {
     const nextErrors = []
 
     if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
-    if (!checkoutForm.memberId.trim()) nextErrors.push('Enter a member ID.')
+    if (!isCartSignedIn) nextErrors.push('Sign in to checkout with your cart.')
+    if (hasBlockingCartIssue) nextErrors.push('Resolve cart item issues before checkout.')
+    if (!normalizeMemberId(checkoutForm.memberId)) {
+      nextErrors.push('The logged-in member profile is unavailable.')
+    }
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
     if (!checkoutForm.phone.trim()) nextErrors.push('Enter a phone number.')
@@ -591,10 +624,14 @@ export function useStoreFlow(options = {}) {
 
   return {
     cartItems,
+    cartError,
+    cartStatus,
     checkoutForm,
     completedOrder,
     errors,
     isCartEmpty,
+    isCartSignedIn,
+    hasBlockingCartIssue,
     isPaymentProcessing,
     lastKakaoReadyDebug,
     lastKakaoReadyError,

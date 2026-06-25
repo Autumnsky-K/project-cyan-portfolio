@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GoodsDetail, GoodsVariant } from '../../api/goods'
+import { useEffect, useRef, useState } from 'react'
+import type { GoodsDetail } from '../../api/goods'
 import { useCart } from '../cart/useCart'
-import { formatGoodsDate, formatGoodsPrice } from './goodsFormatters'
+import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
 
 const PURCHASE_STATE_LABELS: Record<string, string> = {
@@ -12,18 +12,24 @@ const PURCHASE_STATE_LABELS: Record<string, string> = {
   UNAVAILABLE: '구매 불가',
 }
 
-function variantMatches(variant: GoodsVariant, selections: Record<string, string>) {
-  return Object.entries(selections).every(([key, value]) => variant.selections[key] === value)
+type GoodsPurchasePanelProps = {
+  goods: GoodsDetail
+  onReviewClick?: () => void
+  isFavorite?: boolean
+  onFavoriteToggle?: () => void
 }
 
-function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onReviewClick?: () => void }) {
+function GoodsPurchasePanel({
+  goods,
+  onReviewClick,
+  isFavorite = false,
+  onFavoriteToggle,
+}: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
-  const [selections, setSelections] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
   const [feedback, setFeedback] = useState('')
+  const [isAddingCart, setIsAddingCart] = useState(false)
   const feedbackTimerRef = useRef<number | null>(null)
-  const optionGroups = useMemo(() => goods.optionGroups ?? [], [goods.optionGroups])
-  const variants = useMemo(() => goods.variants ?? [], [goods.variants])
 
   useEffect(
     () => () => {
@@ -32,25 +38,11 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
     [],
   )
 
-  const selectedVariant = useMemo(() => {
-    if (optionGroups.some((group) => !selections[group.key])) return null
-    return variants.find((variant) => variantMatches(variant, selections)) ?? null
-  }, [optionGroups, selections, variants])
-  const availableVariants = useMemo(
-    () => variants.filter((variant) => variant.active && variant.stockCount > 0),
-    [variants],
-  )
-  const effectiveVariant = optionGroups.length === 0
-    ? selectedVariant ?? availableVariants[0] ?? variants[0]
-    : selectedVariant
-  const maxQuantity = effectiveVariant?.stockCount ?? goods.stockCount ?? 0
+  const maxQuantity = goods.stockCount ?? 0
   const selectedQuantity = Math.max(1, Math.min(quantity, maxQuantity || 1))
   const purchasingAvailable = goods.purchaseState === 'AVAILABLE'
-  const hasPurchasableItem = variants.length === 0
-    ? maxQuantity > 0
-    : Boolean(effectiveVariant?.active && maxQuantity > 0)
-  const canAdd = purchasingAvailable && hasPurchasableItem
-  const unitPrice = Number(goods.price ?? 0) + Number(effectiveVariant?.additionalPrice ?? 0)
+  const canAdd = purchasingAvailable && maxQuantity > 0
+  const unitPrice = Number(goods.price ?? 0)
 
   function showFeedback(message: string) {
     setFeedback(message)
@@ -58,66 +50,46 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
   }
 
-  function handleAddCartItem() {
+  async function handleAddCartItem() {
     if (!canAdd) return
-    const variantLabel = effectiveVariant
-      ? optionGroups
-          .map((group) => `${group.name}: ${effectiveVariant.selections[group.key]}`)
-          .join(' / ')
-      : ''
 
-    addCartItem(
-      {
-        ...goods,
-        variantId: effectiveVariant?.variantId,
-        variantLabel,
-        variantPrice: unitPrice,
-        maxQuantity,
-        shippingFee: goods.shipping?.fee ?? 0,
-      },
-      selectedQuantity,
-    )
-    showFeedback('장바구니에 담았습니다.')
-  }
-
-  function selectOption(key: string, value: string) {
-    setSelections((current) => {
-      const matchingVariants = variants.filter(
-        (variant) =>
-          variant.active &&
-          variant.stockCount > 0 &&
-          variant.selections[key] === value,
+    setIsAddingCart(true)
+    try {
+      await addCartItem(
+        {
+          ...goods,
+          variantPrice: unitPrice,
+          maxQuantity,
+          shippingFee: 0,
+        },
+        selectedQuantity,
       )
-      const nextSelections: Record<string, string> = { [key]: value }
-
-      for (const [selectedKey, selectedValue] of Object.entries(current)) {
-        if (
-          selectedKey !== key &&
-          matchingVariants.some((variant) => variant.selections[selectedKey] === selectedValue)
-        ) {
-          nextSelections[selectedKey] = selectedValue
-        }
-      }
-      return nextSelections
-    })
-    setQuantity(1)
-  }
-
-  function optionValueDisabled(key: string, value: string) {
-    return !variants.some(
-      (variant) =>
-        variant.active &&
-        variant.stockCount > 0 &&
-        variant.selections[key] === value,
-    )
+      showFeedback('장바구니에 담았습니다.')
+    } catch (cartError) {
+      showFeedback(cartError instanceof Error ? cartError.message : '장바구니에 담지 못했습니다.')
+    } finally {
+      setIsAddingCart(false)
+    }
   }
 
   return (
     <aside className="purchase-panel">
       <div className="purchase-heading">
-        <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
-          {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
-        </span>
+        <div className="purchase-heading-top">
+          <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
+            {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
+          </span>
+          <button
+            className="detail-favorite-button"
+            type="button"
+            aria-label={isFavorite ? `${goods.name} 찜 해제` : `${goods.name} 찜하기`}
+            aria-pressed={isFavorite}
+            onClick={onFavoriteToggle}
+          >
+            <span aria-hidden="true">{isFavorite ? '♥' : '♡'}</span>
+            <span className="detail-favorite-label">{isFavorite ? '찜 해제' : '찜하기'}</span>
+          </button>
+        </div>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
         <GoodsRatingSummary
@@ -128,46 +100,8 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
         <strong>{formatGoodsPrice(unitPrice)}</strong>
       </div>
 
-      <dl className="purchase-info">
-        <div>
-          <dt>판매 기간</dt>
-          <dd>{formatGoodsDate(goods.saleStartAt)} ~ {formatGoodsDate(goods.saleEndAt)}</dd>
-        </div>
-        <div>
-          <dt>배송비</dt>
-          <dd>{goods.shipping?.fee ? formatGoodsPrice(goods.shipping.fee) : '무료 배송'}</dd>
-        </div>
-        <div>
-          <dt>배송</dt>
-          <dd>{goods.shipping?.carrier} · {goods.shipping?.scope}</dd>
-        </div>
-      </dl>
-
-      {optionGroups.map((group) => (
-        <fieldset className="option-group" key={group.optionGroupId}>
-          <legend>{group.name}</legend>
-          <div>
-            {group.values.map((value) => (
-              <button
-                aria-pressed={selections[group.key] === value.name}
-                disabled={optionValueDisabled(group.key, value.name)}
-                key={value.optionValueId}
-                type="button"
-                onClick={() => selectOption(group.key, value.name)}
-              >
-                {value.name}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      ))}
-
       <div className="purchase-selection">
-        <span>
-          {optionGroups.length > 0 && !effectiveVariant
-            ? '옵션을 선택해 주세요.'
-            : `재고 ${maxQuantity}개`}
-        </span>
+        <span>재고 {maxQuantity}개</span>
         <div className="detail-quantity" aria-label="수량">
           <button
             disabled={selectedQuantity <= 1}
@@ -182,7 +116,7 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
             type="button"
             onClick={() => setQuantity((value) => value + 1)}
           >
-            ＋
+            +
           </button>
         </div>
       </div>
@@ -194,17 +128,17 @@ function GoodsPurchasePanel({ goods, onReviewClick }: { goods: GoodsDetail; onRe
 
       {!canAdd && (
         <p className="purchase-message">
-          {goods.purchaseMessage || '구매 가능한 옵션을 선택해 주세요.'}
+          {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
         </p>
       )}
       <button
         className="purchase-button"
         data-add-to-cart={goods.goodsId}
-        disabled={!canAdd}
+        disabled={!canAdd || isAddingCart}
         type="button"
-        onClick={handleAddCartItem}
+        onClick={() => void handleAddCartItem()}
       >
-        장바구니 담기
+        {isAddingCart ? '담는 중...' : '장바구니 담기'}
       </button>
       {feedback && <span className="purchase-feedback" role="status">{feedback}</span>}
     </aside>
