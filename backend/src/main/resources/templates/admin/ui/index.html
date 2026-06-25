@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>전체 UI 미리보기</title>
-  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+  <link rel="stylesheet" href="/admin/goods-admin.css?v=ui-realframe-1">
 </head>
 <body>
 <main class="admin-page">
@@ -26,45 +26,128 @@
              data-preview-viewport="desktop"
              aria-label="사용자 화면 미리보기 작업 영역">
       <div class="admin-preview-stage">
-        <nav class="admin-preview-anchor-nav" aria-label="미리보기 화면 바로가기">
-          <a th:each="page : ${pages}"
-             th:href="${'#' + page.key()}"
-             th:text="${page.title()}">화면 미리보기</a>
-        </nav>
-
         <section class="admin-preview-grid" aria-label="사용자 화면 미리보기">
           <article class="admin-preview-card"
                    th:each="page : ${pages}"
                    th:id="${page.key()}"
                    th:attr="data-preview-page-key=${page.key()}">
-            <label class="admin-preview-check">
-              <input type="checkbox" th:checked="${page.implemented()}">
-              <span>선택</span>
-            </label>
-
-            <header>
-              <div>
-                <strong th:text="${page.title()}">화면 미리보기</strong>
-                <p th:text="${page.purpose()}">화면 목적</p>
+            <header class="admin-preview-card-toolbar">
+              <div class="admin-preview-card-title">
+                <strong th:text="${page.shortTitle()}">홈 화면</strong>
+                <span th:text="${page.route()}">/</span>
               </div>
-              <a th:href="${'#' + page.key()}" data-preview-focus-link>크게 보기</a>
+              <div class="admin-preview-card-actions">
+                <a th:if="${page.implemented()}"
+                   th:href="${page.previewUrl()}"
+                   target="_blank"
+                   rel="noreferrer"
+                   data-preview-url-link>URL</a>
+                <a th:if="${page.implemented()}"
+                   th:href="@{/admin/ui/{pageKey}(pageKey=${page.key()})}"
+                   target="_blank"
+                   rel="noreferrer">새 창</a>
+                <label class="admin-preview-check">
+                  <input type="checkbox"
+                         th:checked="${page.key() == 'home' || page.key() == 'artists'}"
+                         th:attr="data-preview-page-toggle=${page.key()}">
+                  <span>선택</span>
+                </label>
+              </div>
             </header>
-
-            <div class="admin-preview-url" th:if="${page.implemented()}">
-              <span>URL</span>
-              <code th:text="${page.previewUrl()}">http://127.0.0.1:5173/</code>
-            </div>
-            <div class="admin-preview-url is-muted" th:if="${!page.implemented()}">
-              <span>ROUTE</span>
-              <code th:text="${page.route()}">/account</code>
-            </div>
 
             <div class="admin-preview-frame-wrap" th:if="${page.implemented()}">
               <iframe class="admin-preview-frame"
                       loading="lazy"
                       th:title="${page.title()}"
+                      data-preview-mode="single"
                       th:attr="data-base-src=${page.previewUrl()}"
-                      th:src="${page.previewUrl()}"></iframe>
+                      src="about:blank"></iframe>
+            </div>
+            <div class="admin-preview-bulk-grid" th:if="${page.implemented()}">
+              <section class="admin-preview-bulk-item" data-preview-ratio="desktop">
+                <header><strong>Desktop 16:9</strong><span>1280</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Desktop 16:9'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="desktop"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="cinema">
+                <header><strong>Cinema 21:9</strong><span>1680</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Cinema 21:9'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="cinema"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="desktop-compact">
+                <header><strong>Compact 16:9</strong><span>960</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Compact 16:9'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="desktop-compact"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="tablet">
+                <header><strong>Tablet 4:3</strong><span>900</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Tablet 4:3'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="tablet"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="square">
+                <header><strong>Square 1:1</strong><span>760</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Square 1:1'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="square"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="mobile">
+                <header><strong>Mobile 9:16</strong><span>430</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Mobile 9:16'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="mobile"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
+              <section class="admin-preview-bulk-item" data-preview-ratio="mobile-short">
+                <header><strong>Mobile 9:14</strong><span>430</span></header>
+                <div class="admin-preview-frame-wrap">
+                  <iframe class="admin-preview-frame admin-preview-bulk-frame"
+                          loading="lazy"
+                          th:title="${page.title() + ' Mobile 9:14'}"
+                          data-preview-mode="bulk"
+                          data-preview-ratio="mobile-short"
+                          th:attr="data-base-src=${page.previewUrl()}"
+                          src="about:blank"></iframe>
+                </div>
+              </section>
             </div>
             <div class="admin-preview-placeholder" th:if="${!page.implemented()}">
               <strong>준비 중</strong>
@@ -81,49 +164,81 @@
 
       <aside class="admin-ui-settings" aria-label="UI 미리보기 설정">
         <section class="admin-ui-setting-panel">
-          <h3>미리보기 배열</h3>
+          <h3>배열</h3>
           <label>
             <input type="radio" name="previewLayout" value="grid" checked>
-            <span>2x2 격자</span>
+            <span>Grid</span>
           </label>
           <label>
             <input type="radio" name="previewLayout" value="focus">
-            <span>1x1 크게 보기</span>
+            <span>Focus</span>
           </label>
         </section>
 
         <section class="admin-ui-setting-panel">
-          <h3>화면 비율</h3>
+          <h3>비율</h3>
+          <label>
+            <input type="radio" name="previewViewport" value="all">
+            <span>All</span>
+          </label>
           <label>
             <input type="radio" name="previewViewport" value="mobile">
-            <span>모바일 세로</span>
+            <span>M 9:16</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="mobile-short">
+            <span>M 9:14</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="tablet">
+            <span>T 4:3</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="square">
+            <span>1:1</span>
           </label>
           <label>
             <input type="radio" name="previewViewport" value="cinema">
-            <span>데스크톱 21:9</span>
+            <span>21:9</span>
           </label>
           <label>
             <input type="radio" name="previewViewport" value="desktop" checked>
-            <span>데스크톱 16:9</span>
+            <span>16:9</span>
+          </label>
+          <label>
+            <input type="radio" name="previewViewport" value="desktop-compact">
+            <span>C 16:9</span>
+          </label>
+        </section>
+
+        <section class="admin-ui-setting-panel admin-ui-page-filter">
+          <h3>페이지</h3>
+          <label th:each="page : ${pages}" th:if="${page.implemented()}">
+            <input type="checkbox"
+                   name="previewPageSelection"
+                   th:value="${page.key()}"
+                   th:checked="${page.key() == 'home' || page.key() == 'artists'}"
+                   th:attr="data-preview-page-toggle=${page.key()}">
+            <span th:text="${page.shortTitle()}">홈 화면</span>
           </label>
         </section>
 
         <section class="admin-ui-setting-panel">
-          <h3>사용자 화면 테마</h3>
+          <h3>테마</h3>
           <label>
-            <span>기본색</span>
+            <span>기본</span>
             <input type="color" name="themePrimary" value="#111111">
           </label>
           <label>
-            <span>강조색</span>
+            <span>강조</span>
             <input type="color" name="themeAccent" value="#2f6f64">
           </label>
           <label>
-            <span>배경색</span>
+            <span>배경</span>
             <input type="color" name="themeBackground" value="#ffffff">
           </label>
           <label>
-            <span>글자 크기</span>
+            <span>크기</span>
             <input type="range" name="themeFontSize" min="13" max="20" value="16">
           </label>
           <label>
@@ -136,7 +251,7 @@
             </select>
           </label>
           <label class="admin-file-control">
-            <span>폰트 파일 첨부</span>
+            <span>파일</span>
             <input type="file"
                    name="adminPreviewFontFile"
                    accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf"
@@ -149,14 +264,14 @@
         </section>
 
         <section class="admin-ui-setting-panel">
-          <h3>적용 범위</h3>
+          <h3>적용</h3>
           <label>
             <input type="radio" name="themeApplyScope" value="all" checked>
-            <span>전체 미리보기 적용</span>
+            <span>전체</span>
           </label>
           <label>
             <input type="radio" name="themeApplyScope" value="checked">
-            <span>선택한 화면만 적용</span>
+            <span>선택</span>
           </label>
         </section>
       </aside>
@@ -167,6 +282,7 @@
 <script>
   const workbench = document.querySelector('.admin-ui-workbench')
   const previewSettingsKey = 'projectCyanUiPreviewSettings'
+  const defaultSelectedPageKeys = ['home', 'artists']
 
   function readPreviewSettings() {
     try {
@@ -176,10 +292,22 @@
     }
   }
 
+  function pageFilterInputs() {
+    return Array.from(document.querySelectorAll('.admin-ui-page-filter [data-preview-page-toggle]'))
+  }
+
+  function selectedPageKeys() {
+    return pageFilterInputs()
+      .filter((input) => input.checked)
+      .map((input) => input.dataset.previewPageToggle)
+      .filter(Boolean)
+  }
+
   function writePreviewSettings() {
     const settings = {
       previewLayout: document.querySelector('input[name="previewLayout"]:checked')?.value || 'grid',
       previewViewport: document.querySelector('input[name="previewViewport"]:checked')?.value || 'desktop',
+      selectedPageKeys: selectedPageKeys(),
       themePrimary: document.querySelector('[name="themePrimary"]')?.value || '#111111',
       themeAccent: document.querySelector('[name="themeAccent"]')?.value || '#2f6f64',
       themeBackground: document.querySelector('[name="themeBackground"]')?.value || '#ffffff',
@@ -188,6 +316,22 @@
       themeApplyScope: document.querySelector('input[name="themeApplyScope"]:checked')?.value || 'all',
     }
     localStorage.setItem(previewSettingsKey, JSON.stringify(settings))
+  }
+
+  function setPageSelection(pageKey, checked) {
+    document.querySelectorAll(`[data-preview-page-toggle="${pageKey}"]`).forEach((input) => {
+      input.checked = checked
+    })
+  }
+
+  function ensureSelectedPage() {
+    if (selectedPageKeys().length > 0) {
+      return
+    }
+    const fallback = pageFilterInputs().find((input) => input.value === 'home') || pageFilterInputs()[0]
+    if (fallback) {
+      setPageSelection(fallback.dataset.previewPageToggle, true)
+    }
   }
 
   function restorePreviewSettings() {
@@ -208,6 +352,14 @@
         workbench.dataset.previewViewport = settings.previewViewport
       }
     }
+
+    const restoredPageKeys = Array.isArray(settings.selectedPageKeys) && settings.selectedPageKeys.length > 0
+      ? settings.selectedPageKeys
+      : defaultSelectedPageKeys
+    pageFilterInputs().forEach((input) => {
+      setPageSelection(input.dataset.previewPageToggle, restoredPageKeys.includes(input.dataset.previewPageToggle))
+    })
+    ensureSelectedPage()
 
     if (settings.themeApplyScope) {
       const input = document.querySelector(`input[name="themeApplyScope"][value="${settings.themeApplyScope}"]`)
@@ -234,6 +386,131 @@
     return document.querySelector('input[name="themeApplyScope"]:checked')?.value || 'all'
   }
 
+  function isBulkView() {
+    return workbench.dataset.previewViewport === 'all'
+  }
+
+  const bulkPreviewSpecs = {
+    desktop: { width: 1280, height: 720 },
+    cinema: { width: 1680, height: 720 },
+    'desktop-compact': { width: 960, height: 540 },
+    tablet: { width: 900, height: 675 },
+    square: { width: 760, height: 760 },
+    mobile: { width: 430, height: 764 },
+    'mobile-short': { width: 430, height: 669 },
+  }
+
+  function unpackBulkGrid(grid) {
+    grid.removeAttribute('data-packed')
+    grid.style.removeProperty('height')
+    grid.querySelectorAll('.admin-preview-bulk-item').forEach((item) => {
+      item.style.removeProperty('width')
+      item.style.removeProperty('height')
+      item.style.removeProperty('--admin-packed-height')
+      item.style.removeProperty('--admin-packed-frame-height')
+      item.style.removeProperty('--admin-preview-source-width')
+      item.style.removeProperty('--admin-preview-source-height')
+      item.style.removeProperty('--admin-preview-frame-scale')
+      item.style.removeProperty('transform')
+    })
+  }
+
+  function rectsOverlap(a, b) {
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+  }
+
+  function packBulkGrid(grid) {
+    if (!grid || grid.closest('.admin-preview-card')?.hidden || grid.offsetParent === null) {
+      return
+    }
+
+    const availableWidth = Math.floor(grid.clientWidth)
+    if (availableWidth < 320) {
+      unpackBulkGrid(grid)
+      return
+    }
+
+    const styles = window.getComputedStyle(grid)
+    const gap = parseFloat(styles.getPropertyValue('--admin-preview-bulk-gap')) || 12
+    const horizontalChrome = 22
+    const verticalChrome = 50
+    const items = Array.from(grid.querySelectorAll('.admin-preview-bulk-item'))
+      .map((item) => {
+        const spec = bulkPreviewSpecs[item.dataset.previewRatio] || bulkPreviewSpecs.desktop
+        const frameWidth = Math.max(1, Math.min(spec.width, availableWidth - horizontalChrome))
+        const scale = frameWidth / spec.width
+        const frameHeight = Math.round(spec.height * scale)
+        const width = Math.round(frameWidth + horizontalChrome)
+        const height = Math.round(frameHeight + verticalChrome)
+        return {
+          item,
+          width,
+          height,
+          frameWidth,
+          frameHeight,
+          scale,
+          sourceWidth: spec.width,
+          sourceHeight: spec.height,
+          area: frameWidth * frameHeight,
+        }
+      })
+      .sort((a, b) => b.area - a.area)
+
+    const placed = []
+    let candidates = [{ x: 0, y: 0 }]
+
+    items.forEach((entry) => {
+      candidates = candidates
+        .filter((candidate, index, source) => candidate.x + entry.width <= availableWidth
+          && source.findIndex((other) => other.x === candidate.x && other.y === candidate.y) === index)
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+
+      let spot = candidates.find((candidate) => {
+        const rect = { x: candidate.x, y: candidate.y, width: entry.width, height: entry.height }
+        return !placed.some((placedRect) => rectsOverlap(rect, placedRect))
+      })
+
+      if (!spot) {
+        const bottom = placed.reduce((max, rect) => Math.max(max, rect.y + rect.height), 0)
+        spot = { x: 0, y: bottom + gap }
+      }
+
+      const rect = { x: spot.x, y: spot.y, width: entry.width, height: entry.height }
+      placed.push(rect)
+      candidates.push({ x: rect.x + rect.width + gap, y: rect.y })
+      candidates.push({ x: rect.x, y: rect.y + rect.height + gap })
+
+      entry.item.style.width = `${entry.width}px`
+      entry.item.style.setProperty('--admin-packed-height', `${entry.height}px`)
+      entry.item.style.setProperty('--admin-packed-frame-height', `${entry.frameHeight}px`)
+      entry.item.style.setProperty('--admin-preview-source-width', `${entry.sourceWidth}px`)
+      entry.item.style.setProperty('--admin-preview-source-height', `${entry.sourceHeight}px`)
+      entry.item.style.setProperty('--admin-preview-frame-scale', String(entry.scale))
+      entry.item.style.transform = `translate(${rect.x}px, ${rect.y}px)`
+    })
+
+    const packedHeight = placed.reduce((max, rect) => Math.max(max, rect.y + rect.height), 0)
+    grid.dataset.packed = 'true'
+    grid.style.height = `${packedHeight}px`
+  }
+
+  function packVisibleBulkGrids() {
+    const layout = () => {
+      document.querySelectorAll('.admin-preview-bulk-grid').forEach((grid) => {
+        if (isBulkView()) {
+          packBulkGrid(grid)
+        } else {
+          unpackBulkGrid(grid)
+        }
+      })
+    }
+
+    window.requestAnimationFrame(() => {
+      layout()
+      window.setTimeout(layout, 120)
+    })
+  }
+
   function previewThemeParams() {
     return {
       previewPrimary: document.querySelector('[name="themePrimary"]')?.value || '#111111',
@@ -258,25 +535,67 @@
     return selectedApplyScope() === 'all' || card.querySelector('.admin-preview-check input')?.checked
   }
 
+  function updatePageVisibility() {
+    const selected = new Set(selectedPageKeys())
+    document.querySelectorAll('.admin-preview-card').forEach((card) => {
+      const pageKey = card.dataset.previewPageKey
+      const isSelected = selected.has(pageKey)
+      card.dataset.previewSelected = String(isSelected)
+      card.hidden = !isSelected
+    })
+  }
+
+  function setFrameSource(frame, shouldLoad, params, appliesTheme) {
+    if (!frame?.dataset.baseSrc) {
+      return
+    }
+    if (!shouldLoad) {
+      frame.removeAttribute('src')
+      return
+    }
+
+    const nextSrc = appliesTheme
+      ? previewUrlWithTheme(frame.dataset.baseSrc, params)
+      : frame.dataset.baseSrc
+    if (frame.getAttribute('src') !== nextSrc) {
+      frame.src = nextSrc
+    }
+  }
+
   function updatePreviewTheme() {
+    ensureSelectedPage()
+    updatePageVisibility()
+
     const params = previewThemeParams()
-    writePreviewSettings()
+    const bulk = isBulkView()
 
     document.querySelectorAll('.admin-preview-card').forEach((card) => {
-      const frame = card.querySelector('.admin-preview-frame')
+      const selected = card.dataset.previewSelected === 'true'
+      const appliesTheme = shouldApplyTheme(card)
       const urlLabel = card.querySelector('.admin-preview-url code')
-      if (!frame?.dataset.baseSrc) {
-        return
-      }
+      const urlLink = card.querySelector('[data-preview-url-link]')
 
-      const nextSrc = shouldApplyTheme(card)
-        ? previewUrlWithTheme(frame.dataset.baseSrc, params)
-        : frame.dataset.baseSrc
-      frame.src = nextSrc
-      if (urlLabel) {
-        urlLabel.textContent = nextSrc
+      card.querySelectorAll('.admin-preview-frame').forEach((frame) => {
+        const mode = frame.dataset.previewMode || 'single'
+        const shouldLoad = selected && ((bulk && mode === 'bulk') || (!bulk && mode === 'single'))
+        setFrameSource(frame, shouldLoad, params, appliesTheme)
+      })
+
+      const singleFrame = card.querySelector('.admin-preview-frame[data-preview-mode="single"]')
+      if (urlLabel && singleFrame?.dataset.baseSrc) {
+        urlLabel.textContent = appliesTheme
+          ? previewUrlWithTheme(singleFrame.dataset.baseSrc, params)
+          : singleFrame.dataset.baseSrc
+      }
+      if (urlLink && singleFrame?.dataset.baseSrc) {
+        urlLink.href = appliesTheme
+          ? previewUrlWithTheme(singleFrame.dataset.baseSrc, params)
+          : singleFrame.dataset.baseSrc
       }
     })
+
+    writePreviewSettings()
+    packVisibleBulkGrids()
   }
 
   function scrollToPreviewHash() {
@@ -285,7 +604,7 @@
       return
     }
     const target = document.getElementById(key)
-    if (!target) {
+    if (!target || target.hidden) {
       return
     }
     window.requestAnimationFrame(() => {
@@ -297,7 +616,7 @@
     input.addEventListener('change', () => {
       if (input.checked) {
         workbench.dataset.previewLayout = input.value
-        writePreviewSettings()
+        updatePreviewTheme()
       }
     })
   })
@@ -306,18 +625,29 @@
     input.addEventListener('change', () => {
       if (input.checked) {
         workbench.dataset.previewViewport = input.value
-        writePreviewSettings()
+        updatePreviewTheme()
       }
     })
   })
 
-  document.querySelectorAll('[name="themePrimary"], [name="themeAccent"], [name="themeBackground"], [name="themeFontSize"], [name="themeFontFamily"], input[name="themeApplyScope"], .admin-preview-check input')
+  document.querySelectorAll('[data-preview-page-toggle]').forEach((input) => {
+    input.addEventListener('change', () => {
+      setPageSelection(input.dataset.previewPageToggle, input.checked)
+      updatePreviewTheme()
+    })
+  })
+
+  document.querySelectorAll('[name="themePrimary"], [name="themeAccent"], [name="themeBackground"], [name="themeFontSize"], [name="themeFontFamily"], input[name="themeApplyScope"]')
     .forEach((control) => {
       control.addEventListener('input', updatePreviewTheme)
       control.addEventListener('change', updatePreviewTheme)
     })
 
   window.addEventListener('hashchange', scrollToPreviewHash)
+  window.addEventListener('resize', packVisibleBulkGrids)
+  if (window.ResizeObserver) {
+    new ResizeObserver(packVisibleBulkGrids).observe(workbench)
+  }
 
   restorePreviewSettings()
   updatePreviewTheme()
