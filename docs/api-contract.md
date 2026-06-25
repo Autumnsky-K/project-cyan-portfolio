@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.2` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.4` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -454,12 +454,13 @@
 
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
-- 클라이언트 → 서버 메시지 추가 가능 필드: `context.cartItems` (현재 장바구니 요약, optional)
+- 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
 - `text`는 HTML이 아닌 plain text로 취급한다. 클라이언트는 HTML 삽입 렌더링을 사용하지 않는다.
 - `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
+- `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID이며, 없으면 AI 서버는 기존처럼 저장 없이 응답한다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
 
 #### [GET] /api/ai/goods-catalog/latest
@@ -473,6 +474,21 @@
   - `fileSizeBytes`: TSV byte 크기
   - `storageBucket`: Storage bucket
   - `storagePath`: Storage object path
+- 상태: [x] additive
+
+#### [GET] /api/ai/hooks
+- 설명: AI 서버가 입력/출력 hook filter에 적용할 활성 정책 목록 조회
+- 인증 필요: N
+- 응답: 배열
+  - `hook`: `input` 또는 `output`
+  - `check`: 검사 이름 (`maxLength`, `forbiddenWords`, `specialCharRatio`, `numberRatio`, `englishRatio`, `actionScope`)
+  - `threshold`: 검사 기준값 문자열 (`500`, `30%`, `navigate,highlight,addToCart` 등)
+  - `action`: 위반 시 동작 (`stop`, `review`, `rewrite`, `filter`)
+  - `message`: 차단/확인/교체 시 사용자에게 보낼 문장
+  - `enabled`: 활성 여부
+  - `priority`: 적용 순서
+  - `updatedAt`: 마지막 변경 시각
+- 비고: WebSocket 메시지 형태는 바꾸지 않고, hook 위반 시에도 `{ type: "full-text", text, actions: [] }` 형태로 응답한다.
 - 상태: [x] additive
 
 #### 초기 구성
@@ -501,6 +517,62 @@
 - 초기 MVP에서 actions는 빈 배열 허용
 
 *(정확한 메시지 타입은 OLV 코드 확인 후 채울 것)*
+
+---
+
+### 3.7 가상 채팅 이력 (virtual chat) — 담당: `강승민`
+
+> 로그인 사용자와 AI 챗봇의 대화 이력을 Spring API가 저장한다. 비로그인 사용자는 v1에서 저장하지 않는다.
+
+#### [POST] /api/virtual-chat/sessions
+- 설명: 로그인 사용자의 AI 채팅 세션 생성
+- 인증 필요: Y
+- 요청 body: `{ guideId?, title?, sourceScreen? }`
+- 응답: `201 { sessionId, guideId, title, sourceScreen, startedAt, endedAt }`
+- 비고: `memberId`는 요청 body로 받지 않고 인증된 회원에서 결정한다.
+- 상태: [x] additive
+
+#### [GET] /api/virtual-chat/sessions
+- 설명: 로그인 사용자의 AI 채팅 세션 목록 조회
+- 인증 필요: Y
+- 요청 query: `page`, `size`, `sort=startedAt,desc`
+- 응답: 페이지 객체, content = `{ sessionId, guideId, title, sourceScreen, startedAt, endedAt }`
+- 상태: [x] additive
+
+#### [GET] /api/virtual-chat/sessions/{sessionId}/messages
+- 설명: 로그인 사용자의 특정 AI 채팅 세션 메시지 조회
+- 인증 필요: Y
+- 응답: 배열 `{ messageId, sessionId, speaker, messageText, action, actions, metadata, createdAt }`
+- 권한: 세션 소유 회원만 조회 가능
+- 상태: [x] additive
+
+#### [POST] /api/virtual-chat/sessions/{sessionId}/messages
+- 설명: AI 채팅 메시지와 해당 메시지에서 발생한 상품 추천 이력 저장
+- 인증 필요: Y
+- 요청 body:
+  - `speaker`: `USER`, `ASSISTANT`, `SYSTEM`
+  - `messageText`: 저장할 plain text 메시지
+  - `action`: 대표 action 이름 또는 null
+  - `actions`: WebSocket 응답 actions 배열 또는 null
+  - `metadata`: 운영 메타데이터 또는 null
+  - `recommendations`: optional 배열 `{ goodsId, requestText, recommendationReason, rankOrder }`
+- 응답: `201 { messageId, sessionId, speaker, messageText, action, actions, metadata, createdAt }`
+- 권한: 세션 소유 회원만 저장 가능하며, 추천 이력의 `memberId`도 인증된 회원에서 결정한다.
+- 상태: [x] additive
+
+#### [PATCH] /api/virtual-chat/sessions/{sessionId}/end
+- 설명: 로그인 사용자의 AI 채팅 세션 종료 시각 기록
+- 인증 필요: Y
+- 응답: `204 No Content`
+- 권한: 세션 소유 회원만 종료 가능
+- 상태: [x] additive
+
+DB 저장 정책:
+- `virtual_chat_session.member_id`로 사용자별 세션을 구분한다.
+- `virtual_chat_message.actions_json`에는 WebSocket `actions` 배열을 JSON으로 저장한다.
+- `virtual_chat_message.metadata_json`에는 모델명, 저장 실패 원인 등 비계약 운영 정보를 저장할 수 있다.
+- `virtual_recommendation.message_id`는 추천을 포함한 assistant 메시지에 연결한다.
+- Supabase token, service role key, LLM 내부 prompt, 불필요한 장바구니 전체 context는 저장하지 않는다.
 
 ---
 
@@ -586,4 +658,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
 | 2026-06-24 | v0.2.1 | ai | additive | WebSocket plain text 입력 한도와 ACTION 실행 대상 allow-list 보안 규칙 추가 | 강승민 |
 | 2026-06-25 | v0.2.2 | ai/goods | additive | AI 서버가 최신 TSV 상품 카탈로그 URL을 조회하는 `GET /api/ai/goods-catalog/latest` 추가 | 강승민 |
+| 2026-06-25 | v0.2.3 | ai | additive | AI input/output hook 정책 조회 API `GET /api/ai/hooks` 추가 | 강승민 |
+| 2026-06-25 | v0.2.4 | ai/virtual-chat | additive | 로그인 사용자의 AI 채팅 세션·메시지·추천 이력 저장 API와 WebSocket optional `sessionId` 추가 | 강승민 |
 |  |  |  |  |  |  |
