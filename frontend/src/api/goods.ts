@@ -31,11 +31,14 @@ export type GoodsDetail = GoodsSummary & {
 
 export type GoodsReview = {
   reviewId: number
+  memberId?: number | null
   rating: number
   authorName: string
   optionLabel?: string | null
   content: string
   createdAt: string
+  updatedAt?: string | null
+  ownedByCurrentMember?: boolean | null
 }
 
 export type GoodsReviewSummary = {
@@ -188,6 +191,46 @@ export async function fetchGoodsReviewSummary(
   }
 
   return response.json()
+}
+
+export async function fetchMyGoodsReview(goodsId: string | number | undefined): Promise<GoodsReview | null> {
+  if (!(await hasSpringApiSession())) {
+    return null
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/reviews/my`)
+  return await parseApiResponse<GoodsReview>(response, 'Failed to load my review.')
+}
+
+export async function createGoodsReview(
+  goodsId: string | number,
+  payload: { rating: number; content: string; optionLabel?: string | null },
+): Promise<GoodsReview> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return await parseApiResponse<GoodsReview>(response, 'Failed to create review.') as GoodsReview
+}
+
+export async function updateGoodsReview(
+  goodsId: string | number,
+  reviewId: string | number,
+  payload: { rating: number; content: string; optionLabel?: string | null },
+): Promise<GoodsReview> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return await parseApiResponse<GoodsReview>(response, 'Failed to update review.') as GoodsReview
+}
+
+export async function deleteGoodsReview(
+  goodsId: string | number,
+  reviewId: string | number,
+): Promise<void> {
+  const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, { method: 'DELETE' })
+  await parseApiResponse(response, 'Failed to delete review.')
 }
 
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {

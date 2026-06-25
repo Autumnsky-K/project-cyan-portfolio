@@ -261,6 +261,32 @@
 - 응답: `{ averageRating, reviewCount, ratingFiveCount, ratingFourCount, ratingThreeCount, ratingTwoCount, ratingOneCount }`
 - 상태: [x] 동결
 
+#### [GET] /api/goods/{goodsId}/reviews/my
+- 설명: 로그인 사용자의 해당 상품 리뷰 조회
+- 인증 필요: Y
+- 응답: `200 { reviewId, memberId, rating, authorName, optionLabel, content, createdAt, updatedAt, ownedByCurrentMember }` 또는 `204 No Content`
+- 상태: [x] additive
+
+#### [POST] /api/goods/{goodsId}/reviews
+- 설명: 로그인 사용자의 상품 리뷰 작성. 구매 여부는 검증하지 않으며 한 사용자당 상품별 1개만 허용
+- 인증 필요: Y
+- 요청 body: `{ rating, content, optionLabel }`
+- 응답: `201 { reviewId, memberId, rating, authorName, optionLabel, content, createdAt, updatedAt, ownedByCurrentMember }`
+- 상태: [x] additive
+
+#### [PATCH] /api/goods/{goodsId}/reviews/{reviewId}
+- 설명: 로그인 사용자의 본인 리뷰 수정
+- 인증 필요: Y
+- 요청 body: `{ rating, content, optionLabel }`
+- 응답: `{ reviewId, memberId, rating, authorName, optionLabel, content, createdAt, updatedAt, ownedByCurrentMember }`
+- 상태: [x] additive
+
+#### [DELETE] /api/goods/{goodsId}/reviews/{reviewId}
+- 설명: 로그인 사용자의 본인 리뷰 삭제
+- 인증 필요: Y
+- 응답: `204 No Content`
+- 상태: [x] additive
+
 #### [POST] /api/goods/{goodsId}/views
 - 설명: 로그인 사용자의 상품 상세 조회 이력 기록
 - 인증 필요: Y
@@ -532,6 +558,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-1X | v0.2.0 | (예) goods | breaking | `price` 타입 String→int 변경 | 전원 |
 | 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
 | 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
+| 2026-06-24 | v0.2.0 | goods/member | additive | 로그인 사용자의 상품 리뷰 작성·수정·삭제와 내 리뷰 조회 API 추가 (`GET /reviews/my`, `POST/PATCH/DELETE /reviews`) | Codex |
 |  |  |  |  |  |  |
 
 ### 로그 기록

@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -174,6 +175,70 @@ public class GoodsService {
 		return goodsReviewRepository.findSummary(goodsId);
 	}
 
+	public GoodsReviewResponse findMyGoodsReview(Long goodsId, Long memberId) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return goodsReviewRepository.findMemberReview(goodsId, memberId).orElse(null);
+	}
+
+	@Transactional
+	public GoodsReviewResponse createGoodsReview(
+		Long goodsId,
+		Long memberId,
+		String authorName,
+		GoodsReviewRequest request
+	) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		validateReviewRequest(request);
+		try {
+			return goodsReviewRepository.createReview(
+				goodsId,
+				memberId,
+				authorName(authorName),
+				request.rating(),
+				normalizeOptionLabel(request.optionLabel()),
+				request.content().trim()
+			);
+		} catch (DataIntegrityViolationException exception) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Review already exists.");
+		}
+	}
+
+	@Transactional
+	public GoodsReviewResponse updateGoodsReview(
+		Long goodsId,
+		Long reviewId,
+		Long memberId,
+		GoodsReviewRequest request
+	) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		validateReviewRequest(request);
+		return goodsReviewRepository.updateReview(
+				goodsId,
+				reviewId,
+				memberId,
+				request.rating(),
+				normalizeOptionLabel(request.optionLabel()),
+				request.content().trim()
+			)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
+	}
+
+	@Transactional
+	public void deleteGoodsReview(Long goodsId, Long reviewId, Long memberId) {
+		if (!goodsRepository.existsById(goodsId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		if (!goodsReviewRepository.deleteReview(goodsId, reviewId, memberId)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found.");
+		}
+	}
+
 	public GoodsFiltersResponse findGoodsFilters() {
 		return new GoodsFiltersResponse(
 			groupFilterOptions(
@@ -283,6 +348,35 @@ public class GoodsService {
 			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
 		return new PurchaseAvailability("AVAILABLE", "구매 가능한 상품입니다.");
+	}
+
+	private void validateReviewRequest(GoodsReviewRequest request) {
+		if (request == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Review request is required.");
+		}
+		if (request.rating() == null || request.rating() < 1 || request.rating() > 5) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5.");
+		}
+		if (request.content() == null || request.content().trim().isBlank()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Review content is required.");
+		}
+		if (request.content().trim().length() > 1000) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Review content must be 1000 characters or less.");
+		}
+	}
+
+	private String normalizeOptionLabel(String optionLabel) {
+		if (optionLabel == null || optionLabel.isBlank()) {
+			return null;
+		}
+		return optionLabel.trim();
+	}
+
+	private String authorName(String rawName) {
+		if (rawName == null || rawName.isBlank()) {
+			return "Project Cyan Member";
+		}
+		return rawName.trim();
 	}
 
 	private record PurchaseAvailability(String state, String message) {
