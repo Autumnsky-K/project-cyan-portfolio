@@ -110,7 +110,8 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 			|| path.startsWith("/api/checkout")
 			|| path.startsWith("/api/orders")
 			|| path.startsWith("/api/payments")
-			|| path.startsWith("/api/members");
+			|| path.startsWith("/api/members")
+			|| path.startsWith("/api/virtual-chat");
 	}
 
 	private String bearerToken(HttpServletRequest request) {
