@@ -1,5 +1,4 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   addCartItem as addRemoteCartItem,
   clearCart as clearRemoteCart,
@@ -12,7 +11,14 @@ import {
 import { supabase } from '../../api/supabaseClient'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import { CartContext, type CartContextValue, type CartGoodsInput, type CartItem } from './cartContext'
-import { requestCartLogin } from './requestCartLogin'
+import {
+  addGuestCartItem,
+  clearGuestCartItems,
+  readGuestCartItems,
+  removeGuestCartItem,
+  saveGuestCartItems,
+  updateGuestCartItemQuantity,
+} from './guestCartStorage'
 import { useCartAuthSession } from './useCartAuthSession'
 
 type CartProviderProps = {
@@ -49,7 +55,6 @@ function getCartErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function CartProvider({ children }: CartProviderProps) {
-  const navigate = useNavigate()
   const { authLoading, authUserId, isAuthenticated } = useCartAuthSession()
   const [items, setItems] = useState<CartItem[]>([])
   const [status, setStatus] = useState<CartContextValue['status']>('idle')
@@ -58,8 +63,8 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const refreshCart = useCallback(async () => {
     if (!(await hasSpringApiSession())) {
-      setItems([])
-      setStatus('signedOut')
+      setItems(readGuestCartItems())
+      setStatus('data')
       setError('')
       setIsSignedIn(false)
       return
@@ -99,22 +104,21 @@ export function CartProvider({ children }: CartProviderProps) {
     return () => data.subscription.unsubscribe()
   }, [refreshCart])
 
-  const requireSignedIn = useCallback(async () => {
-    if (await hasSpringApiSession()) {
-      setIsSignedIn(true)
+  const addCartItem = useCallback(async (goods: CartGoodsInput, quantity = 1) => {
+    setError('')
+
+    if (!(await hasSpringApiSession())) {
+      setIsSignedIn(false)
+      setStatus('data')
+      setItems((currentItems) => {
+        const nextItems = addGuestCartItem(currentItems, goods, Math.max(1, quantity))
+        saveGuestCartItems(nextItems)
+        return nextItems
+      })
       return
     }
 
-    setIsSignedIn(false)
-    setStatus('signedOut')
-    setError('Login required.')
-    requestCartLogin(navigate)
-    throw new Error('Login required.')
-  }, [navigate])
-
-  const addCartItem = useCallback(async (goods: CartGoodsInput, quantity = 1) => {
-    await requireSignedIn()
-    setError('')
+    setIsSignedIn(true)
 
     try {
       const cart = await addRemoteCartItem(goods.goodsId, Math.max(1, quantity))
@@ -125,11 +129,23 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [requireSignedIn])
+  }, [])
 
   const updateCartItemQuantity = useCallback(async (cartItemKey: CartItem['cartItemKey'], quantity: number) => {
-    await requireSignedIn()
     setError('')
+
+    if (!(await hasSpringApiSession())) {
+      setIsSignedIn(false)
+      setStatus('data')
+      setItems((currentItems) => {
+        const nextItems = updateGuestCartItemQuantity(currentItems, cartItemKey, quantity)
+        saveGuestCartItems(nextItems)
+        return nextItems
+      })
+      return
+    }
+
+    setIsSignedIn(true)
 
     if (quantity <= 0) {
       try {
@@ -152,11 +168,23 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [refreshCart, requireSignedIn])
+  }, [refreshCart])
 
   const removeCartItem = useCallback(async (cartItemKey: CartItem['cartItemKey']) => {
-    await requireSignedIn()
     setError('')
+
+    if (!(await hasSpringApiSession())) {
+      setIsSignedIn(false)
+      setStatus('data')
+      setItems((currentItems) => {
+        const nextItems = removeGuestCartItem(currentItems, cartItemKey)
+        saveGuestCartItems(nextItems)
+        return nextItems
+      })
+      return
+    }
+
+    setIsSignedIn(true)
 
     try {
       await removeRemoteCartItem(cartItemKey)
@@ -166,11 +194,19 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [refreshCart, requireSignedIn])
+  }, [refreshCart])
 
   const clearCart = useCallback(async () => {
-    await requireSignedIn()
     setError('')
+
+    if (!(await hasSpringApiSession())) {
+      setIsSignedIn(false)
+      setStatus('data')
+      setItems(clearGuestCartItems())
+      return
+    }
+
+    setIsSignedIn(true)
 
     try {
       await clearRemoteCart()
@@ -181,7 +217,7 @@ export function CartProvider({ children }: CartProviderProps) {
       setStatus('error')
       throw cartError
     }
-  }, [requireSignedIn])
+  }, [])
 
   const value = useMemo<CartContextValue>(
     () => ({

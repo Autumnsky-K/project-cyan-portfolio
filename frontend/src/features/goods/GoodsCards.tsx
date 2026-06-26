@@ -1,6 +1,7 @@
-import { type MouseEvent, useCallback } from 'react'
+import { type MouseEvent, useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { GoodsSummary } from '../../api/goods'
+import { useCart } from '../cart/useCart'
 import GoodsImage from './GoodsImage'
 import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsStatusBadge from './GoodsStatusBadge'
@@ -22,10 +23,30 @@ function GoodsCards({
   toggleFavorite,
   onOpenDetail,
 }: GoodsCardsProps) {
+  const { addCartItem } = useCart()
+  const [addingGoodsId, setAddingGoodsId] = useState<number | null>(null)
   const openDetail = useCallback(
     (goodsId: number) => (event: MouseEvent<HTMLAnchorElement>) => onOpenDetail(event, goodsId),
     [onOpenDetail],
   )
+
+  async function handleAddCart(item: GoodsSummary) {
+    setAddingGoodsId(item.goodsId)
+    try {
+      await addCartItem({
+        goodsId: item.goodsId,
+        name: item.name,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        artistName: item.artistName,
+        categoryName: item.categoryName,
+        tags: item.tags,
+        shippingFee: 0,
+      })
+    } finally {
+      setAddingGoodsId(null)
+    }
+  }
 
   return (
     <div className={`goods-grid goods-${viewMode}`}>
@@ -67,6 +88,14 @@ function GoodsCards({
             <div className="card-footer">
               <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
               <div className="card-footer-actions">
+                <button
+                  className="card-action"
+                  type="button"
+                  disabled={addingGoodsId === item.goodsId}
+                  onClick={() => void handleAddCart(item)}
+                >
+                  {addingGoodsId === item.goodsId ? 'Adding' : 'Cart'}
+                </button>
                 <Link
                   className="card-action"
                   to={`/goods/${item.goodsId}`}

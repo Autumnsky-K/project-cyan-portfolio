@@ -9,7 +9,18 @@ from project_cyan_ai.main import app
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    MetadataTsvGoodsCatalogClient,
+    TsvGoodsCatalogClient,
     extract_max_price,
+    filter_tsv_candidates,
+    parse_goods_catalog_tsv,
+)
+from project_cyan_ai.hook_policy import (
+    CachedHookPolicyProvider,
+    HookFilter,
+    HookPolicy,
+    character_ratio,
+    parse_ratio,
 )
 from project_cyan_ai.providers import (
     ClaudeChatResponseProvider,
@@ -55,6 +66,7 @@ def isolate_ai_settings(monkeypatch, tmp_path):
         "PROJECT_CYAN_OLV_API_KEY",
         "PROJECT_CYAN_SPRING_API_URL",
         "PROJECT_CYAN_GOODS_API_BASE_URL",
+        "PROJECT_CYAN_HOOK_POLICY_CACHE_TTL_SECONDS",
     ):
         monkeypatch.delenv(env_name, raising=False)
     monkeypatch.setenv(
@@ -201,6 +213,11 @@ class FakeHttpResponse:
         return json.dumps(self.payload).encode("utf-8")
 
 
+class FakeTextHttpResponse(FakeHttpResponse):
+    def read(self):
+        return self.payload.encode("utf-8")
+
+
 class FakeGoodsCatalogClient:
     def __init__(self, candidates):
         self.candidates = candidates
@@ -209,6 +226,27 @@ class FakeGoodsCatalogClient:
     def search_candidates(self, text):
         self.received_texts.append(text)
         return self.candidates
+
+
+class FakeHookPolicyClient:
+    def __init__(self, policies):
+        self.policies = policies
+        self.calls = 0
+
+    def fetch_policies(self):
+        self.calls += 1
+        return self.policies
+
+
+class FakeHookFilter:
+    def __init__(self, policies):
+        self.filter = HookFilter(CachedHookPolicyProvider(FakeHookPolicyClient(policies)))
+
+    def filter_input(self, text):
+        return self.filter.filter_input(text)
+
+    def filter_output(self, response):
+        return self.filter.filter_output(response)
 
 
 class FakeWebSocketGoodsCatalogClient:
@@ -238,6 +276,20 @@ class FakeWebSocketGoodsCatalogClient:
     def search_candidates(self, text):
         self.received_texts.append(text)
         return self.candidates
+
+
+GOODS_CATALOG_TSV = """goodsId\tname\tprice\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
+1001\tPhotocard Set Vol.1\t12000\tArtist A\tGROUP ONE\tPhotocard\tPHOTOCARD,ARTIST_A\tON_SALE\t120\ttrue\ttrue\tArtist A 포토카드 세트입니다.
+1002\tOfficial Lightstick\t45000\tArtist A\tGROUP ONE\tLightstick\tLIGHTSTICK,ARTIST_A\tON_SALE\t35\ttrue\ttrue\tArtist A 공식 응원봉입니다.
+1003\tMini Album [Repackage]\t23000\tArtist B\tGROUP ONE\tAlbum\tALBUM,ARTIST_B\tON_SALE\t200\tfalse\tfalse\tArtist B 리패키지 미니 앨범입니다.
+1004\tLogo Hoodie\t58000\tArtist B\tGROUP ONE\tApparel\tHOODIE,ARTIST_B\tON_SALE\t18\ttrue\tfalse\tArtist B 로고 후디입니다.
+1005\tTour Poster A2\t8000\tArtist C\tGROUP TWO\tPoster\tPOSTER,ARTIST_C\tON_SALE\t80\tfalse\tfalse\tArtist C 투어 포스터입니다.
+1006\tCharacter Plush\t27000\tArtist C\tGROUP TWO\tPlush\tPLUSH,ARTIST_C\tON_SALE\t42\ttrue\tfalse\tArtist C 캐릭터 인형입니다.
+1007\tPhotocard Binder\t15000\tArtist D\tGROUP TWO\tPhotocard\tPHOTOCARD,BINDER\tON_SALE\t60\tfalse\tfalse\t포토카드를 보관하는 바인더입니다.
+1008\tConcept Album\t31000\tArtist D\tGROUP TWO\tAlbum\tALBUM,ARTIST_D\tPRE_ORDER\t100\tfalse\tfalse\tArtist D 콘셉트 앨범입니다.
+1009\tKeyring Charm\t19000\tArtist E\tGROUP THREE\tKeyring\tKEYRING,ARTIST_E\tON_SALE\t70\tfalse\ttrue\t콘서트 키링입니다.
+1010\tSold Out Photocard\t14000\tArtist E\tGROUP THREE\tPhotocard\tPHOTOCARD,ARTIST_E\tON_SALE\t0\tfalse\tfalse\t품절 포토카드입니다.
+"""
 
 
 THREE_RECENT_CANDIDATES = [
@@ -359,6 +411,118 @@ def test_http_goods_catalog_client_sends_extracted_max_price(monkeypatch):
     query = parse_qs(urlparse(captured_urls[0]).query)
     assert query["maxPrice"] == ["50000"]
     assert response == []
+
+
+def test_parse_goods_catalog_tsv_normalizes_catalog_fields():
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    assert candidates[0]["goodsId"] == 1001
+    assert candidates[0]["price"] == 12000
+    assert candidates[0]["tags"] == ["PHOTOCARD", "ARTIST_A"]
+    assert candidates[0]["stockCount"] == 120
+    assert candidates[0]["aiPickDefault"] is True
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_goods_ids"),
+    [
+        ("포토카드 찾아줘", [1001, 1007]),
+        ("포토카드는 누구의 상품이 있어?", [1001, 1007]),
+        ("포토카드가 있어?", [1001, 1007]),
+        ("Artist A의 포토카드 있어?", [1001]),
+        ("키링은 누구 거 있어?", [1009]),
+        ("Group One 포토카드", [1001]),
+        ("3만원 이하 포토카드", [1001, 1007]),
+        ("품절 아닌 포토카드", [1001, 1007]),
+        ("Artist A 상품 추천해줘", [1001, 1002]),
+    ],
+)
+def test_filter_tsv_candidates_handles_core_recommendation_requests(
+    text,
+    expected_goods_ids,
+):
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    response = filter_tsv_candidates(text, candidates)
+
+    assert [candidate["goodsId"] for candidate in response] == expected_goods_ids
+    assert all(candidate["salesStatus"] == "ON_SALE" for candidate in response)
+    assert all(candidate["stockCount"] > 0 for candidate in response)
+
+
+def test_filter_tsv_candidates_allows_related_artist_group_as_secondary_results():
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    response = filter_tsv_candidates("Artist A 관련 굿즈 추천해줘", candidates)
+
+    assert [candidate["goodsId"] for candidate in response] == [
+        1001,
+        1002,
+        1004,
+        1003,
+    ]
+    assert response[0]["artistName"] == "Artist A"
+    assert response[1]["artistName"] == "Artist A"
+
+
+def test_tsv_goods_catalog_client_reads_local_snapshot(tmp_path):
+    catalog_path = tmp_path / "goods-catalog-latest.tsv"
+    catalog_path.write_text(GOODS_CATALOG_TSV, encoding="utf-8")
+    client = TsvGoodsCatalogClient(str(catalog_path))
+
+    response = client.search_candidates("Artist A의 포토카드 있어?")
+
+    assert response == [
+        {
+            "goodsId": 1001,
+            "name": "Photocard Set Vol.1",
+            "price": 12000,
+            "imageUrl": None,
+            "tags": ["PHOTOCARD", "ARTIST_A"],
+            "artistName": "Artist A",
+            "categoryName": "Photocard",
+            "salesStatus": "ON_SALE",
+            "stockCount": 120,
+            "recommendationReason": "artistName, categoryName, description, tags 조건과 일치하는 상품입니다.",
+            "matchedFields": [
+                "artistName",
+                "categoryName",
+                "description",
+                "tags",
+            ],
+        }
+    ]
+
+
+def test_metadata_tsv_goods_catalog_client_reads_catalog_url_from_spring(monkeypatch):
+    captured_urls = []
+
+    def fake_urlopen(request, timeout):
+        captured_urls.append(request.full_url)
+        if request.full_url == "http://backend.test/api/ai/goods-catalog/latest":
+            return FakeHttpResponse(
+                {
+                    "catalogUrl": "https://storage.test/goods-catalog-latest.tsv",
+                    "generatedAt": "2026-06-25T03:00:00Z",
+                    "urlExpiresAt": "2026-07-02T03:00:00Z",
+                    "itemCount": 10,
+                    "storagePath": "goods-catalog-latest.tsv",
+                }
+            )
+        return FakeTextHttpResponse(GOODS_CATALOG_TSV)
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+    client = MetadataTsvGoodsCatalogClient(
+        "http://backend.test/api/ai/goods-catalog/latest"
+    )
+
+    response = client.search_candidates("키링은 누구 거 있어?")
+
+    assert captured_urls == [
+        "http://backend.test/api/ai/goods-catalog/latest",
+        "https://storage.test/goods-catalog-latest.tsv",
+    ]
+    assert [candidate["goodsId"] for candidate in response] == [1009]
 
 
 def test_catalog_grounding_removes_actions_for_goods_outside_candidates():
@@ -1414,8 +1578,9 @@ def test_client_ws_rejects_unsupported_message_type():
         response = websocket.receive_json()
 
     assert response == {
-        "type": "error",
-        "message": "Unsupported message type.",
+        "type": "full-text",
+        "text": "지원하지 않는 메시지 형식이에요.",
+        "actions": [],
     }
 
 
@@ -1428,8 +1593,9 @@ def test_client_ws_rejects_invalid_text_input():
         response = websocket.receive_json()
 
     assert response == {
-        "type": "error",
-        "message": "Invalid text-input message.",
+        "type": "full-text",
+        "text": "입력 내용을 확인해주세요.",
+        "actions": [],
     }
 
 
@@ -1447,6 +1613,128 @@ def test_client_ws_rejects_blank_or_oversized_text_input():
             websocket.send_json(payload)
             response = websocket.receive_json()
             assert response == {
-                "type": "error",
-                "message": "Invalid text-input message.",
+                "type": "full-text",
+                "text": "입력 내용을 확인해주세요.",
+                "actions": [],
             }
+
+
+def test_client_ws_applies_input_hook_before_schema_max_length(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_hook_filter",
+        lambda spring_api_url, ttl_seconds: FakeHookFilter(
+            [
+                HookPolicy(
+                    hook="input",
+                    check="maxLength",
+                    threshold="500",
+                    action="stop",
+                    message="입력이 너무 길어요. 500자 이하로 다시 입력해주세요.",
+                )
+            ]
+        ),
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "가" * (CLIENT_TEXT_MAX_LENGTH + 1)})
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "입력이 너무 길어요. 500자 이하로 다시 입력해주세요.",
+        "actions": [],
+    }
+
+
+def test_hook_filter_blocks_input_before_provider_call():
+    hook_filter = HookFilter(
+        CachedHookPolicyProvider(
+            FakeHookPolicyClient(
+                [
+                    HookPolicy(
+                        hook="input",
+                        check="maxLength",
+                        threshold="5",
+                        action="stop",
+                        message="짧게 입력해주세요.",
+                    )
+                ]
+            )
+        )
+    )
+
+    response = hook_filter.filter_input("123456")
+
+    assert response == FullTextMessage(text="짧게 입력해주세요.", actions=[])
+
+
+def test_hook_filter_filters_output_actions_by_scope():
+    hook_filter = HookFilter(
+        CachedHookPolicyProvider(
+            FakeHookPolicyClient(
+                [
+                    HookPolicy(
+                        hook="output",
+                        check="actionScope",
+                        threshold="navigate,highlight",
+                        action="filter",
+                        message="허용 액션만 실행합니다.",
+                    )
+                ]
+            )
+        )
+    )
+
+    response = hook_filter.filter_output(
+        FullTextMessage(
+            text="추천해요.",
+            actions=[
+                NavigateAction(path="/goods/42"),
+                HighlightAction(selector="[data-goods-id='42']"),
+                AddToCartAction(goodsId="42"),
+            ],
+        )
+    )
+
+    assert response == FullTextMessage(
+        text="추천해요.",
+        actions=[
+            NavigateAction(path="/goods/42"),
+            HighlightAction(selector="[data-goods-id='42']"),
+        ],
+    )
+
+
+def test_hook_filter_rewrites_forbidden_output_text():
+    hook_filter = HookFilter(
+        CachedHookPolicyProvider(
+            FakeHookPolicyClient(
+                [
+                    HookPolicy(
+                        hook="output",
+                        check="forbiddenWords",
+                        threshold="secret,banned",
+                        action="rewrite",
+                        message="안내가 부적절해 다시 정리했어요.",
+                    )
+                ]
+            )
+        )
+    )
+
+    response = hook_filter.filter_output(
+        FullTextMessage(
+            text="secret 상품이에요.",
+            actions=[NavigateAction(path="/goods/42")],
+        )
+    )
+
+    assert response == FullTextMessage(text="안내가 부적절해 다시 정리했어요.", actions=[])
+
+
+def test_hook_ratio_helpers_parse_percent_thresholds():
+    assert parse_ratio("30%") == 0.3
+    assert character_ratio("abc123", r"[0-9]") == 0.5

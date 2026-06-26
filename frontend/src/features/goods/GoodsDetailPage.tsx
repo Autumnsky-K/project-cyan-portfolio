@@ -8,6 +8,7 @@ import {
   type GoodsSummary,
 } from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
+import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
@@ -155,6 +156,7 @@ function GoodsDetailPage() {
   )
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
+  const descriptionHtml = goods?.description?.trim()
 
   async function handleShare() {
     try {
@@ -220,7 +222,14 @@ function GoodsDetailPage() {
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
                     <h2>{goods.name}</h2>
-                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
+                    {descriptionHtml ? (
+                      <div
+                        className="detail-description"
+                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                      />
+                    ) : (
+                      <p>상품 소개가 준비 중입니다.</p>
+                    )}
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
@@ -249,6 +258,7 @@ function GoodsDetailPage() {
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />
+          <GoodsCartSidePanel />
         </>
       )}
     </main>

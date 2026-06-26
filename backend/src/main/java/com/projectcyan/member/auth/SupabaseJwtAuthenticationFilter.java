@@ -92,6 +92,16 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method) && path.matches("/api/goods/\\d+/views")) {
 			return true;
 		}
+		if (HttpMethod.GET.matches(method) && path.matches("/api/goods/\\d+/reviews/my")) {
+			return true;
+		}
+		if (HttpMethod.POST.matches(method) && path.matches("/api/goods/\\d+/reviews")) {
+			return true;
+		}
+		if ((HttpMethod.PATCH.matches(method) || HttpMethod.DELETE.matches(method))
+			&& path.matches("/api/goods/\\d+/reviews/\\d+")) {
+			return true;
+		}
 		if (HttpMethod.GET.matches(method) && (path.equals("/api/goods") || path.startsWith("/api/goods/"))) {
 			return false;
 		}
@@ -103,6 +113,7 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		return path.startsWith("/api/cart")
+			|| path.startsWith("/api/checkout")
 			|| path.startsWith("/api/orders")
 			|| path.startsWith("/api/payments")
 			|| path.startsWith("/api/members");

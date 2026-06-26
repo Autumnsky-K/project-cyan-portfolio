@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import CartAccessGate from './features/cart/CartAccessGate'
 import { CartProvider } from './features/cart/cartStore'
 
@@ -8,6 +8,7 @@ import ArtistPage from './features/artist/artist'
 import ForgotPasswordPage from './features/member/ForgotPasswordPage'
 import GoodsDetailPage from './features/goods/GoodsDetailPage'
 import GoodsPage from './features/goods/goods'
+import HomePage from './features/home/HomePage'
 import LikePage from './features/member/LikePage'
 import LoginPage from './features/member/LoginPage.jsx'
 import PaymentCancel from './pages/PaymentCancel.jsx'
@@ -62,7 +63,7 @@ function AppShell() {
     <>
       <div id="content">
         <Routes>
-          <Route path="/" element={<Navigate replace to="/goods" />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/goods" element={<GoodsPage />} />
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
           <Route

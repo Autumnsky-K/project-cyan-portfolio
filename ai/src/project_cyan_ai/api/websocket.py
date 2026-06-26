@@ -6,12 +6,14 @@ from pydantic import ValidationError
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    MetadataTsvGoodsCatalogClient,
+    TsvGoodsCatalogClient,
 )
 from project_cyan_ai.providers import get_chat_response_provider
+from project_cyan_ai.hook_policy import build_hook_filter
 from project_cyan_ai.schemas.ws import (
     CLIENT_TEXT_INPUT_TYPE,
     ClientTextInput,
-    ErrorMessage,
     FullTextMessage,
     ModelConfigMessage,
 )
@@ -25,9 +27,25 @@ async def client_ws(websocket: WebSocket):
     await websocket.accept()
     client_uid = str(uuid4())
     settings = get_settings()
+    if settings.goods_catalog_metadata_url:
+        catalog_client = MetadataTsvGoodsCatalogClient(
+            settings.goods_catalog_metadata_url,
+            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
+        )
+    elif settings.goods_catalog_tsv_url:
+        catalog_client = TsvGoodsCatalogClient(
+            settings.goods_catalog_tsv_url,
+            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
+        )
+    else:
+        catalog_client = HttpGoodsCatalogClient(settings.spring_api_url)
     response_provider = CatalogGroundedChatResponseProvider(
         delegate=get_chat_response_provider(),
-        catalog_client=HttpGoodsCatalogClient(settings.spring_api_url),
+        catalog_client=catalog_client,
+    )
+    hook_filter = build_hook_filter(
+        settings.spring_api_url,
+        settings.hook_policy_cache_ttl_seconds,
     )
 
     await websocket.send_json(
@@ -47,19 +65,38 @@ async def client_ws(websocket: WebSocket):
 
             if data.get("type") != CLIENT_TEXT_INPUT_TYPE:
                 await websocket.send_json(
-                    ErrorMessage(message="Unsupported message type.").model_dump()
+                    FullTextMessage(
+                        text="지원하지 않는 메시지 형식이에요.",
+                        actions=[],
+                    ).model_dump()
                 )
                 continue
+
+            raw_text = data.get("text")
+            if isinstance(raw_text, str):
+                blocked_response = hook_filter.filter_input(raw_text.strip())
+                if blocked_response is not None:
+                    await websocket.send_json(blocked_response.model_dump())
+                    continue
 
             try:
                 message = ClientTextInput.model_validate(data)
             except ValidationError:
                 await websocket.send_json(
-                    ErrorMessage(message="Invalid text-input message.").model_dump()
+                    FullTextMessage(
+                        text="입력 내용을 확인해주세요.",
+                        actions=[],
+                    ).model_dump()
                 )
                 continue
 
+            blocked_response = hook_filter.filter_input(message.text)
+            if blocked_response is not None:
+                await websocket.send_json(blocked_response.model_dump())
+                continue
+
             response = response_provider.build_response(message.text, message.context)
+            response = hook_filter.filter_output(response)
             await websocket.send_json(response.model_dump())
 
     except WebSocketDisconnect:

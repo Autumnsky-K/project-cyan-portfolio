@@ -3,23 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI 챗봇 관리</title>
+  <title>AI 챗봇 워크북</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
 </head>
 <body>
 <main class="admin-page">
   <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
-  <section class="admin-main">
+  <section class="admin-main admin-ai-main" data-ai-admin>
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">챗봇 관리</p>
-        <h2>AI 챗봇 관리</h2>
+        <p class="admin-eyebrow">AI Workbook UI</p>
+        <h2>챗봇 데이터 워크북</h2>
       </div>
       <div class="admin-header-actions">
         <a th:href="@{/}">스토어 열기</a>
       </div>
     </header>
+
+    <div class="admin-notice admin-notice-success"
+         th:if="${catalogExportMessage}"
+         th:text="${catalogExportMessage}">AI 상품 카탈로그 TSV를 생성했습니다.</div>
+    <div class="admin-notice"
+         th:if="${catalogExportUrl}"
+         th:text="${catalogExportUrl}">https://example.com/goods-catalog-latest.tsv</div>
+    <div class="admin-notice admin-notice-success"
+         th:if="${hookPolicyMessage}"
+         th:text="${hookPolicyMessage}">AI hook 정책을 저장했습니다.</div>
 
     <section class="admin-stats" aria-label="AI 챗봇 상태">
       <article>
@@ -34,16 +44,29 @@
         <span>실행 모드</span>
         <strong>개발</strong>
       </article>
+      <article>
+        <span>상품 카탈로그</span>
+        <strong th:text="${latestCatalogSnapshot != null && latestCatalogSnapshot.status == 'SUCCESS'} ? '준비됨' : '대기'">대기</strong>
+      </article>
     </section>
 
     <section class="admin-table-panel" aria-label="AI 챗봇 관리 항목">
+      <div class="admin-panel-heading">
+        <div>
+          <p class="admin-eyebrow">Catalog Snapshot</p>
+          <h3>AI 상품 카탈로그 TSV</h3>
+        </div>
+        <form method="post" th:action="@{/admin/ai/goods-catalog/export}">
+          <button class="admin-primary-button" type="submit">TSV 생성</button>
+        </form>
+      </div>
       <div class="admin-table-scroll">
         <table class="admin-goods-table admin-ai-table">
           <thead>
           <tr>
-            <th>영역</th>
-            <th>상태</th>
-            <th>관리 대상</th>
+            <th>항목</th>
+            <th>값</th>
+            <th>비고</th>
           </tr>
           </thead>
           <tbody>
@@ -62,11 +85,254 @@
             <td>예정</td>
             <td>상황별 말투와 응답 규칙</td>
           </tr>
+          <tr>
+            <td><strong>최신 카탈로그</strong></td>
+            <td th:text="${latestCatalogSnapshot == null} ? '없음' : ${latestCatalogSnapshot.status}">없음</td>
+            <td th:text="${latestCatalogSnapshot == null} ? '아직 생성되지 않았습니다.' : ${latestCatalogSnapshot.generatedAt}">아직 생성되지 않았습니다.</td>
+          </tr>
+          <tr>
+            <td><strong>상품 수</strong></td>
+            <td th:text="${latestCatalogSnapshot == null} ? '-' : ${latestCatalogSnapshot.itemCount}">-</td>
+            <td th:text="${latestCatalogSnapshot == null} ? '-' : ${latestCatalogSnapshot.storagePath}">-</td>
+          </tr>
+          <tr>
+            <td><strong>URL 만료</strong></td>
+            <td th:text="${latestCatalogSnapshot == null || latestCatalogSnapshot.urlExpiresAt == null} ? '-' : ${latestCatalogSnapshot.urlExpiresAt}">-</td>
+            <td>AI 서버는 Spring API에서 최신 URL을 받아 사용합니다.</td>
+          </tr>
           </tbody>
         </table>
       </div>
     </section>
+    <section class="admin-ai-workbook">
+      <aside class="admin-ai-tree-panel" aria-label="DB 수집 층위">
+        <header>
+          <p class="admin-eyebrow">DB Gather Shape</p>
+          <h3>Supabase → Spring → LLM 요약 트리</h3>
+        </header>
+
+        <div class="admin-ai-tree">
+          <details open>
+            <summary>
+              <strong>01. 상품 카탈로그 압축</strong>
+              <span>artist / category / goods / stock</span>
+            </summary>
+            <details open>
+              <summary>artist</summary>
+              <ul>
+                <li>artistId, artistName, groupName</li>
+                <li>활성 아티스트, 대표 컬렉션</li>
+              </ul>
+            </details>
+            <details open>
+              <summary>goods</summary>
+              <ul>
+                <li>goodsId, name, price, tags</li>
+                <li>categoryName, salesStatus, stockCount</li>
+              </ul>
+            </details>
+            <details open>
+              <summary>inventory</summary>
+              <ul>
+                <li>재고 있음 / 품절 / 판매 중지</li>
+                <li>5분 캐시 기준 최신 스냅샷</li>
+              </ul>
+            </details>
+          </details>
+
+          <details open>
+            <summary>
+              <strong>02. 기본 프롬프트 층위</strong>
+              <span>identity / authority / context</span>
+            </summary>
+            <ul>
+              <li>캐릭터 정체성</li>
+              <li>할 수 있는 화면 액션</li>
+              <li>모르는 정보 처리 방식</li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>
+              <strong>03. Input / Output Hook</strong>
+              <span>ratio / forbidden / action</span>
+            </summary>
+            <ul>
+              <li>입력 금지어와 문자 비율</li>
+              <li>출력 금지어와 ACTION 검증</li>
+              <li>실패 시 백업 문장</li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>
+              <strong>04. 응답 시나리오</strong>
+              <span>context / motion / response</span>
+            </summary>
+            <ul>
+              <li>추천, 상세 질문, 장바구니</li>
+              <li>잡담, 연결 실패, 조회 실패</li>
+              <li>말풍선 톤과 모션 후보</li>
+            </ul>
+          </details>
+        </div>
+      </aside>
+
+      <section class="admin-ai-sheet-panel" aria-label="엑셀형 설정 미리보기">
+        <header class="admin-ai-sheet-panel-header">
+          <div>
+            <p class="admin-eyebrow">Excel Preview</p>
+            <h3>시트별 관리 영역</h3>
+          </div>
+        </header>
+
+        <div class="admin-ai-sheet-stack">
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="catalog">
+            <summary>
+              <span>
+                <em>01 DB 요약</em>
+                <strong>상품 카탈로그 압축</strong>
+              </span>
+              <b>접기</b>
+            </summary>
+            <div class="admin-ai-sheet-actions">
+              <label class="admin-ai-file-button">
+                <span>파일 불러오기</span>
+                <input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="catalog">
+              </label>
+              <button type="button" data-ai-export="catalog">TSV 내보내기</button>
+              <button type="button" data-ai-reset="catalog">샘플 복원</button>
+            </div>
+            <div class="admin-ai-sheet-preview" aria-label="DB 요약 엑셀 미리보기">
+              <table data-ai-sheet-preview="catalog"></table>
+            </div>
+            <details class="admin-ai-raw-editor" open>
+              <summary>원본 TSV 편집</summary>
+              <textarea spellcheck="false" data-ai-sheet-source="catalog"></textarea>
+            </details>
+          </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="prompt">
+            <summary>
+              <span>
+                <em>02 기본 프롬프트</em>
+                <strong>페르소나 / 권한 / 근거</strong>
+              </span>
+              <b>접기</b>
+            </summary>
+            <div class="admin-ai-sheet-actions">
+              <label class="admin-ai-file-button">
+                <span>파일 불러오기</span>
+                <input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="prompt">
+              </label>
+              <button type="button" data-ai-export="prompt">TSV 내보내기</button>
+              <button type="button" data-ai-reset="prompt">샘플 복원</button>
+            </div>
+            <div class="admin-ai-sheet-preview" aria-label="기본 프롬프트 엑셀 미리보기">
+              <table data-ai-sheet-preview="prompt"></table>
+            </div>
+            <details class="admin-ai-raw-editor" open>
+              <summary>원본 TSV 편집</summary>
+              <textarea spellcheck="false" data-ai-sheet-source="prompt"></textarea>
+            </details>
+          </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="hook">
+            <summary>
+              <span>
+                <em>03 Input / Output Hook</em>
+                <strong>금지어 / 비율 / 출력 액션</strong>
+              </span>
+              <b>접기</b>
+            </summary>
+            <div class="admin-ai-sheet-actions">
+              <button type="button" data-ai-hook-add>정책 추가</button>
+              <button type="button" data-ai-reset="hook">샘플 불러오기</button>
+              <form method="post" th:action="@{/admin/ai/hooks}" data-ai-hook-form>
+                <input type="hidden" name="hookSheetText" data-ai-hook-hidden>
+                <button class="admin-primary-button" type="submit">Hook 정책 저장</button>
+              </form>
+            </div>
+            <p class="admin-ai-sheet-note"
+               th:if="${!hasHookPolicies}">
+              저장된 Hook 정책이 없습니다. 샘플을 불러온 뒤 저장하거나 정책을 직접 추가해야 AI filter에 적용됩니다.
+            </p>
+            <div class="admin-ai-hook-table-wrap" aria-label="Input Output Hook 정책 테이블">
+              <table class="admin-ai-hook-table">
+                <colgroup>
+                  <col class="admin-ai-hook-col-hook">
+                  <col class="admin-ai-hook-col-check">
+                  <col class="admin-ai-hook-col-threshold">
+                  <col class="admin-ai-hook-col-action">
+                  <col class="admin-ai-hook-col-message">
+                  <col class="admin-ai-hook-col-manage">
+                </colgroup>
+                <thead>
+                <tr>
+                  <th>hook</th>
+                  <th>check</th>
+                  <th>threshold</th>
+                  <th>action</th>
+                  <th>message</th>
+                  <th>관리</th>
+                </tr>
+                </thead>
+                <tbody data-ai-hook-policy-table></tbody>
+              </table>
+            </div>
+            <textarea hidden data-ai-sheet-source="hook" th:text="${hookSheetText}"></textarea>
+            <div class="admin-ai-hook-test-grid" aria-label="Hook 정책 테스트">
+              <section>
+                <h4>입력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-input
+                          placeholder="사용자 입력 예시를 넣어보세요."></textarea>
+                <button type="button" data-ai-hook-test-run="input">테스트 입력</button>
+                <output data-ai-hook-test-result="input">아직 테스트하지 않았습니다.</output>
+              </section>
+              <section>
+                <h4>출력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-output
+                          placeholder="챗봇 출력 예시를 넣어보세요."></textarea>
+                <div class="admin-ai-hook-checkboxes">
+                  <label><input type="checkbox" value="navigate" data-ai-hook-test-action checked><span>navigate</span></label>
+                  <label><input type="checkbox" value="highlight" data-ai-hook-test-action checked><span>highlight</span></label>
+                  <label><input type="checkbox" value="addToCart" data-ai-hook-test-action checked><span>addToCart</span></label>
+                </div>
+                <button type="button" data-ai-hook-test-run="output">테스트 출력</button>
+                <output data-ai-hook-test-result="output">아직 테스트하지 않았습니다.</output>
+              </section>
+            </div>
+          </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="scenario">
+            <summary>
+              <span>
+                <em>04 응답 시나리오</em>
+                <strong>응답 맥락 / 모션 / 백업 행동</strong>
+              </span>
+              <b>접기</b>
+            </summary>
+            <div class="admin-ai-sheet-actions">
+              <label class="admin-ai-file-button">
+                <span>파일 불러오기</span>
+                <input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="scenario">
+              </label>
+              <button type="button" data-ai-export="scenario">TSV 내보내기</button>
+              <button type="button" data-ai-reset="scenario">샘플 복원</button>
+            </div>
+            <div class="admin-ai-sheet-preview" aria-label="응답 시나리오 엑셀 미리보기">
+              <table data-ai-sheet-preview="scenario"></table>
+            </div>
+            <details class="admin-ai-raw-editor" open>
+              <summary>원본 TSV 편집</summary>
+              <textarea spellcheck="false" data-ai-sheet-source="scenario"></textarea>
+            </details>
+          </details>
+        </div>
+      </section>
+    </section>
   </section>
 </main>
+<script th:src="@{/admin/ai-admin.js}"></script>
 </body>
 </html>
