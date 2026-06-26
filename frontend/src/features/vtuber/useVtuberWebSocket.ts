@@ -18,7 +18,7 @@ type UseVtuberWebSocketResult = {
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
   latestText: string
-  sendText: (text: string) => boolean
+  sendText: (text: string, accessTokenOverride?: string | null) => boolean
 }
 
 function buildVtuberWebSocketUrl(): string {
@@ -182,12 +182,21 @@ export function useVtuberWebSocket(
     socket.send(JSON.stringify(authMessage))
   }, [accessToken, connectionStatus])
 
-  const sendText = useCallback((text: string) => {
+  const sendText = useCallback((text: string, accessTokenOverride: string | null = null) => {
     const trimmedText = text.trim()
     const socket = socketRef.current
 
     if (!trimmedText || socket?.readyState !== WebSocket.OPEN) {
       return false
+    }
+
+    if (accessTokenOverride) {
+      const authMessage: VtuberClientAuthMessage = {
+        type: 'auth',
+        accessToken: accessTokenOverride,
+      }
+
+      socket.send(JSON.stringify(authMessage))
     }
 
     const message: VtuberClientTextInputMessage = {
