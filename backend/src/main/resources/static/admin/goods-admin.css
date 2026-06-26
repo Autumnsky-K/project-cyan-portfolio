@@ -656,8 +656,10 @@ button.admin-primary {
 }
 
 .admin-bulk-toolbar input,
+.admin-bulk-toolbar select,
 .admin-bulk-toolbar button,
-.admin-bulk-table input {
+.admin-bulk-table input,
+.admin-bulk-table select {
   box-sizing: border-box;
   border: 1px solid var(--admin-line);
   border-radius: 3px;
@@ -666,7 +668,8 @@ button.admin-primary {
   font: inherit;
 }
 
-.admin-bulk-toolbar input {
+.admin-bulk-toolbar input,
+.admin-bulk-toolbar select {
   width: 100%;
   min-height: 30px;
   padding: 5px 7px;

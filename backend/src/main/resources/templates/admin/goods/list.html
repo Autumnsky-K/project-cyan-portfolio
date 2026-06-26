@@ -86,24 +86,6 @@
       <input type="hidden" name="categoryId" th:value="${categoryId}">
       <input type="hidden" name="sort" th:value="${sort}">
       <input type="hidden" name="page" th:value="${goodsPage.page()}">
-      <datalist id="admin-bulk-artist-options">
-        <option value="아티스트 없음" data-value=""></option>
-        <option th:each="artist : ${filters.artists()}"
-                th:value="${artist.label()}"
-                th:attr="data-value=${artist.value()}"></option>
-      </datalist>
-      <datalist id="admin-bulk-category-options">
-        <option value="카테고리 없음" data-value=""></option>
-        <option th:each="category : ${filters.categories()}"
-                th:value="${category.label()}"
-                th:attr="data-value=${category.value()}"></option>
-      </datalist>
-      <datalist id="admin-bulk-status-options">
-        <option th:each="status : ${salesStatuses}"
-                th:value="${salesStatusLabels.get(status) ?: status}"
-                th:attr="data-value=${status}"></option>
-      </datalist>
-
       <section class="admin-bulk-toolbar" aria-label="굿즈 일괄 수정 도구">
         <div class="admin-bulk-selection">
           <label class="admin-bulk-check-label">
@@ -119,30 +101,36 @@
           <div class="admin-bulk-tool-pair">
             <label>
               <span>아티스트 일괄</span>
-              <input type="text"
-                     list="admin-bulk-artist-options"
-                     data-goods-bulk-choice="artist"
-                     placeholder="허용된 아티스트">
+              <select data-goods-bulk-choice="artist">
+                <option value="">아티스트 없음</option>
+                <option th:each="artist : ${filters.artists()}"
+                        th:value="${artist.value()}"
+                        th:text="${artist.label()}"></option>
+              </select>
             </label>
             <button type="button" data-goods-bulk-apply-choice="artist">넣기</button>
           </div>
           <div class="admin-bulk-tool-pair">
             <label>
               <span>카테고리 일괄</span>
-              <input type="text"
-                     list="admin-bulk-category-options"
-                     data-goods-bulk-choice="category"
-                     placeholder="허용된 카테고리">
+              <select data-goods-bulk-choice="category">
+                <option value="">카테고리 없음</option>
+                <option th:each="category : ${filters.categories()}"
+                        th:value="${category.value()}"
+                        th:text="${category.label()}"></option>
+              </select>
             </label>
             <button type="button" data-goods-bulk-apply-choice="category">넣기</button>
           </div>
           <div class="admin-bulk-tool-pair">
             <label>
               <span>판매 상태 일괄</span>
-              <input type="text"
-                     list="admin-bulk-status-options"
-                     data-goods-bulk-choice="status"
-                     placeholder="판매 상태">
+              <select data-goods-bulk-choice="status">
+                <option value="">판매 상태 선택</option>
+                <option th:each="status : ${salesStatuses}"
+                        th:value="${status}"
+                        th:text="${salesStatusLabels.get(status) ?: status}"></option>
+              </select>
             </label>
             <button type="button" data-goods-bulk-apply-choice="status">넣기</button>
           </div>
@@ -226,46 +214,45 @@
               </td>
               <td>
                 <div class="admin-bulk-cell">
-                  <input class="admin-bulk-input admin-bulk-choice-input"
-                         type="text"
-                         list="admin-bulk-artist-options"
-                         data-choice-kind="artist"
-                         th:value="${row.artistLabel()}"
-                         th:attr="data-original=${row.artistLabel()},data-original-label=${row.artistLabel()}">
-                  <input type="hidden"
-                         name="rowArtistId"
-                         data-choice-value="artist"
-                         th:value="${row.artistId() == null ? '' : row.artistId()}">
+                  <select class="admin-bulk-input admin-bulk-choice-input"
+                          name="rowArtistId"
+                          data-choice-kind="artist"
+                          th:attr="data-original=${row.artistId() == null ? '' : row.artistId()},data-original-label=${row.artistLabel()}">
+                    <option value="" th:selected="${row.artistId() == null}">아티스트 없음</option>
+                    <option th:each="artist : ${filters.artists()}"
+                            th:value="${artist.value()}"
+                            th:text="${artist.label()}"
+                            th:selected="${row.artistId() != null and artist.value() == row.artistId().toString()}"></option>
+                  </select>
                   <span class="admin-bulk-original" data-original-preview hidden></span>
                 </div>
               </td>
               <td>
                 <div class="admin-bulk-cell">
-                  <input class="admin-bulk-input admin-bulk-choice-input"
-                         type="text"
-                         list="admin-bulk-category-options"
-                         data-choice-kind="category"
-                         th:value="${row.categoryLabel()}"
-                         th:attr="data-original=${row.categoryLabel()},data-original-label=${row.categoryLabel()}">
-                  <input type="hidden"
-                         name="rowCategoryId"
-                         data-choice-value="category"
-                         th:value="${row.categoryId() == null ? '' : row.categoryId()}">
+                  <select class="admin-bulk-input admin-bulk-choice-input"
+                          name="rowCategoryId"
+                          data-choice-kind="category"
+                          th:attr="data-original=${row.categoryId() == null ? '' : row.categoryId()},data-original-label=${row.categoryLabel()}">
+                    <option value="" th:selected="${row.categoryId() == null}">카테고리 없음</option>
+                    <option th:each="category : ${filters.categories()}"
+                            th:value="${category.value()}"
+                            th:text="${category.label()}"
+                            th:selected="${row.categoryId() != null and category.value() == row.categoryId().toString()}"></option>
+                  </select>
                   <span class="admin-bulk-original" data-original-preview hidden></span>
                 </div>
               </td>
               <td>
                 <div class="admin-bulk-cell">
-                  <input class="admin-bulk-input admin-bulk-choice-input"
-                         type="text"
-                         list="admin-bulk-status-options"
-                         data-choice-kind="status"
-                         th:value="${row.salesStatusLabel()}"
-                         th:attr="data-original=${row.salesStatusLabel()},data-original-label=${row.salesStatusLabel()}">
-                  <input type="hidden"
-                         name="salesStatus"
-                         data-choice-value="status"
-                         th:value="${row.salesStatus()}">
+                  <select class="admin-bulk-input admin-bulk-choice-input"
+                          name="salesStatus"
+                          data-choice-kind="status"
+                          th:attr="data-original=${row.salesStatus()},data-original-label=${row.salesStatusLabel()}">
+                    <option th:each="status : ${salesStatuses}"
+                            th:value="${status}"
+                            th:text="${salesStatusLabels.get(status) ?: status}"
+                            th:selected="${status == row.salesStatus()}"></option>
+                  </select>
                   <span class="admin-bulk-original" data-original-preview hidden></span>
                 </div>
               </td>
