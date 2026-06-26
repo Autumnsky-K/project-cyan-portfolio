@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/admin/ai-behavior-lab-app/',
+  base: '/admin/ai/behavior-lab-project/dist/',
   build: {
-    outDir: '../../backend/src/main/resources/static/admin/ai-behavior-lab-app',
+    outDir: '../../backend/src/main/resources/static/admin/ai/behavior-lab-project/dist',
     emptyOutDir: true,
   },
   server: {

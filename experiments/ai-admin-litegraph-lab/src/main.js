@@ -64,7 +64,7 @@ const nodeTypes = {
     outputs: [{ name: 'response', type: 'txt' }],
     input: '',
     db: 'OAuth default',
-    logic: '입력 prompt에 그대로 답한다.',
+    logic: '',
     output: '',
   },
   customer: {
@@ -261,11 +261,12 @@ const nodeTypes = {
       { name: 'protected txt', type: 'txt' },
       { name: 'report object', type: 'object' },
     ],
-    input: 'oauth_access_token_test_string',
+    input: 'sample_secret_text',
     db: '',
     logic: JSON.stringify(
       {
         mode: 'roundtrip',
+        scheme: 'digit-key-xor-sha256-hmac-v1',
         keyMask: digitKeyMask,
         testKey: piTestKey,
         showRecovered: true,
@@ -332,7 +333,6 @@ document.querySelector('#app').innerHTML = `
       </div>
       <div class="top-actions">
         <span class="pill oauth-pill" data-oauth-status>OAuth 확인 전</span>
-        <button type="button" class="secondary" data-open-key-shell>키 PowerShell</button>
         <button type="button" class="secondary" data-oauth-login>OAuth 연결</button>
         <select data-add-type aria-label="노드 타입">
           ${typeOptions.map((type) => `<option value="${type.path}">${type.title} / ${type.kind}</option>`).join('')}
@@ -427,7 +427,6 @@ const elements = {
   chip: document.querySelector('[data-canvas-chip]'),
   status: document.querySelector('[data-status]'),
   oauthStatus: document.querySelector('[data-oauth-status]'),
-  openKeyShell: document.querySelector('[data-open-key-shell]'),
   oauthLogin: document.querySelector('[data-oauth-login]'),
   addType: document.querySelector('[data-add-type]'),
   addNode: document.querySelector('[data-add-node]'),
@@ -702,14 +701,31 @@ function setStatus(text) {
   elements.logLine.textContent = text
 }
 
+const oauthApiBase = window.location.port === '8001' ? '' : 'http://127.0.0.1:8001'
+
+function apiUrl(path) {
+  if (/^https?:\/\//.test(path)) return path
+  if (!path.startsWith('/api/')) return path
+  return `${oauthApiBase}${path}`
+}
+
 async function apiRequest(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  })
+  const target = apiUrl(path)
+  let response
+  try {
+    response = await fetch(target, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    })
+  } catch (error) {
+    if (target.startsWith('http://127.0.0.1:8001/')) {
+      throw new Error(`OAuth API 8001 연결 실패: ${error.message}`)
+    }
+    throw error
+  }
   const payload = await response.json().catch(() => ({}))
   if (!response.ok || payload.ok === false) {
     throw new Error(payload.error || `HTTP ${response.status}`)
@@ -730,11 +746,15 @@ function setOAuthStatus(status, fallbackText = '') {
   elements.oauthStatus.dataset.connected = String(connected)
   if (connected) {
     elements.oauthStatus.textContent = status.email ? `OAuth 연결됨 ${status.email}` : 'OAuth 연결됨'
-    elements.oauthLogin.textContent = 'OAuth 재연결'
+    if (!elements.oauthLogin.disabled) {
+      elements.oauthLogin.textContent = 'OAuth 재연결'
+    }
     return
   }
   elements.oauthStatus.textContent = fallbackText || 'OAuth 대기'
-  elements.oauthLogin.textContent = 'OAuth 연결'
+  if (!elements.oauthLogin.disabled) {
+    elements.oauthLogin.textContent = 'OAuth 연결'
+  }
 }
 
 async function refreshOAuthStatus() {
@@ -751,6 +771,46 @@ function stopOAuthPolling() {
     window.clearInterval(state.oauthPollTimer)
     state.oauthPollTimer = null
   }
+}
+
+function shouldUseSpringOAuthLauncher() {
+  const localHost = ['127.0.0.1', 'localhost', '::1'].includes(window.location.hostname)
+  return localHost && !['8001', '8002'].includes(window.location.port)
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function oauthHealthMarker(payload) {
+  if (!payload) return ''
+  const pid = payload.pid == null ? '' : String(payload.pid)
+  const startedAt = payload.startedAt == null ? '' : String(payload.startedAt)
+  return pid || startedAt ? `${pid}:${startedAt}` : ''
+}
+
+async function readOAuthHealth() {
+  try {
+    return await apiRequest('/api/health')
+  } catch {
+    return null
+  }
+}
+
+async function waitForOAuthServer(previousHealth = null, timeoutMs = 180000) {
+  const previousMarker = oauthHealthMarker(previousHealth)
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const payload = await apiRequest('/api/health')
+      const marker = oauthHealthMarker(payload)
+      if (payload.ok && (!previousHealth || (marker && marker !== previousMarker))) return payload
+    } catch {
+      // The key helper restarts the OAuth server after the user enters the key.
+    }
+    await delay(750)
+  }
+  throw new Error('OAuth server did not come back after key input')
 }
 
 function startOAuthPolling() {
@@ -771,21 +831,22 @@ function startOAuthPolling() {
 }
 
 async function openOAuthKeyShell() {
-  elements.openKeyShell.disabled = true
-  try {
-    await apiRequest('/api/oauth/open-key-shell', { method: 'POST', body: '{}' })
-    setStatus('key shell opened')
-    setOAuthStatus(null, 'PowerShell에서 키 입력')
-  } catch (error) {
-    setStatus(`key shell failed: ${error.message}`)
-  } finally {
-    elements.openKeyShell.disabled = false
-  }
+  const launcherPath = shouldUseSpringOAuthLauncher()
+    ? '/admin/ai/behavior-lab/local-oauth/open-key-shell'
+    : '/api/oauth/open-key-shell'
+  await apiRequest(launcherPath, { method: 'POST', body: '{}' })
+  setStatus('key shell opened')
+  setOAuthStatus(null, 'PowerShell에서 키 입력')
 }
 
 async function startOAuthLogin() {
   elements.oauthLogin.disabled = true
+  elements.oauthLogin.textContent = '키 입력 대기'
   try {
+    const previousHealth = await readOAuthHealth()
+    await openOAuthKeyShell()
+    await waitForOAuthServer(previousHealth)
+    elements.oauthLogin.textContent = 'OAuth 시작'
     const payload = await apiRequest('/api/oauth/start', { method: 'POST', body: '{}' })
     window.open(payload.authorization_url, '_blank', 'noopener')
     setOAuthStatus(payload.status, 'OAuth 인증 창 열림')
@@ -796,6 +857,7 @@ async function startOAuthLogin() {
     setStatus(`oauth failed: ${error.message}`)
   } finally {
     elements.oauthLogin.disabled = false
+    elements.oauthLogin.textContent = 'OAuth 연결'
   }
 }
 
@@ -1016,9 +1078,10 @@ function syncInspectorLabels(def) {
 
 function syncFieldVisibility(def) {
   const isCombiner = def === nodeTypes.textCombiner
+  const isRawLlm = def === nodeTypes.llmModel
   elements.inputField.hidden = isCombiner
   elements.dbField.hidden = isCombiner
-  elements.logicField.hidden = isCombiner
+  elements.logicField.hidden = isCombiner || isRawLlm
   elements.outputField.hidden = false
 }
 
@@ -1301,15 +1364,6 @@ function runFunctionText(fileName, input, logic = '') {
     ].join('\n')
   }
   return value
-}
-
-function buildGenericLlmPrompt(input, instruction) {
-  const lines = []
-  if (String(instruction || '').trim()) {
-    lines.push('[instruction]', String(instruction).trim(), '')
-  }
-  lines.push('[input]', String(input || ''))
-  return lines.join('\n')
 }
 
 function formatLlmDebug({ title, inputMap, prompt, rawReply, parsed, outputValue }) {
@@ -1772,34 +1826,129 @@ function base64UrlToBytes(text) {
 
 async function deriveTokenKey(keyText, mask = digitKeyMask) {
   const normalizedKey = validateDigitKeyShape(keyText, mask)
-  const material = new TextEncoder().encode(`digit-key-v1:${normalizedKey}`)
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', material)
-  return globalThis.crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+  const password = new TextEncoder().encode(`digit-token-store-v1:${normalizedKey}`)
+  return globalThis.crypto.subtle.importKey('raw', password, 'PBKDF2', false, ['deriveBits'])
+}
+
+async function deriveTokenStoreKeys(keyText, salt, mask = digitKeyMask) {
+  const baseKey = await deriveTokenKey(keyText, mask)
+  const bits = await globalThis.crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+    baseKey,
+    512
+  )
+  const material = new Uint8Array(bits)
+  return {
+    encKey: material.slice(0, 32),
+    macKey: material.slice(32),
+  }
+}
+
+function concatBytes(...parts) {
+  const length = parts.reduce((sum, part) => sum + part.length, 0)
+  const output = new Uint8Array(length)
+  let offset = 0
+  parts.forEach((part) => {
+    output.set(part, offset)
+    offset += part.length
+  })
+  return output
+}
+
+async function sha256Bytes(bytes) {
+  return new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes))
+}
+
+function counterBytes(counter) {
+  const bytes = new Uint8Array(8)
+  new DataView(bytes.buffer).setBigUint64(0, BigInt(counter), false)
+  return bytes
+}
+
+async function xorWithSha256Stream(data, key, nonce) {
+  const stream = []
+  let total = 0
+  let counter = 0
+  while (total < data.length) {
+    const block = await sha256Bytes(concatBytes(key, nonce, counterBytes(counter)))
+    stream.push(block)
+    total += block.length
+    counter += 1
+  }
+  const streamBytes = concatBytes(...stream)
+  return data.map((byte, index) => byte ^ streamBytes[index])
+}
+
+async function hmacSha256(keyBytes, dataBytes) {
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  return new Uint8Array(await globalThis.crypto.subtle.sign('HMAC', key, dataBytes))
+}
+
+function equalBytes(left, right) {
+  if (left.length !== right.length) return false
+  let diff = 0
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left[index] ^ right[index]
+  }
+  return diff === 0
+}
+
+function parsePlainTokenPayload(text) {
+  const value = String(text || '')
+  const parsed = safeJson(value)
+  return parsed == null ? value : parsed
 }
 
 async function encryptTokenText(plainText, keyText, mask = digitKeyMask) {
-  const key = await deriveTokenKey(keyText, mask)
-  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12))
-  const encoded = new TextEncoder().encode(String(plainText || ''))
-  const encrypted = await globalThis.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+  const scheme = 'digit-key-xor-sha256-hmac-v1'
+  const salt = globalThis.crypto.getRandomValues(new Uint8Array(16))
+  const nonce = globalThis.crypto.getRandomValues(new Uint8Array(16))
+  const { encKey, macKey } = await deriveTokenStoreKeys(keyText, salt, mask)
+  const rawPayload = parsePlainTokenPayload(plainText)
+  const encoded = new TextEncoder().encode(JSON.stringify(rawPayload))
+  const ciphertext = await xorWithSha256Stream(encoded, encKey, nonce)
+  const signed = concatBytes(new TextEncoder().encode(scheme), salt, nonce, ciphertext)
+  const tag = await hmacSha256(macKey, signed)
   return JSON.stringify({
-    v: 1,
-    alg: 'AES-GCM-SHA256-digit-key',
-    mask,
-    iv: bytesToBase64Url(iv),
-    data: bytesToBase64Url(new Uint8Array(encrypted)),
+    protected: true,
+    scheme,
+    key_mask: mask,
+    salt: bytesToBase64Url(salt),
+    nonce: bytesToBase64Url(nonce),
+    ciphertext: bytesToBase64Url(ciphertext),
+    tag: bytesToBase64Url(tag),
   })
 }
 
 async function decryptTokenText(payloadText, keyText, mask = digitKeyMask) {
   const payload = JSON.parse(String(payloadText || ''))
-  const key = await deriveTokenKey(keyText, payload.mask || mask)
-  const decrypted = await globalThis.crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: base64UrlToBytes(payload.iv) },
-    key,
-    base64UrlToBytes(payload.data)
-  )
-  return new TextDecoder().decode(decrypted)
+  if (payload.protected !== true) {
+    return JSON.stringify(payload)
+  }
+  if (payload.scheme !== 'digit-key-xor-sha256-hmac-v1') {
+    throw new Error(`unsupported token store scheme: ${payload.scheme || 'missing'}`)
+  }
+  const keyMask = payload.key_mask || mask
+  const salt = base64UrlToBytes(payload.salt)
+  const nonce = base64UrlToBytes(payload.nonce)
+  const ciphertext = base64UrlToBytes(payload.ciphertext)
+  const expectedTag = base64UrlToBytes(payload.tag)
+  const { encKey, macKey } = await deriveTokenStoreKeys(keyText, salt, keyMask)
+  const signed = concatBytes(new TextEncoder().encode(payload.scheme), salt, nonce, ciphertext)
+  const actualTag = await hmacSha256(macKey, signed)
+  if (!equalBytes(actualTag, expectedTag)) {
+    throw new Error('protected OAuth token store password mismatch')
+  }
+  const plaintext = await xorWithSha256Stream(ciphertext, encKey, nonce)
+  const decoded = new TextDecoder().decode(plaintext)
+  const parsed = safeJson(decoded)
+  return typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2)
 }
 
 function parseTokenGuardSettings(logic) {
@@ -1807,6 +1956,7 @@ function parseTokenGuardSettings(logic) {
   if (!parsed || typeof parsed !== 'object') {
     return {
       mode: 'roundtrip',
+      scheme: 'digit-key-xor-sha256-hmac-v1',
       keyMask: digitKeyMask,
       testKey: piTestKey,
       showRecovered: true,
@@ -1814,6 +1964,7 @@ function parseTokenGuardSettings(logic) {
   }
   return {
     mode: parsed.mode || 'roundtrip',
+    scheme: 'digit-key-xor-sha256-hmac-v1',
     keyMask: parsed.keyMask || digitKeyMask,
     testKey: parsed.testKey || piTestKey,
     showRecovered: parsed.showRecovered !== false,
@@ -1837,7 +1988,7 @@ async function runTokenGuard(lab, sourceText) {
     const encrypted = await encryptTokenText(input, key, settings.keyMask)
     return {
       display: encrypted,
-      values: [encrypted, { mode, keyMask: settings.keyMask, encrypted }],
+      values: [encrypted, { mode, scheme: settings.scheme, keyMask: settings.keyMask, encrypted }],
     }
   }
 
@@ -1845,6 +1996,7 @@ async function runTokenGuard(lab, sourceText) {
     const recovered = await decryptTokenText(input, key, settings.keyMask)
     const report = {
       mode,
+      scheme: settings.scheme,
       keyMask: settings.keyMask,
       recovered: settings.showRecovered ? recovered : maskSecretText(recovered),
       recoveredLength: recovered.length,
@@ -1859,6 +2011,7 @@ async function runTokenGuard(lab, sourceText) {
   const recovered = await decryptTokenText(encrypted, key, settings.keyMask)
   const report = {
     mode: 'roundtrip',
+    scheme: settings.scheme,
     keyMask: settings.keyMask,
     keyShape: `${settings.keyMask.length} chars`,
     encrypted,
@@ -1910,27 +2063,14 @@ async function runNode(node, options = {}) {
     }
   } else if (def === nodeTypes.llmModel) {
     const input = String(readNodeInput(node, 0, lab.input))
-    const prompt = buildGenericLlmPrompt(input, lab.logic)
     try {
-      if (!input.trim() && !lab.logic.trim()) {
+      if (!input.trim()) {
         throw new Error('prompt input is required. Connect a node or type a manual value.')
       }
-      const rawReply = await callOAuthChat(prompt)
-      writeNodeOutput(
-        node,
-        formatLlmDebug({
-          title: `LLM 모델 / ${lab.db || 'OAuth default'}`,
-          inputMap: { prompt: input, model: lab.db || 'OAuth default' },
-          prompt,
-          rawReply,
-          parsed: { response: rawReply },
-          outputValue: rawReply,
-        }),
-        [rawReply],
-        { commit }
-      )
+      const rawReply = await callOAuthChat(input)
+      writeNodeOutput(node, rawReply, [rawReply], { commit })
     } catch (error) {
-      writeNodeOutput(node, formatNodeError('LLM 모델 / oauth:/api/chat', error, { prompt: input }), [''], { commit })
+      writeNodeOutput(node, '', [''], { commit })
       setStatus(`LLM failed ${lab.name}: ${error.message}`)
       return
     }
@@ -2284,7 +2424,6 @@ elements.runNode.addEventListener('click', () => {
   runNode(state.selectedNode)
 })
 
-elements.openKeyShell.addEventListener('click', openOAuthKeyShell)
 elements.oauthLogin.addEventListener('click', startOAuthLogin)
 elements.runGraph.addEventListener('click', runGraph)
 elements.addNode.addEventListener('click', addSelectedTypeNode)

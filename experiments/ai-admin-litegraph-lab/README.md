@@ -1,7 +1,7 @@
 # AI Admin LiteGraph Lab
 
-관리자 `AI 챗봇 관리 > 행동관리 실험/버그`에서 iframe으로 띄우는 실험용 LiteGraph UI입니다.
-소스는 이 폴더에 있고, 빌드 산출물은 Spring 정적 리소스로 들어갑니다.
+관리자 `AI 챗봇 관리 > 행동관리 실험/버그`에서 링크로 여는 실험용 LiteGraph UI입니다.
+소스는 이 폴더에 있고, 빌드 산출물은 Spring 관리자 정적 리소스 하위 폴더로 들어갑니다.
 
 ## 관리자 페이지에 내장 빌드
 
@@ -12,10 +12,10 @@ npm --prefix experiments/ai-admin-litegraph-lab install
 npm run build:ai-lab
 ```
 
-빌드 결과는 아래 경로에 생성됩니다.
+빌드 결과는 아래처럼 관리자 AI 하위 폴더에 생성됩니다.
 
 ```text
-backend/src/main/resources/static/admin/ai-behavior-lab-app
+backend/src/main/resources/static/admin/ai/behavior-lab-project/dist
 ```
 
 Spring 관리자 서버를 띄운 뒤 아래 페이지에서 바로 볼 수 있습니다.
@@ -38,10 +38,11 @@ npm run dev:ai-lab
 
 - Vite dev server는 8002를 사용합니다.
 - 관리자 내장 빌드 화면은 Spring 정적 리소스에서 직접 서빙됩니다.
-- LLM/OAuth 관련 API 호출은 dev server에서는 `http://127.0.0.1:8001` 프록시를 사용합니다.
+- Spring 관리자 정적 페이지의 OAuth 버튼은 먼저 `/admin/ai/behavior-lab/local-oauth/open-key-shell`로 PowerShell 키 입력창을 열고, 키 입력 후 재시작된 `http://127.0.0.1:8001` OAuth API 서버를 호출합니다.
+- Vite dev server 8002에서 직접 열 때는 기존처럼 `http://127.0.0.1:8001`의 로컬 OAuth API 서버를 호출합니다.
 - 8001 OAuth API 서버는 아직 개인 로컬 실험 서버 의존성이 남아 있으므로, 이 폴더만으로는 OAuth/LLM 호출이 완전히 독립 실행되지 않습니다.
 
 ## 커밋 제외
 
 `node_modules`와 실험 폴더 내부 `dist`는 루트 `.gitignore`에 의해 제외됩니다.
-Spring 내장용 빌드 산출물 `backend/src/main/resources/static/admin/ai-behavior-lab-app`은 팀 공유를 위해 커밋 대상입니다.
+Spring 내장용 빌드 산출물 `backend/src/main/resources/static/admin/ai/behavior-lab-project/dist`는 팀 공유를 위해 커밋 대상입니다.
