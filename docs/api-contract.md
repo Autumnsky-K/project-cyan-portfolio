@@ -182,6 +182,28 @@
 - 인증 필요: N
 - 요청 body: { email, password, name, phone, address, agreements }
 - 응답 (동결 필드): { userId(uuid), email, name }
+- 실패: 이미 가입된 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
+- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
+- 상태: [x] 동결
+```
+
+```
+#### [POST] /api/members/signup/availability
+- 설명: 회원가입 1단계에서 이메일/휴대폰번호 중복 여부 확인
+- 인증 필요: N
+- 요청 body: { email, phone }
+- 응답 (동결 필드): { available(boolean), emailExists(boolean), phoneExists(boolean) }
+- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다.
+- 상태: [x] 동결
+```
+
+```
+#### [POST] /api/members/password-reset/eligibility
+- 설명: 비밀번호 재설정 메일 발송 전 이메일 가입 여부 확인
+- 인증 필요: N
+- 요청 body: { email }
+- 응답 (동결 필드): { exists(boolean) }
+- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다.
 - 상태: [x] 동결
 ```
 
@@ -662,8 +684,11 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-23 | v0.2.0 | goods/member | additive | 로그인 회원의 상품 상세 조회를 기록하는 `POST /api/goods/{goodsId}/views` 추가, 동일 상품 10분 중복 기록 방지 | Codex |
 | 2026-06-23 | v0.1.12 | goods | correction | 상품 상세 조회를 현재 관리자·DB의 상품 기본 정보와 재고 기준으로 정리하고 미구현 판매 기간·배송·공지·옵션 의존 제거 | Codex |
 | 2026-06-23 | v0.2.0 | goods | breaking | 상품 상세 응답에서 미구현 `saleType`, 판매 기간, 배송, 공지, 옵션 그룹, variant 필드를 제거 | Codex |
+| 2026-06-24 | v0.2.0 | member | additive | 회원가입 시 휴대폰번호를 `010-0000-0000` 형식으로 정규화하고 중복 휴대폰번호를 `MEMBER_PHONE_ALREADY_EXISTS`로 거절 | Codex |
+| 2026-06-24 | v0.2.0 | member | additive | 비밀번호 재설정 메일 발송 전 이메일 가입 여부를 확인하는 `POST /api/members/password-reset/eligibility` 추가 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
+| 2026-06-26 | v0.2.0 | member | additive | 회원가입 1단계 중복 확인 API `POST /api/members/signup/availability` 추가 및 중복 이메일 오류 코드 명시 | Codex |
 | 2026-06-24 | v0.2.1 | ai | additive | WebSocket plain text 입력 한도와 ACTION 실행 대상 allow-list 보안 규칙 추가 | 강승민 |
 | 2026-06-25 | v0.2.2 | ai/goods | additive | AI 서버가 최신 TSV 상품 카탈로그 URL을 조회하는 `GET /api/ai/goods-catalog/latest` 추가 | 강승민 |
 | 2026-06-25 | v0.2.3 | ai | additive | AI input/output hook 정책 조회 API `GET /api/ai/hooks` 추가 | 강승민 |

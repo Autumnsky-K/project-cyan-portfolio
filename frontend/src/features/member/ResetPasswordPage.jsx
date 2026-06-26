@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { exchangeAuthCodeForSession, updateMemberPassword } from './member'
+import AccountFeedbackPopup from './AccountFeedbackPopup'
+import PasswordVisibilityButton from './PasswordVisibilityButton'
 import './AccountPages.css'
 
 function ResetPasswordPage() {
@@ -13,6 +15,10 @@ function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    password: false,
+    passwordConfirm: false,
+  })
 
   useEffect(() => {
     async function exchangeRecoveryCode() {
@@ -60,6 +66,13 @@ function ResetPasswordPage() {
     }))
   }
 
+  const togglePasswordVisibility = (name) => {
+    setVisiblePasswords((currentVisiblePasswords) => ({
+      ...currentVisiblePasswords,
+      [name]: !currentVisiblePasswords[name],
+    }))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setMessage('')
@@ -85,6 +98,13 @@ function ResetPasswordPage() {
 
   return (
     <main className="account-page">
+      <AccountFeedbackPopup message={error} onDone={() => setError('')} />
+      <AccountFeedbackPopup
+        message={message}
+        type="success"
+        onDone={() => setMessage('')}
+      />
+
       <div className="account-shell">
         <nav className="account-topbar" aria-label="계정 이동">
           <Link to="/login">로그인</Link>
@@ -100,41 +120,41 @@ function ResetPasswordPage() {
           <form className="account-form" onSubmit={handleSubmit}>
             <label className="account-field">
               <span>새 비밀번호</span>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="새 비밀번호를 입력하세요"
-                autoComplete="new-password"
-                required
-              />
+              <div className="password-input">
+                <input
+                  type={visiblePasswords.password ? 'text' : 'password'}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="새 비밀번호를 입력하세요"
+                  autoComplete="new-password"
+                  required
+                />
+                <PasswordVisibilityButton
+                  isVisible={visiblePasswords.password}
+                  onClick={() => togglePasswordVisibility('password')}
+                />
+              </div>
             </label>
 
             <label className="account-field">
               <span>새 비밀번호 확인</span>
-              <input
-                type="password"
-                name="passwordConfirm"
-                value={form.passwordConfirm}
-                onChange={handleChange}
-                placeholder="새 비밀번호를 다시 입력하세요"
-                autoComplete="new-password"
-                required
-              />
+              <div className="password-input">
+                <input
+                  type={visiblePasswords.passwordConfirm ? 'text' : 'password'}
+                  name="passwordConfirm"
+                  value={form.passwordConfirm}
+                  onChange={handleChange}
+                  placeholder="새 비밀번호를 다시 입력하세요"
+                  autoComplete="new-password"
+                  required
+                />
+                <PasswordVisibilityButton
+                  isVisible={visiblePasswords.passwordConfirm}
+                  onClick={() => togglePasswordVisibility('passwordConfirm')}
+                />
+              </div>
             </label>
-
-            {error && (
-              <p className="account-feedback account-feedback-error" role="alert">
-                {error}
-              </p>
-            )}
-
-            {message && (
-              <p className="account-feedback account-feedback-success" role="status">
-                {message}
-              </p>
-            )}
 
             <button className="account-button" type="submit" disabled={isLoading}>
               {isLoading ? '변경 중...' : '비밀번호 변경'}

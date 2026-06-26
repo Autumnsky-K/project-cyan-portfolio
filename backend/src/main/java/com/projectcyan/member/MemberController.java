@@ -32,4 +32,16 @@ public class MemberController {
 	public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
 		return memberService.signup(request);
 	}
+
+	@PostMapping("/signup/availability")
+	public SignupAvailabilityResponse checkSignupAvailability(@Valid @RequestBody SignupAvailabilityRequest request) {
+		return memberService.checkSignupAvailability(request);
+	}
+
+	@PostMapping("/password-reset/eligibility")
+	public PasswordResetEligibilityResponse checkPasswordResetEligibility(
+		@Valid @RequestBody PasswordResetEligibilityRequest request
+	) {
+		return memberService.checkPasswordResetEligibility(request);
+	}
 }

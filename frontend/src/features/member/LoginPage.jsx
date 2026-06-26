@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { loginMember, loginWithKakao } from './member'
+import AccountFeedbackPopup from './AccountFeedbackPopup'
+import PasswordVisibilityButton from './PasswordVisibilityButton'
 import './LoginPage.css'
 
 function getAuthError(location) {
@@ -12,7 +14,7 @@ function getAuthError(location) {
 function safeReturnTo(value) {
   return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
     ? value
-    : '/like'
+    : '/mypage'
 }
 
 function getReturnTo(location) {
@@ -30,6 +32,7 @@ function LoginPage() {
   const [loadingProvider, setLoadingProvider] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState(() => getAuthError(location))
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
 
   useEffect(() => {
     if (getAuthError(location)) {
@@ -59,8 +62,8 @@ function LoginPage() {
       const returnTo = getReturnTo(location)
       window.sessionStorage.removeItem('project-cyan:login-return-to')
       navigate(returnTo, { replace: true })
-    } catch (loginError) {
-      setError(loginError.message)
+    } catch {
+      setError('아이디와 비밀번호가 일치하지 않습니다.')
     } finally {
       setIsLoading(false)
       setLoadingProvider('')
@@ -85,6 +88,8 @@ function LoginPage() {
 
   return (
     <main className="login-page">
+      <AccountFeedbackPopup message={error} onDone={() => setError('')} />
+
       <section className="login-card" aria-label="로그인">
         <div className="login-header">
           <div className="login-logo" aria-hidden="true"></div>
@@ -107,22 +112,22 @@ function LoginPage() {
 
           <label className="login-field">
             <span>비밀번호</span>
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="비밀번호를 입력하세요"
-              autoComplete="current-password"
-              required
-            />
+            <div className="password-input">
+              <input
+                type={isPasswordVisible ? 'text' : 'password'}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="비밀번호를 입력하세요"
+                autoComplete="current-password"
+                required
+              />
+              <PasswordVisibilityButton
+                isVisible={isPasswordVisible}
+                onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+              />
+            </div>
           </label>
-
-          {error && (
-            <p className="login-feedback login-feedback-error" role="alert">
-              {error}
-            </p>
-          )}
 
           {message && (
             <p className="login-feedback login-feedback-success" role="status">

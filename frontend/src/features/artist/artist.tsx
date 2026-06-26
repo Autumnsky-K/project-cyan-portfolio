@@ -245,30 +245,32 @@ function ArtistPage() {
       return undefined
     }
 
+    const scrollerElement = scroller
+
     let wheelLocked = false
     let wheelAnimationFrame: number | undefined
     let wheelUnlockTimer: number | undefined
 
     function updateHashForPanel(panelIndex: number) {
-      const targetPanel = scroller.children.item(panelIndex)
+      const targetPanel = scrollerElement.children.item(panelIndex)
       if (targetPanel?.id) {
         window.history.replaceState(null, '', `#${targetPanel.id}`)
       }
     }
 
     function animateWheelPage(targetLeft: number, targetIndex: number) {
-      const startLeft = scroller.scrollLeft
+      const startLeft = scrollerElement.scrollLeft
       const distance = targetLeft - startLeft
       const startedAt = window.performance.now()
       const duration = 460
-      const previousSnapType = scroller.style.scrollSnapType
+      const previousSnapType = scrollerElement.style.scrollSnapType
 
-      scroller.style.scrollSnapType = 'none'
+      scrollerElement.style.scrollSnapType = 'none'
       window.cancelAnimationFrame(wheelAnimationFrame ?? 0)
 
       function finish() {
-        scroller.scrollTo({ left: targetLeft, behavior: 'auto' })
-        scroller.style.scrollSnapType = previousSnapType
+        scrollerElement.scrollTo({ left: targetLeft, behavior: 'auto' })
+        scrollerElement.style.scrollSnapType = previousSnapType
         updateHashForPanel(targetIndex)
         wheelUnlockTimer = window.setTimeout(() => {
           wheelLocked = false
@@ -279,7 +281,7 @@ function ArtistPage() {
         const progress = Math.min((now - startedAt) / duration, 1)
         const easedProgress = 1 - (1 - progress) ** 3
 
-        scroller.scrollTo({
+        scrollerElement.scrollTo({
           left: startLeft + distance * easedProgress,
           behavior: 'auto',
         })
@@ -301,9 +303,9 @@ function ArtistPage() {
         return
       }
 
-      const panelWidth = scroller.clientWidth
-      const panelCount = Math.max(1, Math.round(scroller.scrollWidth / panelWidth))
-      const currentIndex = Math.round(scroller.scrollLeft / panelWidth)
+      const panelWidth = scrollerElement.clientWidth
+      const panelCount = Math.max(1, Math.round(scrollerElement.scrollWidth / panelWidth))
+      const currentIndex = Math.round(scrollerElement.scrollLeft / panelWidth)
 
       if (currentIndex === 0 && primaryDelta < 0) {
         event.preventDefault()
@@ -358,19 +360,21 @@ function ArtistPage() {
       return undefined
     }
 
+    const scrollerElement = scroller
+
     function scrollToHashPanel(behavior: ScrollBehavior = 'auto') {
       const hashId = decodeURIComponent(window.location.hash.replace(/^#/, ''))
       if (!hashId) {
         return
       }
 
-      const targetIndex = Array.from(scroller.children).findIndex((panel) => panel.id === hashId)
+      const targetIndex = Array.from(scrollerElement.children).findIndex((panel) => panel.id === hashId)
       if (targetIndex < 0) {
         return
       }
 
-      scroller.scrollTo({
-        left: targetIndex * scroller.clientWidth,
+      scrollerElement.scrollTo({
+        left: targetIndex * scrollerElement.clientWidth,
         behavior,
       })
     }
