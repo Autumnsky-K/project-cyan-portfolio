@@ -1574,6 +1574,220 @@ button.admin-primary {
   white-space: pre;
 }
 
+.admin-ai-lab-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  min-height: 680px;
+}
+
+.admin-ai-bug-panel,
+.admin-ai-lab-frame-panel {
+  min-width: 0;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-surface);
+}
+
+.admin-ai-bug-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.admin-ai-lab-frame-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 680px;
+  overflow: hidden;
+}
+
+.admin-ai-lab-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-ai-lab-panel-header h3 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 18px;
+}
+
+.admin-ai-lab-panel-header button,
+.admin-ai-bug-form button,
+.admin-ai-bug-card button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-control-bg);
+  color: var(--admin-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-ai-bug-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--admin-accent, #2f6f64) 3%, #ffffff);
+}
+
+.admin-ai-bug-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-ai-bug-form input,
+.admin-ai-bug-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.admin-ai-bug-form input {
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.admin-ai-bug-form textarea {
+  min-height: 68px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.admin-ai-bug-form-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-ai-bug-form button[type="submit"] {
+  grid-column: 1 / -1;
+  justify-self: end;
+  background: var(--admin-accent, #2f6f64);
+  color: #ffffff;
+}
+
+.admin-ai-bug-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-ai-bug-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--admin-line);
+  border-left: 4px solid var(--admin-muted);
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.admin-ai-bug-card[data-status="doing"] {
+  border-left-color: #d88900;
+}
+
+.admin-ai-bug-card[data-status="done"] {
+  border-left-color: var(--admin-accent, #2f6f64);
+}
+
+.admin-ai-bug-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-ai-bug-card strong {
+  color: var(--admin-ink);
+  font-size: 14px;
+}
+
+.admin-ai-bug-card span,
+.admin-ai-bug-card p,
+.admin-ai-bug-empty {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-ai-bug-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-ai-bug-card[data-status="doing"] [data-ai-bug-next] {
+  border-color: #d88900;
+  color: #8a5a00;
+}
+
+.admin-ai-bug-card[data-status="done"] [data-ai-bug-next] {
+  border-color: color-mix(in srgb, var(--admin-accent, #2f6f64) 55%, var(--admin-line));
+  color: var(--admin-accent, #2f6f64);
+}
+
+.admin-ai-lab-frame-panel .admin-ai-lab-panel-header {
+  padding: 14px;
+  border-bottom: 1px solid var(--admin-line);
+}
+
+.admin-ai-lab-run-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--admin-line);
+  background: var(--admin-control-bg);
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.admin-ai-lab-run-note code {
+  padding: 4px 7px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--admin-ink);
+  font-family: "Segoe UI Mono", Consolas, monospace;
+}
+
+.admin-ai-lab-frame-wrap {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.admin-ai-lab-frame-wrap iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 620px;
+  border: 0;
+  background: #ffffff;
+}
+
+.admin-ai-lab-frame-wrap p {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--admin-line);
+  background: var(--admin-control-bg);
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
 .admin-preview-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2415,7 +2629,8 @@ button.admin-primary {
   .admin-preview-detail-workbench,
   .admin-dashboard-hero,
   .admin-dashboard-grid,
-  .admin-ai-workbook {
+  .admin-ai-workbook,
+  .admin-ai-lab-layout {
     grid-template-columns: 1fr;
   }
 

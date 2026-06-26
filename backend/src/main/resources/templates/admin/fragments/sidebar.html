@@ -88,12 +88,15 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'ai'} ? 'open' : null">
+             th:attr="open=${#strings.startsWith(current, 'ai')} ? 'open' : null">
       <summary class="admin-nav-parent">AI 챗봇 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
            th:href="@{/admin/ai}"
            th:attr="aria-current=${current == 'ai'} ? 'page' : null">챗봇 행동 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/ai/behavior-lab}"
+           th:attr="aria-current=${current == 'ai-behavior-lab'} ? 'page' : null">행동관리 실험/버그</a>
         <button class="admin-nav-child admin-nav-placeholder"
                 type="button"
                 data-admin-placeholder="챗봇 애니메이션 관리">챗봇 애니메이션 관리</button>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 행동관리 실험/버그</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai-behavior-lab', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-ai-main" data-ai-bug-lab>
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">AI Behavior Lab</p>
+        <h2>행동관리 실험/버그</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/ai}">워크북</a>
+        <a href="http://127.0.0.1:8002/" target="_blank" rel="noopener">8002 열기</a>
+      </div>
+    </header>
+
+    <section class="admin-ai-lab-layout">
+      <aside class="admin-ai-bug-panel" aria-label="AI 행동관리 버그 큐">
+        <header class="admin-ai-lab-panel-header">
+          <div>
+            <p class="admin-eyebrow">Bug Queue</p>
+            <h3>수정 대기 목록</h3>
+          </div>
+          <button type="button" data-ai-bug-reset>샘플 복원</button>
+        </header>
+
+        <form class="admin-ai-bug-form" data-ai-bug-form>
+          <label>
+            <span>버그 제목</span>
+            <input type="text" data-ai-bug-title placeholder="예: 사이드바 스크롤 과다" required>
+          </label>
+          <label>
+            <span>수정 위치</span>
+            <input type="text" data-ai-bug-area placeholder="예: 8002 조합기 인스펙터">
+          </label>
+          <label class="admin-ai-bug-form-wide">
+            <span>메모</span>
+            <textarea data-ai-bug-note placeholder="현상 / 원인 / 검증 방법"></textarea>
+          </label>
+          <button type="submit">큐에 추가</button>
+        </form>
+
+        <div class="admin-ai-bug-list" data-ai-bug-list></div>
+      </aside>
+
+      <section class="admin-ai-lab-frame-panel" aria-label="AI 행동관리 실험 화면">
+        <header class="admin-ai-lab-panel-header">
+          <div>
+            <p class="admin-eyebrow">Live Experiment</p>
+            <h3>8002 실험 UI</h3>
+          </div>
+          <button type="button" data-ai-lab-reload>새로고침</button>
+        </header>
+        <div class="admin-ai-lab-run-note">
+          <span>repo 내부 실험 앱</span>
+          <code>npm run dev:ai-lab</code>
+        </div>
+        <div class="admin-ai-lab-frame-wrap">
+          <iframe src="http://127.0.0.1:8002/" title="AI 행동관리 LiteGraph 실험 UI"></iframe>
+          <p>8002가 꺼져 있으면 이 영역만 비어 보입니다. LLM/OAuth API는 현재 별도 로컬 8001 서버가 필요합니다.</p>
+        </div>
+      </section>
+    </section>
+  </section>
+</main>
+<script th:src="@{/admin/ai-admin.js}"></script>
+</body>
+</html>

@@ -10,4 +10,9 @@ public class AdminAiPageController {
 	public String aiAdmin() {
 		return "admin/ai/index";
 	}
+
+	@GetMapping("/admin/ai/behavior-lab")
+	public String aiBehaviorLab() {
+		return "admin/ai/behavior-lab";
+	}
 }
