@@ -1,5 +1,7 @@
 package com.projectcyan.member;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -17,14 +19,24 @@ import com.projectcyan.member.auth.AuthenticatedMember;
 public class MemberController {
 
 	private final MemberService memberService;
+	private final FavoriteArtistService favoriteArtistService;
 
-	public MemberController(MemberService memberService) {
+	public MemberController(
+		MemberService memberService,
+		FavoriteArtistService favoriteArtistService
+	) {
 		this.memberService = memberService;
+		this.favoriteArtistService = favoriteArtistService;
 	}
 
 	@GetMapping("/me")
 	public AuthenticatedMember currentMember(AuthenticatedMember currentMember) {
 		return currentMember;
+	}
+
+	@GetMapping("/me/favorite-artists")
+	public List<FavoriteArtistResponse> findFavoriteArtists(AuthenticatedMember currentMember) {
+		return favoriteArtistService.findFavoriteArtists(currentMember.memberId());
 	}
 
 	@PostMapping("/signup")

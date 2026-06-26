@@ -31,8 +31,8 @@ class AiGoodsCatalogServiceTest {
 		String tsv = service.buildCatalogTsv(List.of(goods), Map.of(1001L, 12));
 
 		assertThat(tsv).isEqualTo("""
-			goodsId\tname\tprice\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
-			1001\tPhotocard Set Vol.1\t12000\tArtist A\tGROUP ONE\tPhotocard\tARTIST_A,PHOTOCARD\tON_SALE\t12\ttrue\tfalse\tLine one Line two with tab
+			goodsId\tname\tprice\tartistId\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
+			1001\tPhotocard Set Vol.1\t12000\t1\tArtist A\tGROUP ONE\tPhotocard\tARTIST_A,PHOTOCARD\tON_SALE\t12\ttrue\tfalse\tLine one Line two with tab
 			""");
 	}
 
@@ -57,6 +57,7 @@ class AiGoodsCatalogServiceTest {
 
 	private Artist artist() {
 		Artist artist = mock(Artist.class);
+		when(artist.getArtistId()).thenReturn(1L);
 		when(artist.getArtistName()).thenReturn("Artist A");
 		when(artist.getGroupName()).thenReturn("GROUP ONE");
 		return artist;

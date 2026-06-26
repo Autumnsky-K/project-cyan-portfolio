@@ -51,6 +51,7 @@ public class GoodsRecommendationService {
 		String tags,
 		Integer maxPrice,
 		String excludeGoodsIds,
+		String preferredArtistIds,
 		int page,
 		int size,
 		String sort
@@ -58,6 +59,7 @@ public class GoodsRecommendationService {
 		int safePage = Math.max(page, 0);
 		int safeSize = Math.max(1, Math.min(size, 20));
 		Set<Long> excludedIds = parseIds(excludeGoodsIds);
+		Set<Long> preferredIds = parseIds(preferredArtistIds);
 		SearchContext context = buildSearchContext(q, artistName, categoryName, tags);
 
 		List<Goods> goods = goodsRepository.findAllForRecommendation();
@@ -65,8 +67,8 @@ public class GoodsRecommendationService {
 		List<ScoredGoods> scoredGoods = goods.stream()
 			.filter(item -> isEligible(item, stocks.get(item.getGoodsId()), maxPrice, excludedIds))
 			.filter(item -> matchesAliasDimensions(item, context))
-			.map(item -> score(item, stocks.get(item.getGoodsId()), context, maxPrice))
-			.filter(item -> !context.hasSearchTerms() || !item.response().matchedFields().isEmpty())
+			.map(item -> score(item, stocks.get(item.getGoodsId()), context, maxPrice, preferredIds))
+			.filter(item -> !context.hasSearchTerms() || hasNonPreferenceMatch(item.response().matchedFields()))
 			.sorted(candidateComparator(sort))
 			.toList();
 
@@ -130,7 +132,8 @@ public class GoodsRecommendationService {
 		Goods goods,
 		Integer stockCount,
 		SearchContext context,
-		Integer maxPrice
+		Integer maxPrice,
+		Set<Long> preferredArtistIds
 	) {
 		int score = 0;
 		Set<String> matchedFields = new LinkedHashSet<>();
@@ -194,6 +197,10 @@ public class GoodsRecommendationService {
 		if (Boolean.TRUE.equals(goods.getBestSeller())) {
 			score += 6;
 		}
+		if (goods.getArtist() != null && preferredArtistIds.contains(goods.getArtist().getArtistId())) {
+			score += 20;
+			matchedFields.add("preferredArtist");
+		}
 		if (maxPrice != null && goods.getPrice() != null) {
 			score += Math.max(0, 5 - Math.abs(maxPrice - goods.getPrice()) / 10_000);
 		}
@@ -207,6 +214,7 @@ public class GoodsRecommendationService {
 				goods.getPrice(),
 				goods.getMainImageUrl(),
 				goods.getTags().stream().map(Tag::getTagName).toList(),
+				goods.getArtist() == null ? null : goods.getArtist().getArtistId(),
 				goods.getArtist() == null ? null : goods.getArtist().getArtistName(),
 				goods.getCategory() == null ? null : goods.getCategory().getCategoryName(),
 				goods.getSalesStatus(),
@@ -298,6 +306,10 @@ public class GoodsRecommendationService {
 			return "추천 우선순위가 높은 판매 가능 상품입니다.";
 		}
 		return String.join(", ", matchedFields) + " 조건과 일치하는 상품입니다.";
+	}
+
+	private boolean hasNonPreferenceMatch(List<String> matchedFields) {
+		return matchedFields.stream().anyMatch(field -> !"preferredArtist".equals(field));
 	}
 
 	private void addTerms(Set<String> terms, String rawText) {

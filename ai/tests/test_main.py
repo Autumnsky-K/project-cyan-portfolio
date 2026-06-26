@@ -72,6 +72,7 @@ def isolate_ai_settings(monkeypatch, tmp_path):
         "PROJECT_CYAN_OLV_API_KEY",
         "PROJECT_CYAN_SPRING_API_URL",
         "PROJECT_CYAN_GOODS_API_BASE_URL",
+        "PROJECT_CYAN_FAVORITE_ARTIST_CACHE_TTL_SECONDS",
         "PROJECT_CYAN_HOOK_POLICY_CACHE_TTL_SECONDS",
     ):
         monkeypatch.delenv(env_name, raising=False)
@@ -229,7 +230,7 @@ class FakeGoodsCatalogClient:
         self.candidates = candidates
         self.received_texts = []
 
-    def search_candidates(self, text):
+    def search_candidates(self, text, favorite_artists=None):
         self.received_texts.append(text)
         return self.candidates
 
@@ -256,12 +257,14 @@ class FakeHookFilter:
 
 
 class FakeWebSocketGoodsCatalogClient:
+    instances = []
     candidates = [
         {
             "goodsId": 1005,
             "name": "Tour Poster A2",
             "price": 12000,
             "tags": ["POSTER"],
+            "artistId": 3,
             "artistName": "Artist C",
             "categoryName": "Poster",
         },
@@ -270,6 +273,7 @@ class FakeWebSocketGoodsCatalogClient:
             "name": "Character Plush",
             "price": 32000,
             "tags": ["PLUSH"],
+            "artistId": 3,
             "artistName": "Artist C",
             "categoryName": "Plush",
         },
@@ -278,10 +282,27 @@ class FakeWebSocketGoodsCatalogClient:
     def __init__(self, spring_api_url):
         self.spring_api_url = spring_api_url
         self.received_texts = []
+        self.received_favorite_artists = []
+        FakeWebSocketGoodsCatalogClient.instances.append(self)
 
-    def search_candidates(self, text):
+    def search_candidates(self, text, favorite_artists=None):
         self.received_texts.append(text)
+        self.received_favorite_artists.append(favorite_artists or [])
         return self.candidates
+
+
+class FakeFavoriteArtistClient:
+    instances = []
+    artists = [{"artistId": 3, "name": "Artist C", "imageUrl": None}]
+
+    def __init__(self, spring_api_url):
+        self.spring_api_url = spring_api_url
+        self.calls = []
+        FakeFavoriteArtistClient.instances.append(self)
+
+    def fetch_favorite_artists(self, access_token):
+        self.calls.append(access_token)
+        return list(FakeFavoriteArtistClient.artists)
 
 
 class FakeChatHistoryClient:
@@ -304,17 +325,17 @@ class FakeChatHistoryClient:
         return FakeChatHistoryClient.should_succeed
 
 
-GOODS_CATALOG_TSV = """goodsId\tname\tprice\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
-1001\tPhotocard Set Vol.1\t12000\tArtist A\tGROUP ONE\tPhotocard\tPHOTOCARD,ARTIST_A\tON_SALE\t120\ttrue\ttrue\tArtist A 포토카드 세트입니다.
-1002\tOfficial Lightstick\t45000\tArtist A\tGROUP ONE\tLightstick\tLIGHTSTICK,ARTIST_A\tON_SALE\t35\ttrue\ttrue\tArtist A 공식 응원봉입니다.
-1003\tMini Album [Repackage]\t23000\tArtist B\tGROUP ONE\tAlbum\tALBUM,ARTIST_B\tON_SALE\t200\tfalse\tfalse\tArtist B 리패키지 미니 앨범입니다.
-1004\tLogo Hoodie\t58000\tArtist B\tGROUP ONE\tApparel\tHOODIE,ARTIST_B\tON_SALE\t18\ttrue\tfalse\tArtist B 로고 후디입니다.
-1005\tTour Poster A2\t8000\tArtist C\tGROUP TWO\tPoster\tPOSTER,ARTIST_C\tON_SALE\t80\tfalse\tfalse\tArtist C 투어 포스터입니다.
-1006\tCharacter Plush\t27000\tArtist C\tGROUP TWO\tPlush\tPLUSH,ARTIST_C\tON_SALE\t42\ttrue\tfalse\tArtist C 캐릭터 인형입니다.
-1007\tPhotocard Binder\t15000\tArtist D\tGROUP TWO\tPhotocard\tPHOTOCARD,BINDER\tON_SALE\t60\tfalse\tfalse\t포토카드를 보관하는 바인더입니다.
-1008\tConcept Album\t31000\tArtist D\tGROUP TWO\tAlbum\tALBUM,ARTIST_D\tPRE_ORDER\t100\tfalse\tfalse\tArtist D 콘셉트 앨범입니다.
-1009\tKeyring Charm\t19000\tArtist E\tGROUP THREE\tKeyring\tKEYRING,ARTIST_E\tON_SALE\t70\tfalse\ttrue\t콘서트 키링입니다.
-1010\tSold Out Photocard\t14000\tArtist E\tGROUP THREE\tPhotocard\tPHOTOCARD,ARTIST_E\tON_SALE\t0\tfalse\tfalse\t품절 포토카드입니다.
+GOODS_CATALOG_TSV = """goodsId\tname\tprice\tartistId\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
+1001\tPhotocard Set Vol.1\t12000\t1\tArtist A\tGROUP ONE\tPhotocard\tPHOTOCARD,ARTIST_A\tON_SALE\t120\ttrue\ttrue\tArtist A 포토카드 세트입니다.
+1002\tOfficial Lightstick\t45000\t1\tArtist A\tGROUP ONE\tLightstick\tLIGHTSTICK,ARTIST_A\tON_SALE\t35\ttrue\ttrue\tArtist A 공식 응원봉입니다.
+1003\tMini Album [Repackage]\t23000\t2\tArtist B\tGROUP ONE\tAlbum\tALBUM,ARTIST_B\tON_SALE\t200\tfalse\tfalse\tArtist B 리패키지 미니 앨범입니다.
+1004\tLogo Hoodie\t58000\t2\tArtist B\tGROUP ONE\tApparel\tHOODIE,ARTIST_B\tON_SALE\t18\ttrue\tfalse\tArtist B 로고 후디입니다.
+1005\tTour Poster A2\t8000\t3\tArtist C\tGROUP TWO\tPoster\tPOSTER,ARTIST_C\tON_SALE\t80\tfalse\tfalse\tArtist C 투어 포스터입니다.
+1006\tCharacter Plush\t27000\t3\tArtist C\tGROUP TWO\tPlush\tPLUSH,ARTIST_C\tON_SALE\t42\ttrue\tfalse\tArtist C 캐릭터 인형입니다.
+1007\tPhotocard Binder\t15000\t4\tArtist D\tGROUP TWO\tPhotocard\tPHOTOCARD,BINDER\tON_SALE\t60\tfalse\tfalse\t포토카드를 보관하는 바인더입니다.
+1008\tConcept Album\t31000\t4\tArtist D\tGROUP TWO\tAlbum\tALBUM,ARTIST_D\tPRE_ORDER\t100\tfalse\tfalse\tArtist D 콘셉트 앨범입니다.
+1009\tKeyring Charm\t19000\t5\tArtist E\tGROUP THREE\tKeyring\tKEYRING,ARTIST_E\tON_SALE\t70\tfalse\ttrue\t콘서트 키링입니다.
+1010\tSold Out Photocard\t14000\t5\tArtist E\tGROUP THREE\tPhotocard\tPHOTOCARD,ARTIST_E\tON_SALE\t0\tfalse\tfalse\t품절 포토카드입니다.
 """
 
 
@@ -439,11 +460,34 @@ def test_http_goods_catalog_client_sends_extracted_max_price(monkeypatch):
     assert response == []
 
 
+def test_http_goods_catalog_client_sends_preferred_artist_ids(monkeypatch):
+    captured_urls = []
+
+    def fake_urlopen(request, timeout):
+        captured_urls.append(request.full_url)
+        return FakeHttpResponse({"content": []})
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+
+    response = HttpGoodsCatalogClient("http://backend.test/api").search_candidates(
+        "상품 추천해줘",
+        [
+            {"artistId": 3, "name": "Artist C"},
+            {"artistId": 7, "name": "Artist G"},
+        ],
+    )
+
+    query = parse_qs(urlparse(captured_urls[0]).query)
+    assert query["preferredArtistIds"] == ["3,7"]
+    assert response == []
+
+
 def test_parse_goods_catalog_tsv_normalizes_catalog_fields():
     candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
 
     assert candidates[0]["goodsId"] == 1001
     assert candidates[0]["price"] == 12000
+    assert candidates[0]["artistId"] == 1
     assert candidates[0]["tags"] == ["PHOTOCARD", "ARTIST_A"]
     assert candidates[0]["stockCount"] == 120
     assert candidates[0]["aiPickDefault"] is True
@@ -474,6 +518,24 @@ def test_filter_tsv_candidates_handles_core_recommendation_requests(
     assert [candidate["goodsId"] for candidate in response] == expected_goods_ids
     assert all(candidate["salesStatus"] == "ON_SALE" for candidate in response)
     assert all(candidate["stockCount"] > 0 for candidate in response)
+
+
+def test_filter_tsv_candidates_boosts_favorite_artists_without_ignoring_category():
+    candidates = parse_goods_catalog_tsv(GOODS_CATALOG_TSV)
+
+    generic_response = filter_tsv_candidates(
+        "상품 추천해줘",
+        candidates,
+        favorite_artists=[{"artistId": 3, "name": "Artist C"}],
+    )
+    category_response = filter_tsv_candidates(
+        "키링 추천해줘",
+        candidates,
+        favorite_artists=[{"artistId": 3, "name": "Artist C"}],
+    )
+
+    assert [candidate["goodsId"] for candidate in generic_response[:2]] == [1006, 1005]
+    assert [candidate["goodsId"] for candidate in category_response] == [1009]
 
 
 def test_filter_tsv_candidates_allows_related_artist_group_as_secondary_results():
@@ -554,6 +616,7 @@ def test_tsv_goods_catalog_client_reads_local_snapshot(tmp_path):
             "price": 12000,
             "imageUrl": None,
             "tags": ["PHOTOCARD", "ARTIST_A"],
+            "artistId": 1,
             "artistName": "Artist A",
             "categoryName": "Photocard",
             "salesStatus": "ON_SALE",
@@ -1926,6 +1989,38 @@ def test_client_ws_persists_messages_when_auth_and_session_are_present(monkeypat
             "recommendationReason": None,
             "rankOrder": 1,
         },
+    ]
+
+
+def test_client_ws_fetches_favorite_artists_once_per_cache_ttl(monkeypatch):
+    FakeWebSocketGoodsCatalogClient.instances = []
+    FakeFavoriteArtistClient.instances = []
+    FakeFavoriteArtistClient.artists = [{"artistId": 3, "name": "Artist C", "imageUrl": None}]
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.FavoriteArtistClient",
+        FakeFavoriteArtistClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "auth", "accessToken": "supabase-access-token"})
+        websocket.send_json({"type": "text-input", "text": "Artist C 굿즈 추천해줘"})
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "Artist C 포스터 추천해줘"})
+        websocket.receive_json()
+
+    favorite_client = FakeFavoriteArtistClient.instances[0]
+    catalog_client = FakeWebSocketGoodsCatalogClient.instances[0]
+    assert favorite_client.calls == ["supabase-access-token"]
+    assert catalog_client.received_favorite_artists == [
+        [{"artistId": 3, "name": "Artist C", "imageUrl": None}],
+        [{"artistId": 3, "name": "Artist C", "imageUrl": None}],
     ]
 
 

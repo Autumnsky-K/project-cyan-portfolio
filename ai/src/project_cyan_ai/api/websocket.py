@@ -8,11 +8,16 @@ from project_cyan_ai.chat_history import (
     build_assistant_message_payload,
     build_user_message_payload,
 )
+from project_cyan_ai.favorite_artists import (
+    CachedFavoriteArtistProvider,
+    FavoriteArtistClient,
+)
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
     MetadataTsvGoodsCatalogClient,
     TsvGoodsCatalogClient,
+    has_product_intent,
 )
 from project_cyan_ai.providers import get_chat_response_provider
 from project_cyan_ai.hook_policy import build_hook_filter
@@ -51,6 +56,10 @@ async def client_ws(websocket: WebSocket):
         catalog_client=catalog_client,
     )
     chat_history_client = ChatHistoryClient(settings.spring_api_url)
+    favorite_artist_provider = CachedFavoriteArtistProvider(
+        FavoriteArtistClient(settings.spring_api_url),
+        cache_ttl_seconds=settings.favorite_artist_cache_ttl_seconds,
+    )
     access_token: str | None = None
     hook_filter = build_hook_filter(
         settings.spring_api_url,
@@ -76,6 +85,7 @@ async def client_ws(websocket: WebSocket):
                 try:
                     auth_message = ClientAuthMessage.model_validate(data)
                     access_token = auth_message.accessToken
+                    favorite_artist_provider.clear()
                 except ValidationError:
                     await websocket.send_json(
                         FullTextMessage(
@@ -124,7 +134,16 @@ async def client_ws(websocket: WebSocket):
                     build_user_message_payload(message.text),
                 )
 
-            response = response_provider.build_response(message.text, message.context)
+            favorite_artists = (
+                favorite_artist_provider.favorite_artists(access_token)
+                if has_product_intent(message.text)
+                else []
+            )
+            response = response_provider.build_response(
+                message.text,
+                message.context,
+                favorite_artists,
+            )
             response = hook_filter.filter_output(response)
 
             if access_token and message.sessionId:

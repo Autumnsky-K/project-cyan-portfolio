@@ -53,6 +53,7 @@ class GoodsRecommendationServiceTest {
 			null,
 			null,
 			null,
+			null,
 			0,
 			10,
 			"relevance,desc"
@@ -101,6 +102,7 @@ class GoodsRecommendationServiceTest {
 			null,
 			null,
 			null,
+			null,
 			0,
 			10,
 			"relevance,desc"
@@ -132,6 +134,7 @@ class GoodsRecommendationServiceTest {
 
 		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
 			"group one photocard",
+			null,
 			null,
 			null,
 			null,
@@ -172,6 +175,7 @@ class GoodsRecommendationServiceTest {
 			null,
 			null,
 			null,
+			null,
 			0,
 			10,
 			"relevance,desc"
@@ -204,6 +208,7 @@ class GoodsRecommendationServiceTest {
 
 		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
 			"photocard",
+			null,
 			null,
 			null,
 			null,
@@ -255,6 +260,7 @@ class GoodsRecommendationServiceTest {
 			null,
 			50_000,
 			"1",
+			null,
 			0,
 			10,
 			"relevance,desc"
@@ -262,6 +268,42 @@ class GoodsRecommendationServiceTest {
 
 		assertThat(response.content()).isEmpty();
 		assertThat(response.totalElements()).isZero();
+	}
+
+	@Test
+	void preferredArtistIdsBoostRankingWithoutFilteringOtherCandidates() {
+		Goods preferred = goods(
+			10L, "Simple Keyring", 20_000, "ON_SALE",
+			1L, "Artist A", null, null, 1L, "Keyring", "KEYRING"
+		);
+		Goods strongerTextMatch = goods(
+			11L, "Premium Keyring Keyring Keyring", 20_000, "ON_SALE",
+			2L, "Artist B", null, null, 1L, "Keyring", "KEYRING"
+		);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(preferred, strongerTextMatch));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(10L, 11L)))
+			.thenReturn(List.of(new GoodsStock(preferred, 5), new GoodsStock(strongerTextMatch, 5)));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"키링",
+			null,
+			null,
+			null,
+			null,
+			null,
+			"1",
+			0,
+			10,
+			"relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(10L, 11L);
+		assertThat(response.content().getFirst().matchedFields())
+			.contains("preferredArtist");
 	}
 
 	private Goods goods(
