@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.6` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.7` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -207,6 +207,16 @@
 - 상태: [x] 동결
 ```
 
+```
+#### [GET] /api/members/me/favorite-artists
+- 설명: 로그인 사용자가 선호 아티스트로 등록한 목록 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: 배열 `{ artistId, name, imageUrl }`
+- 비고: `member_artist.member_id`는 인증된 회원에서 결정하며, access token과 내부 prompt에는 저장하지 않는다.
+- 상태: [x] additive
+```
+
 `public.member` 동기화:
 
 - `member_uuid`: Supabase `auth.users.id`와 동일한 uuid
@@ -353,15 +363,17 @@
   - `tags`: comma-separated 태그 후보
   - `maxPrice`: 최대 가격 KRW
   - `excludeGoodsIds`: comma-separated 제외 상품 ID
+  - `preferredArtistIds`: comma-separated 선호 아티스트 ID 후보. 필터가 아니라 관련도 가산점으로만 사용
   - `page`: 기본 `0`
   - `size`: 기본 `10`, 최대 `20`
   - `sort`: `relevance,desc` 기본, `price,asc|desc` 지원
-- 응답: 페이지 객체, content = 기존 goods 요약 호환 필드 + `{ artistName, categoryName, salesStatus, stockCount, recommendationReason, matchedFields }`
+- 응답: 페이지 객체, content = 기존 goods 요약 호환 필드 + `{ artistId, artistName, categoryName, salesStatus, stockCount, recommendationReason, matchedFields }`
 - 동작:
   - AI 서버는 사용자 입력을 `q`로 그대로 전달할 수 있으며, Spring이 `q` 안의 `search_alias`를 해석한다.
   - `search_alias`는 개별 아티스트, 아티스트 그룹, 카테고리, 태그 FK 구조를 사용한다.
   - 같은 차원의 alias 후보는 OR, 서로 다른 차원의 조건은 AND로 상품을 제한한다.
   - alias로 인식되지 않은 검색어는 상품명·아티스트명·그룹명·카테고리명·태그 관련도 점수에 사용한다.
+  - `preferredArtistIds`는 순위 가산점으로만 사용하며 명시 검색어·카테고리·가격·재고 조건을 대체하지 않는다.
   - 가격, 재고, 판매 상태, 제외 ID는 hard filter로 적용한다.
   - 결과가 없으면 `200`과 빈 페이지를 반환한다.
 - 상태: [x] additive
@@ -695,4 +707,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-25 | v0.2.4 | ai/virtual-chat | additive | 로그인 사용자의 AI 채팅 세션·메시지·추천 이력 저장 API와 WebSocket optional `sessionId` 추가 | 강승민 |
 | 2026-06-25 | v0.2.5 | ai/virtual-chat | additive | AI WebSocket 응답에 추천 이력 저장용 optional `metadata.recommendations` 추가 | 강승민 |
 | 2026-06-26 | v0.2.6 | ai/virtual-chat | additive | WebSocket `auth` 메시지를 추가하고 메시지·추천 이력 저장 주체를 프론트 직접 호출에서 AI 서버 경유 호출로 정리 | 강승민 |
+| 2026-06-26 | v0.2.7 | ai/member/goods | additive | 회원 선호 아티스트 조회 API `GET /api/members/me/favorite-artists`와 AI 추천 후보 `preferredArtistIds`, `artistId` 응답 필드 추가 | 강승민 |
 |  |  |  |  |  |  |

@@ -29,6 +29,7 @@ public class AiGoodsCatalogService {
 		"goodsId",
 		"name",
 		"price",
+		"artistId",
 		"artistName",
 		"groupName",
 		"categoryName",
@@ -145,6 +146,7 @@ public class AiGoodsCatalogService {
 		builder.append(tsvCell(goods.getGoodsId()))
 			.append('\t').append(tsvCell(goods.getGoodsName()))
 			.append('\t').append(tsvCell(goods.getPrice()))
+			.append('\t').append(tsvCell(goods.getArtist() == null ? null : goods.getArtist().getArtistId()))
 			.append('\t').append(tsvCell(goods.getArtist() == null ? null : goods.getArtist().getArtistName()))
 			.append('\t').append(tsvCell(goods.getArtist() == null ? null : goods.getArtist().getGroupName()))
 			.append('\t').append(tsvCell(goods.getCategory() == null ? null : goods.getCategory().getCategoryName()))

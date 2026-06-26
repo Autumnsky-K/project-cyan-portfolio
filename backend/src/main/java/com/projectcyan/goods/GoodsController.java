@@ -64,6 +64,7 @@ public class GoodsController {
 		@RequestParam(required = false) String tags,
 		@RequestParam(required = false) Integer maxPrice,
 		@RequestParam(required = false) String excludeGoodsIds,
+		@RequestParam(required = false) String preferredArtistIds,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "10") int size,
 		@RequestParam(defaultValue = "relevance,desc") String sort
@@ -75,6 +76,7 @@ public class GoodsController {
 			tags,
 			maxPrice,
 			excludeGoodsIds,
+			preferredArtistIds,
 			page,
 			size,
 			sort
