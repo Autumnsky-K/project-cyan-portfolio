@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signupMember } from './member'
+import { checkSignupAvailability, signupMember } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
 import './SignupPage.css'
@@ -43,6 +43,22 @@ function formatPhoneNumber(value) {
   }
 
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
+function getSignupAvailabilityMessage(availability) {
+  if (availability?.emailExists && availability?.phoneExists) {
+    return '이미 가입된 이메일 주소와 휴대폰 번호입니다. 로그인하거나 비밀번호를 찾아주세요.'
+  }
+
+  if (availability?.emailExists) {
+    return '이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.'
+  }
+
+  if (availability?.phoneExists) {
+    return '이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.'
+  }
+
+  return '이미 가입된 번호 혹은 이메일입니다.'
 }
 
 function SignupPage() {
@@ -151,12 +167,29 @@ function SignupPage() {
     return true
   }
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     setMessage('')
     setError('')
 
-    if (validateStepOne()) {
+    if (!validateStepOne()) {
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const availability = await checkSignupAvailability(form)
+
+      if (!availability?.available) {
+        setError(getSignupAvailabilityMessage(availability))
+        return
+      }
+
       setStep(2)
+    } catch (availabilityError) {
+      setError(availabilityError.message)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -268,8 +301,13 @@ function SignupPage() {
                 />
               </label>
 
-              <button className="signup-submit" type="button" onClick={handleNextStep}>
-                다음
+              <button
+                className="signup-submit"
+                type="button"
+                onClick={handleNextStep}
+                disabled={isLoading}
+              >
+                {isLoading ? '확인 중...' : '다음'}
               </button>
             </>
           )}

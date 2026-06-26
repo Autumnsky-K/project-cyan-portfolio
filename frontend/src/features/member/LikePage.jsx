@@ -34,7 +34,7 @@ function LikePage() {
 
         const [artistOptions, favoriteArtistIds] = await Promise.all([
           getArtistOptions(),
-          getFavoriteArtistIds(currentMember.userId),
+          getFavoriteArtistIds(currentMember.memberId ?? currentMember.userId),
         ])
 
         if (isMounted) {
@@ -79,7 +79,7 @@ function LikePage() {
     setIsSaving(true)
 
     try {
-      await saveFavoriteArtists(member.userId, selectedArtistIds)
+      await saveFavoriteArtists(member.memberId ?? member.userId, selectedArtistIds)
       navigate('/mypage')
     } catch (saveError) {
       console.error(saveError)

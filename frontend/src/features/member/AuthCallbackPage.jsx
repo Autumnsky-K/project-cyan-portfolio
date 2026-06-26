@@ -18,7 +18,7 @@ function getReturnTo() {
 
   return typeof storedReturnTo === 'string' && storedReturnTo.startsWith('/') && !storedReturnTo.startsWith('//')
     ? storedReturnTo
-    : '/like'
+    : '/mypage'
 }
 
 function AuthCallbackPage() {

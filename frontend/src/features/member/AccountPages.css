@@ -526,7 +526,8 @@
 }
 
 .mypage-card-row,
-.mypage-modal-grid {
+.mypage-modal-grid,
+.mypage-artist-edit-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
@@ -583,6 +584,23 @@
   margin-bottom: 8px;
   color: #ffffff;
   font-weight: 900;
+}
+
+.mypage-artist-edit-card {
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mypage-artist-edit-card.is-selected {
+  border-color: #ffffff;
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+.mypage-artist-edit-card:not(.is-selected) .mypage-item-meta {
+  color: #a8a8a8;
 }
 
 .mypage-arrow {
@@ -697,7 +715,8 @@
     text-align: left;
   }
 
-  .mypage-card-row {
+  .mypage-card-row,
+  .mypage-artist-edit-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

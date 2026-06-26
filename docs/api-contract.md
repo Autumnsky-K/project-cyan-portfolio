@@ -182,7 +182,18 @@
 - 인증 필요: N
 - 요청 body: { email, password, name, phone, address, agreements }
 - 응답 (동결 필드): { userId(uuid), email, name }
-- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰번호입니다.", status:409}` 반환
+- 실패: 이미 가입된 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
+- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
+- 상태: [x] 동결
+```
+
+```
+#### [POST] /api/members/signup/availability
+- 설명: 회원가입 1단계에서 이메일/휴대폰번호 중복 여부 확인
+- 인증 필요: N
+- 요청 body: { email, phone }
+- 응답 (동결 필드): { available(boolean), emailExists(boolean), phoneExists(boolean) }
+- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다.
 - 상태: [x] 동결
 ```
 
@@ -550,4 +561,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-24 | v0.2.0 | member | additive | 비밀번호 재설정 메일 발송 전 이메일 가입 여부를 확인하는 `POST /api/members/password-reset/eligibility` 추가 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
+| 2026-06-26 | v0.2.0 | member | additive | 회원가입 1단계 중복 확인 API `POST /api/members/signup/availability` 추가 및 중복 이메일 오류 코드 명시 | Codex |
 |  |  |  |  |  |  |

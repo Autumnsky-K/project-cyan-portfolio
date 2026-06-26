@@ -264,6 +264,18 @@ export async function signupMember(form) {
   }
 }
 
+export async function checkSignupAvailability(form) {
+  const response = await apiFetch('/members/signup/availability', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: form.email,
+      phone: form.phone,
+    }),
+  })
+
+  return parseApiResponse(response, '가입 정보 중복 확인에 실패했습니다.')
+}
+
 export async function sendPasswordResetEmail(email) {
   checkSupabaseConfig()
 
@@ -379,7 +391,16 @@ export async function getArtistOptions() {
     .order('artist_id', { ascending: true })
 
   if (error) {
-    throw new Error(error.message)
+    const cmsArtists = await parseApiResponse(
+      await apiFetch('/cms/artists'),
+      '관심 아티스트 정보를 불러오지 못했습니다.',
+    )
+
+    return (cmsArtists ?? []).map((artist) => ({
+      artistId: artist.artistId,
+      name: artist.name,
+      imageUrl: artist.imageUrl ?? '',
+    }))
   }
 
   return data.map((artist) => ({
@@ -389,11 +410,19 @@ export async function getArtistOptions() {
   }))
 }
 
-async function getMemberId(userId) {
+async function getMemberId(memberIdOrUserId) {
+  if (typeof memberIdOrUserId === 'number') {
+    return memberIdOrUserId
+  }
+
+  if (typeof memberIdOrUserId === 'string' && /^\d+$/.test(memberIdOrUserId)) {
+    return Number(memberIdOrUserId)
+  }
+
   const { data, error } = await supabase
     .from('member')
     .select('member_id')
-    .eq('member_uuid', userId)
+    .eq('member_uuid', memberIdOrUserId)
     .single()
 
   if (error) {
@@ -414,7 +443,8 @@ export async function getFavoriteArtistIds(userId) {
     .eq('member_id', memberId)
 
   if (error) {
-    throw new Error(error.message)
+    console.warn(error)
+    return []
   }
 
   return data.map((row) => row.artist_id)
@@ -460,9 +490,11 @@ export async function getMyPageSummary() {
     return null
   }
 
-  const favoriteArtistIds = await getFavoriteArtistIds(member.userId)
-  const favoriteArtists = await getArtistOptions()
-  const address = await getMemberAddress(member.userId)
+  const favoriteArtistIds = await getFavoriteArtistIds(member.memberId ?? member.userId)
+  const artistOptions = await getArtistOptions()
+  const favoriteArtistIdSet = new Set(favoriteArtistIds)
+  const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
+  const address = await getMemberAddress(member.memberId ?? member.userId)
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
     null,
@@ -479,9 +511,7 @@ export async function getMyPageSummary() {
     recentlyViewedGoods: MY_PAGE_DUMMY_DATA.recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
-      status: favoriteArtistIds.includes(artist.artistId)
-        ? '선택됨'
-        : '추천 아티스트',
+      status: '선택됨',
       description: `${artist.name} 공식 굿즈와 새 소식을 모아볼 수 있습니다.`,
     })),
     likedGoods: MY_PAGE_DUMMY_DATA.likedGoods,
@@ -539,7 +569,8 @@ export async function getMemberAddress(userId) {
     .maybeSingle()
 
   if (error) {
-    throw new Error(error.message)
+    console.warn(error)
+    return ''
   }
 
   return pickAddressFromRow(data)

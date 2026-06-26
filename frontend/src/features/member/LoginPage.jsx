@@ -14,7 +14,7 @@ function getAuthError(location) {
 function safeReturnTo(value) {
   return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
     ? value
-    : '/like'
+    : '/mypage'
 }
 
 function getReturnTo(location) {

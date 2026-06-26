@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../shared/components/Header'
-import { getMyPageSummary, logoutMember } from './member'
+import { getArtistOptions, getMyPageSummary, logoutMember, saveFavoriteArtists } from './member'
+import AccountFeedbackPopup from './AccountFeedbackPopup'
 import './AccountPages.css'
 
 const SECTION_PAGE_SIZE = 4
+
+function isSameArtistId(firstArtistId, secondArtistId) {
+  return String(firstArtistId) === String(secondArtistId)
+}
 
 function maskAddress(address) {
   if (!address) {
@@ -47,7 +52,7 @@ function DashboardItemCard({ item }) {
   )
 }
 
-function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore }) {
+function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore, actionLabel = '더보기' }) {
   const startIndex = pageIndex * SECTION_PAGE_SIZE
   const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
   const canGoPrevious = pageIndex > 0
@@ -58,7 +63,7 @@ function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore 
       <div className="mypage-section-heading">
         <h2>{title}</h2>
         <button className="mypage-more-button" type="button" onClick={onMore}>
-          더보기
+          {actionLabel}
         </button>
       </div>
 
@@ -75,9 +80,13 @@ function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore 
         )}
 
         <div className="mypage-card-row">
-          {visibleItems.map((item) => (
-            <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
-          ))}
+          {visibleItems.length > 0 ? (
+            visibleItems.map((item) => (
+              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
+            ))
+          ) : (
+            <p className="mypage-empty">표시할 항목이 없습니다.</p>
+          )}
         </div>
 
         {canGoNext && (
@@ -95,7 +104,15 @@ function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore 
   )
 }
 
-function SectionModal({ section, onClose }) {
+function SectionModal({
+  allArtistOptions,
+  draftFavoriteArtistIds,
+  isSavingFavorites,
+  onClose,
+  onSaveFavoriteArtists,
+  onToggleFavoriteArtist,
+  section,
+}) {
   useEffect(() => {
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
@@ -114,6 +131,8 @@ function SectionModal({ section, onClose }) {
     return null
   }
 
+  const isFavoriteArtistSection = section.id === 'favoriteArtists'
+
   return (
     <div
       className="mypage-modal-backdrop"
@@ -129,15 +148,55 @@ function SectionModal({ section, onClose }) {
       >
         <div className="mypage-modal-heading">
           <h2 id="mypage-modal-title">{section.title}</h2>
-          <button type="button" onClick={onClose} aria-label="닫기">
-            닫기
+          <button
+            type="button"
+            onClick={isFavoriteArtistSection ? onSaveFavoriteArtists : onClose}
+            aria-label={isFavoriteArtistSection ? '저장' : '닫기'}
+            disabled={isSavingFavorites}
+          >
+            {isFavoriteArtistSection && isSavingFavorites
+              ? '저장 중...'
+              : isFavoriteArtistSection
+                ? '저장'
+                : '닫기'}
           </button>
         </div>
-        <div className="mypage-modal-grid">
-          {section.items.map((item) => (
-            <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
-          ))}
-        </div>
+        {isFavoriteArtistSection ? (
+          <div className="mypage-artist-edit-grid">
+            {allArtistOptions.map((artist) => {
+              const isSelected = draftFavoriteArtistIds.some((artistId) =>
+                isSameArtistId(artistId, artist.artistId),
+              )
+
+              return (
+                <button
+                  className={`mypage-item-card mypage-artist-edit-card ${isSelected ? 'is-selected' : ''}`}
+                  type="button"
+                  key={artist.artistId}
+                  onClick={() => onToggleFavoriteArtist(artist.artistId)}
+                  aria-pressed={isSelected}
+                >
+                  <div className="mypage-item-image" aria-hidden="true">
+                    이미지
+                  </div>
+                  <div className="mypage-item-body">
+                    <h3>{artist.name}</h3>
+                    <p className="mypage-item-meta">
+                      {isSelected ? '선택됨' : '선택 가능'}
+                    </p>
+                    <p>{artist.name} 공식 굿즈와 새 소식을 모아볼 수 있습니다.</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="mypage-modal-grid">
+            {section.items.map((item) => (
+              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )
@@ -151,6 +210,9 @@ function MyPage() {
   const [error, setError] = useState('')
   const [sectionPages, setSectionPages] = useState({})
   const [selectedSection, setSelectedSection] = useState(null)
+  const [allArtistOptions, setAllArtistOptions] = useState([])
+  const [draftFavoriteArtistIds, setDraftFavoriteArtistIds] = useState([])
+  const [isSavingFavorites, setIsSavingFavorites] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -217,6 +279,56 @@ function MyPage() {
     }))
   }
 
+  const openSection = async (section) => {
+    setError('')
+    setSelectedSection(section)
+
+    if (section.id !== 'favoriteArtists') {
+      return
+    }
+
+    setDraftFavoriteArtistIds(section.items.map((artist) => artist.artistId))
+
+    try {
+      const artistOptions = await getArtistOptions()
+      setAllArtistOptions(artistOptions)
+    } catch (loadError) {
+      console.error(loadError)
+      setError('관심 아티스트 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.')
+    }
+  }
+
+  const toggleFavoriteArtist = (artistId) => {
+    setDraftFavoriteArtistIds((currentArtistIds) =>
+      currentArtistIds.some((currentArtistId) => isSameArtistId(currentArtistId, artistId))
+        ? currentArtistIds.filter((currentArtistId) => !isSameArtistId(currentArtistId, artistId))
+        : [...currentArtistIds, artistId],
+    )
+  }
+
+  const handleSaveFavoriteArtists = async () => {
+    if (!summary) {
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setIsSavingFavorites(true)
+
+    try {
+      await saveFavoriteArtists(summary.member.memberId ?? summary.member.userId, draftFavoriteArtistIds)
+      const nextSummary = await getMyPageSummary()
+      setSummary(nextSummary)
+      setSelectedSection(null)
+      setMessage('관심 아티스트가 저장되었습니다.')
+    } catch (saveError) {
+      console.error(saveError)
+      setError('관심 아티스트를 저장하지 못했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setIsSavingFavorites(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="account-page">
@@ -229,7 +341,21 @@ function MyPage() {
   }
 
   if (!summary) {
-    return null
+    return (
+      <main className="account-page">
+        <Header />
+        <section className="account-shell account-card account-panel">
+          <p className="account-feedback account-feedback-error" role="alert">
+            {error || '마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          </p>
+          <div className="account-actions">
+            <button className="account-button" type="button" onClick={() => navigate('/login')}>
+              로그인으로 이동
+            </button>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   const dashboardSections = [
@@ -257,6 +383,11 @@ function MyPage() {
 
   return (
     <main className="account-page">
+      <AccountFeedbackPopup
+        message={message}
+        type="success"
+        onDone={() => setMessage('')}
+      />
       <Header />
       <div className="account-shell">
         <section className="account-card">
@@ -291,12 +422,6 @@ function MyPage() {
               </p>
             )}
 
-            {message && (
-              <p className="account-feedback account-feedback-success" role="status">
-                {message}
-              </p>
-            )}
-
             <dl className="mypage-profile-list">
               <div>
                 <dt>이메일</dt>
@@ -321,7 +446,8 @@ function MyPage() {
               pageIndex={sectionPages[section.id] ?? 0}
               onPrevious={() => handleSectionMove(section.id, -1)}
               onNext={() => handleSectionMove(section.id, 1)}
-              onMore={() => setSelectedSection(section)}
+              onMore={() => openSection(section)}
+              actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
             />
           ))}
         </section>
@@ -331,7 +457,15 @@ function MyPage() {
           </button>
         </div>
       </div>
-      <SectionModal section={selectedSection} onClose={() => setSelectedSection(null)} />
+      <SectionModal
+        allArtistOptions={allArtistOptions}
+        draftFavoriteArtistIds={draftFavoriteArtistIds}
+        isSavingFavorites={isSavingFavorites}
+        section={selectedSection}
+        onClose={() => setSelectedSection(null)}
+        onSaveFavoriteArtists={handleSaveFavoriteArtists}
+        onToggleFavoriteArtist={toggleFavoriteArtist}
+      />
     </main>
   )
 }

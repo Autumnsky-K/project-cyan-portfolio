@@ -34,10 +34,18 @@ public class MemberService {
 		String phone = normalizePhone(request.phone());
 
 		if (memberRepository.existsByEmail(email)) {
-			throw new ApiErrorException("MEMBER_EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.", HttpStatus.CONFLICT);
+			throw new ApiErrorException(
+				"MEMBER_EMAIL_ALREADY_EXISTS",
+				"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.",
+				HttpStatus.CONFLICT
+			);
 		}
 		if (memberRepository.existsByPhoneDigits(phoneDigits(phone))) {
-			throw new ApiErrorException("MEMBER_PHONE_ALREADY_EXISTS", "이미 가입된 휴대폰번호입니다.", HttpStatus.CONFLICT);
+			throw new ApiErrorException(
+				"MEMBER_PHONE_ALREADY_EXISTS",
+				"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.",
+				HttpStatus.CONFLICT
+			);
 		}
 
 		SignupRequest normalizedRequest = new SignupRequest(
@@ -77,6 +85,17 @@ public class MemberService {
 	}
 
 	@Transactional(readOnly = true)
+	public SignupAvailabilityResponse checkSignupAvailability(SignupAvailabilityRequest request) {
+		String email = normalizeEmail(request.email());
+		String phone = normalizePhone(request.phone());
+
+		return SignupAvailabilityResponse.from(
+			memberRepository.existsByEmail(email),
+			memberRepository.existsByPhoneDigits(phoneDigits(phone))
+		);
+	}
+
+	@Transactional(readOnly = true)
 	public PasswordResetEligibilityResponse checkPasswordResetEligibility(PasswordResetEligibilityRequest request) {
 		String email = normalizeEmail(request.email());
 
@@ -110,7 +129,11 @@ public class MemberService {
 
 	private ApiErrorException authException(SupabaseAuthException exception) {
 		if (exception.getStatus() == 409 || exception.getMessage().toLowerCase(Locale.ROOT).contains("already")) {
-			return new ApiErrorException("MEMBER_EMAIL_ALREADY_EXISTS", "이미 가입된 이메일입니다.", HttpStatus.CONFLICT);
+			return new ApiErrorException(
+				"MEMBER_EMAIL_ALREADY_EXISTS",
+				"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.",
+				HttpStatus.CONFLICT
+			);
 		}
 		if (exception.getStatus() >= 400 && exception.getStatus() < 500) {
 			return new ApiErrorException("MEMBER_AUTH_REJECTED", exception.getMessage(), HttpStatus.BAD_REQUEST);

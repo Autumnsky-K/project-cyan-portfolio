@@ -33,6 +33,11 @@ public class MemberController {
 		return memberService.signup(request);
 	}
 
+	@PostMapping("/signup/availability")
+	public SignupAvailabilityResponse checkSignupAvailability(@Valid @RequestBody SignupAvailabilityRequest request) {
+		return memberService.checkSignupAvailability(request);
+	}
+
 	@PostMapping("/password-reset/eligibility")
 	public PasswordResetEligibilityResponse checkPasswordResetEligibility(
 		@Valid @RequestBody PasswordResetEligibilityRequest request
