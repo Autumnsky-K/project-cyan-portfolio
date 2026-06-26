@@ -364,6 +364,43 @@
   font-size: 14px;
 }
 
+.vtuber-auth-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgb(155 44 44 / 28%);
+  border-radius: 6px;
+  background: #fff7f7;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 8%);
+}
+
+.vtuber-auth-notice p {
+  margin: 0;
+  color: var(--vtuber-danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vtuber-auth-notice button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgb(155 44 44 / 34%);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--vtuber-danger);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vtuber-auth-notice button:focus-visible {
+  outline: 2px solid var(--vtuber-danger);
+  outline-offset: 2px;
+}
+
 .vtuber-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

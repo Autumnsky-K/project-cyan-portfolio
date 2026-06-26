@@ -118,6 +118,7 @@ class HookFilter:
                 next_response = FullTextMessage(
                     text=next_response.text,
                     actions=self._filter_actions(next_response.actions, policy.threshold),
+                    metadata=next_response.metadata,
                 )
                 continue
 

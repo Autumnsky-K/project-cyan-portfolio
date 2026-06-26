@@ -18,11 +18,16 @@ import './VtuberChatbot.css'
 
 type VtuberChatbotProps = {
   actionsCount: number
+  authNotice?: {
+    actionLabel: string
+    message: string
+    onAction: () => void
+  } | null
   bubbleText: string
   character: VtuberCharacterConfig
   displayState: VtuberDisplayState
   isSendDisabled: boolean
-  onSendMessage: (message: string) => boolean
+  onSendMessage: (message: string) => boolean | Promise<boolean>
   statusLabel: string
 }
 
@@ -112,6 +117,7 @@ function isDragExcludedTarget(target: EventTarget | null): boolean {
 
 function VtuberChatbotShell({
   actionsCount,
+  authNotice = null,
   bubbleText,
   character,
   displayState,
@@ -211,10 +217,10 @@ function VtuberChatbotShell({
     }
   }, [settings.position, shouldUseCustomPosition])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (onSendMessage(trimmedMessage)) {
+    if (await onSendMessage(trimmedMessage)) {
       setMessage('')
     }
   }
@@ -483,6 +489,15 @@ function VtuberChatbotShell({
                 Display state: {statusLabel}. Prepared actions: {actionsCount}.
               </span>
             </div>
+
+            {authNotice ? (
+              <div className="vtuber-auth-notice" role="status">
+                <p>{authNotice.message}</p>
+                <button type="button" onClick={authNotice.onAction}>
+                  {authNotice.actionLabel}
+                </button>
+              </div>
+            ) : null}
 
             <form className="vtuber-form" onSubmit={handleSubmit}>
               <label className="vtuber-sr-only" htmlFor="vtuber-message">
