@@ -68,6 +68,14 @@
       <form class="admin-form admin-goods-form" method="post"
             th:object="${form}"
             th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}">
+        <div class="admin-notice admin-notice-error admin-form-error-summary"
+             th:if="${#fields.hasAnyErrors()}"
+             role="alert">
+          <strong>입력값을 확인해주세요.</strong>
+          <ul>
+            <li th:each="error : ${#fields.errors('*')}" th:text="${error}">필수 입력값을 확인해주세요.</li>
+          </ul>
+        </div>
         <section class="admin-form-grid">
           <label>
             <span>굿즈 ID</span>
@@ -102,6 +110,7 @@
               <option value="">아티스트 없음</option>
               <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
             </select>
+            <small th:if="${#fields.hasErrors('artistId')}" th:errors="*{artistId}"></small>
           </label>
 
           <label>
@@ -110,6 +119,7 @@
               <option value="">카테고리 없음</option>
               <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
             </select>
+            <small th:if="${#fields.hasErrors('categoryId')}" th:errors="*{categoryId}"></small>
           </label>
 
           <label>
