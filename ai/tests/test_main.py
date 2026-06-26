@@ -6,6 +6,11 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
+from project_cyan_ai.chat_history import (
+    ChatHistoryClient,
+    build_assistant_message_payload,
+    recommendation_payloads,
+)
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
@@ -40,6 +45,7 @@ from project_cyan_ai.schemas.ws import (
     AddToCartAction,
     CLIENT_CART_ITEMS_MAX_LENGTH,
     CLIENT_TEXT_MAX_LENGTH,
+    ClientAuthMessage,
     ClientTextInput,
     FullTextMessage,
     HighlightAction,
@@ -276,6 +282,26 @@ class FakeWebSocketGoodsCatalogClient:
     def search_candidates(self, text):
         self.received_texts.append(text)
         return self.candidates
+
+
+class FakeChatHistoryClient:
+    instances = []
+    should_succeed = True
+
+    def __init__(self, spring_api_url):
+        self.spring_api_url = spring_api_url
+        self.calls = []
+        FakeChatHistoryClient.instances.append(self)
+
+    def create_message(self, access_token, session_id, payload):
+        self.calls.append(
+            {
+                "access_token": access_token,
+                "session_id": session_id,
+                "payload": payload,
+            }
+        )
+        return FakeChatHistoryClient.should_succeed
 
 
 GOODS_CATALOG_TSV = """goodsId\tname\tprice\tartistName\tgroupName\tcategoryName\ttags\tsalesStatus\tstockCount\taiPickDefault\tbestSeller\tdescription
@@ -895,6 +921,26 @@ def test_client_text_input_accepts_optional_session_id():
     assert message.sessionId == 42
 
 
+def test_client_auth_message_accepts_access_token_only():
+    message = ClientAuthMessage.model_validate(
+        {"type": "auth", "accessToken": "supabase-access-token"}
+    )
+
+    assert message.accessToken == "supabase-access-token"
+
+    with pytest.raises(ValidationError):
+        ClientAuthMessage.model_validate({"type": "auth", "accessToken": ""})
+
+    with pytest.raises(ValidationError):
+        ClientAuthMessage.model_validate(
+            {
+                "type": "auth",
+                "accessToken": "supabase-access-token",
+                "sessionId": 42,
+            }
+        )
+
+
 def test_full_text_message_preserves_server_contract_shape():
     message = FullTextMessage(text="안녕")
 
@@ -980,6 +1026,113 @@ def test_full_text_message_rejects_unsafe_action_targets():
                     "actions": [action],
                 }
             )
+
+
+def test_chat_history_client_posts_authenticated_message(monkeypatch):
+    captured_requests = []
+
+    def fake_urlopen(request, timeout):
+        captured_requests.append({"request": request, "timeout": timeout})
+        return FakeHttpResponse({"messageId": 1})
+
+    monkeypatch.setattr("project_cyan_ai.chat_history.urlopen", fake_urlopen)
+    history_client = ChatHistoryClient("http://backend.test/api")
+
+    did_save = history_client.create_message(
+        "supabase-access-token",
+        77,
+        {"speaker": "USER", "messageText": "안녕"},
+    )
+
+    request = captured_requests[0]["request"]
+    body = json.loads(request.data.decode("utf-8"))
+    assert did_save is True
+    assert request.full_url == (
+        "http://backend.test/api/virtual-chat/sessions/77/messages"
+    )
+    assert request.get_header("Authorization") == "Bearer supabase-access-token"
+    assert request.get_header("Content-type") == "application/json; charset=utf-8"
+    assert captured_requests[0]["timeout"] == 2.0
+    assert body == {"speaker": "USER", "messageText": "안녕"}
+
+
+def test_chat_history_client_treats_save_failure_as_false(monkeypatch):
+    def fake_urlopen(request, timeout):
+        raise OSError("backend unavailable")
+
+    monkeypatch.setattr("project_cyan_ai.chat_history.urlopen", fake_urlopen)
+    history_client = ChatHistoryClient("http://backend.test/api")
+
+    assert history_client.create_message(
+        "supabase-access-token",
+        77,
+        {"speaker": "USER", "messageText": "안녕"},
+    ) is False
+
+
+def test_assistant_history_payload_includes_recommendation_metadata():
+    response = FullTextMessage(
+        text="샤를로트 포토카드를 추천해요.",
+        actions=[
+            NavigateAction(path="/goods/1001"),
+            HighlightAction(selector="[data-goods-id='1001']"),
+        ],
+        metadata={
+            "recommendations": [
+                {
+                    "goodsId": "1001",
+                    "recommendationReason": "artistName 조건과 일치합니다.",
+                    "rankOrder": 0,
+                },
+                {
+                    "goodsId": "bad-id",
+                    "recommendationReason": "저장하면 안 됩니다.",
+                    "rankOrder": 1,
+                },
+            ]
+        },
+    )
+
+    payload = build_assistant_message_payload(
+        response,
+        "샤를로트 포토카드 추천해줘",
+    )
+
+    assert payload == {
+        "speaker": "ASSISTANT",
+        "messageText": "샤를로트 포토카드를 추천해요.",
+        "action": "navigate",
+        "actions": [
+            {"type": "navigate", "path": "/goods/1001"},
+            {"type": "highlight", "selector": "[data-goods-id='1001']"},
+        ],
+        "metadata": {
+            "recommendations": [
+                {
+                    "goodsId": "1001",
+                    "recommendationReason": "artistName 조건과 일치합니다.",
+                    "rankOrder": 0,
+                },
+                {
+                    "goodsId": "bad-id",
+                    "recommendationReason": "저장하면 안 됩니다.",
+                    "rankOrder": 1,
+                },
+            ]
+        },
+        "recommendations": [
+            {
+                "goodsId": 1001,
+                "requestText": "샤를로트 포토카드 추천해줘",
+                "recommendationReason": "artistName 조건과 일치합니다.",
+                "rankOrder": 0,
+            }
+        ],
+    }
+
+
+def test_recommendation_payloads_skip_missing_metadata():
+    assert recommendation_payloads({}, "추천해줘") == []
 
 
 def test_chat_response_provider_factory_returns_mock_provider_by_default():
@@ -1580,7 +1733,7 @@ def test_client_ws_sends_initial_messages():
 
     assert greeting == {
         "type": "full-text",
-        "text": "Connection established",
+        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카드 담기까지 모두 해드릴게요!",
         "actions": [],
     }
 
@@ -1709,6 +1862,125 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
             {"type": "addToCart", "goodsId": "1006"},
         ],
     }
+
+
+def test_client_ws_persists_messages_when_auth_and_session_are_present(monkeypatch):
+    FakeChatHistoryClient.instances = []
+    FakeChatHistoryClient.should_succeed = True
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.ChatHistoryClient",
+        FakeChatHistoryClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "auth", "accessToken": "supabase-access-token"}
+        )
+        websocket.send_json(
+            {
+                "type": "text-input",
+                "text": "Artist C 굿즈 추천해줘",
+                "sessionId": 77,
+            }
+        )
+        response = websocket.receive_json()
+
+    history_client = FakeChatHistoryClient.instances[0]
+    assert response["type"] == "full-text"
+    assert history_client.spring_api_url == "http://127.0.0.1:1/api"
+    assert len(history_client.calls) == 2
+    assert history_client.calls[0] == {
+        "access_token": "supabase-access-token",
+        "session_id": 77,
+        "payload": {
+            "speaker": "USER",
+            "messageText": "Artist C 굿즈 추천해줘",
+            "action": None,
+            "actions": [],
+            "metadata": {},
+            "recommendations": [],
+        },
+    }
+    assert history_client.calls[1]["access_token"] == "supabase-access-token"
+    assert history_client.calls[1]["session_id"] == 77
+    assert history_client.calls[1]["payload"]["speaker"] == "ASSISTANT"
+    assert history_client.calls[1]["payload"]["messageText"] == "Tour Poster A2을 추천해요."
+    assert history_client.calls[1]["payload"]["action"] == "navigate"
+    assert history_client.calls[1]["payload"]["recommendations"] == [
+        {
+            "goodsId": 1005,
+            "requestText": "Artist C 굿즈 추천해줘",
+            "recommendationReason": None,
+            "rankOrder": 0,
+        },
+        {
+            "goodsId": 1006,
+            "requestText": "Artist C 굿즈 추천해줘",
+            "recommendationReason": None,
+            "rankOrder": 1,
+        },
+    ]
+
+
+def test_client_ws_skips_persistence_without_auth(monkeypatch):
+    FakeChatHistoryClient.instances = []
+    FakeChatHistoryClient.should_succeed = True
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.ChatHistoryClient",
+        FakeChatHistoryClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "안녕", "sessionId": 77}
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "받은 메시지: 안녕",
+        "actions": [],
+    }
+    assert FakeChatHistoryClient.instances[0].calls == []
+
+
+def test_client_ws_continues_when_history_save_fails(monkeypatch):
+    FakeChatHistoryClient.instances = []
+    FakeChatHistoryClient.should_succeed = False
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.ChatHistoryClient",
+        FakeChatHistoryClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "auth", "accessToken": "supabase-access-token"}
+        )
+        websocket.send_json(
+            {"type": "text-input", "text": "안녕", "sessionId": 77}
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "받은 메시지: 안녕",
+        "actions": [],
+    }
+    assert len(FakeChatHistoryClient.instances[0].calls) == 2
+    FakeChatHistoryClient.should_succeed = True
 
 
 def test_client_ws_does_not_share_recent_candidates_across_connections(monkeypatch):
@@ -1873,6 +2145,64 @@ def test_hook_filter_filters_output_actions_by_scope():
             HighlightAction(selector="[data-goods-id='42']"),
         ],
     )
+
+
+def test_hook_filter_preserves_recommendation_metadata_when_filtering_actions():
+    hook_filter = HookFilter(
+        CachedHookPolicyProvider(
+            FakeHookPolicyClient(
+                [
+                    HookPolicy(
+                        hook="output",
+                        check="actionScope",
+                        threshold="navigate,highlight",
+                        action="filter",
+                        message="허용 액션만 실행합니다.",
+                    )
+                ]
+            )
+        )
+    )
+
+    response = hook_filter.filter_output(
+        FullTextMessage(
+            text="추천해요.",
+            actions=[
+                NavigateAction(path="/goods/42"),
+                HighlightAction(selector="[data-goods-id='42']"),
+                AddToCartAction(goodsId="42"),
+            ],
+            metadata={
+                "recommendations": [
+                    {
+                        "goodsId": 42,
+                        "recommendationReason": "categoryName 조건과 일치합니다.",
+                        "rankOrder": 0,
+                    }
+                ]
+            },
+        )
+    )
+
+    payload = build_assistant_message_payload(response, "포토카드 추천해줘")
+
+    assert response.metadata == {
+        "recommendations": [
+            {
+                "goodsId": 42,
+                "recommendationReason": "categoryName 조건과 일치합니다.",
+                "rankOrder": 0,
+            }
+        ]
+    }
+    assert payload["recommendations"] == [
+        {
+            "goodsId": 42,
+            "requestText": "포토카드 추천해줘",
+            "recommendationReason": "categoryName 조건과 일치합니다.",
+            "rankOrder": 0,
+        }
+    ]
 
 
 def test_hook_filter_rewrites_forbidden_output_text():

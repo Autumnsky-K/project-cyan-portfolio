@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type VtuberClientCartItem,
   type VtuberAction,
+  type VtuberClientAuthMessage,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
   type VtuberRecommendationMetadata,
@@ -16,7 +17,6 @@ type UseVtuberWebSocketResult = {
   actionBatchId: number
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
-  latestMetadata: VtuberServerMetadata
   latestText: string
   sendText: (text: string) => boolean
 }
@@ -105,13 +105,13 @@ export function useVtuberWebSocket(
   initialText: string,
   cartItems: VtuberClientCartItem[] = [],
   sessionId: number | null = null,
+  accessToken: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const closedByHookRef = useRef(false)
   const sawConnectionErrorRef = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
   const [latestText, setLatestText] = useState(initialText)
-  const [latestMetadata, setLatestMetadata] = useState<VtuberServerMetadata>({})
   const [actions, setActions] = useState<VtuberAction[]>([])
   const [actionBatchId, setActionBatchId] = useState(0)
 
@@ -136,7 +136,6 @@ export function useVtuberWebSocket(
         }
 
         setLatestText(message.text)
-        setLatestMetadata(message.metadata ?? {})
         setActions(message.actions)
         setActionBatchId((currentId) => currentId + 1)
       } catch {
@@ -163,6 +162,25 @@ export function useVtuberWebSocket(
       socketRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    const socket = socketRef.current
+
+    if (
+      !accessToken ||
+      connectionStatus !== 'open' ||
+      socket?.readyState !== WebSocket.OPEN
+    ) {
+      return
+    }
+
+    const authMessage: VtuberClientAuthMessage = {
+      type: 'auth',
+      accessToken,
+    }
+
+    socket.send(JSON.stringify(authMessage))
+  }, [accessToken, connectionStatus])
 
   const sendText = useCallback((text: string) => {
     const trimmedText = text.trim()
@@ -199,7 +217,6 @@ export function useVtuberWebSocket(
     actionBatchId,
     actions,
     connectionStatus,
-    latestMetadata,
     latestText,
     sendText,
   }

@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.5` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.6` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -453,17 +453,20 @@
 > 캐릭터 아일랜드 ↔ OLV WebSocket. REST가 아니라 **WebSocket 메시지 형태**가 계약이다.
 
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
+- 클라이언트 → 서버 인증 메시지: `{ "type": "auth", "accessToken": "<Supabase access_token>" }`
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
 - 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional)
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
-- `metadata.recommendations[]` 항목은 `{ goodsId, recommendationReason, rankOrder }` 형태이며, 프론트는 채팅 이력 저장 시 `virtual_recommendation` 저장에 사용할 수 있다.
+- `auth.accessToken`은 로그인 사용자의 Supabase access token이며, AI 서버는 연결 메모리에만 보관하고 DB·로그에 저장하지 않는다.
+- `metadata.recommendations[]` 항목은 `{ goodsId, recommendationReason, rankOrder }` 형태이며, AI 서버는 채팅 이력 저장 시 `virtual_recommendation` 저장에 사용할 수 있다.
 - `text`는 HTML이 아닌 plain text로 취급한다. 클라이언트는 HTML 삽입 렌더링을 사용하지 않는다.
 - `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
-- `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID이며, 없으면 AI 서버는 기존처럼 저장 없이 응답한다.
+- `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID이며, 없거나 auth 메시지가 없으면 AI 서버는 기존처럼 저장 없이 응답한다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
+- 로그인 사용자는 WebSocket 연결 후 auth 메시지를 먼저 보낸 뒤 `text-input`에는 access token을 반복 전송하지 않는다.
 
 #### [GET] /api/ai/goods-catalog/latest
 - 설명: AI 서버가 최신 TSV 상품 카탈로그 URL을 조회
@@ -495,6 +498,7 @@
 
 #### 초기 구성
 - WebSocket endpoint: /client-ws
+- 인증 메시지: { type: "auth", accessToken: string }
 - 입력 메시지: { type: "text-input", text: string }
 - 입력 메시지 optional context:
 
@@ -524,7 +528,7 @@
 
 ### 3.7 가상 채팅 이력 (virtual chat) — 담당: `강승민`
 
-> 로그인 사용자와 AI 챗봇의 대화 이력을 Spring API가 저장한다. 비로그인 사용자는 v1에서 저장하지 않는다.
+> 로그인 사용자와 AI 챗봇의 대화 이력을 Spring API가 저장한다. 프론트는 세션 생성만 담당하고, 메시지·추천 저장 요청은 AI 서버가 Supabase access token을 전달해 Spring API로 수행한다. 비로그인 사용자는 v1에서 저장하지 않는다.
 
 #### [POST] /api/virtual-chat/sessions
 - 설명: 로그인 사용자의 AI 채팅 세션 생성
@@ -551,6 +555,7 @@
 #### [POST] /api/virtual-chat/sessions/{sessionId}/messages
 - 설명: AI 채팅 메시지와 해당 메시지에서 발생한 상품 추천 이력 저장
 - 인증 필요: Y
+- 호출 주체: AI 서버. 프론트는 이 API를 직접 호출해 메시지·추천 payload를 저장하지 않는다.
 - 요청 body:
   - `speaker`: `USER`, `ASSISTANT`, `SYSTEM`
   - `messageText`: 저장할 plain text 메시지
@@ -560,6 +565,7 @@
   - `recommendations`: optional 배열 `{ goodsId, requestText, recommendationReason, rankOrder }`
 - 응답: `201 { messageId, sessionId, speaker, messageText, action, actions, metadata, createdAt }`
 - 권한: 세션 소유 회원만 저장 가능하며, 추천 이력의 `memberId`도 인증된 회원에서 결정한다.
+- 비고: AI 서버가 전달한 `Authorization: Bearer <Supabase access_token>`을 Spring이 최종 검증한다.
 - 상태: [x] additive
 
 #### [PATCH] /api/virtual-chat/sessions/{sessionId}/end
@@ -663,4 +669,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-25 | v0.2.3 | ai | additive | AI input/output hook 정책 조회 API `GET /api/ai/hooks` 추가 | 강승민 |
 | 2026-06-25 | v0.2.4 | ai/virtual-chat | additive | 로그인 사용자의 AI 채팅 세션·메시지·추천 이력 저장 API와 WebSocket optional `sessionId` 추가 | 강승민 |
 | 2026-06-25 | v0.2.5 | ai/virtual-chat | additive | AI WebSocket 응답에 추천 이력 저장용 optional `metadata.recommendations` 추가 | 강승민 |
+| 2026-06-26 | v0.2.6 | ai/virtual-chat | additive | WebSocket `auth` 메시지를 추가하고 메시지·추천 이력 저장 주체를 프론트 직접 호출에서 AI 서버 경유 호출로 정리 | 강승민 |
 |  |  |  |  |  |  |

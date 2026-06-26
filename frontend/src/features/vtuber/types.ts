@@ -23,6 +23,11 @@ export type VtuberClientTextInputMessage = {
   }
 }
 
+export type VtuberClientAuthMessage = {
+  type: 'auth'
+  accessToken: string
+}
+
 export type VtuberClientCartItem = {
   goodsId: string | number
   name: string

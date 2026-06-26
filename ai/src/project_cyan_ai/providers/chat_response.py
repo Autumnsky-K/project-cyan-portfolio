@@ -544,7 +544,11 @@ def filter_actions_by_goods_ids(
     allowed_goods_ids: set[str],
 ) -> FullTextMessage:
     if not allowed_goods_ids:
-        return FullTextMessage(text=response.text, actions=[])
+        return FullTextMessage(
+            text=response.text,
+            actions=[],
+            metadata=response.metadata,
+        )
 
     filtered_actions = [
         action
@@ -552,7 +556,11 @@ def filter_actions_by_goods_ids(
         if (goods_id := action_goods_id(action)) is None or goods_id in allowed_goods_ids
     ]
 
-    return FullTextMessage(text=response.text, actions=filtered_actions)
+    return FullTextMessage(
+        text=response.text,
+        actions=filtered_actions,
+        metadata=response.metadata,
+    )
 
 
 def build_shopping_tools() -> ShoppingTools:

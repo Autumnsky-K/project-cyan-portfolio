@@ -2,6 +2,7 @@ from typing import Any, Literal, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+CLIENT_AUTH_TYPE = "auth"
 CLIENT_TEXT_INPUT_TYPE = "text-input"
 SERVER_FULL_TEXT_TYPE = "full-text"
 SERVER_CONFIG_TYPE = "set-model-and-conf"
@@ -69,6 +70,13 @@ class ClientTextInput(BaseModel):
         if not stripped_value:
             raise ValueError("text must not be blank")
         return stripped_value
+
+
+class ClientAuthMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["auth"] = CLIENT_AUTH_TYPE
+    accessToken: str = Field(min_length=1)
 
 
 class CartContextItem(BaseModel):

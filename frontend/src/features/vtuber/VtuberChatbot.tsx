@@ -1,11 +1,8 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import {
-  createVirtualChatMessage,
-  createVirtualChatSession,
-  type VirtualRecommendationInput,
-} from '../../api/virtualChat'
+import { supabase } from '../../api/supabaseClient'
+import { createVirtualChatSession } from '../../api/virtualChat'
 import { useCartAuthSession } from '../cart/useCartAuthSession'
 import VtuberChatbotShell from '../../shared/components/VtuberChatbotShell'
 import { useCart } from '../cart/useCart'
@@ -15,84 +12,23 @@ import {
   deriveVtuberDisplayState,
   VTUBER_DISPLAY_STATE_LABELS,
 } from './displayState'
-import {
-  type VtuberRecommendationMetadata,
-  type VtuberServerMetadata,
-} from './types'
 import { useVtuberWebSocket } from './useVtuberWebSocket'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
 const SPEAKING_STATE_DURATION_MS = 2400
 const DEFAULT_GUIDE_ID = 1
 
-function goodsIdFromAction(action: { type: string; [key: string]: unknown }): number | null {
-  if (action.type === 'addToCart' && typeof action.goodsId === 'string') {
-    const goodsId = Number(action.goodsId)
-    return Number.isInteger(goodsId) && goodsId > 0 ? goodsId : null
-  }
-
-  if (action.type === 'navigate' && typeof action.path === 'string') {
-    const match = action.path.match(/^\/goods\/(\d+)$/)
-    const goodsId = match ? Number(match[1]) : Number.NaN
-    return Number.isInteger(goodsId) && goodsId > 0 ? goodsId : null
-  }
-
-  if (action.type === 'highlight' && typeof action.selector === 'string') {
-    const match = action.selector.match(/data-goods-id=['"](\d+)['"]/)
-    const goodsId = match ? Number(match[1]) : Number.NaN
-    return Number.isInteger(goodsId) && goodsId > 0 ? goodsId : null
-  }
-
-  return null
-}
-
-function recommendationsFromActions(
-  actions: { type: string; [key: string]: unknown }[],
-  requestText: string,
-  metadata: VtuberServerMetadata,
-): VirtualRecommendationInput[] {
-  const goodsIds: number[] = []
-  const recommendations = Array.isArray(metadata.recommendations)
-    ? metadata.recommendations
-    : []
-  const recommendationByGoodsId = new Map<number, VtuberRecommendationMetadata>()
-
-  for (const recommendation of recommendations) {
-    const goodsId = Number(recommendation.goodsId)
-
-    if (Number.isInteger(goodsId) && goodsId > 0) {
-      recommendationByGoodsId.set(goodsId, recommendation)
-    }
-  }
-
-  for (const action of actions) {
-    const goodsId = goodsIdFromAction(action)
-
-    if (goodsId !== null && !goodsIds.includes(goodsId)) {
-      goodsIds.push(goodsId)
-    }
-  }
-
-  return goodsIds.map((goodsId, index) => ({
-    goodsId,
-    requestText,
-    recommendationReason:
-      recommendationByGoodsId.get(goodsId)?.recommendationReason ?? null,
-    rankOrder: recommendationByGoodsId.get(goodsId)?.rankOrder ?? index,
-  }))
-}
-
 function VtuberChatbot(): ReactElement {
   const navigate = useNavigate()
   const { authLoading, authUserId, isAuthenticated } = useCartAuthSession()
   const { addCartItem, items } = useCart()
   const executedActionBatchRef = useRef(0)
-  const pendingUserMessageRef = useRef('')
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [speakingBatchId, setSpeakingBatchId] = useState(0)
   const [chatSessionId, setChatSessionId] = useState<number | null>(null)
-  const { actionBatchId, actions, connectionStatus, latestMetadata, latestText, sendText } =
-    useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items, chatSessionId)
+  const [chatAccessToken, setChatAccessToken] = useState<string | null>(null)
+  const { actionBatchId, actions, connectionStatus, latestText, sendText } =
+    useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items, chatSessionId, chatAccessToken)
 
   useEffect(() => {
     let active = true
@@ -101,6 +37,7 @@ function VtuberChatbot(): ReactElement {
       window.setTimeout(() => {
         if (active && !isAuthenticated) {
           setChatSessionId(null)
+          setChatAccessToken(null)
         }
       }, 0)
       return () => {
@@ -133,6 +70,33 @@ function VtuberChatbot(): ReactElement {
   }, [authLoading, authUserId, isAuthenticated])
 
   useEffect(() => {
+    let active = true
+
+    if (authLoading || !isAuthenticated || !supabase) {
+      window.setTimeout(() => {
+        if (active) {
+          setChatAccessToken(null)
+        }
+      }, 0)
+      return () => {
+        active = false
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) {
+        return
+      }
+
+      setChatAccessToken(data.session?.access_token ?? null)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [authLoading, authUserId, isAuthenticated])
+
+  useEffect(() => {
     if (connectionStatus !== 'open') {
       setIsAwaitingResponse(false)
       setSpeakingBatchId(0)
@@ -147,24 +111,6 @@ function VtuberChatbot(): ReactElement {
     setIsAwaitingResponse(false)
     setSpeakingBatchId(actionBatchId)
 
-    if (chatSessionId !== null && pendingUserMessageRef.current) {
-      const requestText = pendingUserMessageRef.current
-      pendingUserMessageRef.current = ''
-
-      void createVirtualChatMessage(chatSessionId, {
-        speaker: 'ASSISTANT',
-        messageText: latestText,
-        action: actions[0]?.type ?? null,
-        actions,
-        metadata: latestMetadata,
-        recommendations: recommendationsFromActions(
-          actions,
-          requestText,
-          latestMetadata,
-        ),
-      }).catch(() => undefined)
-    }
-
     const speakingTimerId = window.setTimeout(() => {
       setSpeakingBatchId((currentBatchId) =>
         currentBatchId === actionBatchId ? 0 : currentBatchId,
@@ -172,7 +118,7 @@ function VtuberChatbot(): ReactElement {
     }, SPEAKING_STATE_DURATION_MS)
 
     return () => window.clearTimeout(speakingTimerId)
-  }, [actionBatchId, actions, chatSessionId, latestMetadata, latestText])
+  }, [actionBatchId])
 
   useEffect(() => {
     if (actionBatchId === 0 || executedActionBatchRef.current === actionBatchId) {
@@ -192,16 +138,8 @@ function VtuberChatbot(): ReactElement {
     const didSend = sendText(message)
 
     if (didSend) {
-      pendingUserMessageRef.current = message
       setIsAwaitingResponse(true)
       setSpeakingBatchId(0)
-
-      if (chatSessionId !== null) {
-        void createVirtualChatMessage(chatSessionId, {
-          speaker: 'USER',
-          messageText: message,
-        }).catch(() => undefined)
-      }
     }
 
     return didSend
