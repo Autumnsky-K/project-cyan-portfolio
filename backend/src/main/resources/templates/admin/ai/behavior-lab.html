@@ -10,7 +10,7 @@
 <main class="admin-page">
   <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai-behavior-lab', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
 
-  <section class="admin-main admin-ai-main" data-ai-bug-lab>
+  <section class="admin-main admin-ai-main">
     <header class="admin-header">
       <div>
         <p class="admin-eyebrow">AI Behavior Lab</p>
@@ -18,59 +18,30 @@
       </div>
       <div class="admin-header-actions">
         <a th:href="@{/admin/ai}">워크북</a>
-        <a th:href="@{/admin/ai-behavior-lab-app/index.html}" target="_blank" rel="noopener">실험 앱 새 창</a>
       </div>
     </header>
 
     <section class="admin-ai-lab-layout">
-      <aside class="admin-ai-bug-panel" aria-label="AI 행동관리 버그 큐">
+      <section class="admin-ai-lab-frame-panel" aria-label="AI 행동관리 실험 링크">
         <header class="admin-ai-lab-panel-header">
           <div>
-            <p class="admin-eyebrow">Bug Queue</p>
-            <h3>수정 대기 목록</h3>
+            <p class="admin-eyebrow">Linked Experiment</p>
+            <h3>AI 관리자 그래프 실험</h3>
           </div>
-          <button type="button" data-ai-bug-reset>샘플 복원</button>
-        </header>
-
-        <form class="admin-ai-bug-form" data-ai-bug-form>
-          <label>
-            <span>버그 제목</span>
-            <input type="text" data-ai-bug-title placeholder="예: 사이드바 스크롤 과다" required>
-          </label>
-          <label>
-            <span>수정 위치</span>
-            <input type="text" data-ai-bug-area placeholder="예: 8002 조합기 인스펙터">
-          </label>
-          <label class="admin-ai-bug-form-wide">
-            <span>메모</span>
-            <textarea data-ai-bug-note placeholder="현상 / 원인 / 검증 방법"></textarea>
-          </label>
-          <button type="submit">큐에 추가</button>
-        </form>
-
-        <div class="admin-ai-bug-list" data-ai-bug-list></div>
-      </aside>
-
-      <section class="admin-ai-lab-frame-panel" aria-label="AI 행동관리 실험 화면">
-        <header class="admin-ai-lab-panel-header">
-          <div>
-            <p class="admin-eyebrow">Live Experiment</p>
-            <h3>내장 실험 UI</h3>
-          </div>
-          <button type="button" data-ai-lab-reload>새로고침</button>
         </header>
         <div class="admin-ai-lab-run-note">
-          <span>Spring 정적 리소스</span>
-          <code>/admin/ai-behavior-lab-app/index.html</code>
+          <span>복사된 프로젝트 폴더</span>
+          <code>backend/src/main/resources/static/admin/ai/behavior-lab-project</code>
         </div>
-        <div class="admin-ai-lab-frame-wrap">
-          <iframe th:src="@{/admin/ai-behavior-lab-app/index.html}" title="AI 행동관리 LiteGraph 실험 UI"></iframe>
-          <p>실험 UI는 project-cyan 내부 빌드 산출물입니다. LLM/OAuth API 호출만 현재 별도 로컬 8001 서버가 필요합니다.</p>
+        <div class="admin-ai-lab-link-box">
+          <p>관리자 하위에 복사한 실험 앱을 새 창 링크 버튼으로 엽니다.</p>
+          <a class="admin-ai-lab-open-button" th:href="@{/admin/ai/behavior-lab-project/dist/index.html}" target="_blank" rel="noopener">
+            실험 앱 열기
+          </a>
         </div>
       </section>
     </section>
   </section>
 </main>
-<script th:src="@{/admin/ai-admin.js(v='behavior-lab-20260626')}"></script>
 </body>
 </html>
