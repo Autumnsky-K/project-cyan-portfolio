@@ -12,21 +12,22 @@
   const bulkTagsInput = form.querySelector('[data-goods-bulk-tags]')
   const choiceInputs = Array.from(form.querySelectorAll('[data-choice-kind]'))
   const choiceOptions = {
-    artist: readChoiceOptions('admin-bulk-artist-options'),
-    category: readChoiceOptions('admin-bulk-category-options'),
-    status: readChoiceOptions('admin-bulk-status-options'),
+    artist: readChoiceOptions('artist'),
+    category: readChoiceOptions('category'),
+    status: readChoiceOptions('status'),
   }
 
-  function readChoiceOptions(listId) {
-    return Array.from(document.getElementById(listId)?.options ?? []).map((option) => ({
-      label: option.value.trim(),
-      value: option.dataset.value ?? '',
+  function readChoiceOptions(kind) {
+    const select = form.querySelector(`[data-goods-bulk-choice="${kind}"]`)
+    return Array.from(select?.options ?? []).map((option) => ({
+      label: option.textContent.trim(),
+      value: option.value,
     }))
   }
 
-  function findChoice(kind, label) {
-    const normalizedLabel = label.trim()
-    return choiceOptions[kind]?.find((option) => option.label === normalizedLabel) ?? null
+  function findChoice(kind, value) {
+    if (kind === 'status' && value === '') return null
+    return choiceOptions[kind]?.find((option) => option.value === value) ?? null
   }
 
   function readInputValue(input) {
@@ -50,25 +51,18 @@
 
   function syncChoiceInput(input, options = {}) {
     const kind = input.dataset.choiceKind
-    const hiddenValue = input.closest('.admin-bulk-cell')?.querySelector(`[data-choice-value="${kind}"]`)
     const choice = findChoice(kind, input.value)
 
     if (choice) {
       input.dataset.lastValidLabel = choice.label
       input.dataset.lastValidValue = choice.value
       input.classList.remove('is-invalid')
-      if (hiddenValue) {
-        hiddenValue.value = choice.value
-      }
       return true
     }
 
     input.classList.add('is-invalid')
     if (options.revert) {
-      input.value = input.dataset.lastValidLabel || input.dataset.original || ''
-      if (hiddenValue) {
-        hiddenValue.value = input.dataset.lastValidValue || ''
-      }
+      input.value = input.dataset.lastValidValue || input.dataset.original || ''
       input.classList.remove('is-invalid')
       markInputState(input)
     }
@@ -100,14 +94,10 @@
   }
 
   function setChoiceInput(input, choice) {
-    const hiddenValue = input.closest('.admin-bulk-cell')?.querySelector(`[data-choice-value="${input.dataset.choiceKind}"]`)
-    input.value = choice.label
+    input.value = choice.value
     input.dataset.lastValidLabel = choice.label
     input.dataset.lastValidValue = choice.value
     input.classList.remove('is-invalid')
-    if (hiddenValue) {
-      hiddenValue.value = choice.value
-    }
     markInputState(input)
   }
 
@@ -117,7 +107,7 @@
 
     if (!choice) {
       bulkInput?.focus()
-      alert('허용된 값만 입력할 수 있습니다.')
+      alert('허용된 값만 선택할 수 있습니다.')
       return
     }
 
@@ -203,7 +193,7 @@
     if (invalidChoice) {
       event.preventDefault()
       invalidChoice.focus()
-      alert('아티스트, 카테고리, 판매 상태는 허용된 값만 입력할 수 있습니다.')
+      alert('아티스트, 카테고리, 판매 상태는 허용된 값만 선택할 수 있습니다.')
     }
   })
 
