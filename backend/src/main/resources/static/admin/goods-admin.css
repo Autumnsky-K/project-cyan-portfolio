@@ -522,6 +522,14 @@ button.admin-primary {
   padding-left: 18px;
 }
 
+.admin-form input[aria-invalid="true"],
+.admin-form select[aria-invalid="true"],
+.admin-form textarea[aria-invalid="true"] {
+  border-color: #c93636;
+  background: #fff8f8;
+  box-shadow: 0 0 0 2px rgb(201 54 54 / 12%);
+}
+
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -106,20 +106,20 @@
 
           <label>
             <span>아티스트</span>
-            <select th:field="*{artistId}">
-              <option value="">아티스트 없음</option>
+            <select th:field="*{artistId}"
+                    th:attr="aria-invalid=${#fields.hasErrors('artistId')}">
+              <option value="" disabled>아티스트 선택</option>
               <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
             </select>
-            <small th:if="${#fields.hasErrors('artistId')}" th:errors="*{artistId}"></small>
           </label>
 
           <label>
             <span>카테고리</span>
-            <select th:field="*{categoryId}">
-              <option value="">카테고리 없음</option>
+            <select th:field="*{categoryId}"
+                    th:attr="aria-invalid=${#fields.hasErrors('categoryId')}">
+              <option value="" disabled>카테고리 선택</option>
               <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
             </select>
-            <small th:if="${#fields.hasErrors('categoryId')}" th:errors="*{categoryId}"></small>
           </label>
 
           <label>
