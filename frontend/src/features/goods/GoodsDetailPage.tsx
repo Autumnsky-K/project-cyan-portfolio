@@ -221,7 +221,6 @@ function GoodsDetailPage() {
                 </div>
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
-                    <h2>{goods.name}</h2>
                     {descriptionHtml ? (
                       <div
                         className="detail-description"
