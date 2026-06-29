@@ -26,6 +26,11 @@ public class AdminAiPageController {
 		return "admin/ai/index";
 	}
 
+	@GetMapping("/admin/ai/behavior-lab")
+	public String aiBehaviorLab() {
+		return "admin/ai/behavior-lab";
+	}
+
 	@PostMapping("/admin/ai/goods-catalog/export")
 	public String exportGoodsCatalog(RedirectAttributes redirectAttributes) {
 		AiGoodsCatalogSnapshot snapshot = catalogService.exportCatalog();
