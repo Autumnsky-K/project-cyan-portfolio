@@ -19,6 +19,7 @@ export type GoodsSummary = {
   aiPickDefault?: boolean | null
   averageRating?: number | null
   reviewCount?: number | null
+  favoriteCount?: number | null
 }
 
 export type GoodsDetail = GoodsSummary & {
