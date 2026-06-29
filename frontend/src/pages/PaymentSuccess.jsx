@@ -9,11 +9,13 @@ import {
 import { resolvePaymentApproval } from '../features/store/services/paymentResultService'
 import { formatPrice } from '../features/store/utils/storeUtils'
 import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
+import { useCart } from '../features/cart/useCart'
 import './Store.css'
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams()
   const access = useCurrentMemberAccess()
+  const { clearCart } = useCart()
   const orderId = searchParams.get('orderId')
   const pgToken = searchParams.get('pg_token')
   const paymentKey = searchParams.get('paymentKey')
@@ -32,24 +34,34 @@ function PaymentSuccess() {
 
     let ignore = false
 
-    resolvePaymentApproval({
-      access: { isAdmin: access.isAdmin },
-      amount,
-      orderId,
-      paymentKey,
-      pgToken,
-    })
-      .then((data) => {
+    async function confirmPayment() {
+      try {
+        const data = await resolvePaymentApproval({
+          access: { isAdmin: access.isAdmin },
+          amount,
+          orderId,
+          paymentKey,
+          pgToken,
+        })
+
         if (ignore) return
+
         localStorage.removeItem('checkoutForm')
+        try {
+          await clearCart()
+        } catch (cartError) {
+          console.error('[PaymentSuccess] Failed to clear cart after payment approval.', cartError)
+        }
+
+        if (ignore) return
+
         setResult({
           status: 'success',
           userMessage: 'Payment approved.',
           developerMessage: '',
           data,
         })
-      })
-      .catch((error) => {
+      } catch (error) {
         if (ignore) return
         setResult({
           status: 'error',
@@ -57,12 +69,15 @@ function PaymentSuccess() {
           developerMessage: error.message,
           data: { amount, orderId, paymentKey, pgToken },
         })
-      })
+      }
+    }
+
+    void confirmPayment()
 
     return () => {
       ignore = true
     }
-  }, [access.isAdmin, access.isLoading, amount, orderId, paymentKey, pgToken])
+  }, [access.isAdmin, access.isLoading, amount, clearCart, orderId, paymentKey, pgToken])
 
   const order = result.data?.order
   const orderNumber =
