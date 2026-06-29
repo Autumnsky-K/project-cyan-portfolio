@@ -1,5 +1,16 @@
 (() => {
+  const filterForm = document.querySelector('[data-goods-filter-form]')
   const form = document.querySelector('[data-goods-bulk-form]')
+
+  filterForm?.querySelectorAll('select').forEach((select) => {
+    select.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') {
+        return
+      }
+      event.preventDefault()
+      filterForm.requestSubmit()
+    })
+  })
 
   if (!form) {
     return
@@ -10,6 +21,7 @@
   const masterCheckbox = form.querySelector('[data-goods-bulk-master]')
   const selectedCount = form.querySelector('[data-goods-bulk-count]')
   const bulkTagsInput = form.querySelector('[data-goods-bulk-tags]')
+  const submitButton = form.querySelector('[data-goods-bulk-submit]')
   const choiceInputs = Array.from(form.querySelectorAll('[data-choice-kind]'))
   const choiceOptions = {
     artist: readChoiceOptions('artist'),
@@ -38,6 +50,12 @@
     const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length
     if (selectedCount) {
       selectedCount.textContent = String(checkedCount)
+    }
+    if (submitButton) {
+      submitButton.disabled = checkedCount === 0
+      submitButton.textContent = checkedCount > 0
+        ? `선택 상품 ${checkedCount}개 변경사항 저장`
+        : '선택 상품 변경사항 저장'
     }
     if (masterCheckbox) {
       masterCheckbox.checked = checkedCount > 0 && checkedCount === checkboxes.length
@@ -152,20 +170,6 @@
   masterCheckbox?.addEventListener('change', () => {
     checkboxes.forEach((checkbox) => {
       checkbox.checked = masterCheckbox.checked
-    })
-    updateSelectedCount()
-  })
-
-  form.querySelector('[data-goods-bulk-select-all]')?.addEventListener('click', () => {
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true
-    })
-    updateSelectedCount()
-  })
-
-  form.querySelector('[data-goods-bulk-clear]')?.addEventListener('click', () => {
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false
     })
     updateSelectedCount()
   })

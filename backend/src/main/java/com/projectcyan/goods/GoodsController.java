@@ -47,6 +47,7 @@ public class GoodsController {
 		@RequestParam(required = false) String artistIds,
 		@RequestParam(required = false) Long categoryId,
 		@RequestParam(required = false) String categoryIds,
+		@RequestParam(required = false) String salesStatus,
 		@RequestParam(required = false) String tag,
 		@RequestParam(required = false) String tags,
 		@RequestParam(required = false) String goodsIds,
@@ -55,7 +56,7 @@ public class GoodsController {
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
 		return goodsService.findGoods(
-			q, artistId, artistIds, categoryId, categoryIds, tag, tags, goodsIds, page, size, sort
+			q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort
 		);
 	}
 

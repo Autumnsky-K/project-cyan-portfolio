@@ -67,6 +67,12 @@ final class GoodsSpecifications {
 		};
 	}
 
+	static Specification<Goods> hasSalesStatus(String salesStatus) {
+		return (root, query, builder) -> salesStatus == null || salesStatus.isBlank()
+			? builder.conjunction()
+			: builder.equal(builder.upper(root.get("salesStatus")), salesStatus.trim().toUpperCase());
+	}
+
 	static Specification<Goods> hasTag(String tag) {
 		return (root, query, builder) -> {
 			if (tag == null || tag.isBlank()) {

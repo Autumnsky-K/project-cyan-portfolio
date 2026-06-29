@@ -22,7 +22,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class GoodsService {
 
-	private static final Set<String> SORT_FIELDS = Set.of("createdAt", "price", "goodsName", "goodsId");
+	private static final Set<String> SORT_FIELDS = Set.of(
+		"createdAt",
+		"price",
+		"goodsName",
+		"goodsId",
+		"artist.artistName",
+		"category.categoryName",
+		"salesStatus"
+	);
 
 	private final GoodsRepository goodsRepository;
 	private final ArtistRepository artistRepository;
@@ -56,6 +64,7 @@ public class GoodsService {
 		String artistIds,
 		Long categoryId,
 		String categoryIds,
+		String salesStatus,
 		String tag,
 		String tags,
 		String goodsIds,
@@ -84,6 +93,7 @@ public class GoodsService {
 			.and(GoodsSpecifications.containsKeyword(q))
 			.and(GoodsSpecifications.hasArtists(selectedArtistIds))
 			.and(GoodsSpecifications.hasCategories(selectedCategoryIds))
+			.and(GoodsSpecifications.hasSalesStatus(salesStatus))
 			.and(GoodsSpecifications.hasTags(selectedTags));
 
 		Pageable pageable = PageRequest.of(
