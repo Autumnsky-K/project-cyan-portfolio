@@ -82,3 +82,4 @@ __pycache__/
 .venv/
 .uv-cache/
 *.egg-info/
+gcp-sa-key.json
