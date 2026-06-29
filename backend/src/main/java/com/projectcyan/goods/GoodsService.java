@@ -30,7 +30,7 @@ public class GoodsService {
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
-	private final GoodsFavoriteRepository goodsFavoriteRepository;
+	private final GoodsLikeRepository goodsLikeRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -39,7 +39,7 @@ public class GoodsService {
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
 		GoodsReviewRepository goodsReviewRepository,
-		GoodsFavoriteRepository goodsFavoriteRepository
+		GoodsLikeRepository goodsLikeRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -47,7 +47,7 @@ public class GoodsService {
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
-		this.goodsFavoriteRepository = goodsFavoriteRepository;
+		this.goodsLikeRepository = goodsLikeRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -97,13 +97,13 @@ public class GoodsService {
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
 			pageGoods.stream().map(Goods::getGoodsId).toList()
 		);
-		Map<Long, Long> favoriteCounts = favoriteCounts(pageGoods);
+		Map<Long, Long> likeCounts = likeCounts(pageGoods);
 		return new PageResponse<>(
 			pageGoods.stream()
 				.map(goods -> GoodsSummaryResponse.from(
 					goods,
 					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
-					favoriteCounts.getOrDefault(goods.getGoodsId(), 0L)
+					likeCounts.getOrDefault(goods.getGoodsId(), 0L)
 				))
 				.toList(),
 			goodsPage.getNumber(),
@@ -124,7 +124,8 @@ public class GoodsService {
 			goods,
 			availability.state(),
 			availability.message(),
-			goodsReviewRepository.findSummary(goodsId)
+			goodsReviewRepository.findSummary(goodsId),
+			goodsLikeRepository.countByGoodsId(goodsId)
 		);
 	}
 
@@ -154,27 +155,27 @@ public class GoodsService {
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
 			relatedGoods.stream().map(Goods::getGoodsId).toList()
 		);
-		Map<Long, Long> favoriteCounts = favoriteCounts(relatedGoods);
+		Map<Long, Long> likeCounts = likeCounts(relatedGoods);
 		return relatedGoods.stream()
 			.map(item -> GoodsSummaryResponse.from(
 				item,
 				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty()),
-				favoriteCounts.getOrDefault(item.getGoodsId(), 0L)
+				likeCounts.getOrDefault(item.getGoodsId(), 0L)
 			))
 			.toList();
 	}
 
-	private Map<Long, Long> favoriteCounts(List<Goods> goods) {
+	private Map<Long, Long> likeCounts(List<Goods> goods) {
 		List<Long> goodsIds = goods.stream()
 			.map(Goods::getGoodsId)
 			.toList();
 		if (goodsIds.isEmpty()) {
 			return Map.of();
 		}
-		return goodsFavoriteRepository.countByGoodsIdIn(goodsIds).stream()
+		return goodsLikeRepository.countByGoodsIdIn(goodsIds).stream()
 			.collect(java.util.stream.Collectors.toMap(
-				GoodsFavoriteRepository.GoodsFavoriteCount::getGoodsId,
-				GoodsFavoriteRepository.GoodsFavoriteCount::getFavoriteCount
+				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
+				GoodsLikeRepository.GoodsLikeCount::getLikeCount
 			));
 	}
 

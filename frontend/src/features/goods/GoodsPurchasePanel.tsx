@@ -17,6 +17,10 @@ type GoodsPurchasePanelProps = {
   onReviewClick?: () => void
   isFavorite?: boolean
   onFavoriteToggle?: () => void
+  isLiked?: boolean
+  isLikePending?: boolean
+  likeFeedback?: string
+  onLikeToggle?: () => void
 }
 
 function GoodsPurchasePanel({
@@ -24,6 +28,10 @@ function GoodsPurchasePanel({
   onReviewClick,
   isFavorite = false,
   onFavoriteToggle,
+  isLiked = false,
+  isLikePending = false,
+  likeFeedback = '',
+  onLikeToggle,
 }: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
   const [quantity, setQuantity] = useState(1)
@@ -82,21 +90,39 @@ function GoodsPurchasePanel({
           <button
             className="detail-favorite-button"
             type="button"
-            aria-label={isFavorite ? `${goods.name} 찜 해제` : `${goods.name} 찜하기`}
+            aria-label={isFavorite ? `${goods.name} 즐겨찾기 해제` : `${goods.name} 즐겨찾기 추가`}
             aria-pressed={isFavorite}
             onClick={onFavoriteToggle}
           >
-            <span aria-hidden="true">{isFavorite ? '♥' : '♡'}</span>
-            <span className="detail-favorite-label">{isFavorite ? '찜 해제' : '찜하기'}</span>
+            <span
+              className="favorite-bookmark-icon"
+              data-filled={isFavorite}
+              aria-hidden="true"
+            />
+            <span className="detail-favorite-label">{isFavorite ? '저장됨' : '저장'}</span>
           </button>
         </div>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
-        <GoodsRatingSummary
-          averageRating={goods.averageRating}
-          reviewCount={goods.reviewCount}
-          onClick={onReviewClick}
-        />
+        <div className="detail-social-row">
+          <GoodsRatingSummary
+            averageRating={goods.averageRating}
+            reviewCount={goods.reviewCount}
+            onClick={onReviewClick}
+          />
+          <button
+            className="detail-like-button"
+            type="button"
+            aria-label={isLiked ? `${goods.name} 좋아요 취소` : `${goods.name} 좋아요`}
+            aria-pressed={isLiked}
+            disabled={isLikePending}
+            onClick={onLikeToggle}
+          >
+            <span aria-hidden="true">♥</span>
+            <span>{Number(goods.likeCount ?? 0).toLocaleString()}</span>
+          </button>
+          {likeFeedback && <span className="detail-like-feedback" role="status">{likeFeedback}</span>}
+        </div>
         <strong>{formatGoodsPrice(unitPrice)}</strong>
       </div>
 

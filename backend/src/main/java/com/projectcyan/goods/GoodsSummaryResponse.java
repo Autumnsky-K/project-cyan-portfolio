@@ -17,7 +17,7 @@ public record GoodsSummaryResponse(
 	Boolean aiPickDefault,
 	Double averageRating,
 	Long reviewCount,
-	Long favoriteCount
+	Long likeCount
 ) {
 	public static GoodsSummaryResponse from(Goods goods) {
 		return from(goods, GoodsReviewSummary.empty(), 0L);
@@ -27,7 +27,7 @@ public record GoodsSummaryResponse(
 		return from(goods, reviewSummary, 0L);
 	}
 
-	public static GoodsSummaryResponse from(Goods goods, GoodsReviewSummary reviewSummary, Long favoriteCount) {
+	public static GoodsSummaryResponse from(Goods goods, GoodsReviewSummary reviewSummary, Long likeCount) {
 		return new GoodsSummaryResponse(
 			goods.getGoodsId(),
 			goods.getGoodsName(),
@@ -43,7 +43,7 @@ public record GoodsSummaryResponse(
 			goods.getAiPickDefault(),
 			reviewSummary.averageRating(),
 			reviewSummary.reviewCount(),
-			favoriteCount == null ? 0L : favoriteCount
+			likeCount == null ? 0L : likeCount
 		);
 	}
 }

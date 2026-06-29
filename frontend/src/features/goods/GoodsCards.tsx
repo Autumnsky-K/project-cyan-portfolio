@@ -61,7 +61,7 @@ function GoodsCards({
       {items.map((item) => {
         const tags = item.tags ?? []
         const hasReviews = Number(item.reviewCount ?? 0) > 0
-        const favoriteCount = Number(item.favoriteCount ?? 0)
+        const likeCount = Number(item.likeCount ?? 0)
 
         return (
           <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
@@ -76,11 +76,15 @@ function GoodsCards({
               <button
                 className="favorite-button"
                 type="button"
-                aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                aria-label={isFavorite(item.goodsId) ? `${item.name} 즐겨찾기 해제` : `${item.name} 즐겨찾기 추가`}
                 aria-pressed={isFavorite(item.goodsId)}
                 onClick={(event) => handleFavoriteClick(event, item.goodsId)}
               >
-                <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
+                <span
+                  className="favorite-bookmark-icon"
+                  data-filled={isFavorite(item.goodsId)}
+                  aria-hidden="true"
+                />
               </button>
             </div>
             <div className="goods-card-body">
@@ -102,9 +106,9 @@ function GoodsCards({
                       compact
                     />
                   )}
-                  <span className="favorite-summary" aria-label={`${favoriteCount.toLocaleString()}명이 찜한 상품`}>
+                  <span className="like-summary" aria-label={`${likeCount.toLocaleString()}명이 좋아한 상품`}>
                     <span aria-hidden="true">♥</span>
-                    {favoriteCount.toLocaleString()}
+                    {likeCount.toLocaleString()}
                   </span>
                   <button
                     className="card-cart-temp-button"

@@ -521,7 +521,7 @@ button.goods-rating-summary {
   min-height: 30px;
 }
 
-.favorite-summary {
+.like-summary {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -530,7 +530,7 @@ button.goods-rating-summary {
   line-height: 1;
 }
 
-.favorite-summary span {
+.like-summary span {
   color: #d6405f;
   font-size: 13px;
 }
@@ -584,13 +584,29 @@ button.goods-rating-summary {
 }
 
 .favorite-button[aria-pressed='true'] {
-  border-color: #d6405f;
-  color: #d6405f;
-  background: #fff5f7;
+  border-color: #d6b13a;
+  color: #b88900;
+  background: #fff8df;
 }
 
-.favorite-button span {
-  transform: translateY(-3px);
+.favorite-bookmark-icon {
+  display: block;
+  width: 17px;
+  height: 21px;
+  color: currentColor;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 20 26' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 3.5C4 2.67 4.67 2 5.5 2h9c.83 0 1.5.67 1.5 1.5v19.1L10 18.55l-6 4.05V3.5Z' stroke='%234f5358' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E");
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.favorite-bookmark-icon::before,
+.favorite-bookmark-icon::after {
+  content: '';
+  display: none;
+}
+
+.favorite-bookmark-icon[data-filled='true'] {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 26' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 3.5C4 2.67 4.67 2 5.5 2h9c.83 0 1.5.67 1.5 1.5v19.1L10 18.55l-6 4.05V3.5Z' fill='%23f4cf58' stroke='%23916f00' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 @container (max-width: 285px) {
