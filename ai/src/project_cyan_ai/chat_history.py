@@ -43,6 +43,82 @@ class ChatHistoryClient:
         except (HTTPError, URLError, TimeoutError, OSError, ValueError):
             return False
 
+    def fetch_messages(self, access_token: str, session_id: int) -> list[dict] | None:
+        payload = self._request_json(
+            access_token,
+            f"/virtual-chat/sessions/{session_id}/messages",
+            "GET",
+        )
+        return payload if isinstance(payload, list) else None
+
+    def upsert_summary(
+        self,
+        access_token: str,
+        session_id: int,
+        payload: dict,
+    ) -> bool:
+        return self._request_json(
+            access_token,
+            f"/virtual-chat/sessions/{session_id}/summary",
+            "PUT",
+            payload,
+        ) is not None
+
+    def end_session(self, access_token: str, session_id: int) -> bool:
+        if not access_token or session_id < 1:
+            return False
+        request = Request(
+            f"{self.base_url}/virtual-chat/sessions/{session_id}/end",
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {access_token}",
+            },
+            method="PATCH",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                response.read()
+            return True
+        except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+            return False
+
+    def _request_json(
+        self,
+        access_token: str,
+        path: str,
+        method: str,
+        payload: dict | None = None,
+    ) -> object | None:
+        if not access_token:
+            return None
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        }
+        data = None
+        if payload is not None:
+            headers["Content-Type"] = "application/json; charset=utf-8"
+            data = json.dumps(payload).encode("utf-8")
+        request = Request(
+            f"{self.base_url}{path}",
+            data=data,
+            headers=headers,
+            method=method,
+        )
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                raw_payload = response.read()
+            return json.loads(raw_payload.decode("utf-8")) if raw_payload else {}
+        except (
+            HTTPError,
+            URLError,
+            TimeoutError,
+            OSError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            return None
+
 
 def build_user_message_payload(text: str) -> dict:
     return {
