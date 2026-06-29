@@ -74,11 +74,8 @@ def parse_summary_json(raw_text: str) -> dict | None:
         last_fence = candidate.rfind("```")
         if first_newline >= 0 and last_fence > first_newline:
             candidate = candidate[first_newline + 1:last_fence].strip()
-    try:
-        payload = json.loads(candidate)
-    except (json.JSONDecodeError, TypeError):
-        return None
-    if not isinstance(payload, dict):
+    payload = decode_json_object(candidate)
+    if payload is None:
         return None
     summary_text = bounded_text(payload.get("summary"), MAX_SUMMARY_LENGTH)
     if summary_text is None:
@@ -88,6 +85,26 @@ def parse_summary_json(raw_text: str) -> dict | None:
         result[field] = bounded_text_list(payload.get(field))
     result["mentionedGoodsIds"] = bounded_goods_ids(payload.get("mentionedGoodsIds"))
     return result
+
+
+def decode_json_object(candidate: str) -> dict | None:
+    try:
+        payload = json.loads(candidate)
+        return payload if isinstance(payload, dict) else None
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(candidate):
+        if character != "{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(candidate[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
 
 
 def bounded_text(value: object, max_length: int) -> str | None:

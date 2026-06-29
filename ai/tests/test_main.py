@@ -34,6 +34,7 @@ from project_cyan_ai.hook_policy import (
 )
 from project_cyan_ai.personalization_context import (
     PersonalizationContextClient,
+    build_recent_sessions_fallback,
     build_personalized_prompt,
     repair_recent_summaries,
     with_current_session_history,
@@ -337,6 +338,9 @@ class FakeChatHistoryClient:
         return FakeChatHistoryClient.should_succeed
 
     def fetch_messages(self, access_token, session_id):
+        return []
+
+    def fetch_sessions(self, access_token, page=0, size=4):
         return []
 
     def upsert_summary(self, access_token, session_id, payload):
@@ -1366,8 +1370,98 @@ def test_repair_recent_summaries_only_updates_stale_sessions():
     assert history_client.saved == [11]
 
 
+def test_repair_recent_summaries_uses_messages_when_summary_generation_fails():
+    class HistoryClient:
+        def fetch_messages(self, access_token, session_id):
+            return [
+                {
+                    "messageId": 81,
+                    "speaker": "USER",
+                    "messageText": "나는 Group Two를 너무 좋아해!",
+                },
+                {
+                    "messageId": 82,
+                    "speaker": "ASSISTANT",
+                    "messageText": "Group Two 상품을 추천할게요.",
+                },
+            ]
+
+    class FailingSummarizer:
+        def summarize(self, messages):
+            return None
+
+    context = {
+        "recentChatSessions": [
+            {"sessionId": 284, "needsSummary": True, "summary": None}
+        ]
+    }
+
+    repaired = repair_recent_summaries(
+        context,
+        "token",
+        HistoryClient(),
+        FailingSummarizer(),
+    )
+    prompt = build_personalized_prompt("내가 어떤 Group을 좋아한다고 했지?", context)
+
+    assert repaired is False
+    assert "recentMessages" in prompt
+    assert "나는 Group Two를 너무 좋아해!" in prompt
+
+
+def test_recent_sessions_fallback_loads_previous_session_messages():
+    class HistoryClient:
+        def fetch_sessions(self, access_token, page=0, size=4):
+            return [
+                {"sessionId": 285, "startedAt": "2026-06-29T02:00:00Z"},
+                {"sessionId": 284, "startedAt": "2026-06-29T01:00:00Z"},
+            ]
+
+        def fetch_messages(self, access_token, session_id):
+            return [
+                {
+                    "messageId": 81,
+                    "speaker": "USER",
+                    "messageText": "나는 Group Two를 너무 좋아해!",
+                }
+            ]
+
+    context = build_recent_sessions_fallback("token", 285, HistoryClient())
+
+    assert context == {
+        "recentChatSessions": [
+            {
+                "sessionId": 284,
+                "startedAt": "2026-06-29T01:00:00Z",
+                "endedAt": None,
+                "summary": None,
+                "needsSummary": True,
+                "recentMessages": [
+                    {
+                        "speaker": "USER",
+                        "messageText": "나는 Group Two를 너무 좋아해!",
+                    }
+                ],
+            }
+        ]
+    }
+
+
 def test_summary_parser_rejects_non_json_output():
     assert parse_summary_json("요약: 아이유를 좋아함") is None
+
+
+def test_summary_parser_extracts_json_object_from_explanatory_text():
+    parsed = parse_summary_json(
+        "요약 결과입니다.\n"
+        '{"summary":"Group Two를 좋아함","preferences":["Group Two"],'
+        '"dislikedItems":[],"constraints":[],"mentionedGoodsIds":[],'
+        '"unresolvedRequests":[]}\n확인해주세요.'
+    )
+
+    assert parsed is not None
+    assert parsed["summary"] == "Group Two를 좋아함"
+    assert parsed["preferences"] == ["Group Two"]
 
 
 def test_assistant_history_payload_includes_recommendation_metadata():

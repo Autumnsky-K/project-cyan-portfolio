@@ -51,6 +51,22 @@ class ChatHistoryClient:
         )
         return payload if isinstance(payload, list) else None
 
+    def fetch_sessions(
+        self,
+        access_token: str,
+        page: int = 0,
+        size: int = 4,
+    ) -> list[dict] | None:
+        payload = self._request_json(
+            access_token,
+            f"/virtual-chat/sessions?page={page}&size={size}&sort=startedAt,desc",
+            "GET",
+        )
+        if not isinstance(payload, dict):
+            return None
+        sessions = payload.get("content")
+        return sessions if isinstance(sessions, list) else None
+
     def upsert_summary(
         self,
         access_token: str,

@@ -24,6 +24,7 @@ from project_cyan_ai.providers import get_chat_response_provider
 from project_cyan_ai.hook_policy import build_hook_filter
 from project_cyan_ai.personalization_context import (
     PersonalizationContextClient,
+    build_recent_sessions_fallback,
     repair_recent_summaries,
     with_current_session_history,
 )
@@ -174,16 +175,24 @@ async def client_ws(websocket: WebSocket):
                     access_token,
                     message.sessionId,
                 )
+                if personalization_context is None:
+                    personalization_context = build_recent_sessions_fallback(
+                        access_token,
+                        message.sessionId,
+                        chat_history_client,
+                    )
                 if repair_recent_summaries(
                     personalization_context,
                     access_token,
                     chat_history_client,
                     summary_provider,
                 ):
-                    personalization_context = personalization_client.fetch_context(
+                    refreshed_context = personalization_client.fetch_context(
                         access_token,
                         message.sessionId,
                     )
+                    if refreshed_context is not None:
+                        personalization_context = refreshed_context
                 personalization_session_id = message.sessionId
                 personalization_loaded = True
 
