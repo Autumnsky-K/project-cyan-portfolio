@@ -21,6 +21,8 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
       <label>
         Phone
         <input
+          inputMode="numeric"
+          maxLength="13"
           value={checkoutForm.phone}
           onChange={(event) => onChange('phone', event.target.value)}
           placeholder="010-0000-0000"
