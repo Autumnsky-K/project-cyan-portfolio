@@ -46,6 +46,19 @@ function normalizeMemberId(value) {
   return /^\d+$/.test(memberId) ? Number(memberId) : null
 }
 
+function formatKoreanPhoneNumber(value) {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 11)
+
+  if (digits.length <= 3) {
+    return digits
+  }
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+}
+
 const CHECKOUT_FORM_STORAGE_KEY = 'checkoutForm'
 
 function getDefaultCheckoutForm(defaultMemberId) {
@@ -74,6 +87,7 @@ function loadCheckoutForm(defaultMemberId) {
       ...defaultForm,
       ...savedForm,
       memberId: savedForm.memberId || defaultForm.memberId,
+      phone: formatKoreanPhoneNumber(savedForm.phone ?? defaultForm.phone),
     }
   } catch {
     return defaultForm
@@ -414,9 +428,11 @@ export function useStoreFlow(options = {}) {
   }
 
   function updateCheckoutForm(field, value) {
+    const nextValue = field === 'phone' ? formatKoreanPhoneNumber(value) : value
+
     setCheckoutForm((currentForm) => ({
       ...currentForm,
-      [field]: value,
+      [field]: nextValue,
     }))
     setMessage('')
   }
