@@ -17,9 +17,15 @@ export type VtuberCharacterConfig = {
 export type VtuberClientTextInputMessage = {
   type: 'text-input'
   text: string
+  sessionId?: number
   context?: {
     cartItems?: VtuberClientCartItem[]
   }
+}
+
+export type VtuberClientAuthMessage = {
+  type: 'auth'
+  accessToken: string
 }
 
 export type VtuberClientCartItem = {
@@ -57,8 +63,20 @@ export type VtuberAction =
   | AddToCartAction
   | UnknownVtuberAction
 
+export type VtuberRecommendationMetadata = {
+  goodsId: string | number
+  recommendationReason?: string | null
+  rankOrder?: number
+}
+
+export type VtuberServerMetadata = {
+  recommendations?: VtuberRecommendationMetadata[]
+  [key: string]: unknown
+}
+
 export type VtuberServerMessage = {
   type: string
   text: string
   actions: VtuberAction[]
+  metadata?: VtuberServerMetadata
 }

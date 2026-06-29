@@ -8,6 +8,7 @@ public record GoodsRecommendationResponse(
 	Integer price,
 	String imageUrl,
 	List<String> tags,
+	Long artistId,
 	String artistName,
 	String categoryName,
 	String salesStatus,

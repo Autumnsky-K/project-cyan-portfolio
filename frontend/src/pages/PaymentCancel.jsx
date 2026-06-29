@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from 'react-router-dom'
-import { cancelKakaoPay } from '../api/payment'
 import {
   PAYMENT_CONTRACT_STATUS,
   normalizePaymentStatus,
 } from '../constants/status'
-import { markCanceled } from '../features/store/services/paymentResultService'
-import { clearPendingPayment } from '../features/store/storage/paymentStorage'
+import { resolvePaymentCancellation } from '../features/store/services/paymentResultService'
 import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import './Store.css'
 
@@ -27,17 +25,9 @@ function PaymentCancel() {
 
     let ignore = false
 
-    cancelKakaoPay(orderId)
-      .catch((error) => {
-        if (access.isAdmin) {
-          return markCanceled(orderId)
-        }
-
-        throw error
-      })
+    resolvePaymentCancellation({ access: { isAdmin: access.isAdmin }, orderId })
       .then((data) => {
         if (ignore) return
-        clearPendingPayment()
         setResult({
           userMessage: 'Payment was canceled.',
           developerMessage: '',
@@ -77,9 +67,6 @@ function PaymentCancel() {
           </p>
         </div>
         <div className="payment-actions">
-          <Link className="button-link" to="/cart#checkout">
-            Retry checkout
-          </Link>
           <Link className="button-link" to="/cart">
             Back to cart
           </Link>

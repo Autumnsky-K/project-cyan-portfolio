@@ -3,38 +3,6 @@ import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 
-const FAVORITE_ARTISTS = [
-  {
-    artistId: 1,
-    name: 'aespa',
-    imageUrl: '',
-  },
-  {
-    artistId: 2,
-    name: 'NCT',
-    imageUrl: '',
-  },
-  {
-    artistId: 3,
-    name: 'RIIZE',
-    imageUrl: '',
-  },
-  {
-    artistId: 4,
-    name: 'Red Velvet',
-    imageUrl: '',
-  },
-  {
-    artistId: 5,
-    name: 'SHINee',
-    imageUrl: '',
-  },
-  {
-    artistId: 6,
-    name: 'EXO',
-    imageUrl: '',
-  },
-]
 
 const MY_PAGE_DUMMY_DATA = {
   orders: [
@@ -177,6 +145,21 @@ function writeStoredJson(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value))
 }
 
+function pickAddressFromRow(row) {
+  if (!row) {
+    return ''
+  }
+
+  return (
+    row.address ??
+    row.address_line ??
+    row.address1 ??
+    row.road_address ??
+    row.detail_address ??
+    ''
+  )
+}
+
 export function loginMember(form) {
   checkSupabaseConfig()
 
@@ -281,8 +264,36 @@ export async function signupMember(form) {
   }
 }
 
+export async function checkSignupAvailability(form) {
+  const response = await apiFetch('/members/signup/availability', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: form.email,
+      phone: form.phone,
+    }),
+  })
+
+  return parseApiResponse(response, '가입 정보 중복 확인에 실패했습니다.')
+}
+
 export async function sendPasswordResetEmail(email) {
   checkSupabaseConfig()
+
+  const normalizedEmail = email.trim().toLowerCase()
+  const response = await apiFetch('/members/password-reset/eligibility', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: normalizedEmail,
+    }),
+  })
+  const eligibility = await parseApiResponse(
+    response,
+    '이메일 가입 여부를 확인하지 못했습니다.',
+  )
+
+  if (!eligibility?.exists) {
+    throw new Error('등록되어 있지 않은 이메일입니다.')
+  }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
@@ -356,6 +367,7 @@ export async function getCurrentMember() {
     memberId: memberProfile?.memberId ?? null,
     memberUuid: memberProfile?.memberUuid ?? data.user.id,
     email: memberProfile?.email ?? data.user.email,
+    phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||
@@ -370,16 +382,103 @@ export async function getCurrentMember() {
   }
 }
 
-export function getArtistOptions() {
-  return FAVORITE_ARTISTS
+export async function getArtistOptions() {
+  checkSupabaseConfig()
+
+  const { data, error } = await supabase
+    .from('artist')
+    .select('artist_id, artist_name')
+    .order('artist_id', { ascending: true })
+
+  if (error) {
+    const cmsArtists = await parseApiResponse(
+      await apiFetch('/cms/artists'),
+      '관심 아티스트 정보를 불러오지 못했습니다.',
+    )
+
+    return (cmsArtists ?? []).map((artist) => ({
+      artistId: artist.artistId,
+      name: artist.name,
+      imageUrl: artist.imageUrl ?? '',
+    }))
+  }
+
+  return data.map((artist) => ({
+    artistId: artist.artist_id,
+    name: artist.artist_name,
+    imageUrl: '',
+  }))
+}
+
+async function getMemberId(memberIdOrUserId) {
+  if (typeof memberIdOrUserId === 'number') {
+    return memberIdOrUserId
+  }
+
+  if (typeof memberIdOrUserId === 'string' && /^\d+$/.test(memberIdOrUserId)) {
+    return Number(memberIdOrUserId)
+  }
+
+  const { data, error } = await supabase
+    .from('member')
+    .select('member_id')
+    .eq('member_uuid', memberIdOrUserId)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.member_id
 }
 
 export async function getFavoriteArtistIds(userId) {
-  return readStoredJson(getStorageKey(userId, 'favoriteArtists'), [])
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { data, error } = await supabase
+    .from('member_artist')
+    .select('artist_id')
+    .eq('member_id', memberId)
+
+  if (error) {
+    console.warn(error)
+    return []
+  }
+
+  return data.map((row) => row.artist_id)
 }
 
 export async function saveFavoriteArtists(userId, artistIds) {
-  writeStoredJson(getStorageKey(userId, 'favoriteArtists'), artistIds)
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { error: deleteError } = await supabase
+    .from('member_artist')
+    .delete()
+    .eq('member_id', memberId)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  if (artistIds.length === 0) {
+    return artistIds
+  }
+
+  const rows = artistIds.map((artistId) => ({
+    member_id: memberId,
+    artist_id: artistId,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('member_artist')
+    .insert(rows)
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
 
   return artistIds
 }
@@ -391,8 +490,11 @@ export async function getMyPageSummary() {
     return null
   }
 
-  const favoriteArtistIds = await getFavoriteArtistIds(member.userId)
-  const address = readStoredJson(getStorageKey(member.userId, 'address'), '')
+  const favoriteArtistIds = await getFavoriteArtistIds(member.memberId ?? member.userId)
+  const artistOptions = await getArtistOptions()
+  const favoriteArtistIdSet = new Set(favoriteArtistIds)
+  const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
+  const address = await getMemberAddress(member.memberId ?? member.userId)
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
     null,
@@ -407,11 +509,9 @@ export async function getMyPageSummary() {
     },
     orders: MY_PAGE_DUMMY_DATA.orders,
     recentlyViewedGoods: MY_PAGE_DUMMY_DATA.recentlyViewedGoods,
-    favoriteArtists: FAVORITE_ARTISTS.map((artist) => ({
+    favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
-      status: favoriteArtistIds.includes(artist.artistId)
-        ? '선택됨'
-        : '추천 아티스트',
+      status: '선택됨',
       description: `${artist.name} 공식 굿즈와 새 소식을 모아볼 수 있습니다.`,
     })),
     likedGoods: MY_PAGE_DUMMY_DATA.likedGoods,
@@ -429,7 +529,49 @@ export async function logoutMember() {
 }
 
 export async function updateMemberAddress(userId, address) {
-  writeStoredJson(getStorageKey(userId, 'address'), address)
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { error: deleteError } = await supabase
+    .from('member_address')
+    .delete()
+    .eq('member_id', memberId)
+
+  if (deleteError) {
+    throw new Error(deleteError.message)
+  }
+
+  const { error: insertError } = await supabase
+    .from('member_address')
+    .insert({
+      member_id: memberId,
+      address,
+    })
+
+  if (insertError) {
+    throw new Error(insertError.message)
+  }
 
   return address
+}
+
+export async function getMemberAddress(userId) {
+  checkSupabaseConfig()
+
+  const memberId = await getMemberId(userId)
+
+  const { data, error } = await supabase
+    .from('member_address')
+    .select('*')
+    .eq('member_id', memberId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.warn(error)
+    return ''
+  }
+
+  return pickAddressFromRow(data)
 }

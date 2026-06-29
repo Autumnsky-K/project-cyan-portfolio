@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type VtuberClientCartItem,
   type VtuberAction,
+  type VtuberClientAuthMessage,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
+  type VtuberRecommendationMetadata,
   type VtuberServerMessage,
+  type VtuberServerMetadata,
 } from './types'
 
 const VTUBER_WS_PATH = '/client-ws'
@@ -15,7 +18,7 @@ type UseVtuberWebSocketResult = {
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
   latestText: string
-  sendText: (text: string) => boolean
+  sendText: (text: string, accessTokenOverride?: string | null) => boolean
 }
 
 function buildVtuberWebSocketUrl(): string {
@@ -43,6 +46,41 @@ function normalizeAction(value: unknown): VtuberAction | null {
   return { ...value, type: value.type }
 }
 
+function normalizeRecommendation(value: unknown): VtuberRecommendationMetadata | null {
+  if (!isRecord(value) || value.goodsId === undefined) {
+    return null
+  }
+
+  return {
+    goodsId: typeof value.goodsId === 'number' ? value.goodsId : String(value.goodsId),
+    recommendationReason:
+      typeof value.recommendationReason === 'string'
+        ? value.recommendationReason
+        : null,
+    rankOrder:
+      typeof value.rankOrder === 'number' && Number.isFinite(value.rankOrder)
+        ? value.rankOrder
+        : undefined,
+  }
+}
+
+function normalizeMetadata(value: unknown): VtuberServerMetadata {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return {
+    ...value,
+    recommendations: Array.isArray(value.recommendations)
+      ? value.recommendations
+        .map(normalizeRecommendation)
+        .filter((recommendation): recommendation is VtuberRecommendationMetadata => (
+          recommendation !== null
+        ))
+      : undefined,
+  }
+}
+
 function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
   if (
     !isRecord(value) ||
@@ -59,12 +97,15 @@ function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
     actions: value.actions
       .map(normalizeAction)
       .filter((action): action is VtuberAction => action !== null),
+    metadata: normalizeMetadata(value.metadata),
   }
 }
 
 export function useVtuberWebSocket(
   initialText: string,
   cartItems: VtuberClientCartItem[] = [],
+  sessionId: number | null = null,
+  accessToken: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const closedByHookRef = useRef(false)
@@ -122,12 +163,40 @@ export function useVtuberWebSocket(
     }
   }, [])
 
-  const sendText = useCallback((text: string) => {
+  useEffect(() => {
+    const socket = socketRef.current
+
+    if (
+      !accessToken ||
+      connectionStatus !== 'open' ||
+      socket?.readyState !== WebSocket.OPEN
+    ) {
+      return
+    }
+
+    const authMessage: VtuberClientAuthMessage = {
+      type: 'auth',
+      accessToken,
+    }
+
+    socket.send(JSON.stringify(authMessage))
+  }, [accessToken, connectionStatus])
+
+  const sendText = useCallback((text: string, accessTokenOverride: string | null = null) => {
     const trimmedText = text.trim()
     const socket = socketRef.current
 
     if (!trimmedText || socket?.readyState !== WebSocket.OPEN) {
       return false
+    }
+
+    if (accessTokenOverride) {
+      const authMessage: VtuberClientAuthMessage = {
+        type: 'auth',
+        accessToken: accessTokenOverride,
+      }
+
+      socket.send(JSON.stringify(authMessage))
     }
 
     const message: VtuberClientTextInputMessage = {
@@ -145,9 +214,13 @@ export function useVtuberWebSocket(
       },
     }
 
+    if (sessionId !== null) {
+      message.sessionId = sessionId
+    }
+
     socket.send(JSON.stringify(message))
     return true
-  }, [cartItems])
+  }, [cartItems, sessionId])
 
   return {
     actionBatchId,

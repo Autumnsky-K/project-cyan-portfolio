@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: 'Artists', to: '/artists' },
   { label: 'Goods', to: '/goods' },
   { label: 'Cart', to: '/cart' },
+  { label: 'Mypage', to: '/mypage' },
 ]
 
 function isCurrentPath(pathname: string, to: string) {

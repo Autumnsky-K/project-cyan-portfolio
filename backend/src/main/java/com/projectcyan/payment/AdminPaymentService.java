@@ -42,6 +42,7 @@ public class AdminPaymentService {
 		"paid_at",
 		"ordered_at"
 	);
+	private static final String CHECKOUT_FLOW_SOURCE = "__checkout_payment_flow__";
 
 	private final JdbcTemplate jdbcTemplate;
 
@@ -83,6 +84,36 @@ public class AdminPaymentService {
 		Map<String, String> actualTableNames = new HashMap<>();
 		for (String tableName : tableNames) {
 			actualTableNames.put(normalizeName(tableName), tableName);
+		}
+
+		String paymentTable = actualTableNames.get("payment");
+		String ordersTable = actualTableNames.get("orders");
+		if (paymentTable != null && ordersTable != null) {
+			return Optional.of(new TableDescriptor(
+				CHECKOUT_FLOW_SOURCE,
+				List.of(
+					"payment_id",
+					"payment_amount",
+					"payment_method",
+					"payment_status",
+					"provider",
+					"provider_payment_key",
+					"provider_order_id",
+					"tid",
+					"attempt_status",
+					"partner_order_id",
+					"partner_user_id",
+					"requested_at",
+					"payment_created_at",
+					"order_id",
+					"order_no",
+					"order_status",
+					"total_amount",
+					"ordered_at",
+					"member_id",
+					"recipient_name"
+				)
+			));
 		}
 
 		for (String candidate : PAYMENT_TABLE_CANDIDATES) {
@@ -134,8 +165,49 @@ public class AdminPaymentService {
 	}
 
 	private List<AdminPaymentRow> queryPaymentRows(TableDescriptor sourceTable) {
+		if (CHECKOUT_FLOW_SOURCE.equals(sourceTable.tableName())) {
+			return queryCheckoutPaymentRows();
+		}
+
 		String orderBy = orderByClause(sourceTable.columns());
 		String sql = "select * from " + quoteIdentifier(sourceTable.tableName()) + orderBy + " limit " + MAX_ROWS;
+		List<Map<String, Object>> rawRows = jdbcTemplate.queryForList(sql);
+		List<AdminPaymentRow> rows = new ArrayList<>();
+		for (int index = 0; index < rawRows.size(); index++) {
+			rows.add(toAdminRow(rawRows.get(index), index + 1));
+		}
+		return rows;
+	}
+
+	private List<AdminPaymentRow> queryCheckoutPaymentRows() {
+		String sql = """
+			select
+			  p.payment_id,
+			  p.payment_amount,
+			  p.payment_method,
+			  p.payment_status,
+			  p.provider,
+			  p.provider_payment_key,
+			  p.provider_order_id,
+			  pa.tid,
+			  pa.attempt_status,
+			  pa.partner_order_id,
+			  pa.partner_user_id,
+			  p.requested_at,
+			  p.created_at as payment_created_at,
+			  o.order_id,
+			  o.order_no,
+			  o.order_status,
+			  o.total_amount,
+			  o.ordered_at,
+			  o.member_id,
+			  o.recipient_name
+			from payment p
+			join orders o on o.order_id = p.order_id
+			left join payment_attempt pa on pa.payment_id = p.payment_id
+			order by coalesce(p.requested_at, p.created_at, o.ordered_at) desc
+			limit
+			""" + MAX_ROWS;
 		List<Map<String, Object>> rawRows = jdbcTemplate.queryForList(sql);
 		List<AdminPaymentRow> rows = new ArrayList<>();
 		for (int index = 0; index < rawRows.size(); index++) {
@@ -266,16 +338,16 @@ public class AdminPaymentService {
 
 	private AdminPaymentRow toAdminRow(Map<String, Object> rawRow, int rowNumber) {
 		Map<String, Object> values = normalizeRow(rawRow);
-		String orderId = firstText(values, "orderid", "orderno", "ordernumber", "partnerorderid", "merchantuid", "id")
+		String orderId = firstText(values, "orderno", "providerorderid", "ordernumber", "partnerorderid", "merchantuid", "orderid", "id")
 			.orElse("PAYMENT-ROW-" + rowNumber);
-		String memberName = firstText(values, "membername", "username", "customername", "buyername", "email", "memberid", "userid")
+		String memberName = firstText(values, "recipientname", "membername", "username", "customername", "buyername", "email", "memberid", "userid")
 			.orElse("회원 미상");
 		String memberCode = firstText(values, "memberid", "userid", "customerid", "useruuid", "email")
 			.map(value -> "member#" + value)
 			.orElse("-");
-		String paymentKey = firstText(values, "paymentkey", "paymentid", "pgpaymentkey", "tid", "transactionid")
+		String paymentKey = firstText(values, "providerpaymentkey", "paymentkey", "paymentid", "pgpaymentkey", "tid", "transactionid")
 			.orElse("-");
-		String transactionId = firstText(values, "transactionid", "tid", "pgtransactionid", "approvalno", "paymentkey")
+		String transactionId = firstText(values, "tid", "transactionid", "pgtransactionid", "approvalno", "paymentkey")
 			.orElse(paymentKey);
 		String provider = normalizeProvider(
 			firstText(values, "provider", "pgprovider", "paymentprovider", "paymentmethod", "method", "pg", "channel").orElse(""),
@@ -283,9 +355,10 @@ public class AdminPaymentService {
 			transactionId
 		);
 		String providerLabel = providerLabel(provider);
-		int amount = firstNumber(values, "amount", "totalamount", "paymentamount", "totalprice", "price", "paidamount")
+		int amount = firstNumber(values, "paymentamount", "amount", "totalamount", "totalprice", "price", "paidamount")
 			.orElse(0);
 		String paymentStatus = normalizeStatus(firstText(values, "paymentstatus", "pgstatus", "status", "paystatus").orElse("UNKNOWN"));
+		String attemptStatus = normalizeStatus(firstText(values, "attemptstatus").orElse(""));
 		String orderStatus = normalizeStatus(firstText(values, "orderstatus", "status", "ordstate").orElse(paymentStatus));
 		String failure = firstText(values, "failurereason", "failreason", "errormessage", "errorcode", "cancelreason", "reason", "message")
 			.orElseGet(() -> defaultFailure(paymentStatus, orderStatus));
@@ -296,10 +369,10 @@ public class AdminPaymentService {
 		String termsData = firstText(values, "terms", "agreements", "agreement", "termsdata")
 			.map(value -> value.replace(",", "|"))
 			.orElse("DB 조회|약관 컬럼 없음");
-		String orderTime = firstValue(values, "createdat", "requestedat", "approvedat", "updatedat", "orderedat")
+		String orderTime = firstValue(values, "requestedat", "paymentcreatedat", "createdat", "approvedat", "updatedat", "orderedat")
 			.map(this::formatTime)
 			.orElse("-");
-		List<PaymentFlowStep> steps = inferFlow(paymentStatus, orderStatus, failure, paymentKey);
+		List<PaymentFlowStep> steps = inferFlow(paymentStatus, orderStatus, attemptStatus, failure, paymentKey, transactionId);
 
 		return row(
 			orderId,
@@ -325,15 +398,24 @@ public class AdminPaymentService {
 		);
 	}
 
-	private List<PaymentFlowStep> inferFlow(String paymentStatus, String orderStatus, String failure, String paymentKey) {
-		String combined = (paymentStatus + " " + orderStatus + " " + failure).toUpperCase(Locale.ROOT);
+	private List<PaymentFlowStep> inferFlow(
+		String paymentStatus,
+		String orderStatus,
+		String attemptStatus,
+		String failure,
+		String paymentKey,
+		String transactionId
+	) {
+		String combined = (paymentStatus + " " + orderStatus + " " + attemptStatus + " " + failure).toUpperCase(Locale.ROOT);
 		boolean hasPaymentKey = paymentKey != null && !paymentKey.isBlank() && !"-".equals(paymentKey);
+		boolean hasTransactionId = transactionId != null && !transactionId.isBlank() && !"-".equals(transactionId);
+		boolean pgAuthenticated = hasPaymentKey || hasTransactionId || attemptStatus.contains("IN_PROGRESS");
 
 		if (combined.contains("REPAIR") || combined.contains("SERVER") || combined.contains("STOCK") || failure.contains("재고")) {
 			return List.of(
 				step("주문 생성", "done", "완료", "DB 주문 행 확인"),
 				step("약관 동의", "done", "완료", "약관 데이터 확인"),
-				step("PG 인증", "doneBlue", "완료", hasPaymentKey ? "PG 키 확인" : "PG 인증 추정"),
+				step("PG 인증", "doneBlue", "완료", pgAuthenticated ? "PG 키 확인" : "PG 인증 추정"),
 				step("승인 API", "doneBlue", "완료", "승인 이후 보정 필요"),
 				step("금액 검증", "done", "검토", "금액 비교 필요"),
 				step("재고 확정", "blocked", "서버에러", failure),
@@ -393,7 +475,7 @@ public class AdminPaymentService {
 		return List.of(
 			step("주문 생성", "done", "완료", "DB 주문 행 확인"),
 			step("약관 동의", "done", "완료", "약관 데이터 확인"),
-			step("PG 인증", hasPaymentKey ? "doneBlue" : "pending", hasPaymentKey ? "완료" : "대기", hasPaymentKey ? "PG 키 확인" : "PG 인증 대기"),
+			step("PG 인증", pgAuthenticated ? "doneBlue" : "pending", pgAuthenticated ? "완료" : "대기", pgAuthenticated ? "PG 키 확인" : "PG 인증 대기"),
 			step("승인 API", "pending", "대기", "승인 API 대기"),
 			step("금액 검증", "muted", "미진입", "승인 후 비교"),
 			step("재고 확정", "muted", "미진입", "미진입"),

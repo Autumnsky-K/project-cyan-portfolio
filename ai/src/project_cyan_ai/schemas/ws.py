@@ -2,6 +2,7 @@ from typing import Any, Literal, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+CLIENT_AUTH_TYPE = "auth"
 CLIENT_TEXT_INPUT_TYPE = "text-input"
 SERVER_FULL_TEXT_TYPE = "full-text"
 SERVER_CONFIG_TYPE = "set-model-and-conf"
@@ -59,6 +60,7 @@ class ClientTextInput(BaseModel):
 
     type: Literal["text-input"] = CLIENT_TEXT_INPUT_TYPE
     text: str = Field(min_length=1, max_length=CLIENT_TEXT_MAX_LENGTH)
+    sessionId: int | None = Field(default=None, ge=1)
     context: "ClientContext | None" = None
 
     @field_validator("text")
@@ -68,6 +70,13 @@ class ClientTextInput(BaseModel):
         if not stripped_value:
             raise ValueError("text must not be blank")
         return stripped_value
+
+
+class ClientAuthMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["auth"] = CLIENT_AUTH_TYPE
+    accessToken: str = Field(min_length=1)
 
 
 class CartContextItem(BaseModel):
@@ -94,6 +103,13 @@ class FullTextMessage(BaseModel):
     type: Literal["full-text"] = SERVER_FULL_TEXT_TYPE
     text: str
     actions: list[ActionPayload] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        payload = super().model_dump(*args, **kwargs)
+        if not payload.get("metadata"):
+            payload.pop("metadata", None)
+        return payload
 
 
 class ModelConfigMessage(BaseModel):

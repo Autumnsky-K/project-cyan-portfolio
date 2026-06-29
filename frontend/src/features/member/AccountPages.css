@@ -1,14 +1,92 @@
 .account-page {
   min-height: 100vh;
-  padding: 40px;
+  padding: 0 40px 40px;
   background: #1d1d1d;
   color: #f5f5f5;
   box-sizing: border-box;
 }
 
+.account-page .site-header {
+  margin: 0 -40px 32px;
+  border-bottom-color: #4f4f4f;
+}
+
+.account-page .site-eyebrow {
+  color: #b8b8b8;
+}
+
+.account-page .site-header h1 {
+  color: #ffffff;
+}
+
+.account-page .site-nav a {
+  border-color: #5f5f5f;
+  background: #151515;
+  color: #f5f5f5;
+}
+
+.account-page .site-nav a:hover,
+.account-page .site-nav a:focus {
+  border-color: #ffffff;
+}
+
+.account-page .site-nav a[aria-current='page'] {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #111111;
+}
+
 .account-shell {
   width: min(960px, 100%);
   margin: 0 auto;
+}
+
+.account-auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-auth-shell {
+  width: min(420px, 100%);
+}
+
+.account-auth-shell .account-form {
+  max-width: none;
+}
+
+.account-card-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #3f3f3f;
+  text-align: center;
+}
+
+.account-card-links p {
+  margin: 0;
+  color: #cfcfcf;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-card-links a {
+  color: #d8d8d8;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.account-card-links a:hover,
+.account-card-links a:focus {
+  color: #ffffff;
+}
+
+.account-card-links a:focus {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
 
 .account-topbar {
@@ -448,7 +526,8 @@
 }
 
 .mypage-card-row,
-.mypage-modal-grid {
+.mypage-modal-grid,
+.mypage-artist-edit-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
@@ -505,6 +584,23 @@
   margin-bottom: 8px;
   color: #ffffff;
   font-weight: 900;
+}
+
+.mypage-artist-edit-card {
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mypage-artist-edit-card.is-selected {
+  border-color: #ffffff;
+  box-shadow: inset 0 0 0 1px #ffffff;
+}
+
+.mypage-artist-edit-card:not(.is-selected) .mypage-item-meta {
+  color: #a8a8a8;
 }
 
 .mypage-arrow {
@@ -581,6 +677,10 @@
     padding: 24px 16px;
   }
 
+  .account-auth-page {
+    align-items: center;
+  }
+
   .like-panel .artist-grid {
     gap: 12px;
   }
@@ -615,7 +715,8 @@
     text-align: left;
   }
 
-  .mypage-card-row {
+  .mypage-card-row,
+  .mypage-artist-edit-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

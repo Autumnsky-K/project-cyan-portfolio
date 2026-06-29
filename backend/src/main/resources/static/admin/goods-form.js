@@ -187,4 +187,35 @@ function bindGoodsImageEditor(root) {
   })
 }
 
+function bindSubmitLock(form) {
+  const submitButton = form.querySelector('[data-submit-lock-button]')
+  const loadingLabel = form.dataset.submitLockLabel || '저장 중...'
+  const originalLabel = submitButton?.textContent
+
+  form.addEventListener('submit', (event) => {
+    if (form.dataset.submitting === 'true') {
+      event.preventDefault()
+      return
+    }
+    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+      return
+    }
+
+    form.dataset.submitting = 'true'
+    if (submitButton) {
+      submitButton.disabled = true
+      submitButton.textContent = loadingLabel
+    }
+  })
+
+  window.addEventListener('pageshow', () => {
+    form.dataset.submitting = 'false'
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.textContent = originalLabel
+    }
+  })
+}
+
 document.querySelectorAll('[data-goods-editor]').forEach(bindGoodsImageEditor)
+document.querySelectorAll('[data-submit-lock]').forEach(bindSubmitLock)

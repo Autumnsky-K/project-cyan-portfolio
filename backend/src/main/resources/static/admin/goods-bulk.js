@@ -1,5 +1,16 @@
 (() => {
+  const filterForm = document.querySelector('[data-goods-filter-form]')
   const form = document.querySelector('[data-goods-bulk-form]')
+
+  filterForm?.querySelectorAll('select').forEach((select) => {
+    select.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') {
+        return
+      }
+      event.preventDefault()
+      filterForm.requestSubmit()
+    })
+  })
 
   if (!form) {
     return
@@ -10,23 +21,25 @@
   const masterCheckbox = form.querySelector('[data-goods-bulk-master]')
   const selectedCount = form.querySelector('[data-goods-bulk-count]')
   const bulkTagsInput = form.querySelector('[data-goods-bulk-tags]')
+  const submitButton = form.querySelector('[data-goods-bulk-submit]')
   const choiceInputs = Array.from(form.querySelectorAll('[data-choice-kind]'))
   const choiceOptions = {
-    artist: readChoiceOptions('admin-bulk-artist-options'),
-    category: readChoiceOptions('admin-bulk-category-options'),
-    status: readChoiceOptions('admin-bulk-status-options'),
+    artist: readChoiceOptions('artist'),
+    category: readChoiceOptions('category'),
+    status: readChoiceOptions('status'),
   }
 
-  function readChoiceOptions(listId) {
-    return Array.from(document.getElementById(listId)?.options ?? []).map((option) => ({
-      label: option.value.trim(),
-      value: option.dataset.value ?? '',
+  function readChoiceOptions(kind) {
+    const select = form.querySelector(`[data-goods-bulk-choice="${kind}"]`)
+    return Array.from(select?.options ?? []).map((option) => ({
+      label: option.textContent.trim(),
+      value: option.value,
     }))
   }
 
-  function findChoice(kind, label) {
-    const normalizedLabel = label.trim()
-    return choiceOptions[kind]?.find((option) => option.label === normalizedLabel) ?? null
+  function findChoice(kind, value) {
+    if (kind === 'status' && value === '') return null
+    return choiceOptions[kind]?.find((option) => option.value === value) ?? null
   }
 
   function readInputValue(input) {
@@ -37,6 +50,12 @@
     const checkedCount = checkboxes.filter((checkbox) => checkbox.checked).length
     if (selectedCount) {
       selectedCount.textContent = String(checkedCount)
+    }
+    if (submitButton) {
+      submitButton.disabled = checkedCount === 0
+      submitButton.textContent = checkedCount > 0
+        ? `선택 상품 ${checkedCount}개 변경사항 저장`
+        : '선택 상품 변경사항 저장'
     }
     if (masterCheckbox) {
       masterCheckbox.checked = checkedCount > 0 && checkedCount === checkboxes.length
@@ -50,25 +69,18 @@
 
   function syncChoiceInput(input, options = {}) {
     const kind = input.dataset.choiceKind
-    const hiddenValue = input.closest('.admin-bulk-cell')?.querySelector(`[data-choice-value="${kind}"]`)
     const choice = findChoice(kind, input.value)
 
     if (choice) {
       input.dataset.lastValidLabel = choice.label
       input.dataset.lastValidValue = choice.value
       input.classList.remove('is-invalid')
-      if (hiddenValue) {
-        hiddenValue.value = choice.value
-      }
       return true
     }
 
     input.classList.add('is-invalid')
     if (options.revert) {
-      input.value = input.dataset.lastValidLabel || input.dataset.original || ''
-      if (hiddenValue) {
-        hiddenValue.value = input.dataset.lastValidValue || ''
-      }
+      input.value = input.dataset.lastValidValue || input.dataset.original || ''
       input.classList.remove('is-invalid')
       markInputState(input)
     }
@@ -100,14 +112,10 @@
   }
 
   function setChoiceInput(input, choice) {
-    const hiddenValue = input.closest('.admin-bulk-cell')?.querySelector(`[data-choice-value="${input.dataset.choiceKind}"]`)
-    input.value = choice.label
+    input.value = choice.value
     input.dataset.lastValidLabel = choice.label
     input.dataset.lastValidValue = choice.value
     input.classList.remove('is-invalid')
-    if (hiddenValue) {
-      hiddenValue.value = choice.value
-    }
     markInputState(input)
   }
 
@@ -117,7 +125,7 @@
 
     if (!choice) {
       bulkInput?.focus()
-      alert('허용된 값만 입력할 수 있습니다.')
+      alert('허용된 값만 선택할 수 있습니다.')
       return
     }
 
@@ -166,20 +174,6 @@
     updateSelectedCount()
   })
 
-  form.querySelector('[data-goods-bulk-select-all]')?.addEventListener('click', () => {
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = true
-    })
-    updateSelectedCount()
-  })
-
-  form.querySelector('[data-goods-bulk-clear]')?.addEventListener('click', () => {
-    checkboxes.forEach((checkbox) => {
-      checkbox.checked = false
-    })
-    updateSelectedCount()
-  })
-
   form.querySelectorAll('[data-goods-bulk-apply-choice]').forEach((button) => {
     button.addEventListener('click', () => applyBulkChoice(button.dataset.goodsBulkApplyChoice))
   })
@@ -203,7 +197,7 @@
     if (invalidChoice) {
       event.preventDefault()
       invalidChoice.focus()
-      alert('아티스트, 카테고리, 판매 상태는 허용된 값만 입력할 수 있습니다.')
+      alert('아티스트, 카테고리, 판매 상태는 허용된 값만 선택할 수 있습니다.')
     }
   })
 

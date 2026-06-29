@@ -4,10 +4,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
 	boolean existsByEmail(String email);
+
+	@Query(value = """
+		select exists (
+			select 1
+			from public.member
+			where regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = :phoneDigits
+		)
+		""", nativeQuery = true)
+	boolean existsByPhoneDigits(@Param("phoneDigits") String phoneDigits);
 
 	Optional<Member> findByMemberUuid(UUID memberUuid);
 }

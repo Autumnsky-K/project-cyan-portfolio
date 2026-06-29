@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+  addGoodsLike,
   fetchGoodsDetail,
+  fetchMyGoodsLike,
   fetchRelatedGoods,
   recordGoodsView,
+  removeGoodsLike,
   type GoodsDetail,
   type GoodsSummary,
 } from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
+import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
@@ -30,7 +34,11 @@ function GoodsDetailPage() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<DetailTab>('intro')
   const [shareFeedback, setShareFeedback] = useState('')
+  const [isLiked, setIsLiked] = useState(false)
+  const [isLikePending, setIsLikePending] = useState(false)
+  const [likeFeedback, setLikeFeedback] = useState('')
   const shareFeedbackTimerRef = useRef<number | null>(null)
+  const likeFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
   const {
@@ -51,6 +59,37 @@ function GoodsDetailPage() {
     }
     await toggleFavorite(targetGoodsId)
   }, [navigateToLogin, toggleFavorite])
+
+  const handleLikeToggle = useCallback(async () => {
+    if (!goods) return
+
+    if (!(await hasSpringApiSession())) {
+      navigateToLogin()
+      return
+    }
+
+    setIsLikePending(true)
+    setLikeFeedback('')
+    try {
+      const result = isLiked
+        ? await removeGoodsLike(goods.goodsId)
+        : await addGoodsLike(goods.goodsId)
+      setIsLiked(result.liked)
+      setGoods((current) => (
+        current && current.goodsId === goods.goodsId
+          ? { ...current, likeCount: result.likeCount }
+          : current
+      ))
+    } catch (likeError) {
+      setLikeFeedback(likeError instanceof Error ? likeError.message : '좋아요를 처리하지 못했습니다.')
+      if (likeFeedbackTimerRef.current !== null) {
+        window.clearTimeout(likeFeedbackTimerRef.current)
+      }
+      likeFeedbackTimerRef.current = window.setTimeout(() => setLikeFeedback(''), 2200)
+    } finally {
+      setIsLikePending(false)
+    }
+  }, [goods, isLiked, navigateToLogin])
 
   useLayoutEffect(() => {
     const rawScrollY = new URLSearchParams(location.search).get('_detailScroll')
@@ -124,6 +163,37 @@ function GoodsDetailPage() {
   }, [goodsId])
 
   useEffect(() => {
+    let ignore = false
+
+    async function loadMyLike() {
+      if (!goodsId) {
+        setIsLiked(false)
+        return
+      }
+
+      try {
+        const like = await fetchMyGoodsLike(goodsId)
+        if (ignore) return
+        setIsLiked(Boolean(like?.liked))
+        if (like?.likeCount !== undefined) {
+          setGoods((current) => (
+            current && String(current.goodsId) === String(goodsId)
+              ? { ...current, likeCount: like.likeCount }
+              : current
+          ))
+        }
+      } catch {
+        if (!ignore) setIsLiked(false)
+      }
+    }
+
+    void loadMyLike()
+    return () => {
+      ignore = true
+    }
+  }, [goodsId])
+
+  useEffect(() => {
     const controller = new AbortController()
 
     async function loadRelatedGoods() {
@@ -150,11 +220,15 @@ function GoodsDetailPage() {
       if (shareFeedbackTimerRef.current !== null) {
         window.clearTimeout(shareFeedbackTimerRef.current)
       }
+      if (likeFeedbackTimerRef.current !== null) {
+        window.clearTimeout(likeFeedbackTimerRef.current)
+      }
     },
     [],
   )
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
+  const descriptionHtml = goods?.description?.trim()
 
   async function handleShare() {
     try {
@@ -219,8 +293,14 @@ function GoodsDetailPage() {
                 </div>
                 {activeTab === 'intro' ? (
                   <div className="detail-tab-panel" role="tabpanel">
-                    <h2>{goods.name}</h2>
-                    <p>{goods.description || '상품 소개가 준비 중입니다.'}</p>
+                    {descriptionHtml ? (
+                      <div
+                        className="detail-description"
+                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                      />
+                    ) : (
+                      <p>상품 소개가 준비 중입니다.</p>
+                    )}
                     <div className="detail-long-image">
                       {goods.imageUrl && (
                         <GoodsImage
@@ -245,10 +325,15 @@ function GoodsDetailPage() {
               onReviewClick={() => setActiveTab('reviews')}
               isFavorite={isFavorite(goods.goodsId)}
               onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
+              isLiked={isLiked}
+              isLikePending={isLikePending}
+              likeFeedback={likeFeedback}
+              onLikeToggle={() => void handleLikeToggle()}
             />
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />
+          <GoodsCartSidePanel />
         </>
       )}
     </main>

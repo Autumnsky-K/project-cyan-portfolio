@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GoodsQueryParams } from '../../api/goods'
 import type { GoodsFilterParam, GoodsSelectedFilters } from './GoodsFilterUi'
 import { useDebouncedValue } from './useDebouncedValue'
@@ -8,6 +8,25 @@ export type GoodsViewMode = 'grid' | 'list'
 
 const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
 const EMPTY_FILTERS: GoodsSelectedFilters = { categoryIds: [], artistIds: [], tags: [] }
+const GOODS_LIST_SCROLL_STATE_KEY = 'goodsListScrollY'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readHistoryScrollY(state: unknown) {
+  if (!isRecord(state)) return null
+  const scrollY = state[GOODS_LIST_SCROLL_STATE_KEY]
+  return typeof scrollY === 'number' && Number.isFinite(scrollY) && scrollY >= 0 ? scrollY : null
+}
+
+function saveCurrentHistoryScroll() {
+  const currentState = isRecord(window.history.state) ? window.history.state : {}
+  window.history.replaceState({
+    ...currentState,
+    [GOODS_LIST_SCROLL_STATE_KEY]: Math.round(window.scrollY),
+  }, '')
+}
 
 function readFilterParam(params: URLSearchParams, key: string) {
   const raw = params.get(key) ?? ''
@@ -65,8 +84,11 @@ export function useGoodsListQueryState() {
   const [section, setSection] = useState<GoodsSection>(initialState.section)
   const [viewMode, setViewMode] = useState<GoodsViewMode>(initialState.viewMode)
   const [selectedFilters, setSelectedFilters] = useState(initialState.selectedFilters)
+  const [pendingHistoryScrollY, setPendingHistoryScrollY] = useState<number | null>(null)
   const committedQueryRef = useRef(initialState.query.trim())
+  const pageHistoryActionRef = useRef<'push' | 'replace'>('replace')
   const debouncedQuery = useDebouncedValue(query, 300)
+  const clearPendingHistoryScroll = useCallback(() => setPendingHistoryScrollY(null), [])
 
   const requestParams = useMemo<GoodsQueryParams>(() => ({
     q: debouncedQuery,
@@ -79,20 +101,27 @@ export function useGoodsListQueryState() {
   }), [debouncedQuery, page, selectedFilters, sort])
 
   useEffect(() => {
-    window.history.replaceState(null, '', createUrl(
+    const nextUrl = createUrl(
       committedQueryRef.current,
       sort,
       page,
       selectedFilters,
       section,
       viewMode,
-    ))
+    )
+    if (pageHistoryActionRef.current === 'push') {
+      window.history.pushState(null, '', nextUrl)
+      pageHistoryActionRef.current = 'replace'
+      return
+    }
+    window.history.replaceState(window.history.state, '', nextUrl)
   }, [page, section, selectedFilters, sort, viewMode])
 
   useEffect(() => {
-    function restoreHistoryState() {
+    function restoreHistoryState(event: PopStateEvent) {
       const restored = readState()
       committedQueryRef.current = restored.query.trim()
+      setPendingHistoryScrollY(readHistoryScrollY(event.state))
       setQuery(restored.query)
       setSort(restored.sort)
       setPage(restored.page)
@@ -137,6 +166,18 @@ export function useGoodsListQueryState() {
     ))
   }
 
+  function goToPage(nextPage: number) {
+    setPage((currentPage) => {
+      if (currentPage === nextPage) {
+        pageHistoryActionRef.current = 'replace'
+        return currentPage
+      }
+      saveCurrentHistoryScroll()
+      pageHistoryActionRef.current = 'push'
+      return nextPage
+    })
+  }
+
   return {
     query,
     setQuery,
@@ -151,8 +192,11 @@ export function useGoodsListQueryState() {
     selectedFilters,
     setSelectedFilters,
     requestParams,
+    pendingHistoryScrollY,
+    clearPendingHistoryScroll,
     toggleFilter,
     reset,
     commitSearch,
+    goToPage,
   }
 }

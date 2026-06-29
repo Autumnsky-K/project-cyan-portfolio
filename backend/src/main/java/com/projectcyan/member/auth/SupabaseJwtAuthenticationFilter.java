@@ -76,11 +76,24 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method) && "/api/members/signup".equals(path)) {
 			return false;
 		}
+		if (HttpMethod.POST.matches(method) && "/api/members/signup/availability".equals(path)) {
+			return false;
+		}
+		if (HttpMethod.POST.matches(method) && "/api/members/password-reset/eligibility".equals(path)) {
+			return false;
+		}
 		if (HttpMethod.GET.matches(method) && "/api/goods/favorites".equals(path)) {
 			return true;
 		}
 		if ((HttpMethod.POST.matches(method) || HttpMethod.DELETE.matches(method))
 			&& path.matches("/api/goods/\\d+/favorites")) {
+			return true;
+		}
+		if (HttpMethod.GET.matches(method) && path.matches("/api/goods/\\d+/likes/my")) {
+			return true;
+		}
+		if ((HttpMethod.POST.matches(method) || HttpMethod.DELETE.matches(method))
+			&& path.matches("/api/goods/\\d+/likes")) {
 			return true;
 		}
 		if (HttpMethod.POST.matches(method) && path.matches("/api/goods/\\d+/views")) {
@@ -107,9 +120,11 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		return path.startsWith("/api/cart")
+			|| path.startsWith("/api/checkout")
 			|| path.startsWith("/api/orders")
 			|| path.startsWith("/api/payments")
-			|| path.startsWith("/api/members");
+			|| path.startsWith("/api/members")
+			|| path.startsWith("/api/virtual-chat");
 	}
 
 	private String bearerToken(HttpServletRequest request) {

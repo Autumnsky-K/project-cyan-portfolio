@@ -282,12 +282,16 @@
 }
 
 .goods-list {
+  grid-auto-rows: max-content;
+  align-items: start;
   grid-template-columns: 1fr;
 }
 
 .goods-list .goods-card {
+  align-self: start;
   grid-template-columns: minmax(180px, 28%) minmax(0, 1fr);
   grid-template-rows: 1fr;
+  height: max-content;
 }
 
 .goods-list .goods-image {

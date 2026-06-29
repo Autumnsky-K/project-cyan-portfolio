@@ -133,6 +133,76 @@ public class SupabaseStorageService {
 		return uploadObjectToPath(normalizedBucketName, objectPath, file, upsert);
 	}
 
+	public SupabaseStorageObject uploadTextObject(
+		String bucketName,
+		String path,
+		String fileName,
+		String content,
+		MediaType mediaType,
+		boolean upsert
+	) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedPath = normalizeOptionalFolderPath(path);
+		String normalizedFileName = normalizeObjectFileName(fileName);
+		String objectPath = joinObjectPath(normalizedPath, normalizedFileName);
+		try {
+			restClient.post()
+				.uri(storageUrl("/object/" + encodeObjectPath(normalizedBucketName, objectPath)))
+				.headers(headers -> {
+					applyAuthHeaders(headers);
+					headers.setContentType(mediaType == null ? MediaType.TEXT_PLAIN : mediaType);
+					headers.set("cache-control", "300");
+					if (upsert) {
+						headers.set("x-upsert", "true");
+					}
+				})
+				.body(content == null ? new byte[0] : content.getBytes(StandardCharsets.UTF_8))
+				.retrieve()
+				.toBodilessEntity();
+			supabaseUsageCounter.recordWrite("Storage 텍스트 업로드");
+			return new SupabaseStorageObject(
+				normalizedBucketName,
+				objectPath,
+				normalizedFileName,
+				publicObjectUrl(normalizedBucketName, objectPath),
+				content == null ? 0 : (long) content.getBytes(StandardCharsets.UTF_8).length,
+				null
+			);
+		} catch (RestClientResponseException exception) {
+			throw storageException("텍스트 object 업로드 요청에 실패했습니다.", exception);
+		}
+	}
+
+	public String createSignedObjectUrl(String bucketName, String objectPath, long expiresInSeconds) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedObjectPath = normalizeFolderPath(objectPath);
+		try {
+			Map<String, Object> response = restClient.post()
+				.uri(storageUrl("/object/sign/" + encodeObjectPath(normalizedBucketName, normalizedObjectPath)))
+				.headers(headers -> {
+					applyAuthHeaders(headers);
+					headers.setContentType(MediaType.APPLICATION_JSON);
+				})
+				.body(Map.of("expiresIn", Math.max(1, expiresInSeconds)))
+				.retrieve()
+				.body(new ParameterizedTypeReference<>() {
+				});
+			Object signedUrl = response == null ? null : firstPresent(response, "signedURL", "signedUrl", "url");
+			if (signedUrl == null || !StringUtils.hasText(signedUrl.toString())) {
+				throw new SupabaseStorageException("signed URL 응답이 비어 있습니다.");
+			}
+			String signedUrlText = signedUrl.toString();
+			if (signedUrlText.startsWith("http://") || signedUrlText.startsWith("https://")) {
+				return signedUrlText;
+			}
+			return properties.getProjectUrl().replaceAll("/+$", "") + "/storage/v1" + signedUrlText;
+		} catch (RestClientResponseException exception) {
+			throw storageException("signed URL 생성 요청에 실패했습니다.", exception);
+		}
+	}
+
 	public SupabaseStorageObject uploadObjectBySizePolicy(
 		String bucketName,
 		String path,
@@ -389,6 +459,18 @@ public class SupabaseStorageService {
 		return normalizedObjectPath;
 	}
 
+	private String normalizeObjectFileName(String fileName) {
+		if (!StringUtils.hasText(fileName)) {
+			throw new SupabaseStorageException("업로드 파일명은 필수입니다.");
+		}
+		String normalizedFileName = fileName.trim().replace('\\', '/').replaceAll("^/+", "").replaceAll("/+$", "");
+		if (normalizedFileName.contains("/")) {
+			throw new SupabaseStorageException("파일명에는 경로 구분자를 사용할 수 없습니다.");
+		}
+		validateObjectPathSegment(normalizedFileName, "업로드 파일명");
+		return normalizedFileName;
+	}
+
 	private void validateObjectPathSegment(String segment, String fieldName) {
 		if (!StringUtils.hasText(segment)) {
 			throw new SupabaseStorageException(fieldName + "에는 빈 경로 조각을 사용할 수 없습니다.");
@@ -488,6 +570,16 @@ public class SupabaseStorageService {
 				return Long.parseLong(text);
 			} catch (NumberFormatException ignored) {
 				return null;
+			}
+		}
+		return null;
+	}
+
+	private Object firstPresent(Map<String, Object> values, String... keys) {
+		for (String key : keys) {
+			Object value = values.get(key);
+			if (value != null) {
+				return value;
 			}
 		}
 		return null;

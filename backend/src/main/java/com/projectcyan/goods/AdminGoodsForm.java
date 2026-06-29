@@ -11,10 +11,10 @@ public class AdminGoodsForm {
 
 	private Long goodsId;
 
-	@NotBlank(message = "이름은 필수입니다.")
+	@NotBlank(message = "굿즈 이름을 입력해주세요.")
 	private String name;
 
-	@NotNull(message = "가격은 필수입니다.")
+	@NotNull(message = "가격을 입력해주세요.")
 	@Min(value = 0, message = "가격은 0 이상이어야 합니다.")
 	private Integer price;
 
@@ -22,17 +22,20 @@ public class AdminGoodsForm {
 
 	private String imageUrl;
 
+	@NotNull(message = "아티스트를 선택해주세요.")
 	private Long artistId;
 
+	@NotNull(message = "카테고리를 선택해주세요.")
 	private Long categoryId;
 
-	@NotBlank(message = "판매 상태는 필수입니다.")
+	@NotBlank(message = "판매 상태를 선택해주세요.")
 	private String salesStatus = "ON_SALE";
 
 	private boolean bestSeller;
 
 	private boolean aiPickDefault;
 
+	@NotNull(message = "재고를 입력해주세요.")
 	@Min(value = 0, message = "재고는 0 이상이어야 합니다.")
 	private Integer stockCount = 0;
 

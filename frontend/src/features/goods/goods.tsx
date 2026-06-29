@@ -8,6 +8,7 @@ import {
   type PageResponse,
 } from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
+import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, {
   GoodsActiveFilterChips,
@@ -58,9 +59,12 @@ function GoodsPage() {
     selectedFilters,
     setSelectedFilters,
     requestParams,
+    pendingHistoryScrollY,
+    clearPendingHistoryScroll,
     toggleFilter,
     reset,
     commitSearch,
+    goToPage,
   } = useGoodsListQueryState()
   const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
   const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
@@ -124,6 +128,19 @@ function GoodsPage() {
     window.scrollTo({ top: searchScrollPositionRef.current })
     searchScrollPositionRef.current = null
   }, [status])
+
+  useLayoutEffect(() => {
+    if (pendingHistoryScrollY === null || status === 'loading' || status === 'refreshing') {
+      return
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: pendingHistoryScrollY, left: 0, behavior: 'auto' })
+      clearPendingHistoryScroll()
+    })
+
+    return () => window.cancelAnimationFrame(animationFrameId)
+  }, [clearPendingHistoryScroll, pendingHistoryScrollY, status])
 
   const scrollToResults = useCallback((behavior: ScrollBehavior = 'smooth') => {
     window.requestAnimationFrame(() => {
@@ -193,7 +210,6 @@ function GoodsPage() {
 
   function resetFilters() {
     reset()
-    scrollToResults()
   }
 
   function applyMobileFilters(nextFilters: GoodsSelectedFilters) {
@@ -223,8 +239,8 @@ function GoodsPage() {
     scrollToResults()
   }
 
-  function goToPage(nextPage: number) {
-    setPage(nextPage)
+  function handlePageChange(nextPage: number) {
+    goToPage(nextPage)
     window.requestAnimationFrame(() => {
       searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
     })
@@ -343,7 +359,7 @@ function GoodsPage() {
           <GoodsPagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={goToPage}
+            onPageChange={handlePageChange}
           />
         </div>
       </section>
@@ -394,6 +410,7 @@ function GoodsPage() {
           )}
         </section>
       )}
+      <GoodsCartSidePanel />
     </main>
   )
 }

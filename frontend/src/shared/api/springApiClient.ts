@@ -59,11 +59,24 @@ export async function apiFetch(
 ): Promise<Response> {
   const { headers, body, ...fetchOptions } = options
 
-  return fetch(buildSpringApiUrl(path), {
-    ...fetchOptions,
-    body,
-    headers: await buildHeaders(body, headers),
-  })
+  try {
+    return await fetch(buildSpringApiUrl(path), {
+      ...fetchOptions,
+      body,
+      headers: await buildHeaders(body, headers),
+    })
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
+      throw error
+    }
+
+    throw new Error('Unable to connect to the Spring API server.', {
+      cause: error,
+    })
+  }
 }
 
 export async function parseApiResponse<T = unknown>(

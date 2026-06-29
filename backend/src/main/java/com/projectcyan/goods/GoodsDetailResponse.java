@@ -19,7 +19,8 @@ public record GoodsDetailResponse(
 	String purchaseState,
 	String purchaseMessage,
 	Double averageRating,
-	Long reviewCount
+	Long reviewCount,
+	Long likeCount
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
 		return from(
@@ -28,7 +29,8 @@ public record GoodsDetailResponse(
 			goods.getStockCount() != null && goods.getStockCount() > 0
 				? "구매 가능한 상품입니다."
 				: "품절된 상품입니다.",
-			GoodsReviewSummary.empty()
+			GoodsReviewSummary.empty(),
+			0L
 		);
 	}
 
@@ -36,7 +38,8 @@ public record GoodsDetailResponse(
 		Goods goods,
 		String purchaseState,
 		String purchaseMessage,
-		GoodsReviewSummary reviewSummary
+		GoodsReviewSummary reviewSummary,
+		Long likeCount
 	) {
 		return new GoodsDetailResponse(
 			goods.getGoodsId(),
@@ -55,7 +58,8 @@ public record GoodsDetailResponse(
 			purchaseState,
 			purchaseMessage,
 			reviewSummary.averageRating(),
-			reviewSummary.reviewCount()
+			reviewSummary.reviewCount(),
+			likeCount == null ? 0L : likeCount
 		);
 	}
 }

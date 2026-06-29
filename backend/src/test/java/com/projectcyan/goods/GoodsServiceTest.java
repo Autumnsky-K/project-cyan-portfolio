@@ -28,7 +28,8 @@ class GoodsServiceTest {
 			mock(GoodsCategoryRepository.class),
 			mock(TagRepository.class),
 			goodsStockRepository,
-			goodsReviewRepository
+			goodsReviewRepository,
+			mock(GoodsLikeRepository.class)
 		);
 	}
 
