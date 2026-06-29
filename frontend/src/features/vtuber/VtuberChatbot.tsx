@@ -13,11 +13,18 @@ import {
   VTUBER_DISPLAY_STATE_LABELS,
 } from './displayState'
 import { useVtuberWebSocket } from './useVtuberWebSocket'
+import { type VtuberAuthReason } from './types'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
 const SPEAKING_STATE_DURATION_MS = 2400
 const DEFAULT_GUIDE_ID = 1
 const TOKEN_REFRESH_SKEW_MS = 60_000
+const AUTH_REQUIRED_MESSAGES: Record<VtuberAuthReason, string> = {
+  accountPersonalization: '찜·구매 이력을 활용한 추천은 로그인 후 이용할 수 있어요.',
+  chatHistory: '이전 대화를 이어보려면 로그인해 주세요.',
+  persistence: '다음 접속에도 대화를 이어가려면 로그인해 주세요.',
+  guestLimit: '게스트 채팅 이용 횟수를 모두 사용했어요. 로그인하고 계속 대화해 주세요.',
+}
 
 type ChatAuthStatus = 'anonymous' | 'checking' | 'ready' | 'reauthRequired'
 type ChatSessionSnapshot = {
@@ -52,7 +59,7 @@ function VtuberChatbot(): ReactElement {
   const [chatAccessToken, setChatAccessToken] = useState<string | null>(null)
   const [chatAuthStatus, setChatAuthStatus] = useState<ChatAuthStatus>('anonymous')
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
-  const { actionBatchId, actions, connectionStatus, latestText, sendText } =
+  const { actionBatchId, actions, connectionStatus, latestText, metadata, sendText } =
     useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items, chatSessionId, chatAccessToken)
 
   useEffect(() => {
@@ -184,11 +191,12 @@ function VtuberChatbot(): ReactElement {
       }
     }
 
+    const authClient = supabase.auth
     const delayMs = Math.max(0, chatTokenExpiresAt - Date.now() - TOKEN_REFRESH_SKEW_MS)
     const timerId = window.setTimeout(() => {
       if (!active) return
 
-      void supabase.auth.refreshSession().then(({ data, error }) => {
+      void authClient.refreshSession().then(({ data, error }) => {
         if (!active) return
 
         const session = error ? null : data.session
@@ -234,7 +242,7 @@ function VtuberChatbot(): ReactElement {
         return { accessToken: null, canSend: false }
       }
 
-      let nextSession = currentData.session
+      let nextSession: ChatSessionSnapshot = currentData.session
 
       if (isSessionExpiring(currentData.session)) {
         const { data, error } = await supabase.auth.refreshSession()
@@ -332,19 +340,27 @@ function VtuberChatbot(): ReactElement {
     isAwaitingResponse,
     isSpeaking: speakingBatchId > 0,
   })
+  const authRequiredMessage = metadata.authRequired && metadata.authReason
+    ? AUTH_REQUIRED_MESSAGES[metadata.authReason]
+    : null
+  const authNotice = isAuthenticated && chatAuthStatus === 'reauthRequired'
+    ? {
+        actionLabel: '로그인',
+        message: '채팅 저장 세션이 만료됐어요. 다시 로그인하면 대화와 추천을 저장할 수 있습니다.',
+        onAction: handleReauthClick,
+      }
+    : authRequiredMessage
+      ? {
+          actionLabel: '로그인',
+          message: authRequiredMessage,
+          onAction: handleReauthClick,
+        }
+      : null
 
   return (
     <VtuberChatbotShell
       actionsCount={actions.length}
-      authNotice={
-        isAuthenticated && chatAuthStatus === 'reauthRequired'
-          ? {
-              actionLabel: '로그인',
-              message: '채팅 저장 세션이 만료됐어요. 다시 로그인하면 대화와 추천을 저장할 수 있습니다.',
-              onAction: handleReauthClick,
-            }
-          : null
-      }
+      authNotice={authNotice}
       bubbleText={latestText}
       character={DEFAULT_VTUBER_CHARACTER}
       displayState={displayState}

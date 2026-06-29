@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type VtuberClientCartItem,
   type VtuberAction,
+  type VtuberAuthReason,
   type VtuberClientAuthMessage,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
@@ -18,6 +19,7 @@ type UseVtuberWebSocketResult = {
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
   latestText: string
+  metadata: VtuberServerMetadata
   sendText: (text: string, accessTokenOverride?: string | null) => boolean
 }
 
@@ -64,6 +66,19 @@ function normalizeRecommendation(value: unknown): VtuberRecommendationMetadata |
   }
 }
 
+const VTUBER_AUTH_REASONS = new Set<VtuberAuthReason>([
+  'accountPersonalization',
+  'chatHistory',
+  'persistence',
+  'guestLimit',
+])
+
+function normalizeAuthReason(value: unknown): VtuberAuthReason | undefined {
+  return typeof value === 'string' && VTUBER_AUTH_REASONS.has(value as VtuberAuthReason)
+    ? value as VtuberAuthReason
+    : undefined
+}
+
 function normalizeMetadata(value: unknown): VtuberServerMetadata {
   if (!isRecord(value)) {
     return {}
@@ -78,10 +93,13 @@ function normalizeMetadata(value: unknown): VtuberServerMetadata {
           recommendation !== null
         ))
       : undefined,
+    authRequired: value.authRequired === true ? true : undefined,
+    authReason: normalizeAuthReason(value.authReason),
+    loginPath: value.loginPath === '/login' ? '/login' : undefined,
   }
 }
 
-function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
+export function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
   if (
     !isRecord(value) ||
     typeof value.type !== 'string' ||
@@ -108,12 +126,15 @@ export function useVtuberWebSocket(
   accessToken: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
+  const sentAccessTokenRef = useRef<string | null>(null)
   const closedByHookRef = useRef(false)
   const sawConnectionErrorRef = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
   const [latestText, setLatestText] = useState(initialText)
   const [actions, setActions] = useState<VtuberAction[]>([])
   const [actionBatchId, setActionBatchId] = useState(0)
+  const [metadata, setMetadata] = useState<VtuberServerMetadata>({})
+  const hasAccessToken = Boolean(accessToken)
 
   useEffect(() => {
     closedByHookRef.current = false
@@ -122,6 +143,7 @@ export function useVtuberWebSocket(
 
     const socket = new WebSocket(buildVtuberWebSocketUrl())
     socketRef.current = socket
+    sentAccessTokenRef.current = null
 
     socket.addEventListener('open', () => {
       setConnectionStatus('open')
@@ -137,6 +159,7 @@ export function useVtuberWebSocket(
 
         setLatestText(message.text)
         setActions(message.actions)
+        setMetadata(message.metadata ?? {})
         setActionBatchId((currentId) => currentId + 1)
       } catch {
         return
@@ -160,16 +183,22 @@ export function useVtuberWebSocket(
       closedByHookRef.current = true
       socket.close()
       socketRef.current = null
+      sentAccessTokenRef.current = null
     }
-  }, [])
+  }, [hasAccessToken])
 
   useEffect(() => {
     const socket = socketRef.current
 
+    if (!accessToken) {
+      sentAccessTokenRef.current = null
+      return
+    }
+
     if (
-      !accessToken ||
       connectionStatus !== 'open' ||
-      socket?.readyState !== WebSocket.OPEN
+      socket?.readyState !== WebSocket.OPEN ||
+      sentAccessTokenRef.current === accessToken
     ) {
       return
     }
@@ -180,6 +209,7 @@ export function useVtuberWebSocket(
     }
 
     socket.send(JSON.stringify(authMessage))
+    sentAccessTokenRef.current = accessToken
   }, [accessToken, connectionStatus])
 
   const sendText = useCallback((text: string, accessTokenOverride: string | null = null) => {
@@ -190,13 +220,14 @@ export function useVtuberWebSocket(
       return false
     }
 
-    if (accessTokenOverride) {
+    if (accessTokenOverride && sentAccessTokenRef.current !== accessTokenOverride) {
       const authMessage: VtuberClientAuthMessage = {
         type: 'auth',
         accessToken: accessTokenOverride,
       }
 
       socket.send(JSON.stringify(authMessage))
+      sentAccessTokenRef.current = accessTokenOverride
     }
 
     const message: VtuberClientTextInputMessage = {
@@ -227,6 +258,7 @@ export function useVtuberWebSocket(
     actions,
     connectionStatus,
     latestText,
+    metadata,
     sendText,
   }
 }
