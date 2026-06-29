@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,6 +62,15 @@ public class VirtualChatController {
 	) {
 		return ResponseEntity.status(HttpStatus.CREATED)
 			.body(virtualChatService.createMessage(currentMember.memberId(), sessionId, request));
+	}
+
+	@PutMapping("/sessions/{sessionId}/summary")
+	public VirtualChatSummaryResponse upsertSummary(
+		@PathVariable Long sessionId,
+		@RequestBody VirtualChatSummaryRequest request,
+		AuthenticatedMember currentMember
+	) {
+		return virtualChatService.upsertSummary(currentMember.memberId(), sessionId, request);
 	}
 
 	@PatchMapping("/sessions/{sessionId}/end")

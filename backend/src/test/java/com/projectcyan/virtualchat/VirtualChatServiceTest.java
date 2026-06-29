@@ -100,4 +100,69 @@ class VirtualChatServiceTest {
 			.isInstanceOf(ResponseStatusException.class)
 			.hasMessageContaining("400 BAD_REQUEST");
 	}
+
+	@Test
+	void upsertsSummaryForOwnedSession() {
+		Long memberId = 7L;
+		Long sessionId = 11L;
+		VirtualChatSummaryRequest request = summaryRequest();
+		when(virtualChatRepository.findSessionMemberId(sessionId)).thenReturn(Optional.of(memberId));
+
+		virtualChatService.upsertSummary(memberId, sessionId, request);
+
+		verify(virtualChatRepository).upsertSummary(sessionId, request);
+	}
+
+	@Test
+	void rejectsSummaryForAnotherMembersSession() {
+		Long sessionId = 11L;
+		VirtualChatSummaryRequest request = summaryRequest();
+		when(virtualChatRepository.findSessionMemberId(sessionId)).thenReturn(Optional.of(99L));
+
+		assertThatThrownBy(() -> virtualChatService.upsertSummary(7L, sessionId, request))
+			.isInstanceOf(ResponseStatusException.class)
+			.hasMessageContaining("404 NOT_FOUND");
+
+		verify(virtualChatRepository, never()).upsertSummary(sessionId, request);
+	}
+
+	@Test
+	void clampsRecentSessionContextToThree() {
+		virtualChatService.findRecentSessionContexts(7L, 11L, 20);
+
+		verify(virtualChatRepository).findRecentSessionContexts(7L, 11L, 3);
+	}
+
+	@Test
+	void rejectsOversizedSummaryLists() {
+		VirtualChatSummaryContent summary = new VirtualChatSummaryContent(
+			"대화 요약",
+			java.util.stream.IntStream.range(0, 11).mapToObj(index -> "선호 " + index).toList(),
+			List.of(),
+			List.of(),
+			List.of(),
+			List.of()
+		);
+		VirtualChatSummaryRequest request = new VirtualChatSummaryRequest(summary, 2, 22L);
+		when(virtualChatRepository.findSessionMemberId(11L)).thenReturn(Optional.of(7L));
+
+		assertThatThrownBy(() -> virtualChatService.upsertSummary(7L, 11L, request))
+			.isInstanceOf(ResponseStatusException.class)
+			.hasMessageContaining("400 BAD_REQUEST");
+	}
+
+	private VirtualChatSummaryRequest summaryRequest() {
+		return new VirtualChatSummaryRequest(
+			new VirtualChatSummaryContent(
+				"아이유 포토카드를 추천함",
+				List.of("아이유"),
+				List.of("고가 리셀"),
+				List.of("10만원 이하"),
+				List.of(42L),
+				List.of("앨범 추가 추천")
+			),
+			2,
+			22L
+		);
+	}
 }
