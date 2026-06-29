@@ -711,6 +711,8 @@ class OpenAiChatResponseProvider:
 
 def get_chat_response_provider(
     provider_name: str | None = None,
+    *,
+    enable_shopping_tools: bool = True,
 ) -> ChatResponseProvider:
     settings = get_settings()
     provider_name = (provider_name or settings.ai_provider).strip()
@@ -736,7 +738,7 @@ def get_chat_response_provider(
 
         return OpenAiChatResponseProvider(
             client=client,
-            shopping_tools=build_shopping_tools(),
+            shopping_tools=build_shopping_tools() if enable_shopping_tools else None,
         )
 
     if provider_name == "olv":
