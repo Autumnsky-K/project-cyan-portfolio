@@ -123,6 +123,16 @@ export function removeGuestCartItem(items: CartItem[], cartItemKey: CartItem['ca
   return items.filter((item) => item.cartItemKey !== cartItemKey)
 }
 
+export function removeStoredGuestCartItem(cartItemKey: CartItem['cartItemKey']): CartItem[] {
+  const nextItems = removeGuestCartItem(readGuestCartItems(), cartItemKey)
+  if (nextItems.length > 0) {
+    saveGuestCartItems(nextItems)
+  } else {
+    clearGuestCartItems()
+  }
+  return nextItems
+}
+
 export function clearGuestCartItems(): CartItem[] {
   window.localStorage.removeItem(GUEST_CART_STORAGE_KEY)
   return []
