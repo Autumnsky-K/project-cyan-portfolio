@@ -1,11 +1,9 @@
-import { useEffect } from 'react'
 import CartPanel from '../features/store/components/CartPanel'
 import CheckoutForm from '../features/store/components/CheckoutForm'
 import OrderHistory from '../features/store/components/OrderHistory'
 import PaymentPanel from '../features/store/components/PaymentPanel'
 import ProductList from '../features/store/components/ProductList'
 import { useStoreFlow } from '../features/store/hooks/useStoreFlow'
-import { PAYMENT_METHODS } from '../features/store/utils/storeUtils'
 import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import Header from '../shared/components/Header'
 import './Store.css'
@@ -18,13 +16,6 @@ function Store() {
     defaultMemberId: access.member?.memberId,
     fetchOrderHistory: isAdmin,
   })
-
-  useEffect(() => {
-    if (access.isLoading || isAdmin) return
-    if (store.paymentMethod !== PAYMENT_METHODS.KAKAO_PAY) {
-      store.setPaymentMethod(PAYMENT_METHODS.KAKAO_PAY)
-    }
-  }, [access.isLoading, isAdmin, store.paymentMethod, store.setPaymentMethod])
 
   if (access.isLoading) {
     return (
@@ -106,13 +97,11 @@ function Store() {
                 message={store.message}
                 paymentMethod={store.paymentMethod}
                 paymentStatus={store.paymentStatus}
-                pendingPayment={store.pendingPayment}
                 totalPrice={store.totalPrice}
                 totalQuantity={store.totalQuantity}
                 onCancelPayment={store.handlePaymentCancel}
                 onFailPayment={() => store.handlePaymentFail()}
                 onPaymentMethodChange={store.setPaymentMethod}
-                onRetryPayment={store.retryPayment}
               />
             </form>
           </section>

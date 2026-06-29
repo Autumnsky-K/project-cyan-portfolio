@@ -65,8 +65,17 @@ export async function apiFetch(
       body,
       headers: await buildHeaders(body, headers),
     })
-  } catch {
-    throw new Error('서버에 연결할 수 없습니다. Spring 서버가 실행 중인지 확인해주세요.')
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
+      throw error
+    }
+
+    throw new Error('Unable to connect to the Spring API server.', {
+      cause: error,
+    })
   }
 }
 

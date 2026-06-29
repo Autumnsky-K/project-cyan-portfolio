@@ -57,16 +57,56 @@ public class PaymentAttempt {
 	protected PaymentAttempt() {
 	}
 
-	private PaymentAttempt(StoreOrder order, Payment payment) {
+	private PaymentAttempt(StoreOrder order, Payment payment, String provider) {
 		this.order = order;
 		this.payment = payment;
 		this.attemptStatus = "READY";
-		this.provider = "TOSS";
+		this.provider = provider;
 		this.providerOrderId = order.getOrderNo();
 		this.requestedAt = Instant.now();
 	}
 
 	static PaymentAttempt readyForToss(StoreOrder order, Payment payment) {
-		return new PaymentAttempt(order, payment);
+		return readyForProvider(order, payment, "TOSS");
+	}
+
+	static PaymentAttempt readyForProvider(StoreOrder order, Payment payment, String provider) {
+		return new PaymentAttempt(order, payment, provider);
+	}
+
+	public StoreOrder getOrder() {
+		return order;
+	}
+
+	public Payment getPayment() {
+		return payment;
+	}
+
+	public String getPaymentMethod() {
+		return paymentMethod;
+	}
+
+	public String getTid() {
+		return tid;
+	}
+
+	public String getPartnerOrderId() {
+		return partnerOrderId;
+	}
+
+	public String getPartnerUserId() {
+		return partnerUserId;
+	}
+
+	public String getAttemptStatus() {
+		return attemptStatus;
+	}
+
+	public String getProvider() {
+		return provider;
+	}
+
+	public String getProviderOrderId() {
+		return providerOrderId;
 	}
 }

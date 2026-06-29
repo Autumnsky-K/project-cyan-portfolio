@@ -21,17 +21,58 @@ const KAKAO_APPROVE_URL =
     ? `${SUPABASE_FUNCTIONS_URL}/kakao-approve`
     : `${API_BASE_URL}/payments/kakao/approve`)
 const KAKAO_CANCEL_URL =
-  import.meta.env.VITE_KAKAO_CANCEL_URL ?? `${API_BASE_URL}/payments/kakao/cancel`
+  import.meta.env.VITE_KAKAO_CANCEL_URL ??
+  (SUPABASE_FUNCTIONS_URL
+    ? `${SUPABASE_FUNCTIONS_URL}/kakao-cancel`
+    : `${API_BASE_URL}/payments/kakao/cancel`)
 const KAKAO_FAIL_URL =
-  import.meta.env.VITE_KAKAO_FAIL_URL ?? `${API_BASE_URL}/payments/kakao/fail`
+  import.meta.env.VITE_KAKAO_FAIL_URL ??
+  (SUPABASE_FUNCTIONS_URL
+    ? `${SUPABASE_FUNCTIONS_URL}/kakao-fail`
+    : `${API_BASE_URL}/payments/kakao/fail`)
+const PAYMENT_PREPARE_TIMEOUT_MS = Number(
+  import.meta.env.VITE_PAYMENT_PREPARE_TIMEOUT_MS ?? 15000,
+)
+
+function isAbortError(error) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
 
 async function parseResponse(response, fallbackMessage) {
-  if (!response.ok) {
-    const error = await response.json().catch(() => null)
-    throw new Error(error?.error ?? error?.message ?? fallbackMessage)
+  const text = await response.text().catch((error) => {
+    throw new Error(
+      `${fallbackMessage} Response body could not be read. status=${response.status} ${response.statusText}. ${error.message}`,
+      { cause: error },
+    )
+  })
+  let data = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch (error) {
+      if (!response.ok) {
+        throw new Error(
+          `${fallbackMessage} status=${response.status} ${response.statusText}. Non-JSON response: ${text.slice(0, 300)}`,
+          { cause: error },
+        )
+      }
+
+      throw new Error(
+        `${fallbackMessage} Invalid JSON response: ${text.slice(0, 300)}`,
+        { cause: error },
+      )
+    }
   }
 
-  return response.json()
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        data?.error ||
+        `${fallbackMessage} status=${response.status} ${response.statusText}`,
+    )
+  }
+
+  return data
 }
 
 function buildFunctionHeaders(headers = {}) {
@@ -87,32 +128,70 @@ function buildKakaoReadyPayload(order) {
 }
 
 export async function requestKakaoPayReady(order, options = {}) {
-  const response = await fetch(KAKAO_READY_URL, {
-    method: 'POST',
-    headers: buildFunctionHeaders(options.headers),
-    body: JSON.stringify(buildKakaoReadyPayload(order)),
-    ...options,
-  })
+  const controller = new AbortController()
+  const timeoutId = globalThis.setTimeout(() => {
+    controller.abort()
+  }, PAYMENT_PREPARE_TIMEOUT_MS)
+
+  let response
+
+  try {
+    response = await fetch(KAKAO_READY_URL, {
+      method: 'POST',
+      headers: buildFunctionHeaders(options.headers),
+      body: JSON.stringify(buildKakaoReadyPayload(order)),
+      ...options,
+      signal: options.signal ?? controller.signal,
+    })
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error('KakaoPay preparation timed out. No payment result was received.', {
+        cause: error,
+      })
+    }
+
+    throw error
+  } finally {
+    globalThis.clearTimeout(timeoutId)
+  }
 
   return parseResponse(response, 'Failed to prepare KakaoPay payment.')
 }
 
-export async function approveKakaoPay({ orderId, tid, pgToken }, options = {}) {
-  const response = await fetch(KAKAO_APPROVE_URL, {
-    method: 'POST',
-    headers: buildFunctionHeaders(options.headers),
-    body: JSON.stringify({ orderId, tid, pgToken }),
-    ...options,
-  })
+export async function approveKakaoPay({ orderId, tid, pgToken, partnerOrderId, partnerUserId }, options = {}) {
+  const payload = { orderId, tid, pgToken, partnerOrderId, partnerUserId }
+  let response
+
+  try {
+    response = await fetch(KAKAO_APPROVE_URL, {
+      method: 'POST',
+      headers: buildFunctionHeaders(options.headers),
+      body: JSON.stringify(payload),
+      ...options,
+    })
+  } catch (error) {
+    throw new Error(
+      `Failed to call KakaoPay approve endpoint. url=${KAKAO_APPROVE_URL}, orderId=${orderId}, hasTid=${Boolean(tid)}, hasPgToken=${Boolean(pgToken)}, hasPartnerUserId=${Boolean(partnerUserId)}. ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    )
+  }
 
   return parseResponse(response, 'Failed to approve KakaoPay payment.')
 }
 
-export async function cancelKakaoPay(orderId, options = {}) {
+export async function cancelKakaoPay(orderId, payment = {}, options = {}) {
   const response = await fetch(KAKAO_CANCEL_URL, {
     method: 'POST',
     headers: buildFunctionHeaders(options.headers),
-    body: JSON.stringify({ orderId }),
+    body: JSON.stringify({
+      orderId,
+      tid: payment.tid,
+      amount: payment.amount,
+      cancelAmount: payment.cancelAmount,
+      partnerOrderId: payment.partnerOrderId,
+    }),
     ...options,
   })
 

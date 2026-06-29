@@ -25,7 +25,6 @@ function PaymentPanel({
   message,
   paymentMethod,
   paymentStatus,
-  pendingPayment,
   totalPrice,
   totalQuantity,
   allowDevPayment = false,
@@ -33,12 +32,13 @@ function PaymentPanel({
   onCancelPayment,
   onFailPayment,
   onPaymentMethodChange,
-  onRetryPayment,
 }) {
   const paymentStatusLabel = getPaymentStatusLabel(paymentStatus)
   const visiblePaymentMethod = allowDevPayment
     ? paymentMethod
-    : PAYMENT_METHODS.KAKAO_PAY
+    : paymentMethod === PAYMENT_METHODS.KAKAO_PAY
+      ? PAYMENT_METHODS.KAKAO_PAY
+      : PAYMENT_METHODS.TOSS
 
   return (
     <aside className="payment-panel">
@@ -57,6 +57,16 @@ function PaymentPanel({
             Dev preview
           </label>
         )}
+        <label>
+          <input
+            checked={paymentMethod === PAYMENT_METHODS.TOSS}
+            name="paymentMethod"
+            onChange={(event) => onPaymentMethodChange(event.target.value)}
+            type="radio"
+            value={PAYMENT_METHODS.TOSS}
+          />
+          Toss Payments
+        </label>
         <label>
           <input
             checked={paymentMethod === PAYMENT_METHODS.KAKAO_PAY}
@@ -88,6 +98,7 @@ function PaymentPanel({
               {checkoutForm.phone.trim() || '-'}
             </p>
             <p>Address: {checkoutForm.address.trim() || '-'}</p>
+            <p>Delivery request: {checkoutForm.deliveryRequest.trim() || '-'}</p>
           </>
         )}
       </div>
@@ -120,28 +131,10 @@ function PaymentPanel({
           ? 'Preparing payment...'
           : visiblePaymentMethod === PAYMENT_METHODS.KAKAO_PAY
             ? 'Prepare KakaoPay'
+            : visiblePaymentMethod === PAYMENT_METHODS.TOSS
+              ? 'Prepare Toss Payments'
             : 'Create dev preview order'}
       </button>
-
-      {pendingPayment && (
-        <div className="pending-payment">
-          <strong>Pending payment exists</strong>
-          <p>Order: {pendingPayment.orderNo || pendingPayment.orderId}</p>
-          <p>Method: {getPaymentMethodLabel(pendingPayment.paymentMethod)}</p>
-          <p>
-            Created:{' '}
-            {pendingPayment.createdAt
-              ? new Date(pendingPayment.createdAt).toLocaleString('ko-KR')
-              : '-'}
-          </p>
-          <button type="button" onClick={onRetryPayment}>
-            Retry
-          </button>
-          <button type="button" onClick={onCancelPayment}>
-            Cancel
-          </button>
-        </div>
-      )}
 
       {message && <p className="status-message">{message}</p>}
 

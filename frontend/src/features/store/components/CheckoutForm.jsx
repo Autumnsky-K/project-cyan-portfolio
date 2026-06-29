@@ -35,6 +35,15 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
           rows="3"
         />
       </label>
+      <label className="full-width">
+        Delivery request
+        <textarea
+          value={checkoutForm.deliveryRequest}
+          onChange={(event) => onChange('deliveryRequest', event.target.value)}
+          placeholder="Delivery instructions"
+          rows="2"
+        />
+      </label>
       {errors.length > 0 && (
         <ul className="form-errors">
           {errors.map((error) => (

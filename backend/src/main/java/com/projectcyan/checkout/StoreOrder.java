@@ -2,6 +2,7 @@ package com.projectcyan.checkout;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import com.projectcyan.member.Member;
 
@@ -111,5 +112,33 @@ public class StoreOrder {
 
 	public BigDecimal getTotalAmount() {
 		return totalAmount;
+	}
+
+	public void markPaid() {
+		this.orderStatus = "PAID";
+	}
+
+	public void markCanceled() {
+		if (!isPaid()) {
+			this.orderStatus = "CANCELED";
+		}
+	}
+
+	public void markPaymentFailed() {
+		if (!isPaid()) {
+			this.orderStatus = "PENDING";
+		}
+	}
+
+	public boolean isPaid() {
+		return "PAID".equals(orderStatus);
+	}
+
+	public String getOrderStatus() {
+		return orderStatus;
+	}
+
+	public boolean isOwnedBy(UUID memberUuid) {
+		return memberUuid != null && member != null && memberUuid.equals(member.getMemberUuid());
 	}
 }

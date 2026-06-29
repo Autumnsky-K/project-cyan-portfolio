@@ -1,41 +1,26 @@
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from 'react-router-dom'
-import { approveKakaoPay } from '../api/payment'
 import {
   ORDER_CONTRACT_STATUS,
   PAYMENT_CONTRACT_STATUS,
   normalizeOrderStatus,
   normalizePaymentStatus,
 } from '../constants/status'
-import { approveLocalPreview } from '../features/store/services/paymentResultService'
-import { loadOrders } from '../features/store/storage/orderStorage'
-import {
-  clearPendingPayment,
-  loadPendingPayment,
-} from '../features/store/storage/paymentStorage'
+import { resolvePaymentApproval } from '../features/store/services/paymentResultService'
 import { formatPrice } from '../features/store/utils/storeUtils'
 import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
 import './Store.css'
-
-function findPreviewOrder(pendingPayment, orderId) {
-  const orderKey = pendingPayment?.localOrderId || pendingPayment?.orderId || orderId
-
-  return loadOrders().find(
-    (order) =>
-      order.orderId === orderKey ||
-      order.orderNumber === orderKey ||
-      order.orderId === pendingPayment?.localOrderId,
-  )
-}
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams()
   const access = useCurrentMemberAccess()
   const orderId = searchParams.get('orderId')
   const pgToken = searchParams.get('pg_token')
+  const paymentKey = searchParams.get('paymentKey')
+  const amount = searchParams.get('amount')
   const [result, setResult] = useState({
     status: 'loading',
-    userMessage: 'Confirming KakaoPay approval.',
+    userMessage: 'Confirming payment approval.',
     developerMessage: '',
     data: null,
   })
@@ -46,60 +31,43 @@ function PaymentSuccess() {
     }
 
     let ignore = false
-    const pendingPayment = loadPendingPayment()
-    const targetOrderId = orderId || pendingPayment?.orderId
-    const tid = pendingPayment?.tid
-    const previewOrder = findPreviewOrder(pendingPayment, targetOrderId)
 
-    if (!targetOrderId || !pgToken) {
-      Promise.resolve().then(() => {
-        if (ignore) return
-        setResult({
-          status: 'error',
-          userMessage: 'Missing payment approval data.',
-          developerMessage: 'orderId or pg_token is missing.',
-          data: { orderId: targetOrderId, order: previewOrder },
-        })
-      })
-      return undefined
-    }
-
-    approveKakaoPay({ orderId: targetOrderId, tid, pgToken })
-      .catch((error) => {
-        if (access.isAdmin) {
-          return approveLocalPreview({ orderId: targetOrderId, pgToken })
-        }
-
-        throw error
-      })
+    resolvePaymentApproval({
+      access: { isAdmin: access.isAdmin },
+      amount,
+      orderId,
+      paymentKey,
+      pgToken,
+    })
       .then((data) => {
         if (ignore) return
-        clearPendingPayment()
+        localStorage.removeItem('checkoutForm')
         setResult({
           status: 'success',
           userMessage: 'Payment approved.',
           developerMessage: '',
-          data: { ...data, order: data?.order || previewOrder, pendingPayment },
+          data,
         })
       })
       .catch((error) => {
         if (ignore) return
         setResult({
           status: 'error',
-          userMessage: 'Payment approval failed.',
+          userMessage: 'Payment result could not be verified.',
           developerMessage: error.message,
-          data: { orderId: targetOrderId, tid, pgToken, order: previewOrder },
+          data: { amount, orderId, paymentKey, pgToken },
         })
       })
 
     return () => {
       ignore = true
     }
-  }, [access.isAdmin, access.isLoading, orderId, pgToken])
+  }, [access.isAdmin, access.isLoading, amount, orderId, paymentKey, pgToken])
 
   const order = result.data?.order
   const orderNumber =
     order?.orderNumber ||
+    order?.orderNo ||
     result.data?.orderNo ||
     result.data?.pendingPayment?.orderNo ||
     result.data?.orderId ||
@@ -109,14 +77,12 @@ function PaymentSuccess() {
     result.data?.paymentStatus ||
       (result.status === 'success'
         ? PAYMENT_CONTRACT_STATUS.APPROVED
-        : PAYMENT_CONTRACT_STATUS.FAILED),
+        : 'UNVERIFIED'),
   )
   const orderStatus = normalizeOrderStatus(
     result.data?.orderStatus ||
       order?.status ||
-      (result.status === 'success'
-        ? ORDER_CONTRACT_STATUS.PAID
-        : ORDER_CONTRACT_STATUS.PENDING),
+      (result.status === 'success' ? ORDER_CONTRACT_STATUS.PAID : 'UNVERIFIED'),
   )
   const items = order?.items || []
 
@@ -126,6 +92,9 @@ function PaymentSuccess() {
         <p className="result-eyebrow">Payment result</p>
         <h1>Order Complete</h1>
         <p>{result.userMessage}</p>
+        {result.status === 'error' && result.developerMessage && (
+          <p className="status-message">{result.developerMessage}</p>
+        )}
         <div className="result-summary">
           <p>
             Order <strong>{orderNumber}</strong>

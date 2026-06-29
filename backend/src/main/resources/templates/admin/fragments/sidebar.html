@@ -69,7 +69,7 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'storage'} ? 'open' : null">
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'storage' or current == 'payment'} ? 'open' : null">
       <summary class="admin-nav-parent">데이터 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -81,9 +81,9 @@
         <a class="admin-nav-child"
            th:href="@{/admin/storage}"
            th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>
-        <button class="admin-nav-child admin-nav-placeholder"
-                type="button"
-                data-admin-placeholder="결제 관리">결제 관리</button>
+        <a class="admin-nav-child"
+           th:href="@{/admin/payment}"
+           th:attr="aria-current=${current == 'payment'} ? 'page' : null">결제 관리</a>
       </div>
     </details>
 
@@ -114,10 +114,7 @@
             title="챗봇 애니메이션 관리"
             aria-label="챗봇 애니메이션 관리"
             data-admin-placeholder="챗봇 애니메이션 관리">AN</button>
-    <button type="button"
-            title="결제 관리"
-            aria-label="결제 관리"
-            data-admin-placeholder="결제 관리">P</button>
+    <a th:href="@{/admin/payment}" title="결제 관리" aria-label="결제 관리">P</a>
   </nav>
 
   <script>
