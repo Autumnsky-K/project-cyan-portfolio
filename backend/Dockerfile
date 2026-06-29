@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM --platform=linux/amd64 eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
@@ -6,7 +6,7 @@ RUN ./gradlew dependencies --no-daemon -q
 COPY src ./src
 RUN ./gradlew bootJar -x test --no-daemon
 
-FROM eclipse-temurin:21-jre-alpine
+FROM --platform=linux/amd64 eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
 EXPOSE 8080
