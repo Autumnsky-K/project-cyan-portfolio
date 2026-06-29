@@ -30,6 +30,7 @@ public class GoodsService {
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
+	private final GoodsFavoriteRepository goodsFavoriteRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -37,7 +38,8 @@ public class GoodsService {
 		GoodsCategoryRepository goodsCategoryRepository,
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
-		GoodsReviewRepository goodsReviewRepository
+		GoodsReviewRepository goodsReviewRepository,
+		GoodsFavoriteRepository goodsFavoriteRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -45,6 +47,7 @@ public class GoodsService {
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
+		this.goodsFavoriteRepository = goodsFavoriteRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -90,14 +93,17 @@ public class GoodsService {
 		);
 
 		var goodsPage = goodsRepository.findAll(specification, pageable);
+		List<Goods> pageGoods = goodsPage.getContent();
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
-			goodsPage.getContent().stream().map(Goods::getGoodsId).toList()
+			pageGoods.stream().map(Goods::getGoodsId).toList()
 		);
+		Map<Long, Long> favoriteCounts = favoriteCounts(pageGoods);
 		return new PageResponse<>(
-			goodsPage.getContent().stream()
+			pageGoods.stream()
 				.map(goods -> GoodsSummaryResponse.from(
 					goods,
-					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty())
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+					favoriteCounts.getOrDefault(goods.getGoodsId(), 0L)
 				))
 				.toList(),
 			goodsPage.getNumber(),
@@ -148,12 +154,28 @@ public class GoodsService {
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
 			relatedGoods.stream().map(Goods::getGoodsId).toList()
 		);
+		Map<Long, Long> favoriteCounts = favoriteCounts(relatedGoods);
 		return relatedGoods.stream()
 			.map(item -> GoodsSummaryResponse.from(
 				item,
-				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty())
+				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty()),
+				favoriteCounts.getOrDefault(item.getGoodsId(), 0L)
 			))
 			.toList();
+	}
+
+	private Map<Long, Long> favoriteCounts(List<Goods> goods) {
+		List<Long> goodsIds = goods.stream()
+			.map(Goods::getGoodsId)
+			.toList();
+		if (goodsIds.isEmpty()) {
+			return Map.of();
+		}
+		return goodsFavoriteRepository.countByGoodsIdIn(goodsIds).stream()
+			.collect(java.util.stream.Collectors.toMap(
+				GoodsFavoriteRepository.GoodsFavoriteCount::getGoodsId,
+				GoodsFavoriteRepository.GoodsFavoriteCount::getFavoriteCount
+			));
 	}
 
 	public PageResponse<GoodsReviewResponse> findGoodsReviews(Long goodsId, int page, int size, String sort) {
