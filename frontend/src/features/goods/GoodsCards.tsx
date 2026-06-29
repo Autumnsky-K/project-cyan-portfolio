@@ -50,73 +50,78 @@ function GoodsCards({
 
   return (
     <div className={`goods-grid goods-${viewMode}`}>
-      {items.map((item) => (
-        <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
-          <Link
-            className="goods-image goods-detail-link"
-            aria-label={`${item.name} 상세 보기`}
-            to={`/goods/${item.goodsId}`}
-            onClick={openDetail(item.goodsId)}
-          >
-            <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
-          </Link>
-          <div className="goods-card-body">
-            <div className="card-topline">
-              <span>{item.artistName ?? 'SM Artist'}</span>
-              <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
-            </div>
-            <h3>
-              <Link
-                className="goods-name-link"
-                to={`/goods/${item.goodsId}`}
-                onClick={openDetail(item.goodsId)}
-              >
-                {item.name}
-              </Link>
-            </h3>
-            <p>{item.categoryName ?? 'Goods'}</p>
-            <GoodsRatingSummary
-              averageRating={item.averageRating}
-              reviewCount={item.reviewCount}
-              compact
-            />
-            {(item.tags ?? []).length > 0 && (
-              <div className="tag-row">
-                {(item.tags ?? []).map((tag) => <span key={tag}>{tag}</span>)}
+      {items.map((item) => {
+        const tags = item.tags ?? []
+        const hasReviews = Number(item.reviewCount ?? 0) > 0
+
+        return (
+          <article className="goods-card" data-goods-id={item.goodsId} key={item.goodsId}>
+            <Link
+              className="goods-image goods-detail-link"
+              aria-label={`${item.name} 상세 보기`}
+              to={`/goods/${item.goodsId}`}
+              onClick={openDetail(item.goodsId)}
+            >
+              <GoodsImage src={item.imageUrl} alt={item.name} fallbackLabel={item.categoryName} />
+            </Link>
+            <div className="goods-card-body">
+              <div className="card-topline">
+                <span>{item.artistName ?? 'SM Artist'}</span>
+                <GoodsStatusBadge salesStatus={item.salesStatus} isBestSeller={item.isBestSeller} />
               </div>
-            )}
-            <div className="card-footer">
-              <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
-              <div className="card-footer-actions">
-                <button
-                  className="card-action"
-                  type="button"
-                  disabled={addingGoodsId === item.goodsId}
-                  onClick={() => void handleAddCart(item)}
-                >
-                  {addingGoodsId === item.goodsId ? 'Adding' : 'Cart'}
-                </button>
+              <h3>
                 <Link
-                  className="card-action"
+                  className="goods-name-link"
                   to={`/goods/${item.goodsId}`}
                   onClick={openDetail(item.goodsId)}
                 >
-                  View
+                  {item.name}
                 </Link>
-                <button
-                  className="favorite-button"
-                  type="button"
-                  aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
-                  aria-pressed={isFavorite(item.goodsId)}
-                  onClick={() => toggleFavorite(item.goodsId)}
-                >
-                  <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
-                </button>
+              </h3>
+              <p>{item.categoryName ?? 'Goods'}</p>
+              <div className="tag-row" data-empty={tags.length === 0}>
+                {tags.map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
+              <div className="card-footer">
+                <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
+                {hasReviews && (
+                  <GoodsRatingSummary
+                    averageRating={item.averageRating}
+                    reviewCount={item.reviewCount}
+                    compact
+                  />
+                )}
+                <div className="card-footer-actions">
+                  <button
+                    className="card-action"
+                    type="button"
+                    disabled={addingGoodsId === item.goodsId}
+                    onClick={() => void handleAddCart(item)}
+                  >
+                    {addingGoodsId === item.goodsId ? 'Adding' : 'Cart'}
+                  </button>
+                  <Link
+                    className="card-action"
+                    to={`/goods/${item.goodsId}`}
+                    onClick={openDetail(item.goodsId)}
+                  >
+                    View
+                  </Link>
+                  <button
+                    className="favorite-button"
+                    type="button"
+                    aria-label={isFavorite(item.goodsId) ? `Remove ${item.name} from favorites` : `Add ${item.name} to favorites`}
+                    aria-pressed={isFavorite(item.goodsId)}
+                    onClick={() => toggleFavorite(item.goodsId)}
+                  >
+                    <span aria-hidden="true">{isFavorite(item.goodsId) ? '♥' : '♡'}</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        )
+      })}
     </div>
   )
 }
