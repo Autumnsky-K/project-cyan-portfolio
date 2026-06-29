@@ -1,4 +1,5 @@
 const aiAdminRoot = document.querySelector('[data-ai-admin]')
+const aiBugLabRoot = document.querySelector('[data-ai-bug-lab]')
 const hookPolicyHeader = ['hook', 'check', 'threshold', 'action', 'message']
 const hookOptions = ['input', 'output']
 const actionTypes = ['navigate', 'highlight', 'addToCart']
@@ -636,5 +637,150 @@ if (aiAdminRoot) {
     detailsElement.querySelector('summary')?.addEventListener('click', () => {
       setTimeout(() => syncSummaryButton(detailsElement), 0)
     })
+  })
+}
+
+const aiBugStorageKey = 'projectCyanAiBehaviorBugQueue'
+
+const defaultAiBugs = [
+  {
+    id: 'inspector-density',
+    title: '사이드바 텍스트박스 과밀/스크롤 과다',
+    area: '8002 조합기 인스펙터',
+    note: '기본 화면은 output과 흐름만 보이고, IO/세부 정보는 버튼으로 접는다.',
+    status: 'done',
+  },
+  {
+    id: 'connected-preview',
+    title: '연결 프리뷰가 실제 입력칸처럼 보임',
+    area: '8002 텍스트 조합기',
+    note: '연결된 입력은 readonly textarea 대신 짧은 프리뷰 카드로 표시한다.',
+    status: 'done',
+  },
+  {
+    id: 'node-runtime-boundary',
+    title: '함수/LLM 노드가 실제 실행인지 구분 필요',
+    area: '8002 노드 실행부',
+    note: '함수 노드와 LLM 노드의 실행 경계, 실패 로그, RAW 출력 위치를 한 화면에서 확인한다.',
+    status: 'todo',
+  },
+  {
+    id: 'admin-subpage',
+    title: '실험 UI를 관리자 AI 행동관리 sub로 격리',
+    area: '/admin/ai/behavior-lab',
+    note: '기존 workbook은 유지하고, 실험/버그 수정은 하위 화면에서 처리한다.',
+    status: 'doing',
+  },
+]
+
+function readAiBugQueue() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(aiBugStorageKey) || 'null')
+    return Array.isArray(parsed) ? parsed : defaultAiBugs
+  } catch {
+    return defaultAiBugs
+  }
+}
+
+function saveAiBugQueue(items) {
+  localStorage.setItem(aiBugStorageKey, JSON.stringify(items))
+}
+
+function aiBugStatusLabel(status) {
+  if (status === 'done') return '완료'
+  if (status === 'doing') return '수정중'
+  return '대기'
+}
+
+function nextAiBugStatus(status) {
+  if (status === 'todo') return 'doing'
+  if (status === 'doing') return 'done'
+  return 'todo'
+}
+
+function renderAiBugQueue() {
+  const list = aiBugLabRoot?.querySelector('[data-ai-bug-list]')
+  if (!list) {
+    return
+  }
+
+  const items = readAiBugQueue()
+  if (items.length === 0) {
+    list.innerHTML = '<p class="admin-ai-bug-empty">등록된 버그가 없습니다.</p>'
+    return
+  }
+
+  list.innerHTML = items.map((item) => `
+    <article class="admin-ai-bug-card" data-status="${escapeHtml(item.status || 'todo')}">
+      <div>
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${escapeHtml(item.area || '위치 미지정')}</span>
+      </div>
+      <p>${escapeHtml(item.note || '')}</p>
+      <footer>
+        <button type="button" data-ai-bug-next="${escapeHtml(item.id)}">${aiBugStatusLabel(item.status)}</button>
+        <button type="button" data-ai-bug-remove="${escapeHtml(item.id)}">삭제</button>
+      </footer>
+    </article>
+  `).join('')
+}
+
+if (aiBugLabRoot) {
+  if (!localStorage.getItem(aiBugStorageKey)) {
+    saveAiBugQueue(defaultAiBugs)
+  }
+  renderAiBugQueue()
+
+  aiBugLabRoot.querySelector('[data-ai-bug-form]')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const titleInput = aiBugLabRoot.querySelector('[data-ai-bug-title]')
+    const areaInput = aiBugLabRoot.querySelector('[data-ai-bug-area]')
+    const noteInput = aiBugLabRoot.querySelector('[data-ai-bug-note]')
+    const title = titleInput?.value.trim()
+    if (!title) {
+      return
+    }
+    const items = readAiBugQueue()
+    items.unshift({
+      id: `bug-${Date.now()}`,
+      title,
+      area: areaInput?.value.trim() || 'AI 행동관리',
+      note: noteInput?.value.trim() || '',
+      status: 'todo',
+    })
+    saveAiBugQueue(items)
+    event.currentTarget.reset()
+    renderAiBugQueue()
+  })
+
+  aiBugLabRoot.querySelector('[data-ai-bug-list]')?.addEventListener('click', (event) => {
+    const nextButton = event.target.closest('[data-ai-bug-next]')
+    const removeButton = event.target.closest('[data-ai-bug-remove]')
+    if (!nextButton && !removeButton) {
+      return
+    }
+
+    const id = nextButton?.dataset.aiBugNext || removeButton?.dataset.aiBugRemove
+    let items = readAiBugQueue()
+    if (nextButton) {
+      items = items.map((item) => item.id === id ? { ...item, status: nextAiBugStatus(item.status || 'todo') } : item)
+    }
+    if (removeButton) {
+      items = items.filter((item) => item.id !== id)
+    }
+    saveAiBugQueue(items)
+    renderAiBugQueue()
+  })
+
+  aiBugLabRoot.querySelector('[data-ai-bug-reset]')?.addEventListener('click', () => {
+    saveAiBugQueue(defaultAiBugs)
+    renderAiBugQueue()
+  })
+
+  aiBugLabRoot.querySelector('[data-ai-lab-reload]')?.addEventListener('click', () => {
+    const iframe = aiBugLabRoot.querySelector('iframe')
+    if (iframe) {
+      iframe.src = iframe.src
+    }
   })
 }

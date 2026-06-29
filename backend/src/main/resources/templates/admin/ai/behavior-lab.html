@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 행동관리 실험/버그</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai-behavior-lab', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-ai-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">AI Behavior Lab</p>
+        <h2>행동관리 실험/버그</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/ai}">워크북</a>
+      </div>
+    </header>
+
+    <section class="admin-ai-lab-layout">
+      <section class="admin-ai-lab-frame-panel" aria-label="AI 행동관리 실험 링크">
+        <header class="admin-ai-lab-panel-header">
+          <div>
+            <p class="admin-eyebrow">Linked Experiment</p>
+            <h3>AI 관리자 그래프 실험</h3>
+          </div>
+        </header>
+        <div class="admin-ai-lab-run-note">
+          <span>복사된 프로젝트 폴더</span>
+          <code>backend/src/main/resources/static/admin/ai/behavior-lab-project</code>
+        </div>
+        <div class="admin-ai-lab-link-box">
+          <p>관리자 하위에 복사한 실험 앱을 새 창 링크 버튼으로 엽니다.</p>
+          <a class="admin-ai-lab-open-button" th:href="@{/admin/ai/behavior-lab-project/dist/index.html}" target="_blank" rel="noopener">
+            실험 앱 열기
+          </a>
+        </div>
+      </section>
+    </section>
+  </section>
+</main>
+</body>
+</html>
