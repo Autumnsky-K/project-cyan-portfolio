@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from project_cyan_ai.favorite_artists import favorite_artist_ids
+from project_cyan_ai.personalization_context import build_personalized_prompt
 from project_cyan_ai.providers.chat_response import (
     ChatResponseProvider,
     MockChatResponseProvider,
@@ -296,6 +297,7 @@ class CatalogGroundedChatResponseProvider:
         text: str,
         context: dict[str, Any] | None = None,
         favorite_artists: list[dict[str, Any]] | None = None,
+        personalization_context: dict[str, Any] | None = None,
     ) -> FullTextMessage:
         follow_up_response = build_follow_up_cart_response(
             text,
@@ -305,11 +307,17 @@ class CatalogGroundedChatResponseProvider:
             return follow_up_response
 
         if not has_product_intent(text):
-            return self.delegate.build_response(text, context)
+            return self.delegate.build_response(
+                self._personalized_text(text, personalization_context),
+                context,
+            )
 
         candidates = self.catalog_client.search_candidates(text, favorite_artists)
         if candidates is None:
-            return self.delegate.build_response(text, context)
+            return self.delegate.build_response(
+                self._personalized_text(text, personalization_context),
+                context,
+            )
         self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
         if not candidates:
             return FullTextMessage(
@@ -320,7 +328,10 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return build_mock_catalog_response(text, candidates)
 
-        prompt = build_catalog_prompt(text, candidates, favorite_artists)
+        prompt = build_personalized_prompt(
+            build_catalog_prompt(text, candidates, favorite_artists),
+            personalization_context,
+        )
         response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
@@ -339,6 +350,15 @@ class CatalogGroundedChatResponseProvider:
             ),
             metadata=recommendation_metadata(candidates),
         )
+
+    def _personalized_text(
+        self,
+        text: str,
+        personalization_context: dict[str, Any] | None,
+    ) -> str:
+        if isinstance(self.delegate, MockChatResponseProvider):
+            return text
+        return build_personalized_prompt(text, personalization_context)
 
 
 def has_product_intent(text: str) -> bool:
@@ -711,6 +731,7 @@ def strip_internal_candidate_fields(candidate: dict[str, Any]) -> dict[str, Any]
             "tags",
             "artistId",
             "artistName",
+            "groupName",
             "categoryName",
             "salesStatus",
             "stockCount",
@@ -883,6 +904,7 @@ def normalize_recent_candidates(candidates: list[dict[str, Any]]) -> list[dict[s
                     "price",
                     "tags",
                     "artistName",
+                    "groupName",
                     "categoryName",
                 )
             }
@@ -917,6 +939,7 @@ def build_catalog_prompt(
                 "tags",
                 "artistId",
                 "artistName",
+                "groupName",
                 "categoryName",
                 "stockCount",
                 "recommendationReason",

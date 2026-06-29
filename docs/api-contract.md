@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.7` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.8` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -501,6 +501,8 @@
 - `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID이며, 없거나 auth 메시지가 없으면 AI 서버는 기존처럼 저장 없이 응답한다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
 - 로그인 사용자는 WebSocket 연결 후 auth 메시지를 먼저 보낸 뒤 `text-input`에는 access token을 반복 전송하지 않는다.
+- AI 서버는 같은 `sessionId`의 이전 USER/ASSISTANT 메시지를 최근 20개까지 유지해 후속 LLM 요청에 주입한다.
+- WebSocket 재연결 시 현재 세션 메시지를 Spring에서 한 번 복원하며, 다른 세션의 원문은 직접 주입하지 않고 세션 요약만 사용한다.
 
 #### [GET] /api/ai/goods-catalog/latest
 - 설명: AI 서버가 최신 TSV 상품 카탈로그 URL을 조회
@@ -528,6 +530,23 @@
   - `priority`: 적용 순서
   - `updatedAt`: 마지막 변경 시각
 - 비고: WebSocket 메시지 형태는 바꾸지 않고, hook 위반 시에도 `{ type: "full-text", text, actions: [] }` 형태로 응답한다.
+- 상태: [x] additive
+
+#### [GET] /api/ai/personalization-context
+- 설명: AI 서버가 로그인 회원의 추천·대화 개인화 컨텍스트를 통합 조회
+- 인증 필요: Y
+- 요청 query:
+  - `recentSessionLimit`: 최근 대화 세션 수, 기본값 및 최대값 `3`
+  - `excludeSessionId`: 현재 대화에서 제외할 세션 ID (optional)
+- 응답:
+  - `favoriteArtists`: 배열 `{ artistId, name, imageUrl }`
+  - `favoriteGoods`: 상품 요약 배열
+  - `cartItems`: 장바구니 상품 배열
+  - `recentPurchasedGoods`: 최대 20개 배열 `{ goodsId, name, artistName, price, quantity, orderStatus, purchasedAt }`
+  - `recentChatSessions`: 오래된 순서의 배열 `{ sessionId, startedAt, endedAt, summary, needsSummary }`
+- 구매 이력은 주문 상태가 `PAID`, `PREPARING`, `SHIPPED`, `DONE`인 상품만 포함한다.
+- `needsSummary`는 요약이 없거나 저장된 `sourceLastMessageId` 이후 USER/ASSISTANT 메시지가 존재함을 뜻한다.
+- 회원 ID는 query로 받지 않고 인증된 회원에서 결정한다.
 - 상태: [x] additive
 
 #### 초기 구성
@@ -602,6 +621,19 @@
 - 비고: AI 서버가 전달한 `Authorization: Bearer <Supabase access_token>`을 Spring이 최종 검증한다.
 - 상태: [x] additive
 
+#### [PUT] /api/virtual-chat/sessions/{sessionId}/summary
+- 설명: AI 서버가 생성한 세션별 구조화 요약을 생성 또는 갱신
+- 인증 필요: Y
+- 요청 body:
+  - `summary`: `{ summary, preferences, dislikedItems, constraints, mentionedGoodsIds, unresolvedRequests }`
+  - `sourceMessageCount`: 요약에 반영된 USER/ASSISTANT 메시지 수
+  - `sourceLastMessageId`: 요약에 반영된 마지막 메시지 ID
+- 응답: `200 { sessionId, summary, summaryVersion, sourceMessageCount, sourceLastMessageId, createdAt, updatedAt }`
+- 제한: `summary` 1,000자, 각 문자열 배열 최대 10개·항목당 200자, `mentionedGoodsIds` 최대 20개
+- 권한: 세션 소유 회원만 저장 가능하며 다른 회원의 세션은 `404`로 처리한다.
+- 비고: 동일 세션 요청은 `virtual_chat_session_summary` 레코드를 upsert한다.
+- 상태: [x] additive
+
 #### [PATCH] /api/virtual-chat/sessions/{sessionId}/end
 - 설명: 로그인 사용자의 AI 채팅 세션 종료 시각 기록
 - 인증 필요: Y
@@ -614,6 +646,8 @@ DB 저장 정책:
 - `virtual_chat_message.actions_json`에는 WebSocket `actions` 배열을 JSON으로 저장한다.
 - `virtual_chat_message.metadata_json`에는 모델명, 저장 실패 원인 등 비계약 운영 정보를 저장할 수 있다.
 - `virtual_recommendation.message_id`는 추천을 포함한 assistant 메시지에 연결한다.
+- 채팅 원문은 PostgreSQL에 유지하고 세션 요약은 `virtual_chat_session_summary.summary_json` JSONB에 저장한다.
+- 요약에는 USER/ASSISTANT 메시지만 반영하며 Storage 파일은 채팅의 주 저장소로 사용하지 않는다.
 - Supabase token, service role key, LLM 내부 prompt, 불필요한 장바구니 전체 context는 저장하지 않는다.
 
 ---
@@ -708,4 +742,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-25 | v0.2.5 | ai/virtual-chat | additive | AI WebSocket 응답에 추천 이력 저장용 optional `metadata.recommendations` 추가 | 강승민 |
 | 2026-06-26 | v0.2.6 | ai/virtual-chat | additive | WebSocket `auth` 메시지를 추가하고 메시지·추천 이력 저장 주체를 프론트 직접 호출에서 AI 서버 경유 호출로 정리 | 강승민 |
 | 2026-06-26 | v0.2.7 | ai/member/goods | additive | 회원 선호 아티스트 조회 API `GET /api/members/me/favorite-artists`와 AI 추천 후보 `preferredArtistIds`, `artistId` 응답 필드 추가 | 강승민 |
+| 2026-06-29 | v0.2.8 | ai/virtual-chat | additive | 통합 개인화 컨텍스트 조회와 PostgreSQL JSONB 기반 세션 요약 upsert API 추가 | 강승민 |
 |  |  |  |  |  |  |

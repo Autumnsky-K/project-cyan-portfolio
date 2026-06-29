@@ -15,6 +15,11 @@ public class VirtualChatService {
 	private static final long DEFAULT_GUIDE_ID = 1L;
 	private static final int DEFAULT_PAGE_SIZE = 20;
 	private static final int MAX_PAGE_SIZE = 50;
+	private static final int MAX_RECENT_SESSION_LIMIT = 3;
+	private static final int MAX_SUMMARY_LENGTH = 1000;
+	private static final int MAX_SUMMARY_LIST_SIZE = 10;
+	private static final int MAX_SUMMARY_ITEM_LENGTH = 200;
+	private static final int MAX_MENTIONED_GOODS_SIZE = 20;
 
 	private final VirtualChatRepository virtualChatRepository;
 
@@ -47,6 +52,27 @@ public class VirtualChatService {
 	public List<VirtualChatMessageResponse> findMessages(Long memberId, Long sessionId) {
 		ensureOwnedSession(memberId, sessionId);
 		return virtualChatRepository.findMessages(sessionId);
+	}
+
+	@Transactional(readOnly = true)
+	public List<RecentChatSessionContextResponse> findRecentSessionContexts(
+		Long memberId,
+		Long excludeSessionId,
+		int limit
+	) {
+		int safeLimit = Math.max(1, Math.min(limit <= 0 ? MAX_RECENT_SESSION_LIMIT : limit, MAX_RECENT_SESSION_LIMIT));
+		return virtualChatRepository.findRecentSessionContexts(memberId, excludeSessionId, safeLimit);
+	}
+
+	@Transactional
+	public VirtualChatSummaryResponse upsertSummary(
+		Long memberId,
+		Long sessionId,
+		VirtualChatSummaryRequest request
+	) {
+		ensureOwnedSession(memberId, sessionId);
+		validateSummaryRequest(request);
+		return virtualChatRepository.upsertSummary(sessionId, request);
 	}
 
 	@Transactional
@@ -95,6 +121,49 @@ public class VirtualChatService {
 			if (recommendation.goodsId() == null) {
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Recommendation goodsId is required.");
 			}
+		}
+	}
+
+	private void validateSummaryRequest(VirtualChatSummaryRequest request) {
+		if (request == null || request.summary() == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Summary is required.");
+		}
+		if (request.sourceMessageCount() == null || request.sourceMessageCount() < 1) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceMessageCount must be positive.");
+		}
+		if (request.sourceLastMessageId() == null || request.sourceLastMessageId() < 1) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sourceLastMessageId must be positive.");
+		}
+
+		VirtualChatSummaryContent summary = request.summary();
+		validateText(summary.summary(), MAX_SUMMARY_LENGTH, "summary");
+		validateTextList(summary.preferences(), "preferences");
+		validateTextList(summary.dislikedItems(), "dislikedItems");
+		validateTextList(summary.constraints(), "constraints");
+		validateTextList(summary.unresolvedRequests(), "unresolvedRequests");
+		if (summary.mentionedGoodsIds() != null) {
+			if (summary.mentionedGoodsIds().size() > MAX_MENTIONED_GOODS_SIZE
+				|| summary.mentionedGoodsIds().stream().anyMatch(goodsId -> goodsId == null || goodsId < 1)) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "mentionedGoodsIds is invalid.");
+			}
+		}
+	}
+
+	private void validateTextList(List<String> values, String fieldName) {
+		if (values == null) {
+			return;
+		}
+		if (values.size() > MAX_SUMMARY_LIST_SIZE) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " has too many items.");
+		}
+		for (String value : values) {
+			validateText(value, MAX_SUMMARY_ITEM_LENGTH, fieldName);
+		}
+	}
+
+	private void validateText(String value, int maxLength, String fieldName) {
+		if (value == null || value.isBlank() || value.length() > maxLength) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is invalid.");
 		}
 	}
 
