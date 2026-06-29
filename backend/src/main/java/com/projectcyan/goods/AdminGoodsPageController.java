@@ -11,6 +11,7 @@ import com.projectcyan.storage.AdminStoragePageController;
 import com.projectcyan.storage.SupabaseStorageException;
 import com.projectcyan.storage.SupabaseStorageService;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -42,19 +43,22 @@ public class AdminGoodsPageController {
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final SupabaseStorageService supabaseStorageService;
+	private final String frontendPreviewBaseUrl;
 
 	public AdminGoodsPageController(
 		GoodsService goodsService,
 		AdminGoodsService adminGoodsService,
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository,
-		SupabaseStorageService supabaseStorageService
+		SupabaseStorageService supabaseStorageService,
+		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
 	) {
 		this.goodsService = goodsService;
 		this.adminGoodsService = adminGoodsService;
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.supabaseStorageService = supabaseStorageService;
+		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
 
 	@GetMapping("/admin/goods")
@@ -62,6 +66,7 @@ public class AdminGoodsPageController {
 		@RequestParam(required = false) String q,
 		@RequestParam(required = false) Long artistId,
 		@RequestParam(required = false) Long categoryId,
+		@RequestParam(required = false) String salesStatus,
 		@RequestParam(defaultValue = "createdAt,desc") String sort,
 		@RequestParam(defaultValue = "0") int page,
 		Model model
@@ -72,6 +77,7 @@ public class AdminGoodsPageController {
 			null,
 			categoryId,
 			null,
+			salesStatus,
 			null,
 			null,
 			null,
@@ -86,13 +92,15 @@ public class AdminGoodsPageController {
 		model.addAttribute("q", q == null ? "" : q);
 		model.addAttribute("artistId", artistId);
 		model.addAttribute("categoryId", categoryId);
+		model.addAttribute("salesStatus", salesStatus == null ? "" : salesStatus);
 		model.addAttribute("sort", sort);
 		model.addAttribute("pageNumbers", pageNumbers(goodsPage.page(), goodsPage.totalPages()));
 		model.addAttribute("salesStatuses", SALES_STATUSES);
 		model.addAttribute("salesStatusLabels", SALES_STATUS_LABELS);
 		model.addAttribute("stockCounts", stockCounts);
 		model.addAttribute("bulkRows", bulkRows(goodsPage.content(), stockCounts));
-		model.addAttribute("defaultGoodsChecked", hasActiveGoodsFilter(q, artistId, categoryId));
+		model.addAttribute("defaultGoodsChecked", false);
+		model.addAttribute("frontendGoodsBaseUrl", frontendPreviewBaseUrl + "/goods");
 		return "admin/goods/list";
 	}
 
@@ -172,6 +180,7 @@ public class AdminGoodsPageController {
 		@RequestParam(required = false) String q,
 		@RequestParam(required = false) Long artistId,
 		@RequestParam(required = false) Long categoryId,
+		@RequestParam(required = false) String filterSalesStatus,
 		@RequestParam(defaultValue = "createdAt,desc") String sort,
 		@RequestParam(defaultValue = "0") int page,
 		RedirectAttributes redirectAttributes
@@ -191,7 +200,7 @@ public class AdminGoodsPageController {
 			);
 			if (selectedRows.isEmpty()) {
 				redirectAttributes.addFlashAttribute("error", "선택한 굿즈가 없습니다.");
-				return redirectToGoods(q, artistId, categoryId, sort, page);
+				return redirectToGoods(q, artistId, categoryId, filterSalesStatus, sort, page);
 			}
 			int updatedCount = adminGoodsService.bulkUpdateGoods(selectedRows);
 			redirectAttributes.addFlashAttribute("notice", updatedCount + "개 굿즈가 갱신되었습니다.");
@@ -199,7 +208,7 @@ public class AdminGoodsPageController {
 			redirectAttributes.addFlashAttribute("error", adminGoodsErrorMessage(exception));
 		}
 
-		return redirectToGoods(q, artistId, categoryId, sort, page);
+		return redirectToGoods(q, artistId, categoryId, filterSalesStatus, sort, page);
 	}
 
 	@PostMapping("/admin/goods/{goodsId}/status")
@@ -294,11 +303,7 @@ public class AdminGoodsPageController {
 		return rows;
 	}
 
-	private boolean hasActiveGoodsFilter(String q, Long artistId, Long categoryId) {
-		return (q != null && !q.isBlank()) || artistId != null || categoryId != null;
-	}
-
-	private String redirectToGoods(String q, Long artistId, Long categoryId, String sort, int page) {
+	private String redirectToGoods(String q, Long artistId, Long categoryId, String salesStatus, String sort, int page) {
 		UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/admin/goods");
 		if (q != null && !q.isBlank()) {
 			builder.queryParam("q", q.trim());
@@ -308,6 +313,9 @@ public class AdminGoodsPageController {
 		}
 		if (categoryId != null) {
 			builder.queryParam("categoryId", categoryId);
+		}
+		if (salesStatus != null && !salesStatus.isBlank()) {
+			builder.queryParam("salesStatus", salesStatus.trim());
 		}
 		builder.queryParam("sort", sort == null || sort.isBlank() ? "createdAt,desc" : sort);
 		builder.queryParam("page", Math.max(page, 0));
@@ -417,5 +425,12 @@ public class AdminGoodsPageController {
 		int startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages));
 		int endPage = Math.min(totalPages, startPage + maxVisiblePages);
 		return java.util.stream.IntStream.range(startPage, endPage).boxed().toList();
+	}
+
+	private static String trimTrailingSlash(String value) {
+		if (value == null || value.isBlank()) {
+			return "http://localhost:5173";
+		}
+		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
 }
