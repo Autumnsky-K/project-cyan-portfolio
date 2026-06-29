@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.8` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.9` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -491,18 +491,39 @@
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
 - 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
-- 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional)
+- 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional), `metadata.authRequired`, `metadata.authReason`, `metadata.loginPath` (로그인 CTA, optional)
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
 - `auth.accessToken`은 로그인 사용자의 Supabase access token이며, AI 서버는 연결 메모리에만 보관하고 DB·로그에 저장하지 않는다.
 - `metadata.recommendations[]` 항목은 `{ goodsId, recommendationReason, rankOrder }` 형태이며, AI 서버는 채팅 이력 저장 시 `virtual_recommendation` 저장에 사용할 수 있다.
+- 로그인 필요 응답은 기존 `full-text` 형태와 빈 `actions`를 유지하고 다음 additive metadata를 포함한다.
+
+```json
+{
+  "type": "full-text",
+  "text": "로그인하면 이전 대화와 회원 정보를 참고할 수 있어요.",
+  "actions": [],
+  "metadata": {
+    "authRequired": true,
+    "authReason": "accountPersonalization | chatHistory | persistence | guestLimit",
+    "loginPath": "/login"
+  }
+}
+```
+
+- `authReason`은 회원 찜·구매 기반 추천 `accountPersonalization`, 이전 세션 대화 `chatHistory`, 다음 접속을 위한 저장·기억 `persistence`, 게스트 이용 한도 `guestLimit` 중 하나다.
 - `text`는 HTML이 아닌 plain text로 취급한다. 클라이언트는 HTML 삽입 렌더링을 사용하지 않는다.
 - `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
-- `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID이며, 없거나 auth 메시지가 없으면 AI 서버는 기존처럼 저장 없이 응답한다.
+- `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID다. 인증되지 않은 요청의 `sessionId`는 저장에 사용하지 않는다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
 - 로그인 사용자는 WebSocket 연결 후 auth 메시지를 먼저 보낸 뒤 `text-input`에는 access token을 반복 전송하지 않는다.
 - AI 서버는 같은 `sessionId`의 이전 USER/ASSISTANT 메시지를 최근 20개까지 유지해 후속 LLM 요청에 주입한다.
 - WebSocket 재연결 시 현재 세션 메시지를 Spring에서 한 번 복원하며, 다른 세션의 원문은 직접 주입하지 않고 세션 요약만 사용한다.
+- 비로그인 사용자는 일반 질문, 상품 검색·추천, 현재 연결의 대화 맥락, 상품 이동·하이라이트, 게스트 장바구니 `addToCart`를 이용할 수 있다.
+- 비로그인 메시지와 응답은 PostgreSQL에 저장하지 않으며 개인화 컨텍스트 API와 회원 API를 호출하지 않는다. 최근 USER/ASSISTANT 메시지는 현재 WebSocket 연결 메모리에 최대 20개만 유지한다.
+- 비로그인 사용자는 schema와 input hook을 통과해 실제 LLM 또는 상품 추천 처리로 전달되는 요청을 연결당 최대 10회 사용할 수 있다. 로그인 필요 요청과 차단된 입력은 횟수에 포함하지 않는다.
+- 11번째 요청부터 LLM이나 추천 처리를 호출하지 않고 `authReason: "guestLimit"` CTA를 반환한다. 이 제한은 MVP 연결 단위이므로 WebSocket 재연결 시 카운터가 초기화된다.
+- 인증 메시지를 받거나 연결이 종료되면 익명 대화, 요청 카운터, 연결 내 최근 추천 후보를 폐기하며 로그인 세션에 이전하지 않는다.
 
 #### [GET] /api/ai/goods-catalog/latest
 - 설명: AI 서버가 최신 TSV 상품 카탈로그 URL을 조회
@@ -743,4 +764,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-26 | v0.2.6 | ai/virtual-chat | additive | WebSocket `auth` 메시지를 추가하고 메시지·추천 이력 저장 주체를 프론트 직접 호출에서 AI 서버 경유 호출로 정리 | 강승민 |
 | 2026-06-26 | v0.2.7 | ai/member/goods | additive | 회원 선호 아티스트 조회 API `GET /api/members/me/favorite-artists`와 AI 추천 후보 `preferredArtistIds`, `artistId` 응답 필드 추가 | 강승민 |
 | 2026-06-29 | v0.2.8 | ai/virtual-chat | additive | 통합 개인화 컨텍스트 조회와 PostgreSQL JSONB 기반 세션 요약 upsert API 추가 | 강승민 |
+| 2026-06-29 | v0.2.9 | ai/cart | additive | 비로그인 WebSocket 대화·10회 연결 한도·결정적 로그인 CTA metadata와 로그인 후 게스트 장바구니 병합 정책 추가 | 강승민 |
 |  |  |  |  |  |  |
