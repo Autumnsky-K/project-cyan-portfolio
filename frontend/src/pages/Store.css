@@ -1,3 +1,7 @@
+body:has(.store-page) {
+  overflow-y: scroll;
+}
+
 .store-page {
   --store-text: #141414;
   --store-muted: #6d6d68;
@@ -13,6 +17,12 @@
   background:
     linear-gradient(180deg, #efefec 0, #f7f7f5 360px, #ffffff 100%);
   text-align: left;
+}
+
+.store-page *,
+.store-page *::before,
+.store-page *::after {
+  box-sizing: border-box;
 }
 
 .store-page .cart-step-list a,
@@ -36,7 +46,7 @@
 
 .store-page .store-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px 220px;
+  grid-template-columns: minmax(0, 1fr) 150px 260px;
   gap: 0;
   box-sizing: border-box;
   width: min(1320px, calc(100% - 48px));
@@ -50,7 +60,7 @@
   content: 'CHECKOUT';
   align-self: end;
   color: var(--store-ink);
-  font-size: clamp(54px, 9vw, 128px);
+  font-size: clamp(54px, 9vw, 110px);
   font-weight: 900;
   line-height: 0.78;
   letter-spacing: 0;
@@ -61,6 +71,7 @@
   display: grid;
   align-content: end;
   gap: 12px;
+  min-width: 0;
   min-height: 96px;
   padding: 18px 0 0 28px;
   border-left: 1px solid var(--store-line);
@@ -71,11 +82,15 @@
 }
 
 .store-page .cart-total strong {
+  min-width: 0;
+  overflow: hidden;
   color: var(--store-ink);
-  font-size: clamp(22px, 2.6vw, 34px);
+  font-size: clamp(20px, 2vw, 28px);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .store-page .store-layout {
@@ -96,6 +111,7 @@
   display: grid;
   align-content: start;
   gap: 34px;
+  min-width: 0;
   min-height: 100%;
   padding: 34px 22px;
   border-right: 1px solid var(--store-line);
@@ -112,6 +128,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .store-page .panel-heading h2,
@@ -122,6 +139,13 @@
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: 0;
+}
+
+.store-page .filter-panel .panel-heading h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.05;
 }
 
 .store-page .cart-step-list {
@@ -396,14 +420,17 @@
 }
 
 .store-page .cart-step-list a {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
   border-width: 0 0 1px;
   color: var(--store-ink);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .store-page .cart-step-list a::after {
