@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { fetchGoods } from '../../../api/goods'
+import { prepareCheckout } from '../../../api/checkout'
 import {
   createOrderWithItems,
   fetchOrders as fetchRemoteOrders,
@@ -21,6 +22,7 @@ import {
   markExpired,
   markFailed,
 } from '../services/paymentResultService'
+import { requestTossPayment } from '../services/tossPaymentService'
 import { loadOrders, saveOrder as persistOrder } from '../storage/orderStorage'
 import {
   clearPendingPayment,
@@ -42,6 +44,48 @@ import {
 function normalizeMemberId(value) {
   const memberId = String(value ?? '').trim()
   return /^\d+$/.test(memberId) ? Number(memberId) : null
+}
+
+const CHECKOUT_FORM_STORAGE_KEY = 'checkoutForm'
+
+function getDefaultCheckoutForm(defaultMemberId) {
+  return {
+    memberId: defaultMemberId == null ? '' : String(defaultMemberId),
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    deliveryRequest: '',
+  }
+}
+
+function loadCheckoutForm(defaultMemberId) {
+  const defaultForm = getDefaultCheckoutForm(defaultMemberId)
+
+  try {
+    const value = localStorage.getItem(CHECKOUT_FORM_STORAGE_KEY)
+    const savedForm = value ? JSON.parse(value) : null
+
+    if (!savedForm || typeof savedForm !== 'object') {
+      return defaultForm
+    }
+
+    return {
+      ...defaultForm,
+      ...savedForm,
+      memberId: savedForm.memberId || defaultForm.memberId,
+    }
+  } catch {
+    return defaultForm
+  }
+}
+
+function saveCheckoutForm(form) {
+  localStorage.setItem(CHECKOUT_FORM_STORAGE_KEY, JSON.stringify(form))
+}
+
+function clearCheckoutForm() {
+  localStorage.removeItem(CHECKOUT_FORM_STORAGE_KEY)
 }
 
 function markLocalDevOrders(orders) {
@@ -103,19 +147,16 @@ export function useStoreFlow(options = {}) {
   const [orders, setOrders] = useState([])
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
-  const [checkoutForm, setCheckoutForm] = useState({
-    memberId: defaultMemberId == null ? '' : String(defaultMemberId),
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-  })
+  const [checkoutForm, setCheckoutForm] = useState(() =>
+    loadCheckoutForm(defaultMemberId),
+  )
   const [paymentMethod, setPaymentMethod] = useState(
-    pendingPayment?.paymentMethod || PAYMENT_METHODS.MOCK,
+    pendingPayment?.paymentMethod || PAYMENT_METHODS.KAKAO_PAY,
   )
   const [paymentStatus, setPaymentStatus] = useState(
     pendingPayment ? ORDER_STATUS.PAYMENT_PENDING : ORDER_STATUS.CREATED,
   )
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false)
   const [errors, setErrors] = useState([])
   const [message, setMessage] = useState('')
   const [completedOrder, setCompletedOrder] = useState(null)
@@ -125,6 +166,10 @@ export function useStoreFlow(options = {}) {
     getKakaoReadyDebugInfo,
   )
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
+
+  useEffect(() => {
+    saveCheckoutForm(checkoutForm)
+  }, [checkoutForm])
 
   useEffect(() => {
     if (!defaultMemberId) return undefined
@@ -181,9 +226,7 @@ export function useStoreFlow(options = {}) {
   )
   const totalPrice = useMemo(() => calculateTotalPrice(cartItems), [cartItems])
   const isCartEmpty = cartItems.length === 0
-  const isPaymentProcessing =
-    paymentStatus === ORDER_STATUS.PAYMENT_READY ||
-    paymentStatus === ORDER_STATUS.PAYMENT_PENDING
+  const isPaymentProcessing = isPreparingPayment
 
   useEffect(() => {
     let ignore = false
@@ -242,9 +285,12 @@ export function useStoreFlow(options = {}) {
 
   useEffect(() => {
     if (!fetchOrderHistory) {
-      setOrders([])
-      setOrderHistoryMessage('')
-      return undefined
+      const timerId = window.setTimeout(() => {
+        setOrders([])
+        setOrderHistoryMessage('')
+      }, 0)
+
+      return () => window.clearTimeout(timerId)
     }
 
     let ignore = false
@@ -419,6 +465,7 @@ export function useStoreFlow(options = {}) {
         email: checkoutForm.email.trim(),
         phone: checkoutForm.phone.trim(),
         address: checkoutForm.address.trim(),
+        deliveryRequest: checkoutForm.deliveryRequest.trim(),
       },
       paymentMethod: getPaymentMethodLabel(paymentMethod),
       paymentMethodCode: paymentMethod,
@@ -432,22 +479,11 @@ export function useStoreFlow(options = {}) {
     setOrders((currentOrders) => [order, ...currentOrders])
     setCompletedOrder(order)
     clearCart()
+    clearCheckoutForm()
     setPendingPayment(null)
     setErrors([])
     setPaymentStatus(ORDER_STATUS.PAID)
     setMessage('Payment completed. Check the order result below.')
-  }
-
-  function saveTerminalOrder(order, status) {
-    const nextOrder = {
-      ...order,
-      status,
-      updatedAt: new Date().toISOString(),
-    }
-    const nextOrders = persistOrder(nextOrder)
-
-    setOrders(markLocalDevOrders(nextOrders))
-    return nextOrder
   }
 
   async function handleMockPayment(order) {
@@ -495,6 +531,7 @@ export function useStoreFlow(options = {}) {
     }
 
     try {
+      setIsPreparingPayment(true)
       setPendingPayment(null)
       setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
       setMessage('Preparing KakaoPay payment.')
@@ -503,7 +540,32 @@ export function useStoreFlow(options = {}) {
       setLastKakaoReadyDebug(getKakaoReadyDebugInfo())
       setLastKakaoReadyError('')
 
-      const kakaoReady = await requestKakaoPayReady(readyOrder)
+      const checkoutReady = await prepareCheckout({
+        items: readyOrder.items.map((item) => ({
+          goodsId: Number(item.goodsId ?? item.productId),
+          quantity: Number(item.quantity),
+        })),
+        shippingAddress: {
+          recipientName: readyOrder.customer.name,
+          recipientPhone: readyOrder.customer.phone,
+          postalCode: readyOrder.customer.postalCode ?? '',
+          address: readyOrder.customer.address,
+          addressDetail: readyOrder.customer.addressDetail ?? '-',
+          deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
+        },
+        paymentProvider: 'KAKAO_PAY',
+      })
+      const preparedOrder = {
+        ...readyOrder,
+        orderId: checkoutReady.orderId,
+        orderNumber: checkoutReady.orderNo,
+        partnerOrderId: checkoutReady.orderNo,
+        paymentId: checkoutReady.paymentId,
+        totalPrice: Number(checkoutReady.amount ?? readyOrder.totalPrice),
+        totalAmount: Number(checkoutReady.amount ?? readyOrder.totalPrice),
+      }
+
+      const kakaoReady = await requestKakaoPayReady(preparedOrder)
       setLastKakaoReadyResponse(kakaoReady)
       setLastKakaoReadyDebug({
         paymentMode: kakaoReady.paymentMode,
@@ -511,34 +573,110 @@ export function useStoreFlow(options = {}) {
         usedFallback: kakaoReady.usedFallback,
       })
 
+      const nextRedirectPcUrl =
+        kakaoReady?.nextRedirectPcUrl ||
+        kakaoReady?.next_redirect_pc_url ||
+        kakaoReady?.nextRedirectMobileUrl ||
+        kakaoReady?.next_redirect_mobile_url ||
+        kakaoReady?.nextRedirectAppUrl ||
+        kakaoReady?.next_redirect_app_url ||
+        kakaoReady?.redirectUrl
+
+      if (!nextRedirectPcUrl) {
+        setPendingPayment(null)
+        setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
+        setMessage('KakaoPay did not return a payment page URL. No payment attempt was started.')
+        return
+      }
+
       const nextPendingPayment = createKakaoPendingPayment(
-        readyOrder,
+        preparedOrder,
         kakaoReady,
       )
       const pendingOrder = {
-        ...readyOrder,
+        ...preparedOrder,
         status: ORDER_STATUS.PAYMENT_PENDING,
         updatedAt: new Date().toISOString(),
       }
       const nextOrders = persistOrder(pendingOrder)
 
       setOrders(markLocalDevOrders(nextOrders))
+      savePendingPayment(nextPendingPayment)
       setPendingPayment(nextPendingPayment)
       setPaymentStatus(ORDER_STATUS.PAYMENT_PENDING)
       setMessage('KakaoPay payment is ready. Continue on the approval page.')
 
-      const nextRedirectPcUrl =
-        kakaoReady?.nextRedirectPcUrl || kakaoReady?.next_redirect_pc_url
-
-      if (nextRedirectPcUrl) {
-        window.location.href = nextRedirectPcUrl
-      }
+      window.location.href = nextRedirectPcUrl
     } catch (error) {
       setLastKakaoReadyError(error.message)
-      saveTerminalOrder(order, ORDER_STATUS.PAYMENT_FAILED)
-      setPaymentStatus(ORDER_STATUS.PAYMENT_FAILED)
+      setPaymentStatus(ORDER_STATUS.CREATED)
       setPendingPayment(null)
-      setMessage('KakaoPay preparation failed. Try again after checking the backend payment API.')
+      setMessage(error.message || 'KakaoPay preparation did not return a payment result.')
+    } finally {
+      setIsPreparingPayment(false)
+    }
+  }
+
+  async function handleTossPayment(order) {
+    const readyOrder = {
+      ...order,
+      status: ORDER_STATUS.PAYMENT_READY,
+      updatedAt: new Date().toISOString(),
+    }
+
+    try {
+      setIsPreparingPayment(true)
+      setPendingPayment(null)
+      setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
+      setMessage('Preparing Toss Payments checkout.')
+
+      const tossReady = await prepareCheckout({
+        items: readyOrder.items.map((item) => ({
+          goodsId: Number(item.goodsId ?? item.productId),
+          quantity: Number(item.quantity),
+        })),
+        shippingAddress: {
+          recipientName: readyOrder.customer.name,
+          recipientPhone: readyOrder.customer.phone,
+          postalCode: readyOrder.customer.postalCode ?? '',
+          address: readyOrder.customer.address,
+          addressDetail: readyOrder.customer.addressDetail ?? '-',
+          deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
+        },
+        paymentProvider: 'TOSS',
+      })
+
+      const nextPendingPayment = {
+        tid: '',
+        orderId: tossReady.orderId,
+        localOrderId: readyOrder.orderId,
+        orderNo: tossReady.orderNo,
+        paymentId: tossReady.paymentId,
+        amount: tossReady.amount,
+        orderName: tossReady.orderName,
+        customerKey: tossReady.customerKey,
+        paymentMethod: PAYMENT_METHODS.TOSS,
+        createdAt: new Date().toISOString(),
+      }
+      const pendingOrder = {
+        ...readyOrder,
+        orderId: tossReady.orderId,
+        orderNumber: tossReady.orderNo,
+        status: ORDER_STATUS.PAYMENT_PENDING,
+        updatedAt: new Date().toISOString(),
+      }
+
+      setPendingPayment(nextPendingPayment)
+      setPaymentStatus(ORDER_STATUS.PAYMENT_PENDING)
+      setCompletedOrder(pendingOrder)
+      setMessage('Opening Toss Payments checkout.')
+      await requestTossPayment(tossReady, readyOrder)
+    } catch (error) {
+      setPaymentStatus(ORDER_STATUS.CREATED)
+      setPendingPayment(null)
+      setMessage(error.message || 'Toss Payments preparation did not return a payment result.')
+    } finally {
+      setIsPreparingPayment(false)
     }
   }
 
@@ -598,6 +736,11 @@ export function useStoreFlow(options = {}) {
       return
     }
 
+    if (pendingPayment.paymentMethod === PAYMENT_METHODS.TOSS) {
+      handleTossPayment(retryOrder)
+      return
+    }
+
     handleMockPayment(retryOrder)
   }
 
@@ -616,6 +759,11 @@ export function useStoreFlow(options = {}) {
 
     if (paymentMethod === PAYMENT_METHODS.KAKAO_PAY) {
       handleKakaoPayment(createdOrder)
+      return
+    }
+
+    if (paymentMethod === PAYMENT_METHODS.TOSS) {
+      handleTossPayment(createdOrder)
       return
     }
 

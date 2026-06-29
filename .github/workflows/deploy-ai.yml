@@ -1,0 +1,42 @@
+name: Deploy AI Server to Cloud Run
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'ai/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+
+      - name: Build and Push
+        run: |
+          docker build --platform linux/amd64 \
+            -t asia-northeast3-docker.pkg.dev/project-cyan-500906/project-cyan/ai \
+            ./ai
+          docker push asia-northeast3-docker.pkg.dev/project-cyan-500906/project-cyan/ai
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy project-cyan-ai \
+            --image asia-northeast3-docker.pkg.dev/project-cyan-500906/project-cyan/ai \
+            --region asia-northeast3 \
+            --platform managed \
+            --quiet
