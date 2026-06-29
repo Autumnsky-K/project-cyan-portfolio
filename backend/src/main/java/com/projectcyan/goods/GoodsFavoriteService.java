@@ -56,13 +56,19 @@ public class GoodsFavoriteService {
 		goodsRepository.findAllById(favoriteGoodsIds)
 			.forEach(goods -> goodsById.put(goods.getGoodsId(), goods));
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(goodsById.keySet());
+		Map<Long, Long> favoriteCounts = goodsFavoriteRepository.countByGoodsIdIn(goodsById.keySet()).stream()
+			.collect(java.util.stream.Collectors.toMap(
+				GoodsFavoriteRepository.GoodsFavoriteCount::getGoodsId,
+				GoodsFavoriteRepository.GoodsFavoriteCount::getFavoriteCount
+			));
 
 		return favoriteGoodsIds.stream()
 			.map(goodsById::get)
 			.filter(goods -> goods != null)
 			.map(goods -> GoodsSummaryResponse.from(
 				goods,
-				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty())
+				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+				favoriteCounts.getOrDefault(goods.getGoodsId(), 0L)
 			))
 			.toList();
 	}
