@@ -292,6 +292,9 @@ class CatalogGroundedChatResponseProvider:
         self.catalog_client = catalog_client
         self.recent_recommendation_candidates: list[dict[str, Any]] = []
 
+    def clear_connection_context(self) -> None:
+        self.recent_recommendation_candidates = []
+
     def build_response(
         self,
         text: str,

@@ -69,8 +69,17 @@ export type VtuberRecommendationMetadata = {
   rankOrder?: number
 }
 
+export type VtuberAuthReason =
+  | 'accountPersonalization'
+  | 'chatHistory'
+  | 'persistence'
+  | 'guestLimit'
+
 export type VtuberServerMetadata = {
   recommendations?: VtuberRecommendationMetadata[]
+  authRequired?: boolean
+  authReason?: VtuberAuthReason
+  loginPath?: '/login'
   [key: string]: unknown
 }
 

@@ -20,6 +20,11 @@ from project_cyan_ai.goods_catalog import (
     TsvGoodsCatalogClient,
     has_product_intent,
 )
+from project_cyan_ai.guest_chat_policy import (
+    GuestChatState,
+    build_auth_required_response,
+    classify_auth_required,
+)
 from project_cyan_ai.providers import get_chat_response_provider
 from project_cyan_ai.hook_policy import build_hook_filter
 from project_cyan_ai.personalization_context import (
@@ -79,6 +84,8 @@ async def client_ws(websocket: WebSocket):
     personalization_loaded = False
     history_session_id: int | None = None
     current_session_history: list[dict] = []
+    # MVP: this per-connection guest limit intentionally resets on WebSocket reconnect.
+    guest_state = GuestChatState()
     hook_filter = build_hook_filter(
         settings.spring_api_url,
         settings.hook_policy_cache_ttl_seconds,
@@ -109,6 +116,8 @@ async def client_ws(websocket: WebSocket):
                     personalization_loaded = False
                     history_session_id = None
                     current_session_history = []
+                    guest_state.reset()
+                    response_provider.clear_connection_context()
                 except ValidationError:
                     await websocket.send_json(
                         FullTextMessage(
@@ -149,6 +158,20 @@ async def client_ws(websocket: WebSocket):
             if blocked_response is not None:
                 await websocket.send_json(blocked_response.model_dump())
                 continue
+
+            if not access_token:
+                auth_reason = classify_auth_required(message.text)
+                if auth_reason is not None:
+                    await websocket.send_json(
+                        build_auth_required_response(auth_reason).model_dump()
+                    )
+                    continue
+                if guest_state.limit_reached:
+                    await websocket.send_json(
+                        build_auth_required_response("guestLimit").model_dump()
+                    )
+                    continue
+                guest_state.record_request()
 
             if access_token and message.sessionId:
                 if active_session_id is not None and active_session_id != message.sessionId:
@@ -204,7 +227,7 @@ async def client_ws(websocket: WebSocket):
                 )
 
             favorite_artists = []
-            if has_product_intent(message.text):
+            if access_token and has_product_intent(message.text):
                 context_artists = (
                     personalization_context.get("favoriteArtists")
                     if isinstance(personalization_context, dict)
@@ -221,7 +244,7 @@ async def client_ws(websocket: WebSocket):
                 favorite_artists,
                 with_current_session_history(
                     personalization_context,
-                    current_session_history,
+                    current_session_history if access_token else guest_state.history,
                 ),
             )
             response = hook_filter.filter_output(response)
@@ -233,13 +256,15 @@ async def client_ws(websocket: WebSocket):
                     build_assistant_message_payload(response, message.text),
                 )
 
-            if message.sessionId:
+            if access_token and message.sessionId:
                 current_session_history.extend(
                     [
                         {"speaker": "USER", "messageText": message.text},
                         {"speaker": "ASSISTANT", "messageText": response.text},
                     ]
                 )
+            elif not access_token:
+                guest_state.append_exchange(message.text, response.text)
 
             await websocket.send_json(response.model_dump())
 
