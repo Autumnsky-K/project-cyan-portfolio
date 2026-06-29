@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 챗봇 행동 시뮬레이션</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai-behavior', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-ai-main" data-ai-admin data-ai-behavior-page>
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">AI Behavior TSV</p>
+        <h2>챗봇 행동 시뮬레이션</h2>
+      </div>
+      <div class="admin-header-actions">
+        <button type="button" data-ai-show-chatbot>챗봇 띄우기</button>
+        <a th:href="@{/admin/ai}">워크북</a>
+        <a th:href="@{/admin/ai/behavior-lab-project/dist/index.html}" target="_blank" rel="noopener">그래프 실험 열기</a>
+      </div>
+    </header>
+
+    <div class="admin-notice admin-notice-success"
+         th:if="${behaviorSheetMessage}"
+         th:text="${behaviorSheetMessage}">TSV를 Supabase에 저장했습니다.</div>
+    <div class="admin-notice"
+         th:if="${behaviorSheetUrl}"
+         th:text="${behaviorSheetUrl}">signed url</div>
+    <div class="admin-notice admin-notice-error"
+         th:if="${behaviorSheetError}"
+         th:text="${behaviorSheetError}">지원하지 않는 AI 행동 TSV입니다.</div>
+
+    <section class="admin-ai-chatbot-frame" data-ai-chatbot-frame hidden>
+      <header>
+        <div>
+          <p class="admin-eyebrow">Store Preview</p>
+          <h3>챗봇 미리보기</h3>
+        </div>
+        <button type="button" class="secondary" data-ai-hide-chatbot-frame>닫기</button>
+      </header>
+      <iframe title="챗봇 미리보기" data-ai-chatbot-iframe></iframe>
+    </section>
+
+    <section class="admin-ai-workbook">
+      <aside class="admin-ai-tree-panel" aria-label="AI 행동 시뮬레이션 흐름">
+        <header>
+          <p class="admin-eyebrow">Function First</p>
+          <h3>규칙은 프롬프트가 아니라 함수로 처리</h3>
+        </header>
+
+        <div class="admin-ai-tree">
+          <details open>
+            <summary>
+              <strong>01. 원본 DB</strong>
+              <span>상품 / 아티스트 / 통계 / 재고 상태</span>
+            </summary>
+            <ul>
+              <li>LLM에게 주절주절 넣는 규칙 프롬프트가 아니라 함수가 읽을 원본 표</li>
+              <li>DB 요약과 검색 결과 행렬 JSON은 함수 결과로 생성</li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>
+              <strong>02. 로직 함수 목록</strong>
+              <span>Hook / 요약 / 검색 / Memory / JSON 검증</span>
+            </summary>
+            <ul>
+              <li>차단, 치환, count, TSV 요약, DBSearch, Memory 갱신은 함수 단계</li>
+              <li>LLM은 검색 키워드 선정과 최종 자연어 응답처럼 필요한 곳에만 사용</li>
+            </ul>
+          </details>
+
+          <details open>
+            <summary>
+              <strong>03. 관리자 설정</strong>
+              <span>프롬프트 / 페르소나 / DOM / Motion / 출력 계약</span>
+            </summary>
+            <ul>
+              <li>여러 파일로 쪼개지 않고 section 열로 설정 종류를 구분</li>
+              <li>DOM LIST와 Motion LIST도 같은 설정 TSV 안에서 관리</li>
+            </ul>
+          </details>
+        </div>
+      </aside>
+
+      <section class="admin-ai-sheet-panel" aria-label="AI 행동 TSV 시트">
+        <header class="admin-ai-sheet-panel-header">
+          <div>
+            <p class="admin-eyebrow">Excel Input</p>
+            <h3>3개 TSV 입력</h3>
+          </div>
+        </header>
+
+        <div class="admin-ai-sheet-stack">
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="raw-db">
+            <summary><span><em>01</em><strong>원본 DB</strong></span><b>접기</b></summary>
+            <form method="post" th:action="@{/admin/ai/behavior/sheets/raw-db}">
+              <div class="admin-ai-sheet-actions">
+                <label class="admin-ai-file-button"><span>파일 불러오기</span><input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="raw-db"></label>
+                <button type="button" data-ai-export="raw-db">TSV 내보내기</button>
+                <button type="button" data-ai-reset="raw-db">샘플 복원</button>
+                <button class="admin-primary-button" type="submit">Supabase 저장</button>
+              </div>
+              <div class="admin-ai-sheet-preview"><table data-ai-sheet-preview="raw-db"></table></div>
+              <details class="admin-ai-raw-editor" open>
+                <summary>원본 TSV 편집</summary>
+                <textarea name="sheetText" spellcheck="false" data-ai-sheet-source="raw-db"></textarea>
+              </details>
+            </form>
+          </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="logic-functions">
+            <summary><span><em>02</em><strong>로직 함수 목록</strong></span><b>접기</b></summary>
+            <form method="post" th:action="@{/admin/ai/behavior/sheets/logic-functions}">
+              <div class="admin-ai-sheet-actions">
+                <label class="admin-ai-file-button"><span>파일 불러오기</span><input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="logic-functions"></label>
+                <button type="button" data-ai-export="logic-functions">TSV 내보내기</button>
+                <button type="button" data-ai-reset="logic-functions">샘플 복원</button>
+                <button class="admin-primary-button" type="submit">Supabase 저장</button>
+              </div>
+              <div class="admin-ai-sheet-preview"><table data-ai-sheet-preview="logic-functions"></table></div>
+              <details class="admin-ai-raw-editor" open>
+                <summary>원본 TSV 편집</summary>
+                <textarea name="sheetText" spellcheck="false" data-ai-sheet-source="logic-functions"></textarea>
+              </details>
+            </form>
+          </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="admin-settings">
+            <summary><span><em>03</em><strong>관리자 설정</strong></span><b>접기</b></summary>
+            <form method="post" th:action="@{/admin/ai/behavior/sheets/admin-settings}">
+              <div class="admin-ai-sheet-actions">
+                <label class="admin-ai-file-button"><span>파일 불러오기</span><input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="admin-settings"></label>
+                <button type="button" data-ai-export="admin-settings">TSV 내보내기</button>
+                <button type="button" data-ai-reset="admin-settings">샘플 복원</button>
+                <button class="admin-primary-button" type="submit">Supabase 저장</button>
+              </div>
+              <div class="admin-ai-sheet-preview"><table data-ai-sheet-preview="admin-settings"></table></div>
+              <details class="admin-ai-raw-editor" open>
+                <summary>원본 TSV 편집</summary>
+                <textarea name="sheetText" spellcheck="false" data-ai-sheet-source="admin-settings"></textarea>
+              </details>
+            </form>
+          </details>
+        </div>
+      </section>
+    </section>
+
+    <section class="admin-ai-trace-panel" aria-label="시뮬레이션 절차 trace">
+      <header class="admin-ai-sheet-panel-header">
+        <div>
+          <p class="admin-eyebrow">Transparent Trace</p>
+          <h3>실제 Spring 실행 Trace</h3>
+        </div>
+        <button type="button" class="admin-primary-button" data-ai-run-behavior>Spring 실행</button>
+      </header>
+
+      <section class="admin-ai-simulator-grid" aria-label="관리자 채팅 시뮬레이터">
+        <section class="admin-ai-chat-panel">
+          <header>
+            <div>
+              <p class="admin-eyebrow">Customer Simulation</p>
+              <h3>관리자 채팅창</h3>
+            </div>
+          </header>
+          <div class="admin-ai-chat-log" data-ai-admin-chat-log>
+            <div class="admin-ai-chat-message system">관리자가 고객처럼 입력하면 아래 Spring trace와 DB 검색 하이라이트가 같이 갱신됩니다.</div>
+          </div>
+          <form class="admin-ai-chat-form" data-ai-admin-chat-form>
+            <input type="text" data-ai-behavior-customer-input value="히에나 포카 있어?" aria-label="고객 입력">
+            <button type="submit" class="admin-primary-button">전송</button>
+          </form>
+        </section>
+
+        <section class="admin-ai-key-panel">
+          <header>
+            <p class="admin-eyebrow">OAuth</p>
+            <h3>LLM 연결 키</h3>
+          </header>
+          <label class="admin-ai-run-input">
+            <span>OAuth digit key</span>
+            <input type="password" data-ai-oauth-digit-key autocomplete="off">
+          </label>
+          <div class="admin-ai-sheet-actions">
+            <button type="button" data-ai-oauth-save-key>서버에 키 등록</button>
+            <button type="button" data-ai-oauth-check-status>상태 확인</button>
+          </div>
+          <div class="admin-ai-oauth-status" data-ai-oauth-status>PowerShell 대신 Spring /api/oauth/key 로 등록합니다.</div>
+        </section>
+      </section>
+
+      <section class="admin-ai-db-highlight-panel" aria-label="DB 검색 하이라이트">
+        <header>
+          <div>
+            <p class="admin-eyebrow">DB Search View</p>
+            <h3>원본 DB 엑셀 검색 하이라이트</h3>
+          </div>
+        </header>
+        <form class="admin-ai-search-test" data-ai-search-test-form>
+          <input type="text" data-ai-search-test-input placeholder="검색어 또는 《키워드》 입력">
+          <button type="submit">검색기 테스트</button>
+        </form>
+        <div class="admin-ai-search-report" data-ai-search-report>검색 LLM 키워드 또는 관리자 입력 검색어가 DBSearch 함수로 들어가면 결과가 표시됩니다.</div>
+        <div class="admin-ai-db-highlight" data-ai-db-highlight>검색 LLM이 키워드를 반환하면 원본 DB 셀 배경색이 하이라이트됩니다.</div>
+      </section>
+
+      <div class="admin-ai-trace-log" data-ai-trace-log>
+        <article class="admin-ai-trace-step">
+          <strong>00. 실행 전 안내</strong>
+          <div class="admin-ai-trace-box" role="textbox" aria-readonly="true">
+            <span class="admin-ai-trace-line" data-trace-part="admin">관리자 확인: 이 영역은 버튼을 누른 뒤 실제 Java 서비스 실행 결과로 교체된다.</span>
+            <span class="admin-ai-trace-line" data-trace-part="function-report">실행 API: POST /admin/ai/behavior/runs</span>
+            <span class="admin-ai-trace-line" data-trace-part="function-report">모니터링 API: GET /admin/ai/behavior/runs/{runId}</span>
+            <span class="admin-ai-trace-line" data-trace-part="admin">OAuth 미연결 또는 LLM 실패 시 가짜 답변을 채우지 않고 ERROR/SKIPPED로 표시한다.</span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </section>
+</main>
+<script th:inline="javascript">
+  window.projectCyanAiBehaviorInitialSheets = {
+    rawDb: /*[[${behaviorRawDbSheetText}]]*/ '',
+    logicFunctions: /*[[${behaviorLogicFunctionsSheetText}]]*/ '',
+    adminSettings: /*[[${behaviorAdminSettingsSheetText}]]*/ ''
+  };
+</script>
+<script th:src="@{/admin/ai-admin.js(v='behavior-action-tsv-v1')}"></script>
+</body>
+</html>

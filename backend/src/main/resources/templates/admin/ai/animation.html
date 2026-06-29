@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>챗봇 애니메이션 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('ai-animation', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-ai-animation-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Chatbot Animation</p>
+        <h2>챗봇 애니메이션 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/ai}">행동 관리</a>
+        <a th:href="@{/admin/ai/behavior}">행동 시뮬레이션</a>
+        <a th:href="@{/goods}">챗봇 확인</a>
+      </div>
+    </header>
+
+    <section class="admin-ai-animation-notices" aria-live="polite">
+      <p class="admin-notice is-success" th:if="${animationMessage}" th:text="${animationMessage}">저장 완료</p>
+      <p class="admin-notice is-warning" th:if="${animationWarning}" th:text="${animationWarning}">대용량 경고</p>
+      <p class="admin-notice is-error" th:if="${animationError}" th:text="${animationError}">오류</p>
+      <p class="admin-notice" th:if="${animationUrl}">
+        <span>signed URL: </span>
+        <a th:href="${animationUrl}" target="_blank" rel="noreferrer" th:text="${animationUrl}">download</a>
+      </p>
+    </section>
+
+    <section class="admin-ai-animation-grid">
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">Display Mode</p>
+          <h3>2D / 3D 표시 전환</h3>
+        </header>
+        <form class="admin-ai-animation-form" th:action="@{/admin/ai/animation/settings}" method="post">
+          <fieldset class="admin-ai-animation-mode">
+            <legend>챗봇 표시 방식</legend>
+            <label>
+              <input type="radio" name="displayMode" value="live2d" checked>
+              <span>2D Live2D</span>
+            </label>
+            <label>
+              <input type="radio" name="displayMode" value="three3d">
+              <span>3D Three.js</span>
+            </label>
+          </fieldset>
+          <label>
+            <span>활성 모델 key</span>
+            <input type="text" name="activeModelKey" placeholder="예: waifu-main">
+          </label>
+          <label>
+            <span>기본 모션 key</span>
+            <input type="text" name="activeMotionKey" placeholder="예: idle">
+          </label>
+          <button type="submit">설정 TSV 저장</button>
+        </form>
+        <dl class="admin-ai-animation-paths">
+          <div>
+            <dt>Bucket</dt>
+            <dd th:text="${animationBucket}">ai-catalog</dd>
+          </div>
+          <div>
+            <dt>설정 TSV</dt>
+            <dd th:text="${animationConfigPath}">animation/config</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">3D Model Upload</p>
+          <h3>3D 모델 파일 업로드</h3>
+        </header>
+        <form class="admin-ai-animation-form" th:action="@{/admin/ai/animation/model}" method="post" enctype="multipart/form-data">
+          <label>
+            <span>model key</span>
+            <input type="text" name="modelKey" value="default-model">
+          </label>
+          <label>
+            <span>상대 경로</span>
+            <input type="text" name="relativePath" placeholder="비우면 원본 파일명 사용">
+          </label>
+          <label>
+            <span>모델 파일</span>
+            <input type="file" name="file" accept=".fbx,.glb,.gltf,.json,.moc3,.png,.zip,.txt,.tsv" required>
+          </label>
+          <button type="submit">모델 업로드</button>
+        </form>
+        <p class="admin-ai-animation-help">현재는 Spring을 통해 Supabase Storage로 업로드한다. 6MB 초과 모델은 운영에서 TUS/resumable 전환 검토 대상이다.</p>
+      </article>
+
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">Motion Upload</p>
+          <h3>모션 파일 업로드</h3>
+        </header>
+        <form class="admin-ai-animation-form" th:action="@{/admin/ai/animation/motion-file}" method="post" enctype="multipart/form-data">
+          <label>
+            <span>motion key</span>
+            <input type="text" name="motionKey" value="idle">
+          </label>
+          <label>
+            <span>상대 경로</span>
+            <input type="text" name="relativePath" placeholder="비우면 원본 파일명 사용">
+          </label>
+          <label>
+            <span>모션 파일</span>
+            <input type="file" name="file" accept=".fbx,.glb,.gltf,.json,.moc3,.png,.zip,.txt,.tsv" required>
+          </label>
+          <button type="submit">모션 업로드</button>
+        </form>
+      </article>
+
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">Motion TSV</p>
+          <h3>모션 선택 목록</h3>
+        </header>
+        <form class="admin-ai-animation-form" th:action="@{/admin/ai/animation/motions}" method="post">
+          <textarea name="motionSheetText" spellcheck="false" th:text="${defaultMotionSheetText}"></textarea>
+          <button type="submit">모션 TSV 저장</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="admin-ai-animation-preview">
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">3D Viewer Source</p>
+          <h3>AiVtuberWaifu6 이식 위치</h3>
+        </header>
+        <div class="admin-ai-animation-viewer">
+          <p>3D 뷰어는 <code>C:\Users\KOSMO\Desktop\AiVtuberWaifu6</code>의 Three.js/FBXLoader 구조를 기준으로 이식한다.</p>
+          <p>이 페이지는 모델/모션 파일과 TSV 설정을 먼저 Supabase에 저장하고, 다음 단계에서 프론트 챗봇이 2D/3D 모드 TSV를 읽어 렌더러를 선택하게 만든다.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="admin-ai-animation-files">
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">Storage Objects</p>
+          <h3>3D 모델 목록</h3>
+        </header>
+        <p class="admin-notice is-error" th:if="${modelListError}" th:text="${modelListError}">목록 오류</p>
+        <div class="admin-ai-sheet-preview">
+          <table>
+            <thead>
+            <tr>
+              <th>name</th>
+              <th>path</th>
+              <th>size</th>
+              <th>updated</th>
+              <th>download</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(modelObjects)}">
+              <td colspan="5">업로드된 모델 파일 없음</td>
+            </tr>
+            <tr th:each="object : ${modelObjects}">
+              <td th:text="${object.name()}">model.fbx</td>
+              <td th:text="${object.objectPath()}">animation/models/model.fbx</td>
+              <td th:text="${object.size()}">0</td>
+              <td th:text="${object.updatedAt()}">-</td>
+              <td><a th:href="${object.signedUrl()}" target="_blank" rel="noreferrer">열기</a></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="admin-ai-sheet-section">
+        <header>
+          <p class="admin-eyebrow">Storage Objects</p>
+          <h3>모션 파일 목록</h3>
+        </header>
+        <p class="admin-notice is-error" th:if="${motionListError}" th:text="${motionListError}">목록 오류</p>
+        <div class="admin-ai-sheet-preview">
+          <table>
+            <thead>
+            <tr>
+              <th>name</th>
+              <th>path</th>
+              <th>size</th>
+              <th>updated</th>
+              <th>download</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(motionObjects)}">
+              <td colspan="5">업로드된 모션 파일 없음</td>
+            </tr>
+            <tr th:each="object : ${motionObjects}">
+              <td th:text="${object.name()}">motion.fbx</td>
+              <td th:text="${object.objectPath()}">animation/motions/motion.fbx</td>
+              <td th:text="${object.size()}">0</td>
+              <td th:text="${object.updatedAt()}">-</td>
+              <td><a th:href="${object.signedUrl()}" target="_blank" rel="noreferrer">열기</a></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </section>
+</main>
+</body>
+</html>

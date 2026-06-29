@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rail Icon Workbench</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #15161a;
+      --panel: #202126;
+      --line: #42444d;
+      --text: #f4f6fb;
+      --muted: #aeb4c2;
+      --accent: #78e7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, "Noto Sans KR", sans-serif;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: 84px minmax(360px, 1fr) 420px;
+      gap: 16px;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      padding: 10px 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #202124;
+    }
+
+    .rail-button,
+    .big-frame {
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 2px solid #575963;
+      background: #2c2d32;
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
+    }
+
+    .rail-button {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .rail-button.is-active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgb(120 231 255 / 20%), 0 0 16px rgb(120 231 255 / 22%);
+    }
+
+    .icon-viewport {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .rail-button img,
+    .big-frame img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      transform-origin: center;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
+    .stage-panel,
+    .control-panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+
+    .stage-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stage-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 520px;
+      padding: 24px;
+    }
+
+    .big-frame {
+      width: min(62vmin, 460px);
+      height: min(62vmin, 460px);
+      border-radius: 32px;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .big-frame.is-dragging {
+      cursor: grabbing;
+    }
+
+    .big-frame .icon-viewport {
+      width: 100%;
+      height: 100%;
+      border-radius: 30px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .selected-name {
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .number-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .number-row input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #15161a;
+      color: var(--text);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .actions button {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #2c2d34;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .actions button:hover {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #111217;
+      color: #d9f8ff;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    @media (max-width: 980px) {
+      .workbench {
+        grid-template-columns: 64px 1fr;
+      }
+
+      .control-panel {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="workbench">
+    <nav class="rail" id="rail" aria-label="아이콘 선택"></nav>
+
+    <section class="stage-panel">
+      <header class="topbar">
+        <div>
+          <h1>Rail Icon Workbench</h1>
+          <div class="hint">큰 프레임에서 드래그, 오른쪽에서 확대율 조정. 값은 브라우저에 자동 저장됩니다.</div>
+        </div>
+        <div class="hint">기준 프레임: 38px</div>
+      </header>
+      <div class="stage-wrap">
+        <div class="big-frame" id="bigFrame">
+          <div class="icon-viewport">
+            <img id="bigImage" alt="">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="control-panel">
+      <div class="controls">
+        <div>
+          <div class="hint">선택됨</div>
+          <div class="selected-name" id="selectedName"></div>
+        </div>
+
+        <div class="field">
+          <label for="scaleInput">확대율 <span id="scaleValue"></span></label>
+          <input id="scaleInput" type="range" min="0.80" max="1.80" step="0.01">
+        </div>
+
+        <div class="number-row">
+          <div class="field">
+            <label for="xInput">X px</label>
+            <input id="xInput" type="number" step="0.1">
+          </div>
+          <div class="field">
+            <label for="yInput">Y px</label>
+            <input id="yInput" type="number" step="0.1">
+          </div>
+          <div class="field">
+            <label for="scaleNumber">Scale</label>
+            <input id="scaleNumber" type="number" min="0.8" max="1.8" step="0.01">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="resetIcon">선택 초기화</button>
+          <button type="button" id="resetAll">전체 초기화</button>
+          <button type="button" id="copyCss">CSS 복사</button>
+          <button type="button" id="copyJson">JSON 복사</button>
+        </div>
+
+        <textarea id="output" spellcheck="false"></textarea>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const icons = [
+      ["dashboard", "대시보드"],
+      ["ui", "UI 전체"],
+      ["home", "홈"],
+      ["artists", "아티스트"],
+      ["goods", "굿즈"],
+      ["data", "데이터"],
+      ["storage", "저장소"],
+      ["ai", "AI"],
+      ["animation", "애니메이션"],
+      ["payment", "결제"]
+    ];
+
+    const storageKey = "project-cyan-rail-icon-workbench-v1";
+    const defaultFit = { x: 0, y: 0, scale: 1.18 };
+    const defaultFits = {
+      dashboard: { x: -0.75, y: -1.66, scale: 1.2 },
+      ui: { x: -0.67, y: 0.25, scale: 1.23 },
+      home: { x: 0.66, y: -0.25, scale: 1.23 },
+      artists: { x: 1.74, y: -0.41, scale: 1.22 },
+      goods: { x: -0.83, y: 2.8, scale: 1.22 },
+      data: { x: 0.59, y: -2.23, scale: 1.18 },
+      storage: { x: 1.66, y: -1.74, scale: 1.19 },
+      ai: { x: 0, y: 0, scale: 1.29 },
+      animation: { x: 1.08, y: 2.99, scale: 1.26 },
+      payment: { x: 1.99, y: 3.56, scale: 1.24 }
+    };
+    const rail = document.getElementById("rail");
+    const bigFrame = document.getElementById("bigFrame");
+    const bigImage = document.getElementById("bigImage");
+    const selectedName = document.getElementById("selectedName");
+    const scaleInput = document.getElementById("scaleInput");
+    const scaleNumber = document.getElementById("scaleNumber");
+    const scaleValue = document.getElementById("scaleValue");
+    const xInput = document.getElementById("xInput");
+    const yInput = document.getElementById("yInput");
+    const output = document.getElementById("output");
+
+    let selected = icons[0][0];
+    let dragState = null;
+
+    const srcFor = (id) => `/admin/rail-icons/${id}.png?v=rail-fit-20260626`;
+    const loadFits = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        return Object.fromEntries(icons.map(([id]) => [id, { ...defaultFit, ...(defaultFits[id] || {}), ...(saved[id] || {}) }]));
+      } catch {
+        return Object.fromEntries(icons.map(([id]) => [id, { ...defaultFit, ...(defaultFits[id] || {}) }]));
+      }
+    };
+    const fits = loadFits();
+    const saveFits = () => localStorage.setItem(storageKey, JSON.stringify(fits));
+    const round = (value) => Math.round(value * 100) / 100;
+
+    function transformFor(fit, viewportSize = 38) {
+      const ratio = viewportSize / 38;
+      return `translate(${fit.x * ratio}px, ${fit.y * ratio}px) scale(${fit.scale})`;
+    }
+
+    function renderRail() {
+      rail.innerHTML = "";
+      icons.forEach(([id, label]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `rail-button${id === selected ? " is-active" : ""}`;
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.addEventListener("click", () => {
+          selected = id;
+          render();
+        });
+
+        const viewport = document.createElement("div");
+        viewport.className = "icon-viewport";
+        const img = document.createElement("img");
+        img.src = srcFor(id);
+        img.alt = "";
+        img.style.transform = transformFor(fits[id], 38);
+        viewport.appendChild(img);
+        button.appendChild(viewport);
+        rail.appendChild(button);
+      });
+    }
+
+    function renderOutput() {
+      const css = [
+        'html[data-admin-sidebar="rail"] .admin-rail-icon {',
+        '  background-position: calc(50% + var(--rail-icon-x, 0px)) calc(50% + var(--rail-icon-y, 0px));',
+        '  background-size: calc(var(--rail-icon-scale, 1.18) * 100%) calc(var(--rail-icon-scale, 1.18) * 100%);',
+        '}',
+        ''
+      ];
+      icons.forEach(([id]) => {
+        const fit = fits[id];
+        css.push(`html[data-admin-sidebar="rail"] .admin-rail-icon-${id} {`);
+        css.push(`  --rail-icon-x: ${round(fit.x)}px;`);
+        css.push(`  --rail-icon-y: ${round(fit.y)}px;`);
+        css.push(`  --rail-icon-scale: ${round(fit.scale)};`);
+        css.push("}");
+        css.push("");
+      });
+      output.value = css.join("\n");
+    }
+
+    function renderControls() {
+      const fit = fits[selected];
+      const label = icons.find(([id]) => id === selected)?.[1] || selected;
+      const rect = bigFrame.getBoundingClientRect();
+      const viewportSize = rect.width || 38;
+      selectedName.textContent = label;
+      bigImage.src = srcFor(selected);
+      bigImage.style.transform = transformFor(fit, viewportSize);
+      scaleInput.value = fit.scale;
+      scaleNumber.value = round(fit.scale);
+      scaleValue.textContent = `${round(fit.scale * 100)}%`;
+      xInput.value = round(fit.x);
+      yInput.value = round(fit.y);
+    }
+
+    function render() {
+      renderRail();
+      renderControls();
+      renderOutput();
+    }
+
+    function updateSelected(partial) {
+      fits[selected] = { ...fits[selected], ...partial };
+      saveFits();
+      render();
+    }
+
+    scaleInput.addEventListener("input", () => updateSelected({ scale: Number(scaleInput.value) }));
+    scaleNumber.addEventListener("input", () => updateSelected({ scale: Number(scaleNumber.value) }));
+    xInput.addEventListener("input", () => updateSelected({ x: Number(xInput.value) }));
+    yInput.addEventListener("input", () => updateSelected({ y: Number(yInput.value) }));
+
+    bigFrame.addEventListener("pointerdown", (event) => {
+      bigFrame.setPointerCapture(event.pointerId);
+      const fit = fits[selected];
+      const rect = bigFrame.getBoundingClientRect();
+      dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        fitX: fit.x,
+        fitY: fit.y,
+        ratio: 38 / rect.width
+      };
+      bigFrame.classList.add("is-dragging");
+    });
+
+    bigFrame.addEventListener("pointermove", (event) => {
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+      const dx = (event.clientX - dragState.startX) * dragState.ratio;
+      const dy = (event.clientY - dragState.startY) * dragState.ratio;
+      fits[selected].x = round(dragState.fitX + dx);
+      fits[selected].y = round(dragState.fitY + dy);
+      saveFits();
+      render();
+    });
+
+    bigFrame.addEventListener("pointerup", (event) => {
+      if (dragState?.pointerId === event.pointerId) {
+        dragState = null;
+        bigFrame.classList.remove("is-dragging");
+      }
+    });
+
+    document.getElementById("resetIcon").addEventListener("click", () => {
+      fits[selected] = { ...defaultFit, ...(defaultFits[selected] || {}) };
+      saveFits();
+      render();
+    });
+
+    document.getElementById("resetAll").addEventListener("click", () => {
+      icons.forEach(([id]) => {
+        fits[id] = { ...defaultFit, ...(defaultFits[id] || {}) };
+      });
+      saveFits();
+      render();
+    });
+
+    document.getElementById("copyCss").addEventListener("click", async () => {
+      renderOutput();
+      await navigator.clipboard.writeText(output.value);
+    });
+
+    document.getElementById("copyJson").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(JSON.stringify(fits, null, 2));
+      output.value = JSON.stringify(fits, null, 2);
+    });
+
+    render();
+  </script>
+</body>
+</html>

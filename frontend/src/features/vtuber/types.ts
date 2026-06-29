@@ -12,6 +12,9 @@ export type VtuberCharacterConfig = {
   id: string
   name: string
   modelUrl: string
+  renderMode?: 'live2d' | 'three3d'
+  threeModelUrl?: string
+  threeTextureUrl?: string
 }
 
 export type VtuberClientTextInputMessage = {

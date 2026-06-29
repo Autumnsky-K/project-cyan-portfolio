@@ -193,8 +193,37 @@ textarea.code {
   gap: 8px;
 }
 
-.top-actions select {
-  width: 150px;
+.node-add.combine {
+  border-color: rgba(14, 165, 233, 0.34);
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+}
+
+.node-add.split {
+  border-color: rgba(16, 185, 129, 0.36);
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+}
+
+.node-add.function {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+}
+
+.node-add.llm {
+  border-color: rgba(139, 92, 246, 0.38);
+  background: linear-gradient(135deg, #ede9fe, #fbcfe8);
+}
+
+.top-actions .oauth-key-field {
+  width: min(520px, 34vw);
+  min-width: 260px;
+}
+
+.top-actions .oauth-key-field span {
+  font-size: 10px;
+}
+
+.top-actions .oauth-key-field input {
+  height: 36px;
 }
 
 .workbench {
@@ -293,6 +322,10 @@ textarea.code {
   align-items: baseline;
   min-width: 0;
   gap: 8px;
+}
+
+.inspector-header > button {
+  flex: 0 0 auto;
 }
 
 .inspector-header .hint {
@@ -500,27 +533,41 @@ button.mini {
   min-height: 34px;
 }
 
-.inspector-actions {
+.path-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.path-picker input {
+  cursor: pointer;
+}
+
+.count-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.72);
-  padding: 8px 12px;
-}
-
-.inspector-actions div {
-  display: flex;
   gap: 8px;
+  color: #43566b;
+  font-size: 12px;
+  font-weight: 820;
 }
 
-.log-line {
-  overflow: hidden;
-  max-width: 190px;
-  color: var(--muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.count-row > div {
+  display: flex;
+  gap: 6px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.segmented button.active {
+  border-color: rgba(37, 99, 235, 0.46);
+  background: linear-gradient(135deg, #d9f99d, #7dd3fc);
+  color: #102033;
 }
 
 .litegraph {
@@ -537,10 +584,17 @@ button.mini {
     min-height: 100%;
   }
 
-  .topbar,
-  .top-actions {
+  .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+  }
+
+  .top-actions .oauth-key-field {
+    width: 100%;
   }
 
   .workbench {
