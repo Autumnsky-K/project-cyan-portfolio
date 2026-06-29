@@ -24,17 +24,20 @@ public class GoodsController {
 	private final GoodsRecommendationService goodsRecommendationService;
 	private final GoodsViewHistoryService goodsViewHistoryService;
 	private final GoodsFavoriteService goodsFavoriteService;
+	private final GoodsLikeService goodsLikeService;
 
 	public GoodsController(
 		GoodsService goodsService,
 		GoodsRecommendationService goodsRecommendationService,
 		GoodsViewHistoryService goodsViewHistoryService,
-		GoodsFavoriteService goodsFavoriteService
+		GoodsFavoriteService goodsFavoriteService,
+		GoodsLikeService goodsLikeService
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
 		this.goodsViewHistoryService = goodsViewHistoryService;
 		this.goodsFavoriteService = goodsFavoriteService;
+		this.goodsLikeService = goodsLikeService;
 	}
 
 	@GetMapping
@@ -114,6 +117,30 @@ public class GoodsController {
 		AuthenticatedMember currentMember
 	) {
 		goodsFavoriteService.removeFavorite(currentMember.memberId(), goodsId);
+	}
+
+	@GetMapping("/{goodsId}/likes/my")
+	public GoodsLikeResponse findMyLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.findMyLike(currentMember.memberId(), goodsId);
+	}
+
+	@PostMapping("/{goodsId}/likes")
+	public GoodsLikeResponse addLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.addLike(currentMember.memberId(), goodsId);
+	}
+
+	@DeleteMapping("/{goodsId}/likes")
+	public GoodsLikeResponse removeLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.removeLike(currentMember.memberId(), goodsId);
 	}
 
 	@PostMapping("/{goodsId}/views")
