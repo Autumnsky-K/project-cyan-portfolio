@@ -53,21 +53,75 @@ public class Payment {
 	protected Payment() {
 	}
 
-	private Payment(StoreOrder order) {
+	private Payment(StoreOrder order, String provider) {
 		this.order = order;
 		this.paymentAmount = order.getTotalAmount();
 		this.paymentStatus = "READY";
-		this.provider = "TOSS";
+		this.provider = provider;
 		this.providerOrderId = order.getOrderNo();
 		this.requestedAt = Instant.now();
 		this.createdAt = this.requestedAt;
 	}
 
 	static Payment readyForToss(StoreOrder order) {
-		return new Payment(order);
+		return readyForProvider(order, "TOSS");
+	}
+
+	static Payment readyForProvider(StoreOrder order, String provider) {
+		return new Payment(order, provider);
 	}
 
 	public Long getPaymentId() {
 		return paymentId;
+	}
+
+	public StoreOrder getOrder() {
+		return order;
+	}
+
+	public BigDecimal getPaymentAmount() {
+		return paymentAmount;
+	}
+
+	public String getPaymentStatus() {
+		return paymentStatus;
+	}
+
+	public String getProvider() {
+		return provider;
+	}
+
+	public String getProviderPaymentKey() {
+		return providerPaymentKey;
+	}
+
+	public String getProviderOrderId() {
+		return providerOrderId;
+	}
+
+	public void markApproved(String providerPaymentKey, String paymentMethod) {
+		this.paymentStatus = "APPROVED";
+		if (providerPaymentKey != null && !providerPaymentKey.isBlank()) {
+			this.providerPaymentKey = providerPaymentKey;
+		}
+		if (paymentMethod != null && !paymentMethod.isBlank()) {
+			this.paymentMethod = paymentMethod;
+		}
+	}
+
+	public void markCanceled() {
+		if (!isApproved()) {
+			this.paymentStatus = "CANCELED";
+		}
+	}
+
+	public void markFailed() {
+		if (!isApproved()) {
+			this.paymentStatus = "FAILED";
+		}
+	}
+
+	public boolean isApproved() {
+		return "APPROVED".equals(paymentStatus);
 	}
 }

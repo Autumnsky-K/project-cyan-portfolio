@@ -31,11 +31,17 @@ export function createKakaoPendingPayment(order, kakaoReady = {}) {
     orderId: kakaoReady.orderId || order.orderId,
     localOrderId: order.orderId,
     orderNo: kakaoReady.orderNo || order.orderNumber,
+    paymentId: kakaoReady.paymentId || order.paymentId,
+    amount: kakaoReady.totalAmount || order.totalAmount || order.totalPrice,
     partnerOrderId:
       kakaoReady.partnerOrderId ||
       kakaoReady.partner_order_id ||
       order.partnerOrderId,
-    partnerUserId: kakaoReady.partnerUserId || '',
+    partnerUserId:
+      kakaoReady.partnerUserId ||
+      kakaoReady.partner_user_id ||
+      order.partnerUserId ||
+      '',
     paymentMethod: PAYMENT_METHODS.KAKAO_PAY,
     createdAt: new Date().toISOString(),
   }

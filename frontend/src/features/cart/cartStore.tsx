@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addCartItem as addRemoteCartItem,
   clearCart as clearRemoteCart,
@@ -60,6 +60,40 @@ export function CartProvider({ children }: CartProviderProps) {
   const [status, setStatus] = useState<CartContextValue['status']>('idle')
   const [error, setError] = useState('')
   const [isSignedIn, setIsSignedIn] = useState(false)
+  const guestCartMergeRef = useRef<Promise<CartApiResponse | null> | null>(null)
+
+  const mergeGuestCartIntoRemoteCart = useCallback(async () => {
+    if (guestCartMergeRef.current) {
+      return guestCartMergeRef.current
+    }
+
+    const mergePromise = (async () => {
+      const guestItems = readGuestCartItems()
+      let remainingGuestItems = guestItems
+      let latestCart: CartApiResponse | null = null
+
+      for (const guestItem of guestItems) {
+        latestCart = await addRemoteCartItem(guestItem.goodsId, Math.max(1, guestItem.quantity))
+        remainingGuestItems = remainingGuestItems.filter((item) => item.cartItemKey !== guestItem.cartItemKey)
+
+        if (remainingGuestItems.length > 0) {
+          saveGuestCartItems(remainingGuestItems)
+        } else {
+          clearGuestCartItems()
+        }
+      }
+
+      return latestCart
+    })()
+
+    guestCartMergeRef.current = mergePromise
+
+    try {
+      return await mergePromise
+    } finally {
+      guestCartMergeRef.current = null
+    }
+  }, [])
 
   const refreshCart = useCallback(async () => {
     if (!(await hasSpringApiSession())) {
@@ -75,14 +109,15 @@ export function CartProvider({ children }: CartProviderProps) {
     setIsSignedIn(true)
 
     try {
-      const cart = await fetchCart()
+      const mergedCart = await mergeGuestCartIntoRemoteCart()
+      const cart = mergedCart ?? await fetchCart()
       setItems(toCartItems(cart))
       setStatus('data')
     } catch (cartError) {
       setError(getCartErrorMessage(cartError, 'Failed to load cart.'))
       setStatus('error')
     }
-  }, [])
+  }, [mergeGuestCartIntoRemoteCart])
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {

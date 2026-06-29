@@ -18,6 +18,7 @@ export const ORDER_STATUS = {
 export const PAYMENT_METHODS = {
   MOCK: 'MOCK',
   KAKAO_PAY: 'KAKAO_PAY',
+  TOSS: 'TOSS',
 }
 
 export function calculateTotalQuantity(items) {
@@ -42,7 +43,9 @@ export function formatPrice(value) {
 }
 
 export function getPaymentMethodLabel(paymentMethod) {
-  return paymentMethod === PAYMENT_METHODS.KAKAO_PAY ? 'KakaoPay' : 'Dev preview'
+  if (paymentMethod === PAYMENT_METHODS.KAKAO_PAY) return 'KakaoPay'
+  if (paymentMethod === PAYMENT_METHODS.TOSS) return 'Toss Payments'
+  return 'Dev preview'
 }
 
 export function getStatusLabel(status) {

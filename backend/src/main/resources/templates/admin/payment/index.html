@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>결제 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/payment-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('payment', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-payment-main" data-payment-admin>
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Payment Operations</p>
+        <h2>결제 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/cart#checkout}">결제 화면</a>
+        <a th:href="@{/payment/success}">승인 결과</a>
+        <a th:href="@{/payment/fail}">실패 결과</a>
+      </div>
+    </header>
+
+    <section class="payment-kpi-grid" aria-label="결제 현황">
+      <article th:each="kpi : ${paymentDashboard.kpis()}">
+        <span th:text="${kpi.label()}">승인 대기</span>
+        <strong th:text="${kpi.value()}">7</strong>
+        <em th:text="${kpi.note()}">10분 만료 기준</em>
+      </article>
+    </section>
+
+    <section class="payment-bottom-grid" aria-label="결제 운영 요약">
+      <article class="payment-ops-panel">
+        <header>
+          <p class="admin-eyebrow">PG Event Log</p>
+          <h3>결제 이벤트</h3>
+        </header>
+        <div class="payment-event-list">
+          <div th:each="event : ${paymentDashboard.events()}">
+            <time th:text="${event.time()}">10:42:18</time>
+            <strong th:text="${event.code()}">TOSS.AUTH.SUCCESS</strong>
+            <span th:text="${event.message()}">paymentKey 수신, confirm 대기</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="payment-ops-panel">
+        <header>
+          <p class="admin-eyebrow">Reconciliation</p>
+          <h3>금액 / 상태 대사</h3>
+        </header>
+        <table class="payment-mini-table">
+          <thead>
+          <tr>
+            <th>항목</th>
+            <th>상태</th>
+            <th>건수</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="row : ${paymentDashboard.reconciliationRows()}">
+            <td th:text="${row.label()}">DB 주문 금액 = PG 금액</td>
+            <td><b th:class="${'check-chip ' + row.statusClass()}" th:text="${row.statusLabel()}">정상</b></td>
+            <td th:text="${row.count()}">40</td>
+          </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="payment-ops-panel">
+        <header>
+          <p class="admin-eyebrow">Settlement</p>
+          <h3>정산 메모</h3>
+        </header>
+        <dl class="payment-settlement">
+          <div>
+            <dt th:text="${paymentDashboard.settlement().approvedLabel()}">오늘 승인액</dt>
+            <dd th:text="${paymentDashboard.settlement().approvedAmount()}">₩3,284,000</dd>
+          </div>
+          <div>
+            <dt th:text="${paymentDashboard.settlement().canceledLabel()}">취소액</dt>
+            <dd th:text="${paymentDashboard.settlement().canceledAmount()}">₩141,000</dd>
+          </div>
+          <div>
+            <dt th:text="${paymentDashboard.settlement().expectedLabel()}">예상 정산액</dt>
+            <dd th:text="${paymentDashboard.settlement().expectedAmount()}">₩3,143,000</dd>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="payment-workbench">
+      <section class="payment-list-panel" aria-label="결제 목록">
+        <form class="payment-toolbar" data-payment-filter-form>
+          <label>
+            <span>검색</span>
+            <input type="search" placeholder="주문번호, 회원, paymentKey, tid, 실패 원인" data-payment-search>
+          </label>
+          <label>
+            <span>기간 시작</span>
+            <input type="date" value="2026-06-25">
+          </label>
+          <label>
+            <span>기간 종료</span>
+            <input type="date" value="2026-06-25">
+          </label>
+          <button type="button" data-payment-reset>초기화</button>
+        </form>
+
+        <div class="payment-filter-row">
+          <fieldset class="payment-filter-group" aria-label="PG 필터">
+            <legend>PG</legend>
+            <button type="button"
+                    th:each="filter : ${paymentDashboard.providerFilters()}"
+                    th:classappend="${filter.active()} ? 'is-active' : ''"
+                    th:attr="data-provider-filter=${filter.value()}"
+                    th:text="${filter.label()}">전체</button>
+          </fieldset>
+
+          <fieldset class="payment-filter-group" aria-label="상태 필터">
+            <legend>상태</legend>
+            <button type="button"
+                    th:each="filter : ${paymentDashboard.statusFilters()}"
+                    th:classappend="${filter.active()} ? 'is-active' : ''"
+                    th:attr="data-status-tab=${filter.value()}"
+                    th:text="${filter.label()}">전체</button>
+          </fieldset>
+        </div>
+
+        <div class="payment-table-legend" aria-label="결제 절차 색상 안내">
+          <span><i class="legend-done"></i>완료</span>
+          <span><i class="legend-done-blue"></i>외부 PG 완료</span>
+          <span><i class="legend-pending"></i>대기</span>
+          <span><i class="legend-blocked"></i>막힘</span>
+          <span><i class="legend-muted"></i>미진입</span>
+        </div>
+
+        <div class="payment-table-wrap">
+          <table class="payment-order-table">
+            <thead>
+            <tr>
+              <th>주문</th>
+              <th>회원</th>
+              <th>PG</th>
+              <th>금액</th>
+              <th>결제</th>
+              <th>주문</th>
+              <th>주문생성</th>
+              <th>약관</th>
+              <th>PG 인증</th>
+              <th>승인 API</th>
+              <th>금액검증</th>
+              <th>재고</th>
+              <th>주문확정</th>
+              <th>웹훅/대사</th>
+              <th>막힘 원인</th>
+              <th>처리</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${paymentDashboard.rows()}"
+                data-payment-row
+                th:attr="data-order-id=${row.orderId()},
+                         data-member=${row.memberName()},
+                         data-provider=${row.provider()},
+                         data-provider-label=${row.providerLabel()},
+                         data-amount=${row.amount()},
+                         data-payment-status=${row.paymentStatus()},
+                         data-order-status=${row.orderStatus()},
+                         data-payment-key=${row.paymentKey()},
+                         data-transaction-id=${row.transactionId()},
+                         data-terms=${row.termsData()},
+                         data-risk=${row.risk()},
+                         data-failure=${row.failure()},
+                         data-items=${row.items()},
+                         data-flow=${row.flowData()}">
+              <td><strong th:text="${row.shortOrderId()}">ORD-1042</strong><span th:text="${row.orderTime()}">10:42:18</span></td>
+              <td><span th:text="${row.memberName()}">김민서</span><span th:text="${row.memberCode()}">member#18</span></td>
+              <td><b th:class="${'pg-chip ' + row.providerChipClass()}" th:text="${row.providerLabel()}">Toss</b></td>
+              <td th:text="${row.amountLabel()}">₩128,400</td>
+              <td><i th:class="${'status-pill ' + row.paymentStatusClass()}" th:text="${row.paymentStatusLabel()}">READY</i></td>
+              <td th:text="${row.orderStatus()}">PAYMENT_PENDING</td>
+              <td th:each="step : ${row.flowSteps()}"
+                  th:class="${'flow-cell ' + step.cssClass()}"
+                  th:text="${step.cellLabel()}">완료</td>
+              <td th:text="${row.failure()}">confirm 대기</td>
+              <td><button type="button" class="table-action">상세</button></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <button class="payment-detail-backdrop" type="button" data-detail-close aria-label="상세 닫기"></button>
+    <aside class="payment-detail-panel" data-payment-detail-panel aria-label="결제 상세" aria-hidden="true">
+      <header>
+        <div>
+          <p class="admin-eyebrow">Payment Detail</p>
+          <h3 data-detail-order-id>결제 상세</h3>
+        </div>
+        <button type="button" data-detail-close aria-label="상세 닫기">닫기</button>
+      </header>
+
+      <dl class="payment-detail-list">
+        <div>
+          <dt>회원</dt>
+          <dd data-detail-member>-</dd>
+        </div>
+        <div>
+          <dt>PG</dt>
+          <dd data-detail-provider>-</dd>
+        </div>
+        <div>
+          <dt>결제상태</dt>
+          <dd data-detail-payment-status>-</dd>
+        </div>
+        <div>
+          <dt>주문상태</dt>
+          <dd data-detail-order-status>-</dd>
+        </div>
+        <div>
+          <dt>결제키</dt>
+          <dd><code data-detail-payment-key>-</code></dd>
+        </div>
+        <div>
+          <dt>TID</dt>
+          <dd><code data-detail-transaction-id>-</code></dd>
+        </div>
+        <div>
+          <dt>금액</dt>
+          <dd data-detail-amount>-</dd>
+        </div>
+        <div>
+          <dt>검증 상태</dt>
+          <dd data-detail-risk>-</dd>
+        </div>
+        <div>
+          <dt>막힘 원인</dt>
+          <dd data-detail-failure>-</dd>
+        </div>
+      </dl>
+
+      <section class="payment-stepper" aria-label="결제 처리 단계">
+        <ol data-detail-flow></ol>
+      </section>
+
+      <section class="payment-detail-box">
+        <h4>상품 스냅샷</h4>
+        <p data-detail-items>-</p>
+      </section>
+
+      <section class="payment-detail-box">
+        <h4>약관 동의</h4>
+        <ul data-detail-terms></ul>
+      </section>
+
+      <div class="payment-action-grid">
+        <button type="button">PG 조회</button>
+        <button type="button">대사 재확인</button>
+        <button type="button" class="danger" disabled>취소 승인</button>
+        <button type="button" class="danger" disabled>환불 처리</button>
+      </div>
+    </aside>
+  </section>
+</main>
+<script th:src="@{/admin/payment-admin.js}"></script>
+</body>
+</html>
