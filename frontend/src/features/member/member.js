@@ -2,6 +2,7 @@ import { supabase, supabaseConfigError } from '../../api/supabaseClient'
 import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
+const ACCOUNT_NOT_FOUND_MESSAGE = '계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.'
 
 
 const MY_PAGE_DUMMY_DATA = {
@@ -227,28 +228,31 @@ function pickAddressFromRow(row) {
   )
 }
 
-export function loginMember(form) {
+export async function loginMember(form) {
   checkSupabaseConfig()
 
   // Supabase Auth의 기본 비밀번호 로그인은 이메일을 기준으로 동작합니다.
-  return supabase.auth
-    .signInWithPassword({
-      email: form.email,
-      password: form.password,
-    })
-    .then(({ data, error }) => {
-      if (error) {
-        throw new Error(error.message)
-      }
+  const { error } = await supabase.auth.signInWithPassword({
+    email: form.email,
+    password: form.password,
+  })
 
-      return {
-        member: {
-          userId: data.user?.id,
-          email: data.user?.email,
-          name: data.user?.user_metadata?.name,
-        },
-      }
-    })
+  if (error) {
+    throw new Error(ACCOUNT_NOT_FOUND_MESSAGE)
+  }
+
+  try {
+    const member = await getCurrentMember()
+
+    if (!member) {
+      throw new Error('회원 정보를 확인하지 못했습니다.')
+    }
+
+    return { member }
+  } catch (memberError) {
+    await supabase.auth.signOut()
+    throw memberError
+  }
 }
 
 export async function loginWithKakao() {
@@ -292,6 +296,17 @@ export async function exchangeAuthCodeForSession(code) {
 
   if (!data.session) {
     throw new Error('로그인 세션을 만들지 못했습니다.')
+  }
+
+  try {
+    const member = await getCurrentMember()
+
+    if (!member) {
+      throw new Error('회원 정보를 확인하지 못했습니다.')
+    }
+  } catch (memberError) {
+    await supabase.auth.signOut()
+    throw memberError
   }
 
   return data.session

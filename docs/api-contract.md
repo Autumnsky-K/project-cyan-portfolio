@@ -84,6 +84,16 @@
 }
 ```
 
+토큰은 유효하지만 탈퇴 처리된 회원일 때:
+
+```json
+{
+  "code": "MEMBER_WITHDRAWN",
+  "message": "계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.",
+  "status": 403
+}
+```
+
 ### 1.3 공통 응답 형태
 
 성공 시 **리소스를 그대로** 반환하고 HTTP 상태코드로 결과를 표현한다. (불필요한 envelope 중첩 금지)
@@ -182,8 +192,8 @@
 - 인증 필요: N
 - 요청 body: { email, password, name, phone, address, agreements }
 - 응답 (동결 필드): { userId(uuid), email, name }
-- 실패: 이미 가입된 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
-- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
+- 실패: 활성 회원이 이미 사용하는 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
+- 실패: 활성 회원이 이미 사용하는 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
 - 상태: [x] 동결
 ```
 
@@ -193,7 +203,7 @@
 - 인증 필요: N
 - 요청 body: { email, phone }
 - 응답 (동결 필드): { available(boolean), emailExists(boolean), phoneExists(boolean) }
-- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다.
+- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다. 탈퇴 회원의 이메일/휴대폰번호는 중복으로 보지 않는다.
 - 상태: [x] 동결
 ```
 
@@ -203,12 +213,11 @@
 - 인증 필요: N
 - 요청 body: { email }
 - 응답 (동결 필드): { exists(boolean) }
-- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다.
+- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다. 탈퇴 회원 이메일은 exists=false로 본다.
 - 상태: [x] 동결
 ```
 
 ```
-<<<<<<< HEAD
 #### [PATCH] /api/members/me
 - 설명: 로그인 회원의 개인정보 수정
 - 인증 필요: Y
@@ -227,7 +236,9 @@
 - 응답: 204 No Content
 - 비고: 주문/결제 이력 참조 무결성을 유지하기 위해 회원 row는 탈퇴 상태로 익명화하고 Supabase Auth 사용자를 삭제한다.
 - 상태: [x] 동결
-=======
+```
+
+```
 #### [GET] /api/members/me/favorite-artists
 - 설명: 로그인 사용자가 선호 아티스트로 등록한 목록 조회
 - 인증 필요: Y
@@ -235,7 +246,6 @@
 - 응답: 배열 `{ artistId, name, imageUrl }`
 - 비고: `member_artist.member_id`는 인증된 회원에서 결정하며, access token과 내부 prompt에는 저장하지 않는다.
 - 상태: [x] additive
->>>>>>> origin/dev
 ```
 
 `public.member` 동기화:
@@ -788,4 +798,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-26 | v0.2.7 | ai/member/goods | additive | 회원 선호 아티스트 조회 API `GET /api/members/me/favorite-artists`와 AI 추천 후보 `preferredArtistIds`, `artistId` 응답 필드 추가 | 강승민 |
 | 2026-06-29 | v0.2.8 | ai/virtual-chat | additive | 통합 개인화 컨텍스트 조회와 PostgreSQL JSONB 기반 세션 요약 upsert API 추가 | 강승민 |
 | 2026-06-29 | v0.2.9 | ai/cart | additive | 비로그인 WebSocket 대화·10회 연결 한도·결정적 로그인 CTA metadata와 로그인 후 게스트 장바구니 병합 정책 추가 | 강승민 |
+| 2026-06-30 | v0.2.9 | member | additive | 탈퇴 상태 회원의 인증 API 접근을 `MEMBER_WITHDRAWN` 403으로 거절하도록 명시 | Codex |
+| 2026-06-30 | v0.2.9 | member | additive | 회원가입·중복확인·비밀번호 재설정 eligibility에서 탈퇴 회원을 기존 회원 중복으로 보지 않도록 명시 | Codex |
+| 2026-06-30 | v0.2.9 | member | correction | 탈퇴 회원 로그인 차단 안내 문구를 “계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.”로 변경 | Codex |
 |  |  |  |  |  |  |

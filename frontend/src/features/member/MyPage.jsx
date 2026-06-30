@@ -650,17 +650,6 @@ function MyPage() {
     },
   ]
 
-  const accountMenuGroups = [
-    {
-      title: 'MY ACCOUNT',
-      items: ['MY PROFILE', 'MY ADDRESS', 'CARDS', 'MY ORDERS', 'COMMUNICATION PREFERENCES'],
-    },
-    {
-      title: 'CUSTOMER CARE',
-      items: ['1:1 문의', '상품문의 내역', 'FAQ'],
-    },
-  ]
-
   return (
     <main className="account-page mypage-page">
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
@@ -672,90 +661,61 @@ function MyPage() {
       <Header />
       <div className="account-shell">
         <div className="mypage-layout">
-          <aside className="mypage-side-nav" aria-label="마이페이지 메뉴">
-            {accountMenuGroups.map((group) => (
-              <nav key={group.title} aria-label={group.title}>
-                <h2>{group.title}</h2>
-                {group.items.map((item) => (
-                  <button type="button" key={item}>
-                    <span>{item}</span>
-                    <span aria-hidden="true">›</span>
-                  </button>
-                ))}
-              </nav>
-            ))}
-          </aside>
-
           <section className="account-card">
-          <div className="account-panel">
-            <div className="mypage-profile">
-              <div className="mypage-profile-text">
-                <h1>{summary.member.name}님</h1>
-                <p>{summary.member.email ?? '이메일 정보 없음'}</p>
+            <div className="account-panel">
+              <div className="mypage-profile">
+                <div className="mypage-profile-text">
+                  <h1>{summary.member.name}님</h1>
+                  <p>{summary.member.email ?? '이메일 정보 없음'}</p>
+                </div>
+                <button
+                  className="mypage-edit-link"
+                  type="button"
+                  onClick={handleEditProfile}
+                >
+                  수정하기
+                </button>
+                <button
+                  className="mypage-edit-link"
+                  type="button"
+                  onClick={handleLogout}
+                >
+                  로그아웃
+                </button>
               </div>
-              <button
-                className="mypage-edit-link"
-                type="button"
-                onClick={handleEditProfile}
-              >
-                수정하기
-              </button>
-              <button
-                className="mypage-edit-link"
-                type="button"
-                onClick={handleLogout}
-              >
-                로그아웃
-              </button>
+
+              <dl className="mypage-profile-list">
+                <div>
+                  <dt>이메일</dt>
+                  <dd>{summary.member.email ?? '이메일 정보 없음'}</dd>
+                </div>
+                <div>
+                  <dt>휴대폰 번호</dt>
+                  <dd>{summary.member.phone ?? '휴대폰 번호 없음'}</dd>
+                </div>
+                <div>
+                  <dt>비밀번호 변경일</dt>
+                  <dd>{summary.member.passwordUpdatedAt ?? '변경 이력 없음'}</dd>
+                </div>
+                <div>
+                  <dt>주소</dt>
+                  <dd>{maskAddress(summary.member.address)}</dd>
+                </div>
+              </dl>
             </div>
 
-            <dl className="mypage-profile-list">
-              <div>
-                <dt>이메일</dt>
-                <dd>{summary.member.email ?? '이메일 정보 없음'}</dd>
-              </div>
-              <div>
-                <dt>휴대폰 번호</dt>
-                <dd>{summary.member.phone ?? '휴대폰 번호 없음'}</dd>
-              </div>
-              <div>
-                <dt>비밀번호 변경일</dt>
-                <dd>{summary.member.passwordUpdatedAt ?? '변경 이력 없음'}</dd>
-              </div>
-              <div>
-                <dt>주소</dt>
-                <dd>{maskAddress(summary.member.address)}</dd>
-              </div>
-            </dl>
-
-            <div className="mypage-summary-strip" aria-label="마이페이지 요약">
-              <article>
-                <span>ORDERS</span>
-                <strong>{summary.orders.length}</strong>
-              </article>
-              <article>
-                <span>PAYMENTS</span>
-                <strong>{summary.payments.length}</strong>
-              </article>
-              <article>
-                <span>INQUIRIES</span>
-                <strong>{summary.productInquiries.length + summary.supportInquiries.length}</strong>
-              </article>
-            </div>
-          </div>
-
-          {dashboardSections.map((section) => (
-            <DashboardSection
-              key={section.id}
-              title={section.title}
-              items={section.items}
-              pageIndex={sectionPages[section.id] ?? 0}
-              onPrevious={() => handleSectionMove(section.id, -1)}
-              onNext={() => handleSectionMove(section.id, 1)}
-              onMore={() => openSection(section)}
-              actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
-            />
-          ))}
+            {dashboardSections.map((section) => (
+              <DashboardSection
+                key={section.id}
+                title={section.title}
+                items={section.items}
+                pageIndex={sectionPages[section.id] ?? 0}
+                onPrevious={() => handleSectionMove(section.id, -1)}
+                onNext={() => handleSectionMove(section.id, 1)}
+                onMore={() => openSection(section)}
+                actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
+              />
+            ))}
           </section>
         </div>
       </div>
