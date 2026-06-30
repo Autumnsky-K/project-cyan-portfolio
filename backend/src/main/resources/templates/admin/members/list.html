@@ -78,55 +78,71 @@
 
     <section class="admin-table-panel" aria-label="select 회원목록조회">
       <div class="admin-table-scroll">
-        <table class="admin-goods-table">
+        <table class="admin-goods-table admin-bulk-table admin-member-table">
           <thead>
           <tr>
             <th>ID</th>
+            <th>UUID</th>
             <th>이메일</th>
-            <th>회원정보</th>
+            <th>이름</th>
+            <th>휴대폰번호</th>
+            <th>주소</th>
+            <th>등급</th>
             <th>상태</th>
-            <th>update : 회원정보수정</th>
-            <th>Delete : 회원 삭제</th>
+            <th>수정</th>
+            <th>삭제</th>
           </tr>
           </thead>
           <tbody>
           <tr th:if="${#lists.isEmpty(members)}">
-            <td colspan="6">등록된 회원이 없습니다.</td>
+            <td colspan="10">등록된 회원이 없습니다.</td>
           </tr>
           <tr th:each="member : ${members}">
             <td>
-              <strong th:text="${member.memberId}">1</strong>
-              <span th:text="${member.memberUuid}">uuid</span>
-            </td>
-            <td th:text="${member.email ?: '탈퇴/이메일 없음'}">member@example.com</td>
-            <td>
-              <form class="inline-form admin-member-update-form"
+              <form class="admin-member-update-form"
+                    th:id="'member-update-' + ${member.memberId}"
                     th:action="@{/admin/members/{memberId}(memberId=${member.memberId})}"
-                    method="post">
-                <input type="email" name="email" th:value="${member.email}" required>
-                <input type="text" name="name" th:value="${member.name}" required>
-                <input type="tel" name="phone" th:value="${member.phone}" required>
-                <input type="text" name="address" th:value="${member.address}" required>
-                <select name="memberGrade">
-                  <option value="BASIC" th:selected="${member.memberGrade == 'BASIC'}">BASIC</option>
-                  <option value="WELCOME" th:selected="${member.memberGrade == 'WELCOME'}">WELCOME</option>
-                  <option value="FRIEND" th:selected="${member.memberGrade == 'FRIEND'}">FRIEND</option>
-                  <option value="VIP" th:selected="${member.memberGrade == 'VIP'}">VIP</option>
-                </select>
-                <select name="status">
-                  <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">ACTIVE</option>
-                  <option value="WITHDRAWN" th:selected="${member.status == 'WITHDRAWN'}">WITHDRAWN</option>
-                  <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">SUSPENDED</option>
-                </select>
-                <button type="submit">update</button>
-              </form>
+                    method="post"></form>
+              <strong th:text="${member.memberId}">1</strong>
             </td>
             <td>
-              <span th:text="${member.status}">ACTIVE</span>
-              <span th:text="${member.memberGrade}">BASIC</span>
+              <span class="admin-member-uuid" th:text="${member.memberUuid}">uuid</span>
             </td>
             <td>
-              <span th:text="${member.joinedAt}">2026-06-29T00:00:00Z</span>
+              <input class="admin-bulk-input" type="email" name="email" th:value="${member.email}"
+                     th:attr="form='member-update-' + ${member.memberId}" required>
+            </td>
+            <td>
+              <input class="admin-bulk-input" type="text" name="name" th:value="${member.name}"
+                     th:attr="form='member-update-' + ${member.memberId}" required>
+            </td>
+            <td>
+              <input class="admin-bulk-input" type="tel" name="phone" th:value="${member.phone}"
+                     th:attr="form='member-update-' + ${member.memberId}" required>
+            </td>
+            <td>
+              <input class="admin-bulk-input" type="text" name="address" th:value="${member.address}"
+                     th:attr="form='member-update-' + ${member.memberId}" required>
+            </td>
+            <td>
+              <select class="admin-bulk-input" name="memberGrade"
+                      th:attr="form='member-update-' + ${member.memberId}">
+                <option value="BASIC" th:selected="${member.memberGrade == 'BASIC'}">BASIC</option>
+                <option value="WELCOME" th:selected="${member.memberGrade == 'WELCOME'}">WELCOME</option>
+                <option value="FRIEND" th:selected="${member.memberGrade == 'FRIEND'}">FRIEND</option>
+                <option value="VIP" th:selected="${member.memberGrade == 'VIP'}">VIP</option>
+              </select>
+            </td>
+            <td>
+              <select class="admin-bulk-input" name="status"
+                      th:attr="form='member-update-' + ${member.memberId}">
+                <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">ACTIVE</option>
+                <option value="WITHDRAWN" th:selected="${member.status == 'WITHDRAWN'}">WITHDRAWN</option>
+                <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">SUSPENDED</option>
+              </select>
+            </td>
+            <td>
+              <button type="submit" th:attr="form='member-update-' + ${member.memberId}">update</button>
             </td>
             <td>
               <form class="inline-form"
