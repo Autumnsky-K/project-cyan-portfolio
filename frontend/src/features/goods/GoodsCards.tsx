@@ -4,6 +4,7 @@ import type { GoodsSummary } from '../../api/goods'
 import GoodsImage from './GoodsImage'
 import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsStatusBadge from './GoodsStatusBadge'
+import { formatGoodsPrice } from './goodsFormatters'
 
 export type GoodsViewMode = 'grid' | 'list'
 
@@ -75,7 +76,7 @@ function GoodsCards({
               </div>
               <h3>{item.name}</h3>
               <div className="card-footer">
-                <strong>KRW {Number(item.price ?? 0).toLocaleString()}</strong>
+                <strong>{formatGoodsPrice(Number(item.price ?? 0))}</strong>
                 <div className="card-meta-row">
                   {hasReviews && (
                     <GoodsRatingSummary

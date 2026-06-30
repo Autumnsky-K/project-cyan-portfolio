@@ -115,10 +115,10 @@ function GoodsSearchAutocomplete({
   return (
     <div className="goods-search-autocomplete">
       <label className="search-field">
-        <span>Search</span>
+        <span>검색</span>
         <input
           type="search"
-          placeholder="Search goods, artist, category"
+          placeholder="굿즈, 아티스트, 카테고리 검색"
           value={query}
           autoComplete="off"
           aria-autocomplete="list"
@@ -134,11 +134,11 @@ function GoodsSearchAutocomplete({
       {isOpen && hasOptions && (
         <div className="goods-search-menu" id="goods-search-suggestions" role="listbox">
           {visibleRecentSearches.length > 0 && (
-            <section aria-label="Recent searches">
+            <section aria-label="최근 검색어">
               <div className="goods-search-menu-heading">
-                <strong>Recent searches</strong>
+                <strong>최근 검색어</strong>
                 <button type="button" onMouseDown={() => persistRecentSearches([])}>
-                  Clear all
+                  모두 지우기
                 </button>
               </div>
               {visibleRecentSearches.map((item) => (
@@ -150,7 +150,7 @@ function GoodsSearchAutocomplete({
                   <button
                     className="goods-search-remove"
                     type="button"
-                    aria-label={`Remove ${item} from recent searches`}
+                    aria-label={`${item} 최근 검색어에서 삭제`}
                     onMouseDown={() => removeRecentSearch(item)}
                   >
                     ×
@@ -161,9 +161,9 @@ function GoodsSearchAutocomplete({
           )}
 
           {matchingSuggestions.length > 0 && (
-            <section aria-label="Search suggestions">
+            <section aria-label="검색 제안">
               <div className="goods-search-menu-heading">
-                <strong>Suggestions</strong>
+                <strong>추천 검색어</strong>
               </div>
               {matchingSuggestions.map((item) => (
                 <button
