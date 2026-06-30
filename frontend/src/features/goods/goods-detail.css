@@ -13,9 +13,9 @@
 .purchase-heading > strong { margin-top: 8px; font-size: 25px; }
 .purchase-state { width: fit-content; padding: 6px 10px; border-radius: 999px; background: #111; color: #fff; font-size: 12px; font-weight: 800; }
 .detail-favorite-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 92px; min-height: 36px; padding: 7px 12px; border: 1px solid var(--goods-line); border-radius: 999px; background: #fff; color: var(--goods-ink); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
-.detail-favorite-button .favorite-bookmark-icon { width: 16px; height: 20px; }
+.detail-favorite-button .favorite-heart-icon { width: 16px; height: 15px; }
 .detail-favorite-button .detail-favorite-label { display: inline-block; min-width: 44px; color: inherit; font-size: 13px; text-align: center; }
-.detail-favorite-button[aria-pressed="true"] { border-color: #d6b13a; background: #fff8df; color: #7a6100; }
+.detail-favorite-button[aria-pressed="true"] { border-color: #ef98aa; background: #fff2f5; color: #d6405f; }
 .detail-social-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .detail-like-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 5px 10px; border: 1px solid var(--goods-line); border-radius: 999px; background: #fff; color: var(--goods-muted); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
 .detail-like-button span:first-child { color: #d6405f; font-size: 13px; line-height: 1; }
