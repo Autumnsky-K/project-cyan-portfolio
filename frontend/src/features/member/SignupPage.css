@@ -297,3 +297,288 @@
     padding: 40px;
   }
 }
+
+/* Fashion-commerce signup refresh */
+.signup-page {
+  align-items: stretch;
+  padding: 0;
+  background: #ffffff;
+  color: #111111;
+}
+
+.signup-page::before {
+  content: 'CREATE ACCOUNT';
+  position: fixed;
+  right: clamp(24px, 6vw, 84px);
+  bottom: clamp(28px, 8vw, 92px);
+  color: #111111;
+  font-size: clamp(54px, 8vw, 116px);
+  font-weight: 950;
+  line-height: 0.84;
+  text-align: right;
+  pointer-events: none;
+}
+
+.signup-card {
+  display: grid;
+  align-content: center;
+  width: min(1120px, 100%);
+  min-height: 100svh;
+  padding: 96px clamp(24px, 7vw, 92px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.signup-header,
+.signup-form,
+.signup-login {
+  max-width: 410px;
+  margin-right: auto;
+  margin-left: 0;
+  text-align: left;
+}
+
+.signup-logo {
+  width: auto;
+  height: auto;
+  margin-bottom: 28px;
+  border: 0;
+  border-radius: 0;
+}
+
+.signup-logo::before {
+  content: 'PROJECT CYAN';
+  color: #111111;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 4px;
+}
+
+.signup-step {
+  justify-content: flex-start;
+  color: #6f6f6f;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+}
+
+.signup-step span {
+  border-color: #111111;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111111;
+}
+
+.signup-step span.is-active {
+  background: #111111;
+  color: #ffffff;
+}
+
+.signup-header h1 {
+  color: #111111;
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 0.98;
+}
+
+.signup-field {
+  gap: 7px;
+  color: #111111;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.signup-field input {
+  max-width: none;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #111111;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+}
+
+.signup-field input:hover,
+.signup-field input:focus {
+  border-color: #111111;
+  outline: 0;
+}
+
+.signup-terms legend {
+  color: #111111;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.signup-term-list {
+  border-top-color: #d8d8d5;
+}
+
+.signup-term,
+.signup-login {
+  color: #575757;
+}
+
+.signup-term strong,
+.signup-term em,
+.signup-login a {
+  color: #111111;
+}
+
+.signup-term input {
+  accent-color: #111111;
+}
+
+.signup-term-all {
+  border-color: #111111;
+  border-radius: 0;
+  background: #f5f5f3;
+  color: #111111;
+}
+
+.signup-submit,
+.signup-secondary {
+  min-height: 46px;
+  border-color: #111111;
+  border-radius: 0;
+  background: #111111;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.signup-secondary {
+  background: #ffffff;
+  color: #111111;
+}
+
+.signup-submit:hover,
+.signup-submit:focus,
+.signup-secondary:hover,
+.signup-secondary:focus {
+  background: #ffffff;
+  color: #111111;
+  outline: 0;
+}
+
+.signup-secondary:hover,
+.signup-secondary:focus {
+  background: #111111;
+  color: #ffffff;
+}
+
+.signup-feedback {
+  border-radius: 0;
+}
+
+.signup-feedback-error,
+.signup-feedback-success {
+  border-color: #111111;
+  background: #ffffff;
+  color: #111111;
+}
+
+@media (max-width: 760px) {
+  .signup-page {
+    background: #ffffff;
+  }
+
+  .signup-page::before {
+    position: static;
+    display: block;
+    padding: 88px 24px 0;
+    font-size: 46px;
+    text-align: left;
+  }
+
+  .signup-card {
+    min-height: auto;
+    padding: 32px 24px 44px;
+  }
+}
+
+/* Member auth layout alignment */
+.signup-page {
+  width: calc(100% + 2px);
+  margin-inline: -1px;
+  background: #ffffff;
+}
+
+.signup-page::before {
+  content: none;
+}
+
+.signup-card {
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 410px);
+  align-items: start;
+  column-gap: clamp(48px, 9vw, 120px);
+  width: min(1120px, 100%);
+}
+
+.signup-title {
+  grid-column: 1;
+  margin: 0;
+  color: #111111;
+  font-size: 46px;
+  font-weight: 950;
+  line-height: 0.95;
+  text-align: left;
+}
+
+.signup-header,
+.signup-form,
+.signup-login {
+  grid-column: 2;
+  width: 100%;
+  max-width: 410px;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.signup-field .password-input {
+  max-width: none;
+}
+
+.signup-field input,
+.signup-field .password-input input,
+.signup-submit,
+.signup-secondary {
+  width: 100%;
+  max-width: none;
+}
+
+.signup-field .password-input input {
+  padding-right: 48px;
+}
+
+.signup-login {
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .signup-card {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 36px;
+    align-content: start;
+    min-height: 100svh;
+    padding: 88px 24px 44px;
+  }
+
+  .signup-title,
+  .signup-header,
+  .signup-form,
+  .signup-login {
+    grid-column: 1;
+    width: 100%;
+    max-width: 410px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+}

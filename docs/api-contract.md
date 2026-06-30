@@ -207,6 +207,27 @@
 - 상태: [x] 동결
 ```
 
+```
+#### [PATCH] /api/members/me
+- 설명: 로그인 회원의 개인정보 수정
+- 인증 필요: Y
+- 요청 body: { name, phone, address }
+- 응답 (동결 필드): { memberId(bigint), memberUuid(uuid), email, name, phone, address }
+- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 다른 번호를 입력해주세요.", status:409}` 반환
+- 비고: phone은 `010-0000-0000` 형식으로 정규화한다.
+- 상태: [x] 동결
+```
+
+```
+#### [DELETE] /api/members/me
+- 설명: 로그인 회원 탈퇴 처리
+- 인증 필요: Y
+- 요청: 없음
+- 응답: 204 No Content
+- 비고: 주문/결제 이력 참조 무결성을 유지하기 위해 회원 row는 탈퇴 상태로 익명화하고 Supabase Auth 사용자를 삭제한다.
+- 상태: [x] 동결
+```
+
 `public.member` 동기화:
 
 - `member_uuid`: Supabase `auth.users.id`와 동일한 uuid
@@ -609,6 +630,8 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
 | 2026-06-26 | v0.2.0 | member | additive | 회원가입 1단계 중복 확인 API `POST /api/members/signup/availability` 추가 및 중복 이메일 오류 코드 명시 | Codex |
+| 2026-06-26 | v0.2.0 | member | additive | 로그인 회원 개인정보 수정 API `PATCH /api/members/me` 추가 | Codex |
+| 2026-06-29 | v0.2.2 | member | additive | 로그인 회원 탈퇴 API `DELETE /api/members/me` 추가 | Codex |
 | 2026-06-24 | v0.2.1 | ai | additive | WebSocket plain text 입력 한도와 ACTION 실행 대상 allow-list 보안 규칙 추가 | 강승민 |
 | 2026-06-25 | v0.2.2 | ai/goods | additive | AI 서버가 최신 TSV 상품 카탈로그 URL을 조회하는 `GET /api/ai/goods-catalog/latest` 추가 | 강승민 |
 |  |  |  |  |  |  |
