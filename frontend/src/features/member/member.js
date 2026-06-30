@@ -368,6 +368,9 @@ export async function getCurrentMember() {
     memberUuid: memberProfile?.memberUuid ?? data.user.id,
     email: memberProfile?.email ?? data.user.email,
     phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
+    postalCode: memberProfile?.postalCode ?? '',
+    address: memberProfile?.address ?? '',
+    addressDetail: memberProfile?.addressDetail ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||

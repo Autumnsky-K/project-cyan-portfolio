@@ -92,4 +92,8 @@ public class Member {
 	public String getName() {
 		return name;
 	}
+
+	public String getPhone() {
+		return phone;
+	}
 }

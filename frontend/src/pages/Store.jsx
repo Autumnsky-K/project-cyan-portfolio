@@ -14,6 +14,10 @@ function Store() {
   const store = useStoreFlow({
     allowLocalFallback: isAdmin,
     defaultCustomerName: access.member?.name,
+    defaultCustomerEmail: access.member?.email,
+    defaultCustomerPhone: access.member?.phone,
+    defaultCustomerAddress: access.member?.address,
+    defaultCustomerAddressDetail: access.member?.addressDetail,
     defaultMemberId: access.member?.memberId,
     fetchOrderHistory: isAdmin,
   })

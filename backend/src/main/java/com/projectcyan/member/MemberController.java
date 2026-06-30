@@ -30,8 +30,8 @@ public class MemberController {
 	}
 
 	@GetMapping("/me")
-	public AuthenticatedMember currentMember(AuthenticatedMember currentMember) {
-		return currentMember;
+	public MemberProfileResponse currentMember(AuthenticatedMember currentMember) {
+		return memberService.findCurrentProfile(currentMember);
 	}
 
 	@GetMapping("/me/favorite-artists")

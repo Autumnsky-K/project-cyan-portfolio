@@ -3,6 +3,7 @@ package com.projectcyan.member;
 import java.util.Locale;
 
 import com.projectcyan.common.ApiErrorException;
+import com.projectcyan.member.auth.AuthenticatedMember;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -82,6 +83,22 @@ public class MemberService {
 			supabaseAuthClient.deleteUser(authUser.id());
 			throw new ApiErrorException("MEMBER_SIGNUP_FAILED", "회원 정보를 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
+	}
+
+	@Transactional(readOnly = true)
+	public MemberProfileResponse findCurrentProfile(AuthenticatedMember currentMember) {
+		Member member = memberRepository.findById(currentMember.memberId())
+			.orElseThrow(() -> new ApiErrorException(
+				"MEMBER_NOT_FOUND",
+				"Member profile was not found.",
+				HttpStatus.NOT_FOUND
+			));
+		MemberAddress address = memberAddressRepository
+			.findFirstByMemberMemberIdAndDefaultAddressTrueOrderByAddressIdDesc(member.getMemberId())
+			.or(() -> memberAddressRepository.findFirstByMemberMemberIdOrderByAddressIdDesc(member.getMemberId()))
+			.orElse(null);
+
+		return MemberProfileResponse.from(member, address);
 	}
 
 	@Transactional(readOnly = true)

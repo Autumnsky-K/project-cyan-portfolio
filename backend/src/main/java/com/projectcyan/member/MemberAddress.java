@@ -67,4 +67,24 @@ public class MemberAddress {
 	public static MemberAddress defaultAddress(Member member, String recipientName, String phone, String address) {
 		return new MemberAddress(member, recipientName, phone, address);
 	}
+
+	public String getRecipientName() {
+		return recipientName;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public String getPostalCode() {
+		return postalCode;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public String getAddressDetail() {
+		return addressDetail;
+	}
 }

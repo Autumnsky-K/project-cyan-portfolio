@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.8` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.9` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -205,6 +205,16 @@
 - 응답 (동결 필드): { exists(boolean) }
 - 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다.
 - 상태: [x] 동결
+```
+
+```
+#### [GET] /api/members/me
+- 설명: 로그인 사용자의 회원 프로필과 기본 배송 정보를 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail }`
+- 비고: `memberId`는 내부 bigint PK, `memberUuid`는 Supabase `auth.users.id`와 동일한 UUID다. 기본 배송지가 있으면 `member_address`의 기본 주소를 우선 사용하고, 없으면 빈 문자열을 반환한다.
+- 상태: [x] additive
 ```
 
 ```
@@ -707,6 +717,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
 | 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 로그인 사용자의 상품 리뷰 작성·수정·삭제와 내 리뷰 조회 API 추가 (`GET /reviews/my`, `POST/PATCH/DELETE /reviews`) | Codex |
+| 2026-06-30 | v0.2.9 | member/cart | additive | `GET /api/members/me` 응답에 `phone`, `postalCode`, `address`, `addressDetail`을 추가하고 Cart checkout 기본 배송 정보 자동 채움을 지원 | Codex |
 |  |  |  |  |  |  |
 
 ### 로그 기록
