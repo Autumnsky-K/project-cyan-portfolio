@@ -153,39 +153,6 @@
   max-width: 420px;
 }
 
-.reset-password-page .account-form {
-  width: min(420px, 100%);
-  margin: 0 auto;
-}
-
-.reset-password-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100svh;
-  padding: 40px;
-}
-
-.reset-password-page .account-shell {
-  position: relative;
-  width: min(960px, 100%);
-  margin: 0;
-}
-
-.reset-password-page .account-topbar {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 24px);
-  left: 0;
-  margin: 0;
-}
-
-.reset-password-page .account-button {
-  width: 100%;
-}
-
-.forgot-password-page .account-card,
-.reset-password-page .account-card,
 .mypage-page .account-card {
   border-color: transparent;
   background: transparent;
@@ -789,10 +756,6 @@
     padding: 24px 16px;
   }
 
-  .reset-password-page {
-    padding: 24px 16px;
-  }
-
   .like-panel .artist-grid {
     gap: 12px;
   }
@@ -917,7 +880,6 @@
 }
 
 .account-auth-page,
-.reset-password-page,
 .like-page {
   min-height: 100svh;
   padding: 72px 40px;
@@ -936,8 +898,6 @@
   box-shadow: none;
 }
 
-.forgot-password-page .account-card,
-.reset-password-page .account-card,
 .mypage-page .account-card {
   background: #ffffff;
 }
@@ -1344,7 +1304,6 @@
 @media (max-width: 520px) {
   .account-page,
   .account-auth-page,
-  .reset-password-page,
   .like-page {
     padding: 24px 16px 40px;
   }

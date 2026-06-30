@@ -97,7 +97,7 @@ function ResetPasswordPage() {
   }
 
   return (
-    <main className="account-page reset-password-page">
+    <main className="account-page">
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}

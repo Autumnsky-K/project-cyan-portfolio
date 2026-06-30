@@ -27,7 +27,7 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <main className="account-page account-auth-page forgot-password-page">
+    <main className="account-page account-auth-page">
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}

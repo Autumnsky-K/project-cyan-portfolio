@@ -253,8 +253,6 @@ function SignupPage() {
       />
 
       <section className="signup-card" aria-label="회원가입">
-        <h1 className="signup-title">CREATE ACCOUNT</h1>
-
         <div className="signup-header">
           <div className="signup-logo" aria-hidden="true"></div>
           <div className="signup-step" aria-label={`회원가입 ${step}단계`}>

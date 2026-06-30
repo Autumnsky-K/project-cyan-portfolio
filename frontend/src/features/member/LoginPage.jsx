@@ -87,87 +87,83 @@ function LoginPage() {
   }
 
   return (
-    <main className="login-page login-auth-page">
+    <main className="login-page">
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
 
       <section className="login-card" aria-label="로그인">
-        <h1 className="login-title">LOGIN</h1>
+        <div className="login-header">
+          <div className="login-logo" aria-hidden="true"></div>
+        </div>
 
-        <div className="login-content">
-          <div className="login-header">
-            <div className="login-logo" aria-hidden="true"></div>
-          </div>
+        <form className="login-form" onSubmit={handleSubmit}>
+          {/* 일반 로그인도 Supabase Auth로 처리해 회원 UUID 기준을 통일합니다. */}
+          <label className="login-field">
+            <span>이메일</span>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="email@example.com"
+              autoComplete="email"
+              required
+            />
+          </label>
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            {/* 일반 로그인도 Supabase Auth로 처리해 회원 UUID 기준을 통일합니다. */}
-            <label className="login-field">
-              <span>이메일</span>
+          <label className="login-field">
+            <span>비밀번호</span>
+            <div className="password-input">
               <input
-                type="email"
-                name="email"
-                value={form.email}
+                type={isPasswordVisible ? 'text' : 'password'}
+                name="password"
+                value={form.password}
                 onChange={handleChange}
-                placeholder="email@example.com"
-                autoComplete="email"
+                placeholder="비밀번호를 입력하세요"
+                autoComplete="current-password"
                 required
               />
-            </label>
-
-            <label className="login-field">
-              <span>비밀번호</span>
-              <div className="password-input">
-                <input
-                  type={isPasswordVisible ? 'text' : 'password'}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="비밀번호를 입력하세요"
-                  autoComplete="current-password"
-                  required
-                />
-                <PasswordVisibilityButton
-                  isVisible={isPasswordVisible}
-                  onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
-                />
-              </div>
-            </label>
-
-            {message && (
-              <p className="login-feedback login-feedback-success" role="status">
-                {message}
-              </p>
-            )}
-
-            <button className="login-submit" type="submit" disabled={isLoading}>
-              {loadingProvider === 'email' ? '로그인 중...' : '로그인'}
-            </button>
-          </form>
-
-          <p className="login-help">
-            <Link to="/forgot-password">비밀번호 찾기</Link>
-          </p>
-
-          <div className="login-social" aria-label="소셜 로그인">
-            <p>소셜 계정으로 로그인</p>
-            <div className="login-social-buttons">
-              <button
-                className="social-login-button social-button-kakao"
-                type="button"
-                aria-label="카카오 로그인"
-                onClick={handleKakaoLogin}
-                disabled={isLoading}
-              >
-                {loadingProvider === 'kakao'
-                  ? '카카오로 이동 중...'
-                  : '카카오톡으로 로그인하기'}
-              </button>
+              <PasswordVisibilityButton
+                isVisible={isPasswordVisible}
+                onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+              />
             </div>
-          </div>
+          </label>
 
-          <p className="login-signup">
-            계정이 없으신가요? <Link to="/signup">회원가입</Link>
-          </p>
+          {message && (
+            <p className="login-feedback login-feedback-success" role="status">
+              {message}
+            </p>
+          )}
+
+          <button className="login-submit" type="submit" disabled={isLoading}>
+            {loadingProvider === 'email' ? '로그인 중...' : '로그인'}
+          </button>
+        </form>
+
+        <p className="login-help">
+          <Link to="/forgot-password">비밀번호 찾기</Link>
+        </p>
+
+        <div className="login-social" aria-label="소셜 로그인">
+          <p>소셜 계정으로 로그인</p>
+          <div className="login-social-buttons">
+            <button
+              className="social-login-button social-button-kakao"
+              type="button"
+              aria-label="카카오 로그인"
+              onClick={handleKakaoLogin}
+              disabled={isLoading}
+            >
+              {loadingProvider === 'kakao'
+                ? '카카오로 이동 중...'
+                : '카카오톡으로 로그인하기'}
+            </button>
+          </div>
         </div>
+
+        <p className="login-signup">
+          계정이 없으신가요? <Link to="/signup">회원가입</Link>
+        </p>
       </section>
     </main>
   )
