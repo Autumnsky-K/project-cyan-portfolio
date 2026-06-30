@@ -152,6 +152,10 @@ button.goods-rating-summary {
   letter-spacing: 0;
 }
 
+.panel-heading h2 {
+  font-weight: 800;
+}
+
 .panel-heading button,
 .view-toggle button,
 .goods-card button,
@@ -210,6 +214,7 @@ button.goods-rating-summary {
 
 .filter-options input {
   margin: 0;
+  accent-color: var(--goods-ink);
 }
 
 .filter-note {

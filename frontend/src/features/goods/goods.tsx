@@ -233,7 +233,7 @@ function GoodsPage() {
         if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load goods.')
+        setError(loadError instanceof Error ? loadError.message : '굿즈를 불러오지 못했습니다.')
         setStatus('error')
       }
     }
@@ -289,13 +289,12 @@ function GoodsPage() {
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
-    scrollToResults()
   }
 
   function handlePageChange(nextPage: number) {
     goToPage(nextPage)
     window.requestAnimationFrame(() => {
-      searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     })
   }
 
@@ -359,7 +358,7 @@ function GoodsPage() {
                 {status === 'loading'
                   ? '굿즈를 불러오는 중'
                   : status === 'refreshing'
-                    ? `총 ${totalElements}개의 상품을 새로고침 중`
+                    ? `총 ${totalElements}개의 상품`
                   : `총 ${totalElements}개의 상품`}
               </p>
             </div>
