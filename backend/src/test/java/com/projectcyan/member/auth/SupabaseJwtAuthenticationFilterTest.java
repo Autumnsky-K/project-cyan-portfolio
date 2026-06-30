@@ -121,6 +121,26 @@ class SupabaseJwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void rejectsValidTokenForWithdrawnMember() throws Exception {
+		UUID userId = UUID.randomUUID();
+		Member member = Member.emailMember(userId, "user@example.com", "User", "010-0000-0000");
+		member.withdraw();
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/members/me");
+		request.addHeader("Authorization", "Bearer valid-token");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+		when(jwtVerifier.verify("valid-token")).thenReturn(new VerifiedSupabaseJwt(userId));
+		when(memberRepository.findByMemberUuid(userId)).thenReturn(Optional.of(member));
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(403);
+		assertThat(response.getContentAsString()).contains("MEMBER_WITHDRAWN");
+		assertThat(response.getContentAsString()).contains("계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.");
+		verifyNoInteractions(filterChain);
+	}
+
+	@Test
 	void exposesAuthenticatedMemberForProtectedRequest() throws Exception {
 		UUID userId = UUID.randomUUID();
 		Member member = Member.emailMember(userId, "user@example.com", "User", "010-0000-0000");
