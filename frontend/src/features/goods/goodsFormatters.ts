@@ -1,5 +1,5 @@
 export function formatGoodsPrice(value: number) {
-  return `${Number(value ?? 0).toLocaleString()}원`
+  return `${Number(value ?? 0).toLocaleString()} 원`
 }
 
 export function formatGoodsDate(value?: string | null) {

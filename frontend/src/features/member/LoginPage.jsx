@@ -62,8 +62,8 @@ function LoginPage() {
       const returnTo = getReturnTo(location)
       window.sessionStorage.removeItem('project-cyan:login-return-to')
       navigate(returnTo, { replace: true })
-    } catch {
-      setError('아이디와 비밀번호가 일치하지 않습니다.')
+    } catch (loginError) {
+      setError(loginError.message || '계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.')
     } finally {
       setIsLoading(false)
       setLoadingProvider('')

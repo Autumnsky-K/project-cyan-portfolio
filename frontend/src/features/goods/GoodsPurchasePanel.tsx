@@ -95,7 +95,7 @@ function GoodsPurchasePanel({
             onClick={onFavoriteToggle}
           >
             <span
-              className="favorite-bookmark-icon"
+              className="favorite-heart-icon"
               data-filled={isFavorite}
               aria-hidden="true"
             />

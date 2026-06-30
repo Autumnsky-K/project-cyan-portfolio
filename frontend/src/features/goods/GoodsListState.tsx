@@ -6,7 +6,7 @@ type GoodsListStateProps = {
 
 export function GoodsCardSkeleton({ count = 6 }: { count?: number }) {
   return (
-    <div className="goods-grid goods-skeleton-grid" aria-label="Loading goods" aria-busy="true">
+    <div className="goods-grid goods-skeleton-grid" aria-label="굿즈를 불러오는 중" aria-busy="true">
       {Array.from({ length: count }, (_, index) => (
         <article className="goods-card goods-card-skeleton" aria-hidden="true" key={index}>
           <div className="goods-image skeleton-block" />
@@ -31,14 +31,14 @@ function GoodsListState({ kind, message, onAction }: GoodsListStateProps) {
       <span className="goods-state-mark" aria-hidden="true">
         {isError ? '!' : '0'}
       </span>
-      <strong>{isError ? 'Unable to load goods' : 'No goods found'}</strong>
+      <strong>{isError ? '굿즈를 불러오지 못했습니다' : '조건에 맞는 상품이 없습니다'}</strong>
       <span>
         {isError
-          ? message || 'The store could not be reached. Please try again.'
-          : 'Try another search or clear the applied filters.'}
+          ? message || '잠시 후 다시 시도해 주세요.'
+          : '다른 검색어를 입력하거나 적용된 필터를 초기화해 주세요.'}
       </span>
       <button type="button" onClick={onAction}>
-        {isError ? 'Try again' : 'Clear filters'}
+        {isError ? '다시 시도' : '필터 초기화'}
       </button>
     </div>
   )

@@ -35,14 +35,14 @@ public class MemberService {
 		String email = normalizeEmail(request.email());
 		String phone = normalizePhone(request.phone());
 
-		if (memberRepository.existsByEmail(email)) {
+		if (memberRepository.existsByEmailAndStatus(email, "ACTIVE")) {
 			throw new ApiErrorException(
 				"MEMBER_EMAIL_ALREADY_EXISTS",
 				"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.",
 				HttpStatus.CONFLICT
 			);
 		}
-		if (memberRepository.existsByPhoneDigits(phoneDigits(phone))) {
+		if (memberRepository.existsActiveByPhoneDigits(phoneDigits(phone))) {
 			throw new ApiErrorException(
 				"MEMBER_PHONE_ALREADY_EXISTS",
 				"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.",
@@ -107,8 +107,8 @@ public class MemberService {
 		String phone = normalizePhone(request.phone());
 
 		return SignupAvailabilityResponse.from(
-			memberRepository.existsByEmail(email),
-			memberRepository.existsByPhoneDigits(phoneDigits(phone))
+			memberRepository.existsByEmailAndStatus(email, "ACTIVE"),
+			memberRepository.existsActiveByPhoneDigits(phoneDigits(phone))
 		);
 	}
 
@@ -116,7 +116,7 @@ public class MemberService {
 	public PasswordResetEligibilityResponse checkPasswordResetEligibility(PasswordResetEligibilityRequest request) {
 		String email = normalizeEmail(request.email());
 
-		return new PasswordResetEligibilityResponse(memberRepository.existsByEmail(email));
+		return new PasswordResetEligibilityResponse(memberRepository.existsByEmailAndStatus(email, "ACTIVE"));
 	}
 
 	@Transactional

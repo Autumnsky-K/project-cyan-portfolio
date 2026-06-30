@@ -11,7 +11,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
 	java.util.List<Member> findAllByOrderByMemberIdDesc();
 
-	boolean existsByEmail(String email);
+	boolean existsByEmailAndStatus(String email, String status);
 
 	Optional<Member> findByEmail(String email);
 
@@ -20,9 +20,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 			select 1
 			from public.member
 			where regexp_replace(coalesce(phone, ''), '\\D', '', 'g') = :phoneDigits
+				and status = 'ACTIVE'
 		)
 		""", nativeQuery = true)
-	boolean existsByPhoneDigits(@Param("phoneDigits") String phoneDigits);
+	boolean existsActiveByPhoneDigits(@Param("phoneDigits") String phoneDigits);
 
 	@Query(value = """
 		select exists (

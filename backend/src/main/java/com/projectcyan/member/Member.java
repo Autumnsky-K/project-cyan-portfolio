@@ -109,6 +109,10 @@ public class Member {
 		return status;
 	}
 
+	public boolean isActive() {
+		return "ACTIVE".equals(status);
+	}
+
 	public void updateProfile(String name, String phone) {
 		this.name = name;
 		this.phone = phone;
