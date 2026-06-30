@@ -58,9 +58,10 @@ export async function apiFetch(
   options: ApiFetchOptions = {},
 ): Promise<Response> {
   const { headers, body, ...fetchOptions } = options
+  const url = buildSpringApiUrl(path)
 
   try {
-    return await fetch(buildSpringApiUrl(path), {
+    return await fetch(url, {
       ...fetchOptions,
       body,
       headers: await buildHeaders(body, headers),

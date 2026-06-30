@@ -45,6 +45,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100svh;
+  padding: 40px;
 }
 
 .account-auth-shell {
@@ -149,6 +151,45 @@
   flex-direction: column;
   gap: 16px;
   max-width: 420px;
+}
+
+.reset-password-page .account-form {
+  width: min(420px, 100%);
+  margin: 0 auto;
+}
+
+.reset-password-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: 40px;
+}
+
+.reset-password-page .account-shell {
+  position: relative;
+  width: min(960px, 100%);
+  margin: 0;
+}
+
+.reset-password-page .account-topbar {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 24px);
+  left: 0;
+  margin: 0;
+}
+
+.reset-password-page .account-button {
+  width: 100%;
+}
+
+.forgot-password-page .account-card,
+.reset-password-page .account-card,
+.mypage-page .account-card {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .account-field {
@@ -452,8 +493,7 @@
 .mypage-withdraw {
   display: flex;
   justify-content: flex-end;
-  margin-top: 12px;
-  padding-right: 32px;
+  margin-top: 0;
 }
 
 .mypage-withdraw button {
@@ -472,6 +512,65 @@
 .mypage-withdraw button:hover,
 .mypage-withdraw button:focus {
   color: #ffffff;
+}
+
+.mypage-modal-withdraw {
+  padding-top: 4px;
+}
+
+.mypage-withdraw-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #d8d8d8;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.mypage-withdraw-panel p,
+.mypage-withdraw-panel ul {
+  margin: 0;
+}
+
+.mypage-withdraw-panel ul {
+  padding-left: 18px;
+}
+
+.mypage-withdraw-warning {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.mypage-withdraw-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.mypage-withdraw-actions button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #5f5f5f;
+  border-radius: 999px;
+  background: #181818;
+  color: #f5f5f5;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mypage-withdraw-actions button:hover,
+.mypage-withdraw-actions button:focus {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #111111;
+}
+
+.mypage-withdraw-actions .is-danger {
+  border-color: #ffffff;
 }
 
 .mypage-section {
@@ -664,6 +763,14 @@
   box-sizing: border-box;
 }
 
+.mypage-profile-modal {
+  width: min(560px, 100%);
+}
+
+.mypage-profile-form {
+  max-width: none;
+}
+
 .mypage-modal-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -679,6 +786,11 @@
 
   .account-auth-page {
     align-items: center;
+    padding: 24px 16px;
+  }
+
+  .reset-password-page {
+    padding: 24px 16px;
   }
 
   .like-panel .artist-grid {
@@ -757,4 +869,511 @@
   .mypage-withdraw {
     padding-right: 16px;
   }
+}
+
+/* Modaestile-inspired account surfaces */
+.account-page {
+  padding: 0 40px 56px;
+  background: #ffffff;
+  color: #111111;
+}
+
+.account-page .site-header {
+  margin: 0 -40px 44px;
+  border-bottom: 1px solid #dededb;
+  background: #ffffff;
+  color: #111111;
+}
+
+.account-page .site-eyebrow {
+  color: #777777;
+}
+
+.account-page .site-header h1 {
+  color: #111111;
+}
+
+.account-page .site-nav a {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.account-page .site-nav a:hover,
+.account-page .site-nav a:focus,
+.account-page .site-nav a[aria-current='page'] {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.account-shell {
+  width: min(1180px, 100%);
+}
+
+.account-auth-page,
+.reset-password-page,
+.like-page {
+  min-height: 100svh;
+  padding: 72px 40px;
+  background: #ffffff;
+}
+
+.account-auth-shell,
+.like-shell {
+  width: min(760px, 100%);
+}
+
+.account-card {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.forgot-password-page .account-card,
+.reset-password-page .account-card,
+.mypage-page .account-card {
+  background: #ffffff;
+}
+
+.account-panel {
+  padding: clamp(24px, 4vw, 48px);
+  border: 1px solid #dededb;
+}
+
+.account-panel + .account-panel {
+  border-top: 0;
+}
+
+.account-heading p {
+  color: #777777;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.account-heading h1,
+.account-heading h2 {
+  color: #111111;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 950;
+  line-height: 0.92;
+}
+
+.account-heading h2 {
+  font-size: clamp(28px, 4vw, 44px);
+}
+
+.account-topbar a,
+.account-card-links a {
+  color: #111111;
+}
+
+.account-card-links {
+  border-top-color: #dededb;
+}
+
+.account-card-links p,
+.account-feedback,
+.mypage-empty {
+  color: #555555;
+}
+
+.account-field {
+  color: #111111;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.account-field input,
+.account-field textarea {
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #111111;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+}
+
+.account-field textarea {
+  min-height: 74px;
+  padding-top: 10px;
+}
+
+.account-field input:focus,
+.account-field textarea:focus {
+  border-color: #111111;
+  outline: 0;
+}
+
+.account-button,
+.account-secondary,
+.like-action-button {
+  border-color: #111111;
+  border-radius: 0;
+  background: #111111;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.account-button:hover,
+.account-button:focus,
+.account-secondary:hover,
+.account-secondary:focus,
+.like-action-button:hover,
+.like-action-button:focus {
+  background: #ffffff;
+  color: #111111;
+}
+
+.account-secondary {
+  background: #ffffff;
+  color: #111111;
+}
+
+.account-feedback-error,
+.account-feedback-success {
+  border-color: #111111;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111111;
+}
+
+.artist-option {
+  min-height: 132px;
+  border-color: #dededb;
+  border-radius: 0;
+  background: #f3f3f1;
+  color: #111111;
+}
+
+.artist-option::before {
+  color: #a7a7a2;
+}
+
+.artist-option::after {
+  height: 42px;
+  background: #ffffff;
+  border-top: 1px solid #dededb;
+}
+
+.artist-option strong {
+  color: #111111;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.artist-option.is-selected {
+  border-color: #111111;
+  box-shadow: inset 0 0 0 1px #111111;
+}
+
+.mypage-page {
+  background: #ffffff;
+}
+
+.mypage-page .account-shell {
+  width: min(1240px, 100%);
+}
+
+.mypage-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
+}
+
+.mypage-side-nav {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 26px;
+  box-sizing: border-box;
+  min-height: 640px;
+  padding: 18px 16px;
+  border-right: 1px solid #d8d8d5;
+  background: #ffffff;
+}
+
+.mypage-side-nav nav {
+  display: grid;
+  gap: 8px;
+  padding-top: 22px;
+  border-top: 1px solid #111111;
+}
+
+.mypage-side-nav h2 {
+  margin: 0 0 8px;
+  color: #777777;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.mypage-side-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #111111;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mypage-page .account-card {
+  display: grid;
+  gap: 26px;
+  background: transparent;
+}
+
+.mypage-page .account-panel,
+.mypage-section {
+  border: 1px solid #d8d8d5;
+  background: #ffffff;
+}
+
+.mypage-profile {
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.mypage-avatar {
+  border-color: #111111;
+  border-radius: 0;
+  background: #111111;
+  color: #ffffff;
+}
+
+.mypage-profile-text h1 {
+  color: #111111;
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.mypage-profile-text p,
+.mypage-profile-list dt,
+.mypage-item-card p,
+.mypage-withdraw-panel {
+  color: #666666;
+}
+
+.mypage-edit-link {
+  color: #111111;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.mypage-profile-list {
+  border-top: 1px solid #111111;
+}
+
+.mypage-profile-list div {
+  border-top-color: #d8d8d5;
+}
+
+.mypage-profile-list dd,
+.mypage-section-heading h2,
+.mypage-modal-heading h2,
+.mypage-item-card h3,
+.mypage-item-card .mypage-item-meta,
+.mypage-withdraw-warning {
+  color: #111111;
+}
+
+.mypage-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 30px;
+  border: 1px solid #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.mypage-summary-strip article {
+  display: grid;
+  gap: 34px;
+  min-height: 128px;
+  padding: 24px;
+  border-right: 1px solid #4b4b4b;
+}
+
+.mypage-summary-strip article:last-child {
+  border-right: 0;
+}
+
+.mypage-summary-strip span {
+  color: #bcbcbc;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.mypage-summary-strip strong {
+  color: #ffffff;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+}
+
+.mypage-section {
+  padding: clamp(22px, 3vw, 34px);
+}
+
+.mypage-section-heading {
+  padding-bottom: 18px;
+  border-bottom: 2px solid #111111;
+}
+
+.mypage-section-heading h2,
+.mypage-modal-heading h2 {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 950;
+}
+
+.mypage-more-button,
+.mypage-modal-heading button,
+.mypage-withdraw-actions button {
+  border-color: #111111;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111111;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.mypage-more-button:hover,
+.mypage-more-button:focus,
+.mypage-modal-heading button:hover,
+.mypage-modal-heading button:focus,
+.mypage-withdraw-actions button:hover,
+.mypage-withdraw-actions button:focus {
+  background: #111111;
+  color: #ffffff;
+}
+
+.mypage-item-card {
+  border-color: #dededb;
+  border-radius: 0;
+  background: #f4f4f2;
+}
+
+.mypage-item-image {
+  border-bottom-color: #dededb;
+  background:
+    linear-gradient(135deg, #e6e6e3, #f8f8f7);
+  color: #9b9b95;
+}
+
+.mypage-item-body {
+  background: #ffffff;
+}
+
+.mypage-arrow {
+  border-color: #111111;
+  border-radius: 0;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.mypage-arrow:hover,
+.mypage-arrow:focus {
+  background: #ffffff;
+  color: #111111;
+}
+
+.mypage-modal-backdrop {
+  background: rgb(17 17 17 / 74%);
+}
+
+.mypage-modal {
+  border-color: #111111;
+  border-radius: 0;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: none;
+}
+
+.mypage-withdraw button {
+  color: #111111;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .mypage-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mypage-side-nav {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #d8d8d5;
+  }
+
+  .mypage-summary-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .account-page,
+  .account-auth-page,
+  .reset-password-page,
+  .like-page {
+    padding: 24px 16px 40px;
+  }
+
+  .account-page .site-header {
+    margin: -24px -16px 32px;
+  }
+
+  .mypage-side-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .mypage-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .mypage-summary-strip article,
+  .mypage-summary-strip article:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid #4b4b4b;
+  }
+
+  .mypage-summary-strip article:last-child {
+    border-bottom: 0;
+  }
+}
+
+/* Keep member-only white pages covering the global root side rule. */
+.account-page {
+  width: calc(100% + 2px);
+  margin-inline: -1px;
 }
