@@ -67,4 +67,15 @@ public class MemberAddress {
 	public static MemberAddress defaultAddress(Member member, String recipientName, String phone, String address) {
 		return new MemberAddress(member, recipientName, phone, address);
 	}
+
+	public void updateDefaultAddress(String recipientName, String phone, String address) {
+		this.recipientName = recipientName;
+		this.phone = phone;
+		this.address = address;
+		this.updatedAt = Instant.now();
+	}
+
+	public String getAddress() {
+		return address;
+	}
 }

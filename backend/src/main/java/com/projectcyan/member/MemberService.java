@@ -1,5 +1,6 @@
 package com.projectcyan.member;
 
+import java.util.List;
 import java.util.Locale;
 
 import com.projectcyan.common.ApiErrorException;
@@ -102,6 +103,108 @@ public class MemberService {
 		return new PasswordResetEligibilityResponse(memberRepository.existsByEmail(email));
 	}
 
+	@Transactional
+	public MemberProfileResponse updateCurrentMember(Long memberId, MemberProfileUpdateRequest request) {
+		String name = normalizeName(request.name());
+		String phone = normalizePhone(request.phone());
+		String address = normalizeAddress(request.address());
+
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+
+		if (memberRepository.existsByPhoneDigitsExcludingMemberId(phoneDigits(phone), member.getMemberId())) {
+			throw new ApiErrorException(
+				"MEMBER_PHONE_ALREADY_EXISTS",
+				"이미 가입된 휴대폰 번호입니다. 다른 번호를 입력해주세요.",
+				HttpStatus.CONFLICT
+			);
+		}
+
+		member.updateProfile(name, phone);
+		MemberAddress memberAddress = memberAddressRepository
+			.findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(member.getMemberId())
+			.orElseGet(() -> memberAddressRepository.save(MemberAddress.defaultAddress(member, name, phone, address)));
+		memberAddress.updateDefaultAddress(name, phone, address);
+
+		return MemberProfileResponse.from(member, memberAddress.getAddress());
+	}
+
+	@Transactional
+	public void withdrawCurrentMember(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+
+		memberAddressRepository.deleteByMemberMemberId(member.getMemberId());
+		member.withdraw();
+		supabaseAuthClient.deleteUser(member.getMemberUuid());
+	}
+
+	@Transactional(readOnly = true)
+	public List<AdminMemberRow> findAdminMembers() {
+		return memberRepository.findAllByOrderByMemberIdDesc()
+			.stream()
+			.map(member -> AdminMemberRow.from(
+				member,
+				memberAddressRepository
+					.findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(member.getMemberId())
+					.map(MemberAddress::getAddress)
+					.orElse("")
+			))
+			.toList();
+	}
+
+	@Transactional
+	public SignupResponse createAdminMember(AdminMemberForm form) {
+		return signup(new SignupRequest(
+			normalizeEmail(form.email()),
+			form.password(),
+			normalizeName(form.name()),
+			normalizePhone(form.phone()),
+			normalizeAddress(form.address()),
+			new SignupAgreementsRequest(true, true, true, false, false)
+		));
+	}
+
+	@Transactional
+	public void updateAdminMember(Long memberId, AdminMemberForm form) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
+		String email = normalizeEmail(form.email());
+		String name = normalizeName(form.name());
+		String phone = normalizePhone(form.phone());
+		String address = normalizeAddress(form.address());
+		String memberGrade = normalizeAdminValue(form.memberGrade(), "BASIC");
+		String status = normalizeAdminValue(form.status(), "ACTIVE");
+
+		memberRepository.findByEmail(email)
+			.filter(foundMember -> !foundMember.getMemberId().equals(member.getMemberId()))
+			.ifPresent(foundMember -> {
+				throw new ApiErrorException(
+					"MEMBER_EMAIL_ALREADY_EXISTS",
+					"이미 가입된 이메일 주소입니다.",
+					HttpStatus.CONFLICT
+				);
+			});
+		if (memberRepository.existsByPhoneDigitsExcludingMemberId(phoneDigits(phone), member.getMemberId())) {
+			throw new ApiErrorException(
+				"MEMBER_PHONE_ALREADY_EXISTS",
+				"이미 가입된 휴대폰 번호입니다.",
+				HttpStatus.CONFLICT
+			);
+		}
+
+		member.updateAdminProfile(email, name, phone, memberGrade, status);
+		MemberAddress memberAddress = memberAddressRepository
+			.findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(member.getMemberId())
+			.orElseGet(() -> memberAddressRepository.save(MemberAddress.defaultAddress(member, name, phone, address)));
+		memberAddress.updateDefaultAddress(name, phone, address);
+	}
+
+	@Transactional
+	public void deleteAdminMember(Long memberId) {
+		withdrawCurrentMember(memberId);
+	}
+
 	private void validateSignupRequest(SignupRequest request) {
 		if (!request.agreements().hasRequiredAgreements()) {
 			throw new ApiErrorException("MEMBER_REQUIRED_TERMS_MISSING", "필수 약관에 모두 동의해주세요.", HttpStatus.BAD_REQUEST);
@@ -115,6 +218,22 @@ public class MemberService {
 		return email.trim().toLowerCase(Locale.ROOT);
 	}
 
+	private String normalizeName(String name) {
+		String normalizedName = name == null ? "" : name.trim();
+		if (!StringUtils.hasText(normalizedName)) {
+			throw new ApiErrorException("MEMBER_INVALID_NAME", "이름을 입력해주세요.", HttpStatus.BAD_REQUEST);
+		}
+		return normalizedName;
+	}
+
+	private String normalizeAddress(String address) {
+		String normalizedAddress = address == null ? "" : address.trim();
+		if (!StringUtils.hasText(normalizedAddress)) {
+			throw new ApiErrorException("MEMBER_INVALID_ADDRESS", "주소를 입력해주세요.", HttpStatus.BAD_REQUEST);
+		}
+		return normalizedAddress;
+	}
+
 	private String normalizePhone(String phone) {
 		String phoneDigits = phoneDigits(phone);
 		if (!phoneDigits.matches("010\\d{8}")) {
@@ -125,6 +244,11 @@ public class MemberService {
 
 	private String phoneDigits(String phone) {
 		return phone == null ? "" : phone.replaceAll("\\D", "");
+	}
+
+	private String normalizeAdminValue(String value, String fallbackValue) {
+		String normalizedValue = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+		return StringUtils.hasText(normalizedValue) ? normalizedValue : fallbackValue;
 	}
 
 	private ApiErrorException authException(SupabaseAuthException exception) {

@@ -3,7 +3,9 @@ package com.projectcyan.member;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +27,20 @@ public class MemberController {
 	@GetMapping("/me")
 	public AuthenticatedMember currentMember(AuthenticatedMember currentMember) {
 		return currentMember;
+	}
+
+	@PatchMapping("/me")
+	public MemberProfileResponse updateCurrentMember(
+		AuthenticatedMember currentMember,
+		@Valid @RequestBody MemberProfileUpdateRequest request
+	) {
+		return memberService.updateCurrentMember(currentMember.memberId(), request);
+	}
+
+	@DeleteMapping("/me")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void withdrawCurrentMember(AuthenticatedMember currentMember) {
+		memberService.withdrawCurrentMember(currentMember.memberId());
 	}
 
 	@PostMapping("/signup")
