@@ -29,6 +29,9 @@ public class SupabaseStorageService {
 	private static final Set<String> IMAGE_EXTENSIONS = Set.of(
 		"avif", "gif", "jpeg", "jpg", "png", "svg", "webp"
 	);
+	private static final Set<String> AI_MODEL_EXTENSIONS = Set.of(
+		"fbx", "glb", "gltf", "json", "model3.json", "moc3", "png", "tsv", "txt", "zip"
+	);
 
 	private final SupabaseStorageProperties properties;
 	private final RestClient restClient;
@@ -243,6 +246,35 @@ public class SupabaseStorageService {
 		return uploadObjectToPath(normalizedBucketName, objectPath, file, true);
 	}
 
+	public SupabaseStorageObject uploadAiModelObject(
+		String bucketName,
+		String path,
+		String relativePath,
+		MultipartFile file,
+		boolean upsert
+	) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedPath = normalizeOptionalFolderPath(path);
+		String relativeObjectPath = normalizeAiModelObjectPath(relativePath, file);
+		String objectPath = joinObjectPath(normalizedPath, relativeObjectPath);
+		return uploadObjectToPath(normalizedBucketName, objectPath, file, upsert);
+	}
+
+	public List<SupabaseStorageObject> listObjects(String bucketName, String path, int limit) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedPath = normalizeOptionalFolderPath(path);
+		int safeLimit = Math.max(1, Math.min(limit, 1000));
+		try {
+			List<SupabaseStorageObject> objects = new ArrayList<>();
+			collectObjects(normalizedBucketName, normalizedPath, objects, safeLimit, 0);
+			return objects;
+		} catch (RestClientResponseException exception) {
+			throw storageException("object 목록 요청에 실패했습니다.", exception);
+		}
+	}
+
 	private SupabaseStorageObject uploadObjectToPath(
 		String normalizedBucketName,
 		String objectPath,
@@ -264,7 +296,7 @@ public class SupabaseStorageService {
 				.body(file.getBytes())
 				.retrieve()
 				.toBodilessEntity();
-			supabaseUsageCounter.recordWrite("Storage 이미지 업로드");
+			supabaseUsageCounter.recordWrite("Storage object 업로드");
 			return new SupabaseStorageObject(
 				normalizedBucketName,
 				objectPath,
@@ -367,6 +399,39 @@ public class SupabaseStorageService {
 		}
 	}
 
+	private void collectObjects(
+		String bucketName,
+		String path,
+		List<SupabaseStorageObject> objects,
+		int limit,
+		int depth
+	) {
+		if (objects.size() >= limit || depth > MAX_LIST_DEPTH) {
+			return;
+		}
+
+		int remaining = Math.max(1, limit - objects.size());
+		for (StorageObjectRow row : listObjectRows(bucketName, path, remaining)) {
+			if (objects.size() >= limit || row.name() == null || FOLDER_PLACEHOLDER_FILE.equals(row.name())) {
+				continue;
+			}
+
+			String objectPath = joinObjectPath(path, row.name());
+			if (looksLikeFileName(row.name())) {
+				objects.add(new SupabaseStorageObject(
+					bucketName,
+					objectPath,
+					row.name(),
+					publicObjectUrl(bucketName, objectPath),
+					metadataSize(row.metadata()),
+					row.updatedAt()
+				));
+			} else {
+				collectObjects(bucketName, objectPath, objects, limit, depth + 1);
+			}
+		}
+	}
+
 	private List<StorageObjectRow> listObjectRows(String bucketName, String path, int limit) {
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("limit", Math.max(1, Math.min(limit, 1000)));
@@ -459,6 +524,37 @@ public class SupabaseStorageService {
 		return normalizedObjectPath;
 	}
 
+	private String normalizeAiModelObjectPath(String relativePath, MultipartFile file) {
+		if (file == null || file.isEmpty()) {
+			throw new SupabaseStorageException("업로드 파일은 필수입니다.");
+		}
+
+		String objectPath = StringUtils.hasText(relativePath)
+			? relativePath.trim().replace('\\', '/')
+			: StringUtils.getFilename(file.getOriginalFilename());
+		if (!StringUtils.hasText(objectPath)) {
+			throw new SupabaseStorageException("업로드 파일명은 필수입니다.");
+		}
+
+		String normalizedPath = objectPath.replaceAll("^/+", "").replaceAll("/+$", "");
+		if (!StringUtils.hasText(normalizedPath)) {
+			throw new SupabaseStorageException("업로드 파일명은 필수입니다.");
+		}
+
+		List<String> normalizedSegments = new ArrayList<>();
+		for (String segment : normalizedPath.split("/", -1)) {
+			validateObjectPathSegment(segment, "AI 모델 업로드 Path");
+			normalizedSegments.add(segment.trim().replaceAll("\\s+", "-"));
+		}
+
+		String normalizedObjectPath = String.join("/", normalizedSegments);
+		String objectName = objectFileName(normalizedObjectPath);
+		if (!isAiModelName(objectName)) {
+			throw new SupabaseStorageException("AI 모델/모션 파일은 fbx, glb, gltf, json, moc3, png, tsv, txt, zip만 업로드할 수 있습니다.");
+		}
+		return normalizedObjectPath;
+	}
+
 	private String normalizeObjectFileName(String fileName) {
 		if (!StringUtils.hasText(fileName)) {
 			throw new SupabaseStorageException("업로드 파일명은 필수입니다.");
@@ -499,6 +595,19 @@ public class SupabaseStorageService {
 	private boolean isImageName(String fileName) {
 		String extension = StringUtils.getFilenameExtension(fileName);
 		return extension != null && IMAGE_EXTENSIONS.contains(extension.toLowerCase());
+	}
+
+	private boolean isAiModelName(String fileName) {
+		String normalized = fileName == null ? "" : fileName.toLowerCase();
+		if (normalized.endsWith(".model3.json")) {
+			return true;
+		}
+		String extension = StringUtils.getFilenameExtension(normalized);
+		return extension != null && AI_MODEL_EXTENSIONS.contains(extension);
+	}
+
+	private boolean looksLikeFileName(String fileName) {
+		return StringUtils.getFilenameExtension(fileName) != null;
 	}
 
 	private String joinObjectPath(String path, String fileName) {

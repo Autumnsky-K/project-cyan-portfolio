@@ -80,6 +80,13 @@ public class MemberAddress {
 		return postalCode;
 	}
 
+	public void updateDefaultAddress(String recipientName, String phone, String address) {
+		this.recipientName = recipientName;
+		this.phone = phone;
+		this.address = address;
+		this.updatedAt = Instant.now();
+	}
+
 	public String getAddress() {
 		return address;
 	}

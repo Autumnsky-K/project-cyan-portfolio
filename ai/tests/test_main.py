@@ -32,6 +32,12 @@ from project_cyan_ai.hook_policy import (
     character_ratio,
     parse_ratio,
 )
+from project_cyan_ai.guest_chat_policy import (
+    GUEST_HISTORY_MESSAGE_LIMIT,
+    GUEST_REQUEST_LIMIT,
+    GuestChatState,
+    classify_auth_required,
+)
 from project_cyan_ai.personalization_context import (
     PersonalizationContextClient,
     build_recent_sessions_fallback,
@@ -2152,6 +2158,257 @@ def test_client_ws_echoes_valid_text_input():
         "text": "받은 메시지: 안녕",
         "actions": [],
     }
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("내 찜 목록에서 추천해줘", "accountPersonalization"),
+        ("찜한 상품 보여줘", "accountPersonalization"),
+        ("위시리스트 기반으로 골라줘", "accountPersonalization"),
+        ("구매 이력을 참고해줘", "accountPersonalization"),
+        ("주문 이력 알려줘", "accountPersonalization"),
+        ("내가 산 상품과 어울리는 것", "accountPersonalization"),
+        ("지난번에 추천한 상품", "chatHistory"),
+        ("저번 세션 이어줘", "chatHistory"),
+        ("이전 대화 보여줘", "chatHistory"),
+        ("예전에 말한 내용 기억해?", "chatHistory"),
+        ("대화 저장 해줘", "persistence"),
+        ("다음에도 기억 해줘", "persistence"),
+        ("기억을 저장 해줘", "persistence"),
+    ],
+)
+def test_guest_auth_required_classifier(text, reason):
+    assert classify_auth_required(text) == reason
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["방금 추천한 상품 보여줘", "아까 말한 조건으로 찾아줘", "이번 대화 요약해줘", "내 장바구니 알려줘"],
+)
+def test_guest_auth_required_classifier_allows_current_connection_requests(text):
+    assert classify_auth_required(text) is None
+
+
+def test_guest_chat_state_keeps_twenty_messages_and_resets():
+    state = GuestChatState()
+
+    for index in range(12):
+        state.record_request()
+        state.append_exchange(f"질문 {index}", f"응답 {index}")
+
+    assert len(state.history) == GUEST_HISTORY_MESSAGE_LIMIT
+    assert state.history[0]["messageText"] == "질문 2"
+    assert state.limit_reached is True
+
+    state.reset()
+
+    assert state.request_count == 0
+    assert state.history == []
+    assert state.limit_reached is False
+
+
+def test_client_ws_guest_recommendation_skips_member_and_history_apis(monkeypatch):
+    class RecordingPersonalizationClient:
+        instances = []
+
+        def __init__(self, spring_api_url):
+            self.calls = []
+            self.instances.append(self)
+
+        def fetch_context(self, access_token, exclude_session_id=None):
+            self.calls.append((access_token, exclude_session_id))
+            return {}
+
+    FakeChatHistoryClient.instances = []
+    FakeFavoriteArtistClient.instances = []
+    FakeWebSocketGoodsCatalogClient.instances = []
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.ChatHistoryClient",
+        FakeChatHistoryClient,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.FavoriteArtistClient",
+        FakeFavoriteArtistClient,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.PersonalizationContextClient",
+        RecordingPersonalizationClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "Artist C 굿즈 추천해줘"})
+        response = websocket.receive_json()
+
+    assert response["type"] == "full-text"
+    assert FakeChatHistoryClient.instances[0].calls == []
+    assert FakeFavoriteArtistClient.instances[0].calls == []
+    assert RecordingPersonalizationClient.instances[0].calls == []
+
+
+def test_client_ws_guest_injects_current_connection_history(monkeypatch):
+    class ContextAwareProvider:
+        def build_response(self, text, context=None):
+            if "currentSessionHistory" in text and "Group One" in text:
+                return FullTextMessage(text="앞서 Group One을 좋아한다고 말씀하셨어요.")
+            return FullTextMessage(text="기억할게요.")
+
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.get_chat_response_provider",
+        lambda *args, **kwargs: ContextAwareProvider(),
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "나는 Group One이 좋아"})
+        assert websocket.receive_json()["text"] == "기억할게요."
+        websocket.send_json({"type": "text-input", "text": "내가 어느 Group을 좋아한다고?"})
+        response = websocket.receive_json()
+
+    assert response["text"] == "앞서 Group One을 좋아한다고 말씀하셨어요."
+
+
+def test_client_ws_guest_limit_blocks_eleventh_provider_call(monkeypatch):
+    class CountingProvider:
+        calls = []
+
+        def build_response(self, text, context=None):
+            self.calls.append(text)
+            return FullTextMessage(text="처리했어요.")
+
+    provider = CountingProvider()
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.get_chat_response_provider",
+        lambda *args, **kwargs: provider,
+    )
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_hook_filter",
+        lambda spring_api_url, ttl_seconds: FakeHookFilter(
+            [
+                HookPolicy(
+                    hook="input",
+                    check="maxLength",
+                    threshold="5",
+                    action="stop",
+                    message="입력이 너무 길어요.",
+                )
+            ]
+        ),
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "내 찜"})
+        blocked = websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "   "})
+        invalid = websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "차단될 만큼 긴 입력"})
+        hook_blocked = websocket.receive_json()
+        for index in range(GUEST_REQUEST_LIMIT):
+            websocket.send_json({"type": "text-input", "text": f"Q{index}"})
+            assert websocket.receive_json()["text"] == "처리했어요."
+        websocket.send_json({"type": "text-input", "text": "11th"})
+        limited = websocket.receive_json()
+
+    assert blocked["metadata"]["authReason"] == "accountPersonalization"
+    assert invalid["text"] == "입력 내용을 확인해주세요."
+    assert hook_blocked["text"] == "입력이 너무 길어요."
+    assert len(provider.calls) == GUEST_REQUEST_LIMIT
+    assert limited == {
+        "type": "full-text",
+        "text": "게스트 채팅 이용 횟수를 모두 사용했어요. 로그인하고 계속 대화해 주세요.",
+        "actions": [],
+        "metadata": {
+            "authRequired": True,
+            "authReason": "guestLimit",
+            "loginPath": "/login",
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("내 찜 상품 추천해줘", "accountPersonalization"),
+        ("구매 이력 기반으로 추천해줘", "accountPersonalization"),
+        ("지난번 대화를 이어줘", "chatHistory"),
+        ("대화 저장 해줘", "persistence"),
+    ],
+)
+def test_client_ws_guest_returns_structured_auth_cta(text, reason):
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": text})
+        response = websocket.receive_json()
+
+    assert response["type"] == "full-text"
+    assert response["actions"] == []
+    assert response["metadata"] == {
+        "authRequired": True,
+        "authReason": reason,
+        "loginPath": "/login",
+    }
+
+
+def test_client_ws_auth_clears_guest_recent_recommendations(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "Artist C 굿즈 추천해줘"})
+        websocket.receive_json()
+        websocket.send_json({"type": "auth", "accessToken": "supabase-access-token"})
+        websocket.send_json({"type": "text-input", "text": "둘 다 담아줘"})
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요.",
+        "actions": [],
+    }
+
+
+def test_client_ws_auth_resets_guest_counter_and_history(monkeypatch):
+    class TrackingGuestState(GuestChatState):
+        instances = []
+
+        def __init__(self):
+            super().__init__()
+            self.instances.append(self)
+
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.GuestChatState",
+        TrackingGuestState,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json({"type": "text-input", "text": "안녕"})
+        websocket.receive_json()
+        state = TrackingGuestState.instances[0]
+        assert state.request_count == 1
+        assert len(state.history) == 2
+
+        websocket.send_json({"type": "auth", "accessToken": "supabase-access-token"})
+        websocket.send_json({"type": "text-input", "text": "로그인 후 질문"})
+        websocket.receive_json()
+
+        assert state.request_count == 0
+        assert state.history == []
 
 
 def test_client_ws_injects_current_session_history_on_follow_up(monkeypatch):

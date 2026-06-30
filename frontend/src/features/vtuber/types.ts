@@ -12,6 +12,9 @@ export type VtuberCharacterConfig = {
   id: string
   name: string
   modelUrl: string
+  renderMode?: 'live2d' | 'three3d'
+  threeModelUrl?: string
+  threeTextureUrl?: string
 }
 
 export type VtuberClientTextInputMessage = {
@@ -69,8 +72,17 @@ export type VtuberRecommendationMetadata = {
   rankOrder?: number
 }
 
+export type VtuberAuthReason =
+  | 'accountPersonalization'
+  | 'chatHistory'
+  | 'persistence'
+  | 'guestLimit'
+
 export type VtuberServerMetadata = {
   recommendations?: VtuberRecommendationMetadata[]
+  authRequired?: boolean
+  authReason?: VtuberAuthReason
+  loginPath?: '/login'
   [key: string]: unknown
 }
 

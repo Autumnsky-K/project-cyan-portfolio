@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MemberAddressRepository extends JpaRepository<MemberAddress, Long> {
 
-	Optional<MemberAddress> findFirstByMemberMemberIdAndDefaultAddressTrueOrderByAddressIdDesc(Long memberId);
+	Optional<MemberAddress> findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(Long memberId);
 
-	Optional<MemberAddress> findFirstByMemberMemberIdOrderByAddressIdDesc(Long memberId);
+	void deleteByMemberMemberId(Long memberId);
 }

@@ -126,6 +126,16 @@
   transform: translateX(42px);
 }
 
+.vtuber-chatbot[data-render-mode='three3d'] {
+  grid-template-columns: 230px minmax(220px, 300px);
+}
+
+.vtuber-chatbot[data-render-mode='three3d'] .vtuber-stage {
+  width: 260px;
+  height: 340px;
+  transform: translateX(24px);
+}
+
 .vtuber-live2d {
   position: relative;
   display: grid;
@@ -148,6 +158,31 @@
 }
 
 .vtuber-live2d[data-render-status='ready'] .vtuber-avatar {
+  display: none;
+}
+
+.vtuber-three {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  justify-items: center;
+  align-items: end;
+}
+
+.vtuber-three-container {
+  position: absolute;
+  inset: 0 0 18px;
+  overflow: hidden;
+}
+
+.vtuber-three-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vtuber-three[data-render-status='ready'] .vtuber-avatar {
   display: none;
 }
 

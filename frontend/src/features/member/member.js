@@ -119,6 +119,73 @@ const MY_PAGE_DUMMY_DATA = {
       description: '월별 콘셉트 컷이 담긴 캘린더',
     },
   ],
+  payments: [
+    {
+      paymentId: 401,
+      name: 'ORD20260618-0001',
+      status: 'APPROVED',
+      price: 69000,
+      description: '카카오페이 · 2026.06.18 결제 완료',
+    },
+    {
+      paymentId: 402,
+      name: 'ORD20260612-0007',
+      status: 'APPROVED',
+      price: 87000,
+      description: '카드 간편결제 · 2026.06.12 결제 완료',
+    },
+    {
+      paymentId: 403,
+      name: 'ORD20260603-0012',
+      status: 'READY',
+      price: 42000,
+      description: '결제 대기 · 주문서 확인 필요',
+    },
+  ],
+  refunds: [
+    {
+      refundId: 501,
+      name: 'EXO POSTCARD BOOK',
+      status: '환불 완료',
+      price: 18000,
+      description: '2026.06.16 취소 접수 · 2026.06.17 환불 완료',
+    },
+    {
+      refundId: 502,
+      name: 'NCT DREAM MD PACKAGE',
+      status: '검토 중',
+      price: 54000,
+      description: '2026.06.26 환불 요청 · 고객센터 확인 중',
+    },
+  ],
+  productInquiries: [
+    {
+      inquiryId: 601,
+      name: 'aespa Drama Hoodie',
+      status: '답변 완료',
+      description: '사이즈 재입고 일정 문의 · 2026.06.20',
+    },
+    {
+      inquiryId: 602,
+      name: 'RIIZE Lucky Photocard',
+      status: '접수',
+      description: '구성품 중복 가능 여부 문의 · 2026.06.27',
+    },
+  ],
+  supportInquiries: [
+    {
+      inquiryId: 701,
+      name: '배송지 변경 요청',
+      status: '처리 완료',
+      description: '주문 ORD20260618-0001 · 2026.06.19',
+    },
+    {
+      inquiryId: 702,
+      name: '회원 정보 수정 문의',
+      status: '답변 대기',
+      description: '휴대폰 번호 인증 관련 · 2026.06.28',
+    },
+  ],
 }
 
 function checkSupabaseConfig() {
@@ -506,11 +573,14 @@ export async function getMyPageSummary() {
   return {
     member: {
       ...member,
-      grade: 'WELCOME',
       address,
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
     orders: MY_PAGE_DUMMY_DATA.orders,
+    payments: MY_PAGE_DUMMY_DATA.payments,
+    refunds: MY_PAGE_DUMMY_DATA.refunds,
+    productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,
+    supportInquiries: MY_PAGE_DUMMY_DATA.supportInquiries,
     recentlyViewedGoods: MY_PAGE_DUMMY_DATA.recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
@@ -521,6 +591,19 @@ export async function getMyPageSummary() {
   }
 }
 
+export async function updateMemberProfile(form) {
+  const response = await apiFetch('/members/me', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name: form.name,
+      phone: form.phone,
+      address: form.address,
+    }),
+  })
+
+  return parseApiResponse(response, '개인정보를 저장하지 못했습니다.')
+}
+
 export async function logoutMember() {
   checkSupabaseConfig()
 
@@ -529,6 +612,17 @@ export async function logoutMember() {
   if (error) {
     throw new Error(error.message)
   }
+}
+
+export async function withdrawMember() {
+  await parseApiResponse(
+    await apiFetch('/members/me', {
+      method: 'DELETE',
+    }),
+    '회원 탈퇴에 실패했습니다.',
+  )
+
+  await logoutMember()
 }
 
 export async function updateMemberAddress(userId, address) {
