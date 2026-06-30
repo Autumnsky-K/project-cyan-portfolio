@@ -181,10 +181,8 @@
 }
 
 .filter-options {
-  max-height: 260px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
+  max-height: none;
+  overflow-y: visible;
 }
 
 .mobile-filter-trigger {

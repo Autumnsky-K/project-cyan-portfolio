@@ -184,37 +184,75 @@ button.goods-rating-summary {
 
 .filter-group {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
 .filter-group legend {
-  margin-bottom: 0;
+  position: relative;
+  width: 100%;
+  margin-bottom: 2px;
+  padding-bottom: 9px;
   color: var(--goods-ink);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
+}
+
+.filter-group legend::before {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--goods-line);
+  content: '';
+}
+
+.filter-group legend::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  width: 22px;
+  height: 3px;
+  background: var(--goods-ink);
+  content: '';
 }
 
 .filter-options {
   display: grid;
-  gap: 8px;
-  padding: 2px 0 0 10px;
+  gap: 1px;
+  padding: 0;
 }
 
 .filter-options label {
   display: flex;
   align-items: center;
   gap: 7px;
+  min-height: 26px;
+  margin-inline: -6px;
+  padding: 3px 6px;
+  border-radius: 4px;
   color: var(--goods-muted);
   font-size: 14px;
   line-height: 1.35;
+  cursor: pointer;
+}
+
+.filter-options label:hover {
+  background: var(--goods-soft);
+  color: var(--goods-text);
 }
 
 .filter-options input {
   margin: 0;
   accent-color: var(--goods-ink);
+}
+
+.filter-options label:has(input:checked) {
+  color: var(--goods-ink);
+  font-weight: 700;
 }
 
 .filter-note {
