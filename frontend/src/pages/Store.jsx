@@ -13,6 +13,7 @@ function Store() {
   const isAdmin = access.isAdmin
   const store = useStoreFlow({
     allowLocalFallback: isAdmin,
+    defaultCustomerName: access.member?.name,
     defaultMemberId: access.member?.memberId,
     fetchOrderHistory: isAdmin,
   })
