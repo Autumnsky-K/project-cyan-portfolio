@@ -1,8 +1,11 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  addGoodsLike,
   fetchGoods,
   fetchGoodsFilters,
+  fetchMyGoodsLike,
+  removeGoodsLike,
   type GoodsFilterOption,
   type GoodsSummary,
   type PageResponse,
@@ -41,8 +44,6 @@ function GoodsPage() {
     favoriteGoods,
     favoritesStatus,
     favoritesError,
-    isFavorite,
-    toggleFavorite,
     refreshFavorites,
   } = useGoodsFavorites()
   const {
@@ -74,6 +75,9 @@ function GoodsPage() {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
+  const [likedGoodsIds, setLikedGoodsIds] = useState<Set<number>>(() => new Set())
+  const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(() => new Set())
+  const [likeCountOverrides, setLikeCountOverrides] = useState<Record<number, number>>({})
   const hasLoadedGoodsRef = useRef(false)
   const resultsStartRef = useRef<HTMLDivElement | null>(null)
   const searchToolbarRef = useRef<HTMLElement | null>(null)
@@ -87,13 +91,54 @@ function GoodsPage() {
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
 
-  const handleFavoriteToggle = useCallback(async (goodsId: number) => {
+  const updateGoodsLikeCount = useCallback((goodsId: number, likeCount: number) => {
+    setLikeCountOverrides((currentCounts) => ({ ...currentCounts, [goodsId]: likeCount }))
+    setGoodsPage((currentPageData) => (
+      currentPageData
+        ? {
+            ...currentPageData,
+            content: currentPageData.content.map((item) =>
+              item.goodsId === goodsId ? { ...item, likeCount } : item,
+            ),
+          }
+        : currentPageData
+    ))
+  }, [])
+
+  const handleLikeToggle = useCallback(async (item: GoodsSummary) => {
     if (!(await hasSpringApiSession())) {
       navigateToLogin()
       return
     }
-    await toggleFavorite(goodsId)
-  }, [navigateToLogin, toggleFavorite])
+
+    const goodsId = item.goodsId
+    setPendingLikeIds((currentIds) => new Set(currentIds).add(goodsId))
+
+    try {
+      const knownLiked = likedGoodsIds.has(goodsId)
+      const currentLike = knownLiked ? { liked: true, likeCount: Number(item.likeCount ?? 0) } : await fetchMyGoodsLike(goodsId)
+      const result = currentLike?.liked
+        ? await removeGoodsLike(goodsId)
+        : await addGoodsLike(goodsId)
+
+      setLikedGoodsIds((currentIds) => {
+        const nextIds = new Set(currentIds)
+        if (result.liked) {
+          nextIds.add(goodsId)
+        } else {
+          nextIds.delete(goodsId)
+        }
+        return nextIds
+      })
+      updateGoodsLikeCount(goodsId, result.likeCount)
+    } finally {
+      setPendingLikeIds((currentIds) => {
+        const nextIds = new Set(currentIds)
+        nextIds.delete(goodsId)
+        return nextIds
+      })
+    }
+  }, [likedGoodsIds, navigateToLogin, updateGoodsLikeCount])
 
   const showFavorites = useCallback(async () => {
     if (!(await hasSpringApiSession())) {
@@ -219,6 +264,22 @@ function GoodsPage() {
   }
 
   const goods = useMemo(() => goodsPage?.content ?? [], [goodsPage])
+  const visibleGoods = useMemo(
+    () => goods.map((item) => (
+      likeCountOverrides[item.goodsId] === undefined
+        ? item
+        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
+    )),
+    [goods, likeCountOverrides],
+  )
+  const visibleFavoriteGoods = useMemo(
+    () => favoriteGoods.map((item) => (
+      likeCountOverrides[item.goodsId] === undefined
+        ? item
+        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
+    )),
+    [favoriteGoods, likeCountOverrides],
+  )
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
@@ -346,10 +407,11 @@ function GoodsPage() {
             {hasGoods && (
               <div data-refreshing={status === 'refreshing'}>
                 <GoodsCards
-                  items={goods}
+                  items={visibleGoods}
                   viewMode={viewMode}
-                  isFavorite={isFavorite}
-                  toggleFavorite={handleFavoriteToggle}
+                  isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
+                  isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+                  toggleLike={handleLikeToggle}
                   onOpenDetail={openGoodsDetail}
                 />
               </div>
@@ -401,10 +463,11 @@ function GoodsPage() {
           )}
           {favoritesStatus === 'data' && favoriteGoods.length > 0 && (
             <GoodsCards
-              items={favoriteGoods}
+              items={visibleFavoriteGoods}
               viewMode={viewMode}
-              isFavorite={isFavorite}
-              toggleFavorite={handleFavoriteToggle}
+              isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
+              isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+              toggleLike={handleLikeToggle}
               onOpenDetail={openGoodsDetail}
             />
           )}
