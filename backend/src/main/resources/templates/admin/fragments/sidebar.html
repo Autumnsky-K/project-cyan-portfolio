@@ -69,7 +69,7 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'storage'} ? 'open' : null">
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'members' or current == 'storage'} ? 'open' : null">
       <summary class="admin-nav-parent">데이터 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -78,6 +78,9 @@
         <a class="admin-nav-child"
            th:href="@{/admin/goods}"
            th:attr="aria-current=${current == 'goods'} ? 'page' : null">굿즈 정보 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/members}"
+           th:attr="aria-current=${current == 'members'} ? 'page' : null">회원 정보 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/storage}"
            th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>
@@ -107,6 +110,7 @@
     <a th:href="@{/admin/ui#home}" title="홈 화면" aria-label="홈 화면">H</a>
     <a th:href="@{/admin/ui#artists}" title="아티스트" aria-label="아티스트">A</a>
     <a th:href="@{/admin/goods}" title="굿즈" aria-label="굿즈">G</a>
+    <a th:href="@{/admin/members}" title="회원" aria-label="회원">M</a>
     <a th:href="@{/admin/data}" title="데이터" aria-label="데이터">DB</a>
     <a th:href="@{/admin/storage}" title="저장소" aria-label="저장소">S</a>
     <a th:href="@{/admin/ai}" title="AI" aria-label="AI">AI</a>
