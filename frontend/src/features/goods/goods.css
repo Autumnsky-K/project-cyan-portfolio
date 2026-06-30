@@ -302,7 +302,7 @@ button.goods-rating-summary {
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border: 1px solid var(--goods-line);
-  border-radius: 3px;
+  border-radius: 6px;
   background:
     linear-gradient(135deg, transparent 49%, #dedede 50%, transparent 51%),
     var(--goods-soft);
@@ -510,7 +510,7 @@ button.goods-rating-summary {
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 5px;
+  gap: 3px;
   width: 100%;
   margin-top: 0;
 }
@@ -578,12 +578,17 @@ button.goods-rating-summary {
   background: transparent;
 }
 
+.goods-card .favorite-button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .favorite-heart-icon {
   display: block;
   width: 20px;
   height: 19px;
   color: currentColor;
-  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 24 22' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 20.1 10.7 19C5.3 14.4 2 11.6 2 7.4 2 4.2 4.5 2 7.4 2c1.7 0 3.4.8 4.6 2.1C13.2 2.8 14.9 2 16.6 2 19.5 2 22 4.2 22 7.4c0 4.2-3.3 7-8.7 11.6L12 20.1Z' fill='%23ffffff' stroke='%234f5358' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 24 22' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 20.1 10.7 19C5.3 14.4 2 11.6 2 7.4 2 4.2 4.5 2 7.4 2c1.7 0 3.4.8 4.6 2.1C13.2 2.8 14.9 2 16.6 2 19.5 2 22 4.2 22 7.4c0 4.2-3.3 7-8.7 11.6L12 20.1Z' fill='%23ffffff' stroke='%23d6405f' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E");
   filter: drop-shadow(0 1px 2px rgb(255 255 255 / 88%));
   pointer-events: none;
 }
@@ -842,4 +847,5 @@ button.goods-rating-summary {
   .goods-grid {
     grid-template-columns: 1fr;
   }
+
 }

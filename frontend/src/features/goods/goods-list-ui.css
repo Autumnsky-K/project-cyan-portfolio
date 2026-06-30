@@ -292,12 +292,20 @@
   grid-template-columns: minmax(180px, 28%) minmax(0, 1fr);
   grid-template-rows: 1fr;
   height: max-content;
+  overflow: hidden;
+  border: 1px solid var(--goods-line);
+  border-radius: 6px;
 }
 
 .goods-list .goods-image {
   height: 100%;
+  border: 0;
   border-right: 1px solid var(--goods-line);
-  border-bottom: 0;
+  border-radius: 0;
+}
+
+.goods-list .goods-card-body {
+  padding: 12px 14px;
 }
 
 .goods-card button:disabled {
@@ -430,7 +438,7 @@
   }
 
   .goods-list .goods-card-body {
-    padding: 12px;
+    padding: 10px 12px;
   }
 }
 
