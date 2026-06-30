@@ -61,10 +61,10 @@ function formatKoreanPhoneNumber(value) {
 
 const CHECKOUT_FORM_STORAGE_KEY = 'checkoutForm'
 
-function getDefaultCheckoutForm(defaultMemberId) {
+function getDefaultCheckoutForm(defaultMemberId, defaultCustomerName = '') {
   return {
     memberId: defaultMemberId == null ? '' : String(defaultMemberId),
-    name: '',
+    name: String(defaultCustomerName ?? '').trim(),
     email: '',
     phone: '',
     address: '',
@@ -72,8 +72,8 @@ function getDefaultCheckoutForm(defaultMemberId) {
   }
 }
 
-function loadCheckoutForm(defaultMemberId) {
-  const defaultForm = getDefaultCheckoutForm(defaultMemberId)
+function loadCheckoutForm(defaultMemberId, defaultCustomerName = '') {
+  const defaultForm = getDefaultCheckoutForm(defaultMemberId, defaultCustomerName)
 
   try {
     const value = localStorage.getItem(CHECKOUT_FORM_STORAGE_KEY)
@@ -87,6 +87,7 @@ function loadCheckoutForm(defaultMemberId) {
       ...defaultForm,
       ...savedForm,
       memberId: savedForm.memberId || defaultForm.memberId,
+      name: savedForm.name || defaultForm.name,
       phone: formatKoreanPhoneNumber(savedForm.phone ?? defaultForm.phone),
     }
   } catch {
@@ -141,6 +142,7 @@ async function fetchCartOrders() {
 export function useStoreFlow(options = {}) {
   const {
     allowLocalFallback = false,
+    defaultCustomerName = '',
     defaultMemberId = null,
     fetchOrderHistory = false,
   } = options
@@ -162,7 +164,7 @@ export function useStoreFlow(options = {}) {
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState(() =>
-    loadCheckoutForm(defaultMemberId),
+    loadCheckoutForm(defaultMemberId, defaultCustomerName),
   )
   const [paymentMethod, setPaymentMethod] = useState(
     pendingPayment?.paymentMethod || PAYMENT_METHODS.KAKAO_PAY,
@@ -186,18 +188,22 @@ export function useStoreFlow(options = {}) {
   }, [checkoutForm])
 
   useEffect(() => {
-    if (!defaultMemberId) return undefined
+    if (!defaultMemberId && !defaultCustomerName) return undefined
 
     const timerId = window.setTimeout(() => {
       setCheckoutForm((currentForm) =>
-        currentForm.memberId
+        currentForm.memberId && currentForm.name
           ? currentForm
-          : { ...currentForm, memberId: String(defaultMemberId) },
+          : {
+              ...currentForm,
+              memberId: currentForm.memberId || (defaultMemberId == null ? '' : String(defaultMemberId)),
+              name: currentForm.name || String(defaultCustomerName ?? '').trim(),
+            },
       )
     }, 0)
 
     return () => window.clearTimeout(timerId)
-  }, [defaultMemberId])
+  }, [defaultCustomerName, defaultMemberId])
 
   const cartItems = useMemo(
     () =>
