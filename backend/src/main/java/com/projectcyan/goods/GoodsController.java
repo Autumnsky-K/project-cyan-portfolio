@@ -24,17 +24,20 @@ public class GoodsController {
 	private final GoodsRecommendationService goodsRecommendationService;
 	private final GoodsViewHistoryService goodsViewHistoryService;
 	private final GoodsFavoriteService goodsFavoriteService;
+	private final GoodsLikeService goodsLikeService;
 
 	public GoodsController(
 		GoodsService goodsService,
 		GoodsRecommendationService goodsRecommendationService,
 		GoodsViewHistoryService goodsViewHistoryService,
-		GoodsFavoriteService goodsFavoriteService
+		GoodsFavoriteService goodsFavoriteService,
+		GoodsLikeService goodsLikeService
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
 		this.goodsViewHistoryService = goodsViewHistoryService;
 		this.goodsFavoriteService = goodsFavoriteService;
+		this.goodsLikeService = goodsLikeService;
 	}
 
 	@GetMapping
@@ -44,6 +47,7 @@ public class GoodsController {
 		@RequestParam(required = false) String artistIds,
 		@RequestParam(required = false) Long categoryId,
 		@RequestParam(required = false) String categoryIds,
+		@RequestParam(required = false) String salesStatus,
 		@RequestParam(required = false) String tag,
 		@RequestParam(required = false) String tags,
 		@RequestParam(required = false) String goodsIds,
@@ -52,7 +56,7 @@ public class GoodsController {
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
 		return goodsService.findGoods(
-			q, artistId, artistIds, categoryId, categoryIds, tag, tags, goodsIds, page, size, sort
+			q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort
 		);
 	}
 
@@ -64,6 +68,7 @@ public class GoodsController {
 		@RequestParam(required = false) String tags,
 		@RequestParam(required = false) Integer maxPrice,
 		@RequestParam(required = false) String excludeGoodsIds,
+		@RequestParam(required = false) String preferredArtistIds,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "10") int size,
 		@RequestParam(defaultValue = "relevance,desc") String sort
@@ -75,6 +80,7 @@ public class GoodsController {
 			tags,
 			maxPrice,
 			excludeGoodsIds,
+			preferredArtistIds,
 			page,
 			size,
 			sort
@@ -112,6 +118,30 @@ public class GoodsController {
 		AuthenticatedMember currentMember
 	) {
 		goodsFavoriteService.removeFavorite(currentMember.memberId(), goodsId);
+	}
+
+	@GetMapping("/{goodsId}/likes/my")
+	public GoodsLikeResponse findMyLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.findMyLike(currentMember.memberId(), goodsId);
+	}
+
+	@PostMapping("/{goodsId}/likes")
+	public GoodsLikeResponse addLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.addLike(currentMember.memberId(), goodsId);
+	}
+
+	@DeleteMapping("/{goodsId}/likes")
+	public GoodsLikeResponse removeLike(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.removeLike(currentMember.memberId(), goodsId);
 	}
 
 	@PostMapping("/{goodsId}/views")

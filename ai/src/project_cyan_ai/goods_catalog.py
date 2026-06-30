@@ -8,6 +8,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from project_cyan_ai.favorite_artists import favorite_artist_ids
+from project_cyan_ai.personalization_context import build_personalized_prompt
 from project_cyan_ai.providers.chat_response import (
     ChatResponseProvider,
     MockChatResponseProvider,
@@ -35,6 +37,12 @@ PRODUCT_INTENT_KEYWORDS = (
     "찾아줘",
     "있어",
 )
+GENERIC_RECOMMENDATION_TERMS = {
+    *PRODUCT_INTENT_KEYWORDS,
+    "추천해줘",
+    "보여줘",
+    "찾아줘",
+}
 AVAILABLE_STATUSES = {"", "ON_SALE", "AVAILABLE", "SALE"}
 KOREAN_PARTICLES = (
     "에서는",
@@ -129,7 +137,11 @@ KOREAN_COUNT_ALL_PATTERN = re.compile(
 
 
 class GoodsCatalogClient(Protocol):
-    def search_candidates(self, text: str) -> list[dict[str, Any]] | None:
+    def search_candidates(
+        self,
+        text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]] | None:
         """Return candidates, an empty result, or None when Spring is unavailable."""
         ...
 
@@ -143,11 +155,20 @@ class HttpGoodsCatalogClient:
         self.spring_api_url = spring_api_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
 
-    def search_candidates(self, text: str) -> list[dict[str, Any]] | None:
+    def search_candidates(
+        self,
+        text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]] | None:
         query = {"q": text, "page": 0, "size": 10, "sort": "relevance,desc"}
         max_price = extract_max_price(text)
         if max_price is not None:
             query["maxPrice"] = max_price
+        preferred_artist_ids = favorite_artist_ids(favorite_artists)
+        if preferred_artist_ids:
+            query["preferredArtistIds"] = ",".join(
+                str(artist_id) for artist_id in preferred_artist_ids
+            )
 
         request = Request(
             f"{self.spring_api_url}/goods/recommendation-candidates?{urlencode(query)}",
@@ -179,13 +200,22 @@ class TsvGoodsCatalogClient:
         self._cached_candidates: list[dict[str, Any]] | None = None
         self._cache_expires_at = 0.0
 
-    def search_candidates(self, text: str) -> list[dict[str, Any]] | None:
+    def search_candidates(
+        self,
+        text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]] | None:
         try:
             candidates = self._load_candidates()
         except (OSError, UnicodeDecodeError, csv.Error, ValueError):
             return None
 
-        return filter_tsv_candidates(text, candidates, self.candidate_size)
+        return filter_tsv_candidates(
+            text,
+            candidates,
+            self.candidate_size,
+            favorite_artists,
+        )
 
     def _load_candidates(self) -> list[dict[str, Any]]:
         now = time.monotonic()
@@ -262,10 +292,15 @@ class CatalogGroundedChatResponseProvider:
         self.catalog_client = catalog_client
         self.recent_recommendation_candidates: list[dict[str, Any]] = []
 
+    def clear_connection_context(self) -> None:
+        self.recent_recommendation_candidates = []
+
     def build_response(
         self,
         text: str,
         context: dict[str, Any] | None = None,
+        favorite_artists: list[dict[str, Any]] | None = None,
+        personalization_context: dict[str, Any] | None = None,
     ) -> FullTextMessage:
         follow_up_response = build_follow_up_cart_response(
             text,
@@ -275,11 +310,17 @@ class CatalogGroundedChatResponseProvider:
             return follow_up_response
 
         if not has_product_intent(text):
-            return self.delegate.build_response(text, context)
+            return self.delegate.build_response(
+                self._personalized_text(text, personalization_context),
+                context,
+            )
 
-        candidates = self.catalog_client.search_candidates(text)
+        candidates = self.catalog_client.search_candidates(text, favorite_artists)
         if candidates is None:
-            return self.delegate.build_response(text, context)
+            return self.delegate.build_response(
+                self._personalized_text(text, personalization_context),
+                context,
+            )
         self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
         if not candidates:
             return FullTextMessage(
@@ -290,7 +331,10 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return build_mock_catalog_response(text, candidates)
 
-        prompt = build_catalog_prompt(text, candidates)
+        prompt = build_personalized_prompt(
+            build_catalog_prompt(text, candidates, favorite_artists),
+            personalization_context,
+        )
         response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
@@ -299,12 +343,25 @@ class CatalogGroundedChatResponseProvider:
         }
         return FullTextMessage(
             text=response.text,
-            actions=[
-                action
-                for action in response.actions
-                if action_goods_id(action) in allowed_goods_ids
-            ],
+            actions=merge_candidate_actions(
+                [
+                    action
+                    for action in response.actions
+                    if action_goods_id(action) in allowed_goods_ids
+                ],
+                candidates,
+            ),
+            metadata=recommendation_metadata(candidates),
         )
+
+    def _personalized_text(
+        self,
+        text: str,
+        personalization_context: dict[str, Any] | None,
+    ) -> str:
+        if isinstance(self.delegate, MockChatResponseProvider):
+            return text
+        return build_personalized_prompt(text, personalization_context)
 
 
 def has_product_intent(text: str) -> bool:
@@ -328,6 +385,7 @@ def parse_goods_catalog_tsv(raw_tsv: str) -> list[dict[str, Any]]:
             "price": coerce_price(first_present(row, "price")),
             "imageUrl": empty_to_none(first_present(row, "imageUrl", "mainImageUrl", "main_image_url")),
             "tags": parse_tags(first_present(row, "tags", "tagNames", "tag_names")),
+            "artistId": coerce_int(first_present(row, "artistId", "artist_id")),
             "artistName": empty_to_none(first_present(row, "artistName", "artist_name")),
             "categoryName": empty_to_none(first_present(row, "categoryName", "category_name")),
             "salesStatus": empty_to_none(first_present(row, "salesStatus", "sales_status")),
@@ -347,11 +405,21 @@ def filter_tsv_candidates(
     text: str,
     candidates: list[dict[str, Any]],
     candidate_size: int = DEFAULT_CANDIDATE_SIZE,
+    favorite_artists: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     query = build_tsv_query(text, candidates)
+    preferred_artist_ids = set(favorite_artist_ids(favorite_artists))
     scored_candidates = []
     for candidate in candidates:
         score, matched_fields = score_tsv_candidate(candidate, query)
+        has_query_match = score > 0
+        if not has_query_match and has_specific_tsv_query(query):
+            continue
+        if candidate.get("artistId") in preferred_artist_ids:
+            score += 20
+            matched_fields = set(matched_fields)
+            matched_fields.add("preferredArtist")
+            matched_fields = sorted(matched_fields)
         if score <= 0:
             continue
         response_candidate = public_candidate(candidate, matched_fields)
@@ -371,6 +439,21 @@ def filter_tsv_candidates(
     ]
 
 
+def has_specific_tsv_query(query: dict[str, Any]) -> bool:
+    if query["artistNames"] or query["groupNames"] or query["categoryKeys"]:
+        return True
+    return any(not is_generic_recommendation_term(term) for term in query["terms"])
+
+
+def is_generic_recommendation_term(term: str) -> bool:
+    words = [
+        word
+        for word in normalize_text(term).split()
+        if word
+    ]
+    return bool(words) and all(word in GENERIC_RECOMMENDATION_TERMS for word in words)
+
+
 def build_tsv_query(text: str, candidates: list[dict[str, Any]]) -> dict[str, Any]:
     normalized_text = normalize_text(text)
     terms = normalized_terms(text)
@@ -385,6 +468,13 @@ def build_tsv_query(text: str, candidates: list[dict[str, Any]]) -> dict[str, An
         if candidate.get("artistName")
         and normalize_text(candidate["artistName"]) in normalized_text
     }
+    inferred_artist_names = infer_artist_names_from_distinctive_terms(
+        terms,
+        candidates,
+        category_keys,
+    )
+    if inferred_artist_names:
+        artist_names.update(inferred_artist_names)
     group_names = {
         candidate["groupName"]
         for candidate in candidates
@@ -472,6 +562,60 @@ def score_tsv_candidate(
         score += 6
 
     return score, sorted(matched_fields)
+
+
+def infer_artist_names_from_distinctive_terms(
+    terms: set[str],
+    candidates: list[dict[str, Any]],
+    category_keys: set[str],
+) -> set[str]:
+    ignored_terms = ignored_artist_inference_terms(category_keys)
+    matched_artist_names: set[str] = set()
+
+    for term in terms:
+        if len(term) < 2 or term in ignored_terms:
+            continue
+
+        term_artist_names = {
+            candidate["artistName"]
+            for candidate in candidates
+            if candidate.get("artistName")
+            and candidate_matches_distinctive_term(candidate, term)
+        }
+        if len(term_artist_names) == 1:
+            matched_artist_names.update(term_artist_names)
+
+    return matched_artist_names
+
+
+def ignored_artist_inference_terms(category_keys: set[str]) -> set[str]:
+    ignored_terms = {
+        "상품",
+        "굿즈",
+        "추천",
+        "찾아줘",
+        "있어",
+        "누구",
+        "거",
+        "관련",
+        "품절",
+        "아닌",
+        "가능",
+        "구매",
+        "살",
+        "수",
+    }
+    for category_key in category_keys:
+        ignored_terms.update(normalize_text(alias) for alias in CATEGORY_ALIASES[category_key])
+    return ignored_terms
+
+
+def candidate_matches_distinctive_term(candidate: dict[str, Any], term: str) -> bool:
+    fields = (
+        candidate.get("name"),
+        candidate.get("description"),
+    )
+    return any(term in normalize_text(value or "") for value in fields)
 
 
 def score_term_match(candidate: dict[str, Any], term: str) -> tuple[int, set[str]]:
@@ -588,7 +732,9 @@ def strip_internal_candidate_fields(candidate: dict[str, Any]) -> dict[str, Any]
             "price",
             "imageUrl",
             "tags",
+            "artistId",
             "artistName",
+            "groupName",
             "categoryName",
             "salesStatus",
             "stockCount",
@@ -761,6 +907,7 @@ def normalize_recent_candidates(candidates: list[dict[str, Any]]) -> list[dict[s
                     "price",
                     "tags",
                     "artistName",
+                    "groupName",
                     "categoryName",
                 )
             }
@@ -780,7 +927,11 @@ def extract_max_price(text: str) -> int | None:
     return None
 
 
-def build_catalog_prompt(text: str, candidates: list[dict[str, Any]]) -> str:
+def build_catalog_prompt(
+    text: str,
+    candidates: list[dict[str, Any]],
+    favorite_artists: list[dict[str, Any]] | None = None,
+) -> str:
     compact_candidates = [
         {
             key: candidate.get(key)
@@ -789,7 +940,9 @@ def build_catalog_prompt(text: str, candidates: list[dict[str, Any]]) -> str:
                 "name",
                 "price",
                 "tags",
+                "artistId",
                 "artistName",
+                "groupName",
                 "categoryName",
                 "stockCount",
                 "recommendationReason",
@@ -797,13 +950,91 @@ def build_catalog_prompt(text: str, candidates: list[dict[str, Any]]) -> str:
         }
         for candidate in candidates
     ]
+    compact_favorite_artists = [
+        {
+            "artistId": artist.get("artistId"),
+            "name": artist.get("name"),
+        }
+        for artist in favorite_artists or []
+        if isinstance(artist, dict) and artist.get("artistId") is not None
+    ]
+    favorite_artist_section = (
+        "회원 선호 아티스트 JSON:\n"
+        f"{json.dumps(compact_favorite_artists, ensure_ascii=False)}\n\n"
+        if compact_favorite_artists
+        else ""
+    )
     return (
         f"사용자 요청:\n{text}\n\n"
+        f"{favorite_artist_section}"
         "Spring 상품 API가 반환한 추천 가능 상품 JSON:\n"
         f"{json.dumps(compact_candidates, ensure_ascii=False)}\n\n"
         "위 JSON 안의 상품만 추천하세요. JSON에 없는 goodsId를 만들지 마세요. "
-        "추천 시 실제 goodsId로 ACTION 태그를 생성하세요."
+        "추천 시 실제 goodsId로 ACTION 태그를 생성하세요. "
+        "형식은 반드시 [ACTION:navigate path=\"/goods/{goodsId}\"] 또는 "
+        "[ACTION:highlight selector=\"[data-goods-id='{goodsId}']\"] 입니다. "
+        "[ACTION:{goodsId}]처럼 숫자만 넣은 태그는 절대 쓰지 마세요."
     )
+
+
+def default_candidate_actions(candidates: list[dict[str, Any]]) -> list[NavigateAction | HighlightAction]:
+    actions: list[NavigateAction | HighlightAction] = []
+    for index, candidate in enumerate(candidates[:3]):
+        goods_id = candidate.get("goodsId")
+        if goods_id is None:
+            continue
+        normalized_goods_id = str(goods_id)
+        if not normalized_goods_id.isdigit():
+            continue
+        if index == 0:
+            actions.append(NavigateAction(path=f"/goods/{normalized_goods_id}"))
+        actions.append(HighlightAction(selector=f"[data-goods-id='{normalized_goods_id}']"))
+    return actions
+
+
+def recommendation_metadata(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    recommendations = []
+    for rank_order, candidate in enumerate(candidates[:3]):
+        goods_id = candidate.get("goodsId")
+        if goods_id is None:
+            continue
+        recommendations.append(
+            {
+                "goodsId": goods_id,
+                "recommendationReason": candidate.get("recommendationReason"),
+                "rankOrder": rank_order,
+            }
+        )
+    return {"recommendations": recommendations} if recommendations else {}
+
+
+def merge_candidate_actions(
+    actions: list[Any],
+    candidates: list[dict[str, Any]],
+) -> list[Any]:
+    merged_actions = limit_navigate_actions(actions)
+    existing_keys = {
+        (action.__class__.__name__, action_goods_id(action))
+        for action in merged_actions
+    }
+    for action in default_candidate_actions(candidates):
+        key = (action.__class__.__name__, action_goods_id(action))
+        if key not in existing_keys:
+            merged_actions.append(action)
+            existing_keys.add(key)
+    return limit_navigate_actions(merged_actions)
+
+
+def limit_navigate_actions(actions: list[Any]) -> list[Any]:
+    limited_actions: list[Any] = []
+    has_navigate = False
+    for action in actions:
+        if isinstance(action, NavigateAction):
+            if has_navigate:
+                continue
+            has_navigate = True
+        limited_actions.append(action)
+    return limited_actions
 
 
 def build_mock_catalog_response(
@@ -821,6 +1052,7 @@ def build_mock_catalog_response(
     return FullTextMessage(
         text=f"{first.get('name', '추천 상품')}을 추천해요.",
         actions=actions,
+        metadata=recommendation_metadata(candidates),
     )
 
 

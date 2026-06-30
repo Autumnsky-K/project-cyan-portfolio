@@ -123,6 +123,38 @@ class CheckoutServiceTest {
 	}
 
 	@Test
+	void preparesKakaoCheckoutWithKakaoProviderRows() {
+		Member member = member();
+		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
+		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
+		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 10)));
+
+		CheckoutPrepareResponse response = checkoutService.prepare(
+			member.getMemberUuid(),
+			new CheckoutPrepareRequest(
+				List.of(item(1001L, 1)),
+				new ShippingAddressRequest(
+					"Hong Gil-dong",
+					"01012345678",
+					"01234",
+					"Seoul ...",
+					"101",
+					"Leave at the door"
+				),
+				"KAKAO_PAY"
+			)
+		);
+
+		assertThat(response.orderId()).isEqualTo(123L);
+		assertThat(response.paymentId()).isEqualTo(456L);
+		assertThat(ReflectionTestUtils.getField(savedPayment, "provider")).isEqualTo("KAKAO");
+		assertThat(ReflectionTestUtils.getField(savedPayment, "providerOrderId")).isEqualTo(response.orderNo());
+		assertThat(ReflectionTestUtils.getField(savedPaymentAttempt, "provider")).isEqualTo("KAKAO");
+		assertThat(ReflectionTestUtils.getField(savedPaymentAttempt, "providerOrderId")).isEqualTo(response.orderNo());
+	}
+
+	@Test
 	void rejectsNullItems() {
 		Member member = member();
 		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));

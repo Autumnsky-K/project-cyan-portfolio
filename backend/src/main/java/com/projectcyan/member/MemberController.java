@@ -1,5 +1,7 @@
 package com.projectcyan.member;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -19,9 +21,14 @@ import com.projectcyan.member.auth.AuthenticatedMember;
 public class MemberController {
 
 	private final MemberService memberService;
+	private final FavoriteArtistService favoriteArtistService;
 
-	public MemberController(MemberService memberService) {
+	public MemberController(
+		MemberService memberService,
+		FavoriteArtistService favoriteArtistService
+	) {
 		this.memberService = memberService;
+		this.favoriteArtistService = favoriteArtistService;
 	}
 
 	@GetMapping("/me")
@@ -29,6 +36,7 @@ public class MemberController {
 		return currentMember;
 	}
 
+<<<<<<< HEAD
 	@PatchMapping("/me")
 	public MemberProfileResponse updateCurrentMember(
 		AuthenticatedMember currentMember,
@@ -41,6 +49,11 @@ public class MemberController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void withdrawCurrentMember(AuthenticatedMember currentMember) {
 		memberService.withdrawCurrentMember(currentMember.memberId());
+=======
+	@GetMapping("/me/favorite-artists")
+	public List<FavoriteArtistResponse> findFavoriteArtists(AuthenticatedMember currentMember) {
+		return favoriteArtistService.findFavoriteArtists(currentMember.memberId());
+>>>>>>> origin/dev
 	}
 
 	@PostMapping("/signup")

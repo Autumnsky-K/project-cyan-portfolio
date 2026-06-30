@@ -3,9 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type VtuberClientCartItem,
   type VtuberAction,
+  type VtuberAuthReason,
+  type VtuberClientAuthMessage,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
+  type VtuberRecommendationMetadata,
   type VtuberServerMessage,
+  type VtuberServerMetadata,
 } from './types'
 
 const VTUBER_WS_PATH = '/client-ws'
@@ -15,7 +19,8 @@ type UseVtuberWebSocketResult = {
   actions: VtuberAction[]
   connectionStatus: VtuberConnectionStatus
   latestText: string
-  sendText: (text: string) => boolean
+  metadata: VtuberServerMetadata
+  sendText: (text: string, accessTokenOverride?: string | null) => boolean
 }
 
 function buildVtuberWebSocketUrl(): string {
@@ -43,7 +48,58 @@ function normalizeAction(value: unknown): VtuberAction | null {
   return { ...value, type: value.type }
 }
 
-function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
+function normalizeRecommendation(value: unknown): VtuberRecommendationMetadata | null {
+  if (!isRecord(value) || value.goodsId === undefined) {
+    return null
+  }
+
+  return {
+    goodsId: typeof value.goodsId === 'number' ? value.goodsId : String(value.goodsId),
+    recommendationReason:
+      typeof value.recommendationReason === 'string'
+        ? value.recommendationReason
+        : null,
+    rankOrder:
+      typeof value.rankOrder === 'number' && Number.isFinite(value.rankOrder)
+        ? value.rankOrder
+        : undefined,
+  }
+}
+
+const VTUBER_AUTH_REASONS = new Set<VtuberAuthReason>([
+  'accountPersonalization',
+  'chatHistory',
+  'persistence',
+  'guestLimit',
+])
+
+function normalizeAuthReason(value: unknown): VtuberAuthReason | undefined {
+  return typeof value === 'string' && VTUBER_AUTH_REASONS.has(value as VtuberAuthReason)
+    ? value as VtuberAuthReason
+    : undefined
+}
+
+function normalizeMetadata(value: unknown): VtuberServerMetadata {
+  if (!isRecord(value)) {
+    return {}
+  }
+
+  return {
+    ...value,
+    recommendations: Array.isArray(value.recommendations)
+      ? value.recommendations
+        .map(normalizeRecommendation)
+        .filter((recommendation): recommendation is VtuberRecommendationMetadata => (
+          recommendation !== null
+        ))
+      : undefined,
+    authRequired: value.authRequired === true ? true : undefined,
+    authReason: normalizeAuthReason(value.authReason),
+    loginPath: value.loginPath === '/login' ? '/login' : undefined,
+  }
+}
+
+export function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
   if (
     !isRecord(value) ||
     typeof value.type !== 'string' ||
@@ -59,20 +115,26 @@ function parseVtuberServerMessage(value: unknown): VtuberServerMessage | null {
     actions: value.actions
       .map(normalizeAction)
       .filter((action): action is VtuberAction => action !== null),
+    metadata: normalizeMetadata(value.metadata),
   }
 }
 
 export function useVtuberWebSocket(
   initialText: string,
   cartItems: VtuberClientCartItem[] = [],
+  sessionId: number | null = null,
+  accessToken: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
+  const sentAccessTokenRef = useRef<string | null>(null)
   const closedByHookRef = useRef(false)
   const sawConnectionErrorRef = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
   const [latestText, setLatestText] = useState(initialText)
   const [actions, setActions] = useState<VtuberAction[]>([])
   const [actionBatchId, setActionBatchId] = useState(0)
+  const [metadata, setMetadata] = useState<VtuberServerMetadata>({})
+  const hasAccessToken = Boolean(accessToken)
 
   useEffect(() => {
     closedByHookRef.current = false
@@ -81,6 +143,7 @@ export function useVtuberWebSocket(
 
     const socket = new WebSocket(buildVtuberWebSocketUrl())
     socketRef.current = socket
+    sentAccessTokenRef.current = null
 
     socket.addEventListener('open', () => {
       setConnectionStatus('open')
@@ -96,6 +159,7 @@ export function useVtuberWebSocket(
 
         setLatestText(message.text)
         setActions(message.actions)
+        setMetadata(message.metadata ?? {})
         setActionBatchId((currentId) => currentId + 1)
       } catch {
         return
@@ -119,15 +183,51 @@ export function useVtuberWebSocket(
       closedByHookRef.current = true
       socket.close()
       socketRef.current = null
+      sentAccessTokenRef.current = null
     }
-  }, [])
+  }, [hasAccessToken])
 
-  const sendText = useCallback((text: string) => {
+  useEffect(() => {
+    const socket = socketRef.current
+
+    if (!accessToken) {
+      sentAccessTokenRef.current = null
+      return
+    }
+
+    if (
+      connectionStatus !== 'open' ||
+      socket?.readyState !== WebSocket.OPEN ||
+      sentAccessTokenRef.current === accessToken
+    ) {
+      return
+    }
+
+    const authMessage: VtuberClientAuthMessage = {
+      type: 'auth',
+      accessToken,
+    }
+
+    socket.send(JSON.stringify(authMessage))
+    sentAccessTokenRef.current = accessToken
+  }, [accessToken, connectionStatus])
+
+  const sendText = useCallback((text: string, accessTokenOverride: string | null = null) => {
     const trimmedText = text.trim()
     const socket = socketRef.current
 
     if (!trimmedText || socket?.readyState !== WebSocket.OPEN) {
       return false
+    }
+
+    if (accessTokenOverride && sentAccessTokenRef.current !== accessTokenOverride) {
+      const authMessage: VtuberClientAuthMessage = {
+        type: 'auth',
+        accessToken: accessTokenOverride,
+      }
+
+      socket.send(JSON.stringify(authMessage))
+      sentAccessTokenRef.current = accessTokenOverride
     }
 
     const message: VtuberClientTextInputMessage = {
@@ -145,15 +245,20 @@ export function useVtuberWebSocket(
       },
     }
 
+    if (sessionId !== null) {
+      message.sessionId = sessionId
+    }
+
     socket.send(JSON.stringify(message))
     return true
-  }, [cartItems])
+  }, [cartItems, sessionId])
 
   return {
     actionBatchId,
     actions,
     connectionStatus,
     latestText,
+    metadata,
     sendText,
   }
 }

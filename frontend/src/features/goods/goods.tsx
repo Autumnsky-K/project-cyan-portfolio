@@ -210,7 +210,6 @@ function GoodsPage() {
 
   function resetFilters() {
     reset()
-    scrollToResults()
   }
 
   function applyMobileFilters(nextFilters: GoodsSelectedFilters) {

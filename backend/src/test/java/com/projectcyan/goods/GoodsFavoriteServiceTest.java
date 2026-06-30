@@ -26,6 +26,7 @@ class GoodsFavoriteServiceTest {
 	private GoodsRepository goodsRepository;
 	private GoodsFavoriteRepository goodsFavoriteRepository;
 	private GoodsReviewRepository goodsReviewRepository;
+	private GoodsLikeRepository goodsLikeRepository;
 	private GoodsFavoriteService service;
 
 	@BeforeEach
@@ -33,10 +34,12 @@ class GoodsFavoriteServiceTest {
 		goodsRepository = mock(GoodsRepository.class);
 		goodsFavoriteRepository = mock(GoodsFavoriteRepository.class);
 		goodsReviewRepository = mock(GoodsReviewRepository.class);
+		goodsLikeRepository = mock(GoodsLikeRepository.class);
 		service = new GoodsFavoriteService(
 			goodsRepository,
 			goodsFavoriteRepository,
 			goodsReviewRepository,
+			goodsLikeRepository,
 			Clock.fixed(NOW, ZoneOffset.UTC)
 		);
 	}
@@ -52,6 +55,7 @@ class GoodsFavoriteServiceTest {
 			));
 		when(goodsRepository.findAllById(List.of(2002L, 1001L))).thenReturn(List.of(firstGoods, secondGoods));
 		when(goodsReviewRepository.findSummaries(Set.of(2002L, 1001L))).thenReturn(Map.of());
+		when(goodsLikeRepository.countByGoodsIdIn(Set.of(2002L, 1001L))).thenReturn(List.of());
 
 		List<GoodsSummaryResponse> favorites = service.findFavoriteGoods(7L);
 

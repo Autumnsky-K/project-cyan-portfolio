@@ -1,7 +1,9 @@
 package com.projectcyan.checkout;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -9,14 +11,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.projectcyan.common.ApiErrorException;
 import com.projectcyan.goods.Goods;
@@ -34,6 +40,7 @@ public class CheckoutService {
 	private static final int ORDER_NO_RANDOM_BYTES = 8;
 	private static final Set<String> SALEABLE_STATUSES = Set.of("ON_SALE", "AVAILABLE", "SALE");
 	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final String TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
 
 	private final MemberRepository memberRepository;
 	private final GoodsRepository goodsRepository;
@@ -42,6 +49,10 @@ public class CheckoutService {
 	private final OrderItemRepository orderItemRepository;
 	private final PaymentRepository paymentRepository;
 	private final PaymentAttemptRepository paymentAttemptRepository;
+	private final RestClient tossRestClient = RestClient.create();
+
+	@Value("${toss.payments.secret-key:}")
+	private String tossPaymentsSecretKey;
 
 	public CheckoutService(
 		MemberRepository memberRepository,
@@ -76,12 +87,68 @@ public class CheckoutService {
 		}
 	}
 
+	@Transactional
+	public PaymentResultResponse approvePayment(UUID memberUuid, PaymentResultRequest request) {
+		Payment payment = findPayment(memberUuid, request);
+		validateAmount(payment, request);
+		confirmTossPayment(payment, request);
+
+		payment.markApproved(request.providerPaymentKey(), request.paymentMethod());
+		payment.getOrder().markPaid();
+
+		return PaymentResultResponse.from(payment, request.reason());
+	}
+
+	@Transactional(readOnly = true)
+	public PaymentAttemptRecoveryResponse recoverKakaoPaymentAttempt(UUID memberUuid, String orderId) {
+		if (memberUuid == null || orderId == null || orderId.isBlank()) {
+			throw error("PAYMENT_ATTEMPT_NOT_FOUND", "Payment attempt not found.", HttpStatus.NOT_FOUND);
+		}
+
+		PaymentAttempt attempt = findAttemptByOrderKey(orderId)
+			.orElseThrow(() -> error("PAYMENT_ATTEMPT_NOT_FOUND", "Payment attempt not found.", HttpStatus.NOT_FOUND));
+
+		if (!attempt.getOrder().isOwnedBy(memberUuid)) {
+			throw error("PAYMENT_FORBIDDEN", "Payment does not belong to the current member.", HttpStatus.FORBIDDEN);
+		}
+		if (!"KAKAO".equals(attempt.getProvider())) {
+			throw error("PAYMENT_ATTEMPT_NOT_FOUND", "KakaoPay payment attempt not found.", HttpStatus.NOT_FOUND);
+		}
+
+		return PaymentAttemptRecoveryResponse.from(attempt);
+	}
+
+	@Transactional
+	public PaymentResultResponse cancelPayment(UUID memberUuid, PaymentResultRequest request) {
+		Payment payment = findPayment(memberUuid, request);
+
+		payment.markCanceled();
+		payment.getOrder().markCanceled();
+
+		return PaymentResultResponse.from(payment, request.reason());
+	}
+
+	@Transactional
+	public PaymentResultResponse failPayment(UUID memberUuid, PaymentResultRequest request) {
+		Payment payment = findPayment(memberUuid, request);
+
+		payment.markFailed();
+		payment.getOrder().markPaymentFailed();
+
+		return PaymentResultResponse.from(payment, request.reason());
+	}
+
 	private CheckoutPrepareResponse prepareInternal(UUID memberUuid, CheckoutPrepareRequest request) {
 		if (memberUuid == null || request == null) {
 			throw error("MEMBER_NOT_FOUND", "Member not found.", HttpStatus.NOT_FOUND);
 		}
-		if (!"TOSS".equalsIgnoreCase(String.valueOf(request.paymentProvider()))) {
-			throw error("CHECKOUT_PREPARE_FAILED", "Unsupported payment provider.", HttpStatus.BAD_REQUEST);
+		String provider = normalizePaymentProvider(request.paymentProvider());
+		if (provider == null) {
+			throw error(
+				"CHECKOUT_PREPARE_FAILED",
+				"Unsupported payment provider: " + String.valueOf(request.paymentProvider()),
+				HttpStatus.BAD_REQUEST
+			);
 		}
 
 		Member member = memberRepository.findByMemberUuid(memberUuid)
@@ -114,8 +181,8 @@ public class CheckoutService {
 			.map(goods -> OrderItem.snapshot(order, goods, requestedItems.get(goods.getGoodsId())))
 			.toList();
 		orderItemRepository.saveAll(orderItems);
-		Payment payment = paymentRepository.save(Payment.readyForToss(order));
-		paymentAttemptRepository.save(PaymentAttempt.readyForToss(order, payment));
+		Payment payment = paymentRepository.save(Payment.readyForProvider(order, provider));
+		paymentAttemptRepository.save(PaymentAttempt.readyForProvider(order, payment, provider));
 
 		return new CheckoutPrepareResponse(
 			order.getOrderId(),
@@ -125,6 +192,111 @@ public class CheckoutService {
 			orderName(orderedGoods),
 			"member-" + member.getMemberUuid()
 		);
+	}
+
+	private Payment findPayment(UUID memberUuid, PaymentResultRequest request) {
+		if (memberUuid == null || request == null) {
+			throw error("PAYMENT_RESULT_FAILED", "Payment result request is invalid.", HttpStatus.BAD_REQUEST);
+		}
+
+		Payment payment = findPaymentByRequest(request);
+		if (!payment.getOrder().isOwnedBy(memberUuid)) {
+			throw error("PAYMENT_FORBIDDEN", "Payment does not belong to the current member.", HttpStatus.FORBIDDEN);
+		}
+
+		return payment;
+	}
+
+	private Payment findPaymentByRequest(PaymentResultRequest request) {
+		if (request.paymentId() != null) {
+			return paymentRepository.findById(request.paymentId())
+				.orElseThrow(() -> error("PAYMENT_NOT_FOUND", "Payment not found.", HttpStatus.NOT_FOUND));
+		}
+		if (request.orderId() != null) {
+			return paymentRepository.findByOrder_OrderId(request.orderId())
+				.orElseThrow(() -> error("PAYMENT_NOT_FOUND", "Payment not found.", HttpStatus.NOT_FOUND));
+		}
+		if (!isBlank(request.orderNo())) {
+			return paymentRepository.findByProviderOrderId(request.orderNo())
+				.orElseThrow(() -> error("PAYMENT_NOT_FOUND", "Payment not found.", HttpStatus.NOT_FOUND));
+		}
+
+		throw error("PAYMENT_RESULT_FAILED", "orderId, orderNo, or paymentId is required.", HttpStatus.BAD_REQUEST);
+	}
+
+	private Optional<PaymentAttempt> findAttemptByOrderKey(String orderKey) {
+		if (orderKey == null || orderKey.isBlank()) {
+			return Optional.empty();
+		}
+		try {
+			Long numericOrderId = Long.valueOf(orderKey);
+			Optional<PaymentAttempt> attempt =
+				paymentAttemptRepository.findFirstByOrder_OrderIdOrderByRequestedAtDesc(numericOrderId);
+			if (attempt.isPresent()) {
+				return attempt;
+			}
+		} catch (NumberFormatException ignored) {
+			// Kakao callback orderId may be the merchant order number.
+		}
+
+		return paymentAttemptRepository.findFirstByOrder_OrderNoOrderByRequestedAtDesc(orderKey);
+	}
+
+	private void validateAmount(Payment payment, PaymentResultRequest request) {
+		if (request.amount() == null) {
+			return;
+		}
+		if (payment.getPaymentAmount().compareTo(request.amount()) != 0) {
+			throw error("PAYMENT_AMOUNT_MISMATCH", "Payment amount does not match the order.", HttpStatus.BAD_REQUEST);
+		}
+	}
+
+	private void confirmTossPayment(Payment payment, PaymentResultRequest request) {
+		if (!"TOSS".equalsIgnoreCase(String.valueOf(payment.getProvider()))) {
+			return;
+		}
+		if (isBlank(tossPaymentsSecretKey)) {
+			throw error("PAYMENT_CONFIRM_FAILED", "Toss Payments secret key is not configured.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		if (isBlank(request.providerPaymentKey())) {
+			throw error("PAYMENT_CONFIRM_FAILED", "paymentKey is required.", HttpStatus.BAD_REQUEST);
+		}
+
+		try {
+			tossRestClient.post()
+				.uri(TOSS_CONFIRM_URL)
+				.header("Authorization", tossAuthorizationHeader())
+				.body(new TossConfirmRequest(
+					request.providerPaymentKey(),
+					payment.getProviderOrderId(),
+					payment.getPaymentAmount()
+				))
+				.retrieve()
+				.toBodilessEntity();
+		} catch (RestClientResponseException exception) {
+			throw error(
+				"PAYMENT_CONFIRM_FAILED",
+				"Toss Payments confirmation failed.",
+				HttpStatus.valueOf(exception.getStatusCode().value())
+			);
+		}
+	}
+
+	private String normalizePaymentProvider(String provider) {
+		String normalized = String.valueOf(provider).trim().toUpperCase(Locale.ROOT);
+		if ("TOSS".equals(normalized)) {
+			return "TOSS";
+		}
+		if ("KAKAO".equals(normalized) || "KAKAO_PAY".equals(normalized) || "KAKAOPAY".equals(normalized)) {
+			return "KAKAO";
+		}
+		return null;
+	}
+
+	private String tossAuthorizationHeader() {
+		String credentials = tossPaymentsSecretKey + ":";
+		String encoded = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+		return "Basic " + encoded;
 	}
 
 	private Map<Long, Integer> normalizeItems(List<CheckoutItemRequest> items) {
@@ -231,7 +403,7 @@ public class CheckoutService {
 		if (orderedGoods.size() == 1) {
 			return firstName;
 		}
-		return firstName + " 외 " + (orderedGoods.size() - 1) + "건";
+		return firstName + " plus " + (orderedGoods.size() - 1) + " more";
 	}
 
 	private ApiErrorException error(String code, String message, HttpStatus status) {
@@ -240,5 +412,12 @@ public class CheckoutService {
 
 	private boolean isBlank(String value) {
 		return value == null || value.isBlank();
+	}
+
+	private record TossConfirmRequest(
+		String paymentKey,
+		String orderId,
+		BigDecimal amount
+	) {
 	}
 }

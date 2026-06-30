@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 수정'}">굿즈 입력</title>
   <link rel="stylesheet" th:href="@{/webjars/quill/2.0.3/dist/quill.snow.css}">
-  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
 </head>
 <body>
 <main class="admin-page">
@@ -67,7 +67,17 @@
 
       <form class="admin-form admin-goods-form" method="post"
             th:object="${form}"
-            th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}">
+            th:action="${mode == 'create'} ? @{/admin/goods} : @{/admin/goods/{goodsId}(goodsId=*{goodsId})}"
+            th:attr="data-submit-lock-label=${mode == 'create' ? '등록 중...' : '저장 중...'}"
+            data-submit-lock>
+        <div class="admin-notice admin-notice-error admin-form-error-summary"
+             th:if="${#fields.hasAnyErrors()}"
+             role="alert">
+          <strong>입력값을 확인해주세요.</strong>
+          <ul>
+            <li th:each="error : ${#fields.errors('*')}" th:text="${error}">필수 입력값을 확인해주세요.</li>
+          </ul>
+        </div>
         <section class="admin-form-grid">
           <label>
             <span>굿즈 ID</span>
@@ -98,16 +108,18 @@
 
           <label>
             <span>아티스트</span>
-            <select th:field="*{artistId}">
-              <option value="">아티스트 없음</option>
+            <select th:field="*{artistId}"
+                    th:attr="aria-invalid=${#fields.hasErrors('artistId')}">
+              <option value="" disabled>아티스트 선택</option>
               <option th:each="artist : ${filters.artists()}" th:value="${artist.value()}" th:text="${artist.label()}"></option>
             </select>
           </label>
 
           <label>
             <span>카테고리</span>
-            <select th:field="*{categoryId}">
-              <option value="">카테고리 없음</option>
+            <select th:field="*{categoryId}"
+                    th:attr="aria-invalid=${#fields.hasErrors('categoryId')}">
+              <option value="" disabled>카테고리 선택</option>
               <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
             </select>
           </label>
@@ -153,7 +165,7 @@
         </section>
 
         <div class="admin-form-actions">
-          <button class="admin-primary" type="submit" th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 저장'}">저장</button>
+          <button class="admin-primary" type="submit" data-submit-lock-button th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 저장'}">저장</button>
           <a th:href="@{/admin/goods}">취소</a>
         </div>
       </form>

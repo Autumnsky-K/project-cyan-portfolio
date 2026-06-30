@@ -7,6 +7,8 @@
     "dev:frontend": "npm --prefix frontend run dev --",
     "dev:backend": "node scripts/dev-backend.mjs",
     "dev:ai": "node scripts/dev-ai.mjs",
+    "dev:ai-lab": "npm --prefix experiments/ai-admin-litegraph-lab run dev --",
+    "build:ai-lab": "npm --prefix experiments/ai-admin-litegraph-lab run build",
     "live2d:core": "npm --prefix frontend run live2d:core --"
   },
   "devDependencies": {

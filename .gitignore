@@ -72,6 +72,8 @@ out/
 # Node / React
 node_modules/
 dist/
+!backend/src/main/resources/static/admin/ai/behavior-lab-project/dist/
+!backend/src/main/resources/static/admin/ai/behavior-lab-project/dist/**
 
 # Live2D proprietary runtime fetched locally; see frontend/README.md.
 frontend/public/live2d/runtime/live2dcubismcore.min.js
@@ -82,3 +84,4 @@ __pycache__/
 .venv/
 .uv-cache/
 *.egg-info/
+gcp-sa-key.json

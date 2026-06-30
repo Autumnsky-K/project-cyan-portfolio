@@ -21,6 +21,8 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
       <label>
         Phone
         <input
+          inputMode="numeric"
+          maxLength="13"
           value={checkoutForm.phone}
           onChange={(event) => onChange('phone', event.target.value)}
           placeholder="010-0000-0000"
@@ -33,6 +35,15 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
           onChange={(event) => onChange('address', event.target.value)}
           placeholder="Shipping address"
           rows="3"
+        />
+      </label>
+      <label className="full-width">
+        Delivery request
+        <textarea
+          value={checkoutForm.deliveryRequest}
+          onChange={(event) => onChange('deliveryRequest', event.target.value)}
+          placeholder="Delivery instructions"
+          rows="2"
         />
       </label>
       {errors.length > 0 && (

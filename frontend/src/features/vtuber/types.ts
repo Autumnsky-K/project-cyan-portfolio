@@ -12,14 +12,23 @@ export type VtuberCharacterConfig = {
   id: string
   name: string
   modelUrl: string
+  renderMode?: 'live2d' | 'three3d'
+  threeModelUrl?: string
+  threeTextureUrl?: string
 }
 
 export type VtuberClientTextInputMessage = {
   type: 'text-input'
   text: string
+  sessionId?: number
   context?: {
     cartItems?: VtuberClientCartItem[]
   }
+}
+
+export type VtuberClientAuthMessage = {
+  type: 'auth'
+  accessToken: string
 }
 
 export type VtuberClientCartItem = {
@@ -57,8 +66,29 @@ export type VtuberAction =
   | AddToCartAction
   | UnknownVtuberAction
 
+export type VtuberRecommendationMetadata = {
+  goodsId: string | number
+  recommendationReason?: string | null
+  rankOrder?: number
+}
+
+export type VtuberAuthReason =
+  | 'accountPersonalization'
+  | 'chatHistory'
+  | 'persistence'
+  | 'guestLimit'
+
+export type VtuberServerMetadata = {
+  recommendations?: VtuberRecommendationMetadata[]
+  authRequired?: boolean
+  authReason?: VtuberAuthReason
+  loginPath?: '/login'
+  [key: string]: unknown
+}
+
 export type VtuberServerMessage = {
   type: string
   text: string
   actions: VtuberAction[]
+  metadata?: VtuberServerMetadata
 }

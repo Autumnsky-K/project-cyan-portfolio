@@ -19,6 +19,7 @@ export type GoodsSummary = {
   aiPickDefault?: boolean | null
   averageRating?: number | null
   reviewCount?: number | null
+  likeCount?: number | null
 }
 
 export type GoodsDetail = GoodsSummary & {
@@ -49,6 +50,11 @@ export type GoodsReviewSummary = {
   ratingThreeCount: number
   ratingTwoCount: number
   ratingOneCount: number
+}
+
+export type GoodsLikeResponse = {
+  liked: boolean
+  likeCount: number
 }
 
 export type GoodsFilterOption = {
@@ -142,6 +148,25 @@ export async function addGoodsFavorite(goodsId: string | number): Promise<void> 
 export async function removeGoodsFavorite(goodsId: string | number): Promise<void> {
   const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'DELETE' })
   await parseApiResponse(response, 'Failed to remove favorite goods.')
+}
+
+export async function fetchMyGoodsLike(goodsId: string | number | undefined): Promise<GoodsLikeResponse | null> {
+  if (!(await hasSpringApiSession())) {
+    return null
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/likes/my`)
+  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to load goods like.')
+}
+
+export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
+  const response = await apiFetch(`/goods/${goodsId}/likes`, { method: 'POST' })
+  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to add goods like.') as GoodsLikeResponse
+}
+
+export async function removeGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
+  const response = await apiFetch(`/goods/${goodsId}/likes`, { method: 'DELETE' })
+  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to remove goods like.') as GoodsLikeResponse
 }
 
 export async function fetchRelatedGoods(

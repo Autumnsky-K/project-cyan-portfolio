@@ -40,6 +40,7 @@ ACTION_TAG_PATTERN = re.compile(
     r"\[ACTION:(?P<name>[A-Za-z][A-Za-z0-9]*)\s*"
     r"(?P<attrs>(?:[^\]\"]|\"[^\"]*\")*)\]"
 )
+ANY_ACTION_TAG_PATTERN = re.compile(r"\[ACTION:[^\]]*\]")
 ACTION_ATTR_PATTERN = re.compile(
     r"(?P<key>[A-Za-z][A-Za-z0-9]*)=\"(?P<value>[^\"]*)\""
 )
@@ -513,6 +514,10 @@ def parse_action_tags(text: str) -> FullTextMessage:
             actions.append(action)
 
     clean_text = ACTION_TAG_PATTERN.sub("", text)
+    clean_text = ANY_ACTION_TAG_PATTERN.sub("", clean_text)
+    clean_text = re.sub(r"\s*,\s*(?=$|\n)", "", clean_text)
+    clean_text = re.sub(r"(?:,\s*){2,}", ", ", clean_text)
+    clean_text = re.sub(r"(?:\s*,\s*)+$", "", clean_text)
     clean_text = re.sub(r"[ \t]{2,}", " ", clean_text)
     clean_text = re.sub(r" *\n *", "\n", clean_text).strip()
 
@@ -539,7 +544,11 @@ def filter_actions_by_goods_ids(
     allowed_goods_ids: set[str],
 ) -> FullTextMessage:
     if not allowed_goods_ids:
-        return FullTextMessage(text=response.text, actions=[])
+        return FullTextMessage(
+            text=response.text,
+            actions=[],
+            metadata=response.metadata,
+        )
 
     filtered_actions = [
         action
@@ -547,7 +556,11 @@ def filter_actions_by_goods_ids(
         if (goods_id := action_goods_id(action)) is None or goods_id in allowed_goods_ids
     ]
 
-    return FullTextMessage(text=response.text, actions=filtered_actions)
+    return FullTextMessage(
+        text=response.text,
+        actions=filtered_actions,
+        metadata=response.metadata,
+    )
 
 
 def build_shopping_tools() -> ShoppingTools:
@@ -698,6 +711,8 @@ class OpenAiChatResponseProvider:
 
 def get_chat_response_provider(
     provider_name: str | None = None,
+    *,
+    enable_shopping_tools: bool = True,
 ) -> ChatResponseProvider:
     settings = get_settings()
     provider_name = (provider_name or settings.ai_provider).strip()
@@ -723,7 +738,7 @@ def get_chat_response_provider(
 
         return OpenAiChatResponseProvider(
             client=client,
-            shopping_tools=build_shopping_tools(),
+            shopping_tools=build_shopping_tools() if enable_shopping_tools else None,
         )
 
     if provider_name == "olv":

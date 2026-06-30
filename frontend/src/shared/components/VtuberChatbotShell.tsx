@@ -14,15 +14,21 @@ import {
   type VtuberDisplayState,
 } from '../../features/vtuber/types'
 import Live2DCharacter from '../../features/vtuber/Live2DCharacter'
+import ThreeDCharacter from '../../features/vtuber/ThreeDCharacter'
 import './VtuberChatbot.css'
 
 type VtuberChatbotProps = {
   actionsCount: number
+  authNotice?: {
+    actionLabel: string
+    message: string
+    onAction: () => void
+  } | null
   bubbleText: string
   character: VtuberCharacterConfig
   displayState: VtuberDisplayState
   isSendDisabled: boolean
-  onSendMessage: (message: string) => boolean
+  onSendMessage: (message: string) => boolean | Promise<boolean>
   statusLabel: string
 }
 
@@ -112,6 +118,7 @@ function isDragExcludedTarget(target: EventTarget | null): boolean {
 
 function VtuberChatbotShell({
   actionsCount,
+  authNotice = null,
   bubbleText,
   character,
   displayState,
@@ -144,6 +151,19 @@ function VtuberChatbotShell({
       JSON.stringify(settings),
     )
   }, [settings])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('showChatbot') !== '1') {
+      return
+    }
+
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      isHidden: false,
+      position: null,
+    }))
+  }, [])
 
   useEffect(() => {
     function handleResize() {
@@ -211,10 +231,10 @@ function VtuberChatbotShell({
     }
   }, [settings.position, shouldUseCustomPosition])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (onSendMessage(trimmedMessage)) {
+    if (await onSendMessage(trimmedMessage)) {
       setMessage('')
     }
   }
@@ -418,11 +438,12 @@ function VtuberChatbotShell({
       ref={chatbotRef}
       id="vtuber"
       className={`vtuber-chatbot${isDragging ? ' is-dragging' : ''}`}
-      aria-label="Live2D chatbot"
+      aria-label="Vtuber chatbot"
       data-character-id={character.id}
       data-display-state={displayState}
       data-is-hidden={settings.isHidden}
       data-model-url={character.modelUrl}
+      data-render-mode={character.renderMode ?? 'live2d'}
       data-position-mode={shouldUseCustomPosition ? 'custom' : 'default'}
       onPointerDown={handleDragPointerDown}
       onPointerMove={handleDragPointerMove}
@@ -462,13 +483,21 @@ function VtuberChatbotShell({
 
           <div
             className="vtuber-stage"
-            aria-label={`${character.name} Live2D character stage`}
+            aria-label={`${character.name} character stage`}
           >
-            <Live2DCharacter
-              character={character}
-              displayState={displayState}
-              statusLabel={statusLabel}
-            />
+            {character.renderMode === 'three3d' ? (
+              <ThreeDCharacter
+                character={character}
+                displayState={displayState}
+                statusLabel={statusLabel}
+              />
+            ) : (
+              <Live2DCharacter
+                character={character}
+                displayState={displayState}
+                statusLabel={statusLabel}
+              />
+            )}
           </div>
 
           <section className="vtuber-panel" aria-label="Chatbot conversation">
@@ -483,6 +512,15 @@ function VtuberChatbotShell({
                 Display state: {statusLabel}. Prepared actions: {actionsCount}.
               </span>
             </div>
+
+            {authNotice ? (
+              <div className="vtuber-auth-notice" role="status">
+                <p>{authNotice.message}</p>
+                <button type="button" onClick={authNotice.onAction}>
+                  {authNotice.actionLabel}
+                </button>
+              </div>
+            ) : null}
 
             <form className="vtuber-form" onSubmit={handleSubmit}>
               <label className="vtuber-sr-only" htmlFor="vtuber-message">

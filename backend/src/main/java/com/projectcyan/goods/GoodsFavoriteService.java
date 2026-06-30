@@ -18,26 +18,30 @@ public class GoodsFavoriteService {
 	private final GoodsRepository goodsRepository;
 	private final GoodsFavoriteRepository goodsFavoriteRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
+	private final GoodsLikeRepository goodsLikeRepository;
 	private final Clock clock;
 
 	@Autowired
 	public GoodsFavoriteService(
 		GoodsRepository goodsRepository,
 		GoodsFavoriteRepository goodsFavoriteRepository,
-		GoodsReviewRepository goodsReviewRepository
+		GoodsReviewRepository goodsReviewRepository,
+		GoodsLikeRepository goodsLikeRepository
 	) {
-		this(goodsRepository, goodsFavoriteRepository, goodsReviewRepository, Clock.systemUTC());
+		this(goodsRepository, goodsFavoriteRepository, goodsReviewRepository, goodsLikeRepository, Clock.systemUTC());
 	}
 
 	GoodsFavoriteService(
 		GoodsRepository goodsRepository,
 		GoodsFavoriteRepository goodsFavoriteRepository,
 		GoodsReviewRepository goodsReviewRepository,
+		GoodsLikeRepository goodsLikeRepository,
 		Clock clock
 	) {
 		this.goodsRepository = goodsRepository;
 		this.goodsFavoriteRepository = goodsFavoriteRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
+		this.goodsLikeRepository = goodsLikeRepository;
 		this.clock = clock;
 	}
 
@@ -56,13 +60,19 @@ public class GoodsFavoriteService {
 		goodsRepository.findAllById(favoriteGoodsIds)
 			.forEach(goods -> goodsById.put(goods.getGoodsId(), goods));
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(goodsById.keySet());
+		Map<Long, Long> likeCounts = goodsLikeRepository.countByGoodsIdIn(goodsById.keySet()).stream()
+			.collect(java.util.stream.Collectors.toMap(
+				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
+				GoodsLikeRepository.GoodsLikeCount::getLikeCount
+			));
 
 		return favoriteGoodsIds.stream()
 			.map(goodsById::get)
 			.filter(goods -> goods != null)
 			.map(goods -> GoodsSummaryResponse.from(
 				goods,
-				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty())
+				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+				likeCounts.getOrDefault(goods.getGoodsId(), 0L)
 			))
 			.toList();
 	}

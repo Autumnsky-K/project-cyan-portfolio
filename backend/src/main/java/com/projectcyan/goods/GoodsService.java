@@ -22,7 +22,15 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class GoodsService {
 
-	private static final Set<String> SORT_FIELDS = Set.of("createdAt", "price", "goodsName", "goodsId");
+	private static final Set<String> SORT_FIELDS = Set.of(
+		"createdAt",
+		"price",
+		"goodsName",
+		"goodsId",
+		"artist.artistName",
+		"category.categoryName",
+		"salesStatus"
+	);
 
 	private final GoodsRepository goodsRepository;
 	private final ArtistRepository artistRepository;
@@ -30,6 +38,7 @@ public class GoodsService {
 	private final TagRepository tagRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
+	private final GoodsLikeRepository goodsLikeRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -37,7 +46,8 @@ public class GoodsService {
 		GoodsCategoryRepository goodsCategoryRepository,
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
-		GoodsReviewRepository goodsReviewRepository
+		GoodsReviewRepository goodsReviewRepository,
+		GoodsLikeRepository goodsLikeRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -45,6 +55,7 @@ public class GoodsService {
 		this.tagRepository = tagRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
+		this.goodsLikeRepository = goodsLikeRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -53,6 +64,7 @@ public class GoodsService {
 		String artistIds,
 		Long categoryId,
 		String categoryIds,
+		String salesStatus,
 		String tag,
 		String tags,
 		String goodsIds,
@@ -81,6 +93,7 @@ public class GoodsService {
 			.and(GoodsSpecifications.containsKeyword(q))
 			.and(GoodsSpecifications.hasArtists(selectedArtistIds))
 			.and(GoodsSpecifications.hasCategories(selectedCategoryIds))
+			.and(GoodsSpecifications.hasSalesStatus(salesStatus))
 			.and(GoodsSpecifications.hasTags(selectedTags));
 
 		Pageable pageable = PageRequest.of(
@@ -90,14 +103,17 @@ public class GoodsService {
 		);
 
 		var goodsPage = goodsRepository.findAll(specification, pageable);
+		List<Goods> pageGoods = goodsPage.getContent();
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
-			goodsPage.getContent().stream().map(Goods::getGoodsId).toList()
+			pageGoods.stream().map(Goods::getGoodsId).toList()
 		);
+		Map<Long, Long> likeCounts = likeCounts(pageGoods);
 		return new PageResponse<>(
-			goodsPage.getContent().stream()
+			pageGoods.stream()
 				.map(goods -> GoodsSummaryResponse.from(
 					goods,
-					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty())
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+					likeCounts.getOrDefault(goods.getGoodsId(), 0L)
 				))
 				.toList(),
 			goodsPage.getNumber(),
@@ -118,7 +134,8 @@ public class GoodsService {
 			goods,
 			availability.state(),
 			availability.message(),
-			goodsReviewRepository.findSummary(goodsId)
+			goodsReviewRepository.findSummary(goodsId),
+			goodsLikeRepository.countByGoodsId(goodsId)
 		);
 	}
 
@@ -148,12 +165,28 @@ public class GoodsService {
 		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
 			relatedGoods.stream().map(Goods::getGoodsId).toList()
 		);
+		Map<Long, Long> likeCounts = likeCounts(relatedGoods);
 		return relatedGoods.stream()
 			.map(item -> GoodsSummaryResponse.from(
 				item,
-				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty())
+				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty()),
+				likeCounts.getOrDefault(item.getGoodsId(), 0L)
 			))
 			.toList();
+	}
+
+	private Map<Long, Long> likeCounts(List<Goods> goods) {
+		List<Long> goodsIds = goods.stream()
+			.map(Goods::getGoodsId)
+			.toList();
+		if (goodsIds.isEmpty()) {
+			return Map.of();
+		}
+		return goodsLikeRepository.countByGoodsIdIn(goodsIds).stream()
+			.collect(java.util.stream.Collectors.toMap(
+				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
+				GoodsLikeRepository.GoodsLikeCount::getLikeCount
+			));
 	}
 
 	public PageResponse<GoodsReviewResponse> findGoodsReviews(Long goodsId, int page, int size, String sort) {
