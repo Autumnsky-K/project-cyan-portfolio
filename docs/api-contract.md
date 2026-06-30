@@ -208,7 +208,6 @@
 ```
 
 ```
-<<<<<<< HEAD
 #### [PATCH] /api/members/me
 - 설명: 로그인 회원의 개인정보 수정
 - 인증 필요: Y
@@ -227,7 +226,9 @@
 - 응답: 204 No Content
 - 비고: 주문/결제 이력 참조 무결성을 유지하기 위해 회원 row는 탈퇴 상태로 익명화하고 Supabase Auth 사용자를 삭제한다.
 - 상태: [x] 동결
-=======
+```
+
+```
 #### [GET] /api/members/me/favorite-artists
 - 설명: 로그인 사용자가 선호 아티스트로 등록한 목록 조회
 - 인증 필요: Y
@@ -235,7 +236,6 @@
 - 응답: 배열 `{ artistId, name, imageUrl }`
 - 비고: `member_artist.member_id`는 인증된 회원에서 결정하며, access token과 내부 prompt에는 저장하지 않는다.
 - 상태: [x] additive
->>>>>>> origin/dev
 ```
 
 `public.member` 동기화:

@@ -36,7 +36,6 @@ public class MemberController {
 		return currentMember;
 	}
 
-<<<<<<< HEAD
 	@PatchMapping("/me")
 	public MemberProfileResponse updateCurrentMember(
 		AuthenticatedMember currentMember,
@@ -49,11 +48,11 @@ public class MemberController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void withdrawCurrentMember(AuthenticatedMember currentMember) {
 		memberService.withdrawCurrentMember(currentMember.memberId());
-=======
+	}
+
 	@GetMapping("/me/favorite-artists")
 	public List<FavoriteArtistResponse> findFavoriteArtists(AuthenticatedMember currentMember) {
 		return favoriteArtistService.findFavoriteArtists(currentMember.memberId());
->>>>>>> origin/dev
 	}
 
 	@PostMapping("/signup")
