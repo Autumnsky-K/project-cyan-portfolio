@@ -758,19 +758,9 @@ public class AdminPaymentService {
 	private List<FilterOption> statusFilters(List<AdminPaymentRow> rows) {
 		List<FilterOption> filters = new ArrayList<>();
 		filters.add(new FilterOption("all", "전체", true));
-		List<FilterOption> fixedFilters = List.of(
-			new FilterOption("READY", "승인 대기", false),
-			new FilterOption("DONE", "승인 완료", false),
-			new FilterOption("FAILED", "실패", false),
-			new FilterOption("REPAIR_REQUIRED", "보정 필요", false),
-			new FilterOption("CANCELED", "취소", false),
-			new FilterOption("REFUND_REQUESTED", "환불 요청", false)
-		);
-		for (FilterOption filter : fixedFilters) {
-			if (rows.stream().anyMatch(row -> row.paymentStatus().contains(filter.value()))) {
-				filters.add(filter);
-			}
-		}
+		filters.add(new FilterOption("SUCCESS", "성공", false));
+		filters.add(new FilterOption("READY", "승인 대기", false));
+		filters.add(new FilterOption("FAILED", "실패", false));
 		return filters;
 	}
 

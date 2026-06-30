@@ -1,6 +1,7 @@
 import { formatPrice } from '../utils/storeUtils'
 
 function CartPanel({
+  className = '',
   cartError = '',
   cartItems,
   cartStatus = 'idle',
@@ -11,8 +12,10 @@ function CartPanel({
   onIncreaseQuantity,
   onRemoveFromCart,
 }) {
+  const sectionClassName = ['store-section', className].filter(Boolean).join(' ')
+
   return (
-    <section className="store-section" id="cart" aria-labelledby="cart-title">
+    <section className={sectionClassName} id="cart" aria-labelledby="cart-title">
       <div className="section-heading">
         <h2 id="cart-title">Cart</h2>
         <p>

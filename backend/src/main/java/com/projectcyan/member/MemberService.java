@@ -121,13 +121,26 @@ public class MemberService {
 
 	@Transactional
 	public MemberProfileResponse updateCurrentMember(Long memberId, MemberProfileUpdateRequest request) {
+		String email = request.email() == null || request.email().isBlank() ? null : normalizeEmail(request.email());
 		String name = normalizeName(request.name());
 		String phone = normalizePhone(request.phone());
 		String address = normalizeAddress(request.address());
+		String addressDetail = normalizeOptionalText(request.addressDetail());
 
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
+		if (email != null) {
+			memberRepository.findByEmail(email)
+				.filter(foundMember -> !foundMember.getMemberId().equals(member.getMemberId()))
+				.ifPresent(foundMember -> {
+					throw new ApiErrorException(
+						"MEMBER_EMAIL_ALREADY_EXISTS",
+						"이미 가입된 이메일 주소입니다.",
+						HttpStatus.CONFLICT
+					);
+				});
+		}
 		if (memberRepository.existsByPhoneDigitsExcludingMemberId(phoneDigits(phone), member.getMemberId())) {
 			throw new ApiErrorException(
 				"MEMBER_PHONE_ALREADY_EXISTS",
@@ -136,11 +149,15 @@ public class MemberService {
 			);
 		}
 
-		member.updateProfile(name, phone);
+		if (email == null) {
+			member.updateProfile(name, phone);
+		} else {
+			member.updateProfile(email, name, phone);
+		}
 		MemberAddress memberAddress = memberAddressRepository
 			.findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(member.getMemberId())
 			.orElseGet(() -> memberAddressRepository.save(MemberAddress.defaultAddress(member, name, phone, address)));
-		memberAddress.updateDefaultAddress(name, phone, address);
+		memberAddress.updateDefaultAddress(name, phone, address, addressDetail);
 
 		return MemberProfileResponse.from(member, memberAddress);
 	}
@@ -248,6 +265,10 @@ public class MemberService {
 			throw new ApiErrorException("MEMBER_INVALID_ADDRESS", "주소를 입력해주세요.", HttpStatus.BAD_REQUEST);
 		}
 		return normalizedAddress;
+	}
+
+	private String normalizeOptionalText(String value) {
+		return value == null ? "" : value.trim();
 	}
 
 	private String normalizePhone(String phone) {

@@ -5,19 +5,20 @@ const LOGIN_RETURN_TO_KEY = 'project-cyan:login-return-to'
 
 let lastNoticeAt = 0
 
-export function requestCartLogin(navigate: NavigateFunction): void {
-  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`
-  window.sessionStorage.setItem(LOGIN_RETURN_TO_KEY, returnTo)
+export function requestCartLogin(navigate: NavigateFunction, returnTo?: string): void {
+  const fallbackReturnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const nextReturnTo = returnTo || fallbackReturnTo
+  window.sessionStorage.setItem(LOGIN_RETURN_TO_KEY, nextReturnTo)
 
   const now = Date.now()
   if (now - lastNoticeAt >= LOGIN_NOTICE_DEDUPLICATION_MS) {
     lastNoticeAt = now
-    window.alert('Cart and checkout are available after login.')
+    window.alert('결제를 계속하려면 로그인해 주세요.')
   }
 
   navigate('/login', {
     state: {
-      from: returnTo,
+      from: nextReturnTo,
     },
   })
 }

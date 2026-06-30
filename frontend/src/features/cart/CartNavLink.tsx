@@ -1,7 +1,5 @@
-import type { MouseEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
-import { requestCartLogin } from './requestCartLogin'
 import { useCart } from './useCart'
 import './cart-nav.css'
 
@@ -14,18 +12,10 @@ function formatPrice(value: number) {
 }
 
 function CartNavLink({ current = false }: CartNavLinkProps) {
-  const navigate = useNavigate()
-  const { authLoading, isAuthenticated, items } = useCart()
+  const { isAuthenticated, items } = useCart()
   const previewItems = items.slice(0, 3)
   const hiddenItemCount = Math.max(items.length - previewItems.length, 0)
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
-
-  function handleCartClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (authLoading || isAuthenticated) return
-
-    event.preventDefault()
-    requestCartLogin(navigate)
-  }
 
   return (
     <span className="cart-nav">
@@ -33,15 +23,12 @@ function CartNavLink({ current = false }: CartNavLinkProps) {
         aria-current={current ? 'page' : undefined}
         className="cart-nav-link"
         to="/cart"
-        onClick={handleCartClick}
       >
         Cart{items.length > 0 ? ` ${items.length}` : ''}
       </Link>
       <span className="cart-preview" role="status">
-        <strong>Cart</strong>
-        {!isAuthenticated ? (
-          <span className="cart-preview-empty">Login required</span>
-        ) : items.length === 0 ? (
+        <strong>{isAuthenticated ? 'Cart' : 'Guest cart'}</strong>
+        {items.length === 0 ? (
           <span className="cart-preview-empty">Cart is empty</span>
         ) : (
           <>

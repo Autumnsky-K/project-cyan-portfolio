@@ -81,9 +81,14 @@ public class MemberAddress {
 	}
 
 	public void updateDefaultAddress(String recipientName, String phone, String address) {
+		updateDefaultAddress(recipientName, phone, address, this.addressDetail);
+	}
+
+	public void updateDefaultAddress(String recipientName, String phone, String address, String addressDetail) {
 		this.recipientName = recipientName;
 		this.phone = phone;
 		this.address = address;
+		this.addressDetail = addressDetail == null || addressDetail.isBlank() ? null : addressDetail.trim();
 		this.updatedAt = Instant.now();
 	}
 

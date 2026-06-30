@@ -595,9 +595,11 @@ export async function updateMemberProfile(form) {
   const response = await apiFetch('/members/me', {
     method: 'PATCH',
     body: JSON.stringify({
+      email: form.email,
       name: form.name,
       phone: form.phone,
       address: form.address,
+      addressDetail: form.addressDetail,
     }),
   })
 

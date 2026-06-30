@@ -1,9 +1,10 @@
 import { useState } from 'react'
 
-const LOCKABLE_FIELDS = new Set(['name', 'email', 'phone', 'address', 'addressDetail'])
+const LOCKABLE_FIELDS = new Set(['name', 'email', 'phone', 'address'])
 
-function CheckoutForm({ checkoutForm, errors, onChange }) {
+function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField }) {
   const [editableFields, setEditableFields] = useState({})
+  const [savingField, setSavingField] = useState('')
 
   const hasLockedValue = (field) =>
     LOCKABLE_FIELDS.has(field) &&
@@ -31,16 +32,33 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
       .filter(Boolean)
       .join(' ')
 
+  const handleFieldAction = async (field) => {
+    if (isEditing(field) && onConfirmField) {
+      setSavingField(field)
+      try {
+        await onConfirmField(field)
+      } catch {
+        return
+      } finally {
+        setSavingField('')
+      }
+    }
+
+    toggleFieldEdit(field)
+  }
+
   const renderFieldAction = (field) => {
     if (!hasLockedValue(field)) return null
+    const isSaving = savingField === field
 
     return (
       <button
         type="button"
         className={isEditing(field) ? 'is-confirming' : ''}
-        onClick={() => toggleFieldEdit(field)}
+        disabled={isSaving}
+        onClick={() => void handleFieldAction(field)}
       >
-        {isEditing(field) ? '확인' : '변경하기'}
+        {isEditing(field) ? (isSaving ? 'Saving' : '확인') : '변경하기'}
       </button>
     )
   }
@@ -110,6 +128,9 @@ function CheckoutForm({ checkoutForm, errors, onChange }) {
             readOnly={isLocked('addressDetail')}
             value={checkoutForm.addressDetail}
             onChange={(event) => onChange('addressDetail', event.target.value)}
+            onBlur={() => {
+              if (onConfirmField) void onConfirmField('addressDetail')
+            }}
             placeholder="Apartment, suite, unit"
           />
           {renderFieldAction('addressDetail')}

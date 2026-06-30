@@ -114,6 +114,13 @@ public class Member {
 		this.phone = phone;
 	}
 
+	public void updateProfile(String email, String name, String phone) {
+		this.email = email;
+		this.name = name;
+		this.phone = phone;
+		this.loginId = email == null || email.isBlank() ? "member-" + memberUuid : email;
+	}
+
 	public void updateAdminProfile(String email, String name, String phone, String memberGrade, String status) {
 		this.email = email;
 		this.name = name;
