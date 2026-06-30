@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>회원 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('members', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">회원 관련 관리자페이지</p>
+        <h2>회원 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin}" class="admin-primary">대시보드</a>
+      </div>
+    </header>
+
+    <section class="admin-stats" aria-label="회원 관리 작업">
+      <article th:each="operationLabel : ${operationLabels}">
+        <span th:text="${#strings.substringBefore(operationLabel, ' : ')}">select</span>
+        <strong th:text="${#strings.substringAfter(operationLabel, ' : ')}">회원목록조회</strong>
+      </article>
+    </section>
+
+    <p class="admin-notice" th:if="${notice}" th:text="${notice}">작업 완료</p>
+    <p class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}">작업 실패</p>
+
+    <form class="admin-form" th:action="@{/admin/members}" method="post" th:object="${memberForm}">
+      <div class="admin-form-grid">
+        <label>
+          <span>이메일</span>
+          <input type="email" th:field="*{email}" placeholder="member@example.com" required>
+        </label>
+        <label>
+          <span>비밀번호</span>
+          <input type="password" th:field="*{password}" minlength="6" placeholder="6자 이상" required>
+        </label>
+        <label>
+          <span>이름</span>
+          <input type="text" th:field="*{name}" required>
+        </label>
+        <label>
+          <span>휴대폰 번호</span>
+          <input type="tel" th:field="*{phone}" placeholder="010-0000-0000" required>
+        </label>
+        <label class="admin-wide-field">
+          <span>주소</span>
+          <input type="text" th:field="*{address}" required>
+        </label>
+        <label>
+          <span>등급</span>
+          <select th:field="*{memberGrade}">
+            <option value="BASIC">BASIC</option>
+            <option value="WELCOME">WELCOME</option>
+            <option value="FRIEND">FRIEND</option>
+            <option value="VIP">VIP</option>
+          </select>
+        </label>
+        <label>
+          <span>상태</span>
+          <select th:field="*{status}">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="WITHDRAWN">WITHDRAWN</option>
+            <option value="SUSPENDED">SUSPENDED</option>
+          </select>
+        </label>
+      </div>
+      <div class="admin-form-actions">
+        <button class="admin-primary" type="submit">insert : 회원가입</button>
+      </div>
+    </form>
+
+    <section class="admin-table-panel" aria-label="select 회원목록조회">
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>이메일</th>
+            <th>회원정보</th>
+            <th>상태</th>
+            <th>update : 회원정보수정</th>
+            <th>Delete : 회원 삭제</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(members)}">
+            <td colspan="6">등록된 회원이 없습니다.</td>
+          </tr>
+          <tr th:each="member : ${members}">
+            <td>
+              <strong th:text="${member.memberId}">1</strong>
+              <span th:text="${member.memberUuid}">uuid</span>
+            </td>
+            <td th:text="${member.email ?: '탈퇴/이메일 없음'}">member@example.com</td>
+            <td>
+              <form class="inline-form admin-member-update-form"
+                    th:action="@{/admin/members/{memberId}(memberId=${member.memberId})}"
+                    method="post">
+                <input type="email" name="email" th:value="${member.email}" required>
+                <input type="text" name="name" th:value="${member.name}" required>
+                <input type="tel" name="phone" th:value="${member.phone}" required>
+                <input type="text" name="address" th:value="${member.address}" required>
+                <select name="memberGrade">
+                  <option value="BASIC" th:selected="${member.memberGrade == 'BASIC'}">BASIC</option>
+                  <option value="WELCOME" th:selected="${member.memberGrade == 'WELCOME'}">WELCOME</option>
+                  <option value="FRIEND" th:selected="${member.memberGrade == 'FRIEND'}">FRIEND</option>
+                  <option value="VIP" th:selected="${member.memberGrade == 'VIP'}">VIP</option>
+                </select>
+                <select name="status">
+                  <option value="ACTIVE" th:selected="${member.status == 'ACTIVE'}">ACTIVE</option>
+                  <option value="WITHDRAWN" th:selected="${member.status == 'WITHDRAWN'}">WITHDRAWN</option>
+                  <option value="SUSPENDED" th:selected="${member.status == 'SUSPENDED'}">SUSPENDED</option>
+                </select>
+                <button type="submit">update</button>
+              </form>
+            </td>
+            <td>
+              <span th:text="${member.status}">ACTIVE</span>
+              <span th:text="${member.memberGrade}">BASIC</span>
+            </td>
+            <td>
+              <span th:text="${member.joinedAt}">2026-06-29T00:00:00Z</span>
+            </td>
+            <td>
+              <form class="inline-form"
+                    th:action="@{/admin/members/{memberId}/delete(memberId=${member.memberId})}"
+                    method="post">
+                <button type="submit" onclick="return confirm('이 회원을 삭제 처리할까요?')">Delete</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

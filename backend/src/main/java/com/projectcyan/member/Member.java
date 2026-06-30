@@ -92,4 +92,46 @@ public class Member {
 	public String getName() {
 		return name;
 	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public String getMemberGrade() {
+		return memberGrade;
+	}
+
+	public Instant getJoinedAt() {
+		return joinedAt;
+	}
+
+	public String getStatus() {
+		return status;
+	}
+
+	public void updateProfile(String name, String phone) {
+		this.name = name;
+		this.phone = phone;
+	}
+
+	public void updateAdminProfile(String email, String name, String phone, String memberGrade, String status) {
+		this.email = email;
+		this.name = name;
+		this.phone = phone;
+		this.memberGrade = memberGrade;
+		this.status = status;
+		this.loginId = email == null || email.isBlank() ? "member-" + memberUuid : email;
+	}
+
+	public void withdraw() {
+		String withdrawnId = "withdrawn-" + memberId + "-" + memberUuid;
+		this.email = null;
+		this.name = "탈퇴 회원";
+		this.phone = null;
+		this.loginProvider = "WITHDRAWN";
+		this.loginId = withdrawnId;
+		this.passwordHash = null;
+		this.avatarUrl = null;
+		this.status = "WITHDRAWN";
+	}
 }

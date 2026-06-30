@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { checkSignupAvailability, signupMember } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
+import { openKakaoPostcode } from './kakaoPostcode'
 import './SignupPage.css'
 
 const REQUIRED_TERMS = [
@@ -100,6 +101,22 @@ function SignupPage() {
       ...currentForm,
       [name]: nextValue,
     }))
+  }
+
+  const handleAddressSearch = async () => {
+    setMessage('')
+    setError('')
+
+    try {
+      await openKakaoPostcode((address) => {
+        setForm((currentForm) => ({
+          ...currentForm,
+          address,
+        }))
+      })
+    } catch (addressError) {
+      setError(addressError.message)
+    }
   }
 
   const handleAgreementChange = (event) => {
@@ -282,6 +299,7 @@ function SignupPage() {
                   name="address"
                   value={form.address}
                   onChange={handleChange}
+                  onClick={handleAddressSearch}
                   placeholder="주소를 입력하세요"
                   autoComplete="street-address"
                   required

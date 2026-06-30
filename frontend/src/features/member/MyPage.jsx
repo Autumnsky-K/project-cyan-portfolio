@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../shared/components/Header'
-import { getArtistOptions, getMyPageSummary, logoutMember, saveFavoriteArtists } from './member'
+import {
+  getArtistOptions,
+  getMyPageSummary,
+  logoutMember,
+  saveFavoriteArtists,
+  updateMemberProfile,
+  withdrawMember,
+} from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
+import { openKakaoPostcode } from './kakaoPostcode'
 import './AccountPages.css'
 
 const SECTION_PAGE_SIZE = 4
@@ -35,6 +43,20 @@ function formatPrice(price) {
 
 function getItemMeta(item) {
   return formatPrice(item.price) ?? item.status ?? ''
+}
+
+function formatPhoneNumber(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+
+  if (digits.length <= 3) {
+    return digits
+  }
+
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
 }
 
 function DashboardItemCard({ item }) {
@@ -82,7 +104,7 @@ function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore,
         <div className="mypage-card-row">
           {visibleItems.length > 0 ? (
             visibleItems.map((item) => (
-              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
+              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
             ))
           ) : (
             <p className="mypage-empty">표시할 항목이 없습니다.</p>
@@ -157,7 +179,7 @@ function SectionModal({
             {isFavoriteArtistSection && isSavingFavorites
               ? '저장 중...'
               : isFavoriteArtistSection
-                ? '저장'
+                ? '저장하기'
                 : '닫기'}
           </button>
         </div>
@@ -193,10 +215,155 @@ function SectionModal({
         ) : (
           <div className="mypage-modal-grid">
             {section.items.map((item) => (
-              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId} />
+              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
             ))}
           </div>
         )}
+      </section>
+    </div>
+  )
+}
+
+function ProfileEditModal({
+  form,
+  isSaving,
+  mode,
+  onChange,
+  onAddressSearch,
+  onClose,
+  onConfirmWithdraw,
+  isWithdrawing,
+  onShowEdit,
+  onSubmit,
+  onShowWithdraw,
+}) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
+
+  if (!form) {
+    return null
+  }
+
+  if (mode === 'withdraw') {
+    return (
+      <div
+        className="mypage-modal-backdrop"
+        role="presentation"
+        onMouseDown={onClose}
+      >
+        <section
+          className="mypage-modal mypage-profile-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mypage-withdraw-modal-title"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="mypage-modal-heading">
+            <h2 id="mypage-withdraw-modal-title">회원 탈퇴</h2>
+            <button type="button" onClick={onShowEdit}>
+              돌아가기
+            </button>
+          </div>
+
+          <div className="mypage-withdraw-panel">
+            <p className="mypage-withdraw-warning">
+              탈퇴하면 계정 정보와 마이페이지 활동 내역을 다시 복구할 수 없습니다.
+            </p>
+            <ul>
+              <li>저장된 개인정보와 관심 아티스트 설정이 삭제됩니다.</li>
+              <li>주문, 결제, 배송 이력이 있는 경우 고객 지원 확인이 필요할 수 있습니다.</li>
+              <li>탈퇴 후 같은 이메일로 다시 가입하더라도 이전 정보는 이어지지 않습니다.</li>
+            </ul>
+          </div>
+
+          <div className="mypage-withdraw-actions">
+            <button type="button" onClick={onClose}>
+              취소
+            </button>
+            <button type="button" className="is-danger" onClick={onConfirmWithdraw} disabled={isWithdrawing}>
+              {isWithdrawing ? '탈퇴 처리 중...' : '탈퇴하기'}
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="mypage-modal-backdrop"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="mypage-modal mypage-profile-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mypage-profile-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <form className="account-form mypage-profile-form" onSubmit={onSubmit}>
+          <div className="mypage-modal-heading">
+            <h2 id="mypage-profile-modal-title">개인정보 수정</h2>
+            <button type="submit" disabled={isSaving}>
+              {isSaving ? '저장 중...' : '저장하기'}
+            </button>
+          </div>
+
+          <label className="account-field">
+            <span>이름</span>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={onChange}
+              autoComplete="name"
+              required
+            />
+          </label>
+
+          <label className="account-field">
+            <span>휴대폰 번호</span>
+            <input
+              type="tel"
+              name="phone"
+              value={form.phone}
+              onChange={onChange}
+              placeholder="010-0000-0000"
+              autoComplete="tel"
+              required
+            />
+          </label>
+
+          <label className="account-field">
+            <span>주소</span>
+            <textarea
+              name="address"
+              value={form.address}
+              onChange={onChange}
+              onClick={onAddressSearch}
+              autoComplete="street-address"
+              required
+            />
+          </label>
+
+          <div className="mypage-withdraw mypage-modal-withdraw">
+            <button type="button" onClick={onShowWithdraw}>
+              탈퇴하기
+            </button>
+          </div>
+        </form>
       </section>
     </div>
   )
@@ -213,6 +380,10 @@ function MyPage() {
   const [allArtistOptions, setAllArtistOptions] = useState([])
   const [draftFavoriteArtistIds, setDraftFavoriteArtistIds] = useState([])
   const [isSavingFavorites, setIsSavingFavorites] = useState(false)
+  const [profileForm, setProfileForm] = useState(null)
+  const [profileModalMode, setProfileModalMode] = useState('edit')
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -251,12 +422,90 @@ function MyPage() {
 
   const handleEditProfile = () => {
     setError('')
-    setMessage('프로필 수정 기능은 준비 중입니다.')
+    setMessage('')
+
+    if (!summary) {
+      return
+    }
+
+    setProfileForm({
+      name: summary.member.name ?? '',
+      phone: summary.member.phone ?? '',
+      address: summary.member.address ?? '',
+    })
+    setProfileModalMode('edit')
   }
 
-  const handleWithdraw = () => {
+  const handleProfileChange = (event) => {
+    const { name, value } = event.target
+    const nextValue = name === 'phone' ? formatPhoneNumber(value) : value
+
+    setProfileForm((currentForm) => ({
+      ...currentForm,
+      [name]: nextValue,
+    }))
+  }
+
+  const handleProfileAddressSearch = async () => {
     setError('')
-    setMessage('회원 탈퇴 기능은 준비 중입니다.')
+    setMessage('')
+
+    try {
+      await openKakaoPostcode((address) => {
+        setProfileForm((currentForm) => ({
+          ...currentForm,
+          address,
+        }))
+      })
+    } catch (addressError) {
+      setError(addressError.message)
+    }
+  }
+
+  const handleSaveProfile = async (event) => {
+    event.preventDefault()
+
+    if (!profileForm) {
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setIsSavingProfile(true)
+
+    try {
+      await updateMemberProfile(profileForm)
+      const nextSummary = await getMyPageSummary()
+      setSummary(nextSummary)
+      setProfileForm(null)
+      setMessage('개인정보가 저장되었습니다.')
+    } catch (saveError) {
+      console.error(saveError)
+      setError(saveError.message || '개인정보를 저장하지 못했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
+  const showWithdrawConfirmation = () => {
+    setError('')
+    setMessage('')
+    setProfileModalMode('withdraw')
+  }
+
+  const handleWithdraw = async () => {
+    setError('')
+    setMessage('')
+    setIsWithdrawing(true)
+
+    try {
+      await withdrawMember()
+      navigate('/login', { replace: true })
+    } catch (withdrawError) {
+      console.error(withdrawError)
+      setError(withdrawError.message || '회원 탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요.')
+      setIsWithdrawing(false)
+    }
   }
 
   const handleLogout = async () => {
@@ -331,7 +580,7 @@ function MyPage() {
 
   if (isLoading) {
     return (
-      <main className="account-page">
+      <main className="account-page mypage-page">
         <Header />
         <section className="account-shell account-card account-panel">
           <p className="mypage-empty">마이페이지 정보를 불러오는 중입니다.</p>
@@ -342,7 +591,7 @@ function MyPage() {
 
   if (!summary) {
     return (
-      <main className="account-page">
+      <main className="account-page mypage-page">
         <Header />
         <section className="account-shell account-card account-panel">
           <p className="account-feedback account-feedback-error" role="alert">
@@ -365,6 +614,26 @@ function MyPage() {
       items: summary.orders,
     },
     {
+      id: 'payments',
+      title: '결제 내역',
+      items: summary.payments,
+    },
+    {
+      id: 'refunds',
+      title: '환불 내역',
+      items: summary.refunds,
+    },
+    {
+      id: 'productInquiries',
+      title: '상품문의 내역',
+      items: summary.productInquiries,
+    },
+    {
+      id: 'supportInquiries',
+      title: '1:1 문의 내역',
+      items: summary.supportInquiries,
+    },
+    {
       id: 'recentlyViewedGoods',
       title: '최근본상품',
       items: summary.recentlyViewedGoods,
@@ -381,8 +650,20 @@ function MyPage() {
     },
   ]
 
+  const accountMenuGroups = [
+    {
+      title: 'MY ACCOUNT',
+      items: ['MY PROFILE', 'MY ADDRESS', 'CARDS', 'MY ORDERS', 'COMMUNICATION PREFERENCES'],
+    },
+    {
+      title: 'CUSTOMER CARE',
+      items: ['1:1 문의', '상품문의 내역', 'FAQ'],
+    },
+  ]
+
   return (
-    <main className="account-page">
+    <main className="account-page mypage-page">
+      <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}
         type="success"
@@ -390,15 +671,27 @@ function MyPage() {
       />
       <Header />
       <div className="account-shell">
-        <section className="account-card">
+        <div className="mypage-layout">
+          <aside className="mypage-side-nav" aria-label="마이페이지 메뉴">
+            {accountMenuGroups.map((group) => (
+              <nav key={group.title} aria-label={group.title}>
+                <h2>{group.title}</h2>
+                {group.items.map((item) => (
+                  <button type="button" key={item}>
+                    <span>{item}</span>
+                    <span aria-hidden="true">›</span>
+                  </button>
+                ))}
+              </nav>
+            ))}
+          </aside>
+
+          <section className="account-card">
           <div className="account-panel">
             <div className="mypage-profile">
-              <div className="mypage-avatar" aria-hidden="true">
-                {summary.member.grade}
-              </div>
               <div className="mypage-profile-text">
                 <h1>{summary.member.name}님</h1>
-                <p>{summary.member.grade} 등급</p>
+                <p>{summary.member.email ?? '이메일 정보 없음'}</p>
               </div>
               <button
                 className="mypage-edit-link"
@@ -416,16 +709,14 @@ function MyPage() {
               </button>
             </div>
 
-            {error && (
-              <p className="account-feedback account-feedback-error" role="alert">
-                {error}
-              </p>
-            )}
-
             <dl className="mypage-profile-list">
               <div>
                 <dt>이메일</dt>
                 <dd>{summary.member.email ?? '이메일 정보 없음'}</dd>
+              </div>
+              <div>
+                <dt>휴대폰 번호</dt>
+                <dd>{summary.member.phone ?? '휴대폰 번호 없음'}</dd>
               </div>
               <div>
                 <dt>비밀번호 변경일</dt>
@@ -436,6 +727,21 @@ function MyPage() {
                 <dd>{maskAddress(summary.member.address)}</dd>
               </div>
             </dl>
+
+            <div className="mypage-summary-strip" aria-label="마이페이지 요약">
+              <article>
+                <span>ORDERS</span>
+                <strong>{summary.orders.length}</strong>
+              </article>
+              <article>
+                <span>PAYMENTS</span>
+                <strong>{summary.payments.length}</strong>
+              </article>
+              <article>
+                <span>INQUIRIES</span>
+                <strong>{summary.productInquiries.length + summary.supportInquiries.length}</strong>
+              </article>
+            </div>
           </div>
 
           {dashboardSections.map((section) => (
@@ -450,11 +756,7 @@ function MyPage() {
               actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
             />
           ))}
-        </section>
-        <div className="mypage-withdraw">
-          <button type="button" onClick={handleWithdraw}>
-            탈퇴하기
-          </button>
+          </section>
         </div>
       </div>
       <SectionModal
@@ -465,6 +767,22 @@ function MyPage() {
         onClose={() => setSelectedSection(null)}
         onSaveFavoriteArtists={handleSaveFavoriteArtists}
         onToggleFavoriteArtist={toggleFavoriteArtist}
+      />
+      <ProfileEditModal
+        form={profileForm}
+        isSaving={isSavingProfile}
+        isWithdrawing={isWithdrawing}
+        mode={profileModalMode}
+        onChange={handleProfileChange}
+        onAddressSearch={handleProfileAddressSearch}
+        onClose={() => {
+          setProfileForm(null)
+          setProfileModalMode('edit')
+        }}
+        onConfirmWithdraw={handleWithdraw}
+        onShowEdit={() => setProfileModalMode('edit')}
+        onSubmit={handleSaveProfile}
+        onShowWithdraw={showWithdrawConfirmation}
       />
     </main>
   )
