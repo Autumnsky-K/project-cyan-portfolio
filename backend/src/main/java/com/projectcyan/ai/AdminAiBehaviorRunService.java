@@ -909,6 +909,10 @@ public class AdminAiBehaviorRunService {
 		String rawDb,
 		String logicFunctions,
 		String adminSettings,
+		String motionList,
+		String pipelineMode,
+		Long configVersion,
+		Long modelConnectionProfileId,
 		String customerInput,
 		String memoryLog,
 		String memoryTurnAt

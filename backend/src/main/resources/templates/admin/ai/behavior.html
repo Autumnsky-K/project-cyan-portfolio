@@ -17,6 +17,13 @@
         <h2>챗봇 행동 시뮬레이션</h2>
       </div>
       <div class="admin-header-actions">
+        <label>Pipeline
+          <select data-ai-pipeline-mode>
+            <option value="faithful18" selected>faithful18</option>
+            <option value="optimized">optimized</option>
+          </select>
+        </label>
+        <button type="button" data-ai-publish-behavior>테스트 설정 발행</button>
         <button type="button" data-ai-show-chatbot>챗봇 띄우기</button>
         <a th:href="@{/admin/ai}">워크북</a>
         <a th:href="@{/admin/ai/behavior-lab-project/dist/index.html}" target="_blank" rel="noopener">그래프 실험 열기</a>
@@ -32,6 +39,55 @@
     <div class="admin-notice admin-notice-error"
          th:if="${behaviorSheetError}"
          th:text="${behaviorSheetError}">지원하지 않는 AI 행동 TSV입니다.</div>
+
+    <section class="admin-ai-connection-panel" data-ai-model-connections>
+      <header class="admin-ai-sheet-panel-header">
+        <div>
+          <p class="admin-eyebrow">Server-side Credential Vault</p>
+          <h3>모델 연결 프로필</h3>
+        </div>
+        <span data-ai-connection-status>연결 프로필을 불러오는 중입니다.</span>
+      </header>
+      <div class="admin-ai-connection-grid">
+        <label>프로필
+          <select data-ai-connection-profile><option value="">새 프로필</option></select>
+        </label>
+        <label>프로필 이름<input data-ai-connection-name maxlength="100" placeholder="운영 OpenAI"></label>
+        <label>Provider
+          <select data-ai-connection-provider>
+            <option value="OPENAI">OPENAI</option>
+            <option value="CLAUDE">CLAUDE</option>
+            <option value="CODEX_OAUTH">CODEX_OAUTH (Experimental)</option>
+            <option value="MOCK">MOCK</option>
+          </select>
+        </label>
+        <label data-ai-connection-base-field>Base URL<input data-ai-connection-base-url value="https://api.openai.com/v1"></label>
+        <label>Model<input data-ai-connection-model value="gpt-5.4-mini"></label>
+        <label data-ai-api-key-field>API Key<input type="password" data-ai-connection-api-key autocomplete="new-password" placeholder="저장 후 다시 표시되지 않습니다."></label>
+      </div>
+      <div class="admin-ai-connection-actions">
+        <button type="button" data-ai-connection-save>초안 저장</button>
+        <button type="button" data-ai-credential-save>API Key 교체</button>
+        <button type="button" data-ai-connection-test>연결 시험</button>
+        <button type="button" data-ai-oauth-connect hidden>Codex OAuth 연결</button>
+        <button type="button" data-ai-oauth-clear hidden>OAuth 해제</button>
+      </div>
+      <div class="admin-ai-sensitive-actions">
+        <label>관리자 비밀번호 재인증
+          <input type="password" data-ai-reauth-password autocomplete="current-password">
+        </label>
+        <button type="button" data-ai-reauth>5분 승인</button>
+        <span data-ai-reauth-status>비밀 변경·OAuth·발행·롤백 전에 필요합니다.</span>
+      </div>
+      <label class="admin-ai-oauth-warning" data-ai-oauth-warning hidden>
+        <input type="checkbox" data-ai-oauth-warning-ack>
+        CODEX_OAUTH는 공개 운영 API가 아닌 변경 가능성이 높은 실험적 연결임을 확인했습니다.
+      </label>
+      <div class="admin-ai-connection-rollbacks">
+        <label>발행 이력<select data-ai-publication-history><option value="">이전 발행 선택</option></select></label>
+        <button type="button" data-ai-connection-rollback>선택 버전 롤백</button>
+      </div>
+    </section>
 
     <section class="admin-ai-chatbot-frame" data-ai-chatbot-frame hidden>
       <header>
@@ -146,6 +202,23 @@
               </details>
             </form>
           </details>
+
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="motion-list">
+            <summary><span><em>04</em><strong>모션 목록</strong></span><b>접기</b></summary>
+            <form method="post" th:action="@{/admin/ai/behavior/sheets/motion-list}">
+              <div class="admin-ai-sheet-actions">
+                <label class="admin-ai-file-button"><span>파일 불러오기</span><input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="motion-list"></label>
+                <button type="button" data-ai-export="motion-list">TSV 내보내기</button>
+                <button type="button" data-ai-reset="motion-list">샘플 복원</button>
+                <button class="admin-primary-button" type="submit">Supabase 저장</button>
+              </div>
+              <div class="admin-ai-sheet-preview"><table data-ai-sheet-preview="motion-list"></table></div>
+              <details class="admin-ai-raw-editor" open>
+                <summary>원본 TSV 편집</summary>
+                <textarea name="sheetText" spellcheck="false" data-ai-sheet-source="motion-list"></textarea>
+              </details>
+            </form>
+          </details>
         </div>
       </section>
     </section>
@@ -156,7 +229,7 @@
           <p class="admin-eyebrow">Transparent Trace</p>
           <h3>실제 Spring 실행 Trace</h3>
         </div>
-        <button type="button" class="admin-primary-button" data-ai-run-behavior>Spring 실행</button>
+        <button type="button" class="admin-primary-button" data-ai-run-behavior>FastAPI 동일 엔진 실행</button>
       </header>
 
       <section class="admin-ai-simulator-grid" aria-label="관리자 채팅 시뮬레이터">
@@ -176,21 +249,6 @@
           </form>
         </section>
 
-        <section class="admin-ai-key-panel">
-          <header>
-            <p class="admin-eyebrow">OAuth</p>
-            <h3>LLM 연결 키</h3>
-          </header>
-          <label class="admin-ai-run-input">
-            <span>OAuth digit key</span>
-            <input type="password" data-ai-oauth-digit-key autocomplete="off">
-          </label>
-          <div class="admin-ai-sheet-actions">
-            <button type="button" data-ai-oauth-save-key>서버에 키 등록</button>
-            <button type="button" data-ai-oauth-check-status>상태 확인</button>
-          </div>
-          <div class="admin-ai-oauth-status" data-ai-oauth-status>PowerShell 대신 Spring /api/oauth/key 로 등록합니다.</div>
-        </section>
       </section>
 
       <section class="admin-ai-db-highlight-panel" aria-label="DB 검색 하이라이트">
@@ -226,9 +284,10 @@
   window.projectCyanAiBehaviorInitialSheets = {
     rawDb: /*[[${behaviorRawDbSheetText}]]*/ '',
     logicFunctions: /*[[${behaviorLogicFunctionsSheetText}]]*/ '',
-    adminSettings: /*[[${behaviorAdminSettingsSheetText}]]*/ ''
+    adminSettings: /*[[${behaviorAdminSettingsSheetText}]]*/ '',
+    motionList: /*[[${behaviorMotionListSheetText}]]*/ ''
   };
 </script>
-<script th:src="@{/admin/ai-admin.js(v='behavior-action-tsv-v1')}"></script>
+<script th:src="@{/admin/ai-admin.js(v='model-connection-csrf-v2')}"></script>
 </body>
 </html>

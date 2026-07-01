@@ -206,6 +206,21 @@ public class SupabaseStorageService {
 		}
 	}
 
+	public String downloadTextObject(String bucketName, String objectPath) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedObjectPath = normalizeFolderPath(objectPath);
+		try {
+			return restClient.get()
+				.uri(storageUrl("/object/authenticated/" + encodeObjectPath(normalizedBucketName, normalizedObjectPath)))
+				.headers(this::applyAuthHeaders)
+				.retrieve()
+				.body(String.class);
+		} catch (RestClientResponseException exception) {
+			throw storageException("텍스트 object 다운로드 요청에 실패했습니다.", exception);
+		}
+	}
+
 	public SupabaseStorageObject uploadObjectBySizePolicy(
 		String bucketName,
 		String path,
