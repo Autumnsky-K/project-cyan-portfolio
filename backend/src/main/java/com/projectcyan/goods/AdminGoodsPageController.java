@@ -1,5 +1,6 @@
 package com.projectcyan.goods;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -12,7 +13,10 @@ import com.projectcyan.storage.SupabaseStorageException;
 import com.projectcyan.storage.SupabaseStorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -43,6 +48,7 @@ public class AdminGoodsPageController {
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final SupabaseStorageService supabaseStorageService;
+	private final AdminGoodsImportService adminGoodsImportService;
 	private final String frontendPreviewBaseUrl;
 
 	public AdminGoodsPageController(
@@ -51,6 +57,7 @@ public class AdminGoodsPageController {
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository,
 		SupabaseStorageService supabaseStorageService,
+		AdminGoodsImportService adminGoodsImportService,
 		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
 	) {
 		this.goodsService = goodsService;
@@ -58,6 +65,7 @@ public class AdminGoodsPageController {
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.supabaseStorageService = supabaseStorageService;
+		this.adminGoodsImportService = adminGoodsImportService;
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
 
@@ -242,6 +250,50 @@ public class AdminGoodsPageController {
 		adminGoodsService.discontinueGoods(goodsId);
 		redirectAttributes.addFlashAttribute("notice", "굿즈가 판매 중단 처리되었습니다.");
 		return "redirect:/admin/goods";
+	}
+
+	@GetMapping("/admin/goods/import")
+	public String importGoods(Model model) {
+		model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+		return "admin/goods/import";
+	}
+
+	@GetMapping("/admin/goods/import/template")
+	public ResponseEntity<byte[]> downloadImportTemplate() {
+		String csv = "\uFEFFgoods_id,상품명,가격,아티스트,카테고리,재고,판매상태,이미지폴더,태그,상세설명,베스트,AI추천\n"
+			+ ",루루 아크릴 스탠드,18000,루루,스탠드,15,ON_SALE,ruru/stand,\"루루,아크릴\",,,\n";
+		return ResponseEntity.ok()
+			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"goods-import-template.csv\"")
+			.contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+			.body(csv.getBytes(StandardCharsets.UTF_8));
+	}
+
+	@PostMapping("/admin/goods/import/preview")
+	public String previewImportGoods(@RequestParam("file") MultipartFile file, Model model) {
+		try {
+			model.addAttribute("preview", adminGoodsImportService.preview(file));
+		} catch (ResponseStatusException exception) {
+			model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+			model.addAttribute("error", adminGoodsErrorMessage(exception));
+		}
+		return "admin/goods/import";
+	}
+
+	@PostMapping("/admin/goods/import/commit")
+	public String commitImportGoods(
+		@ModelAttribute AdminGoodsImportCommitForm form,
+		Model model,
+		RedirectAttributes redirectAttributes
+	) {
+		try {
+			int importedCount = adminGoodsImportService.importRows(form.toRows());
+			redirectAttributes.addFlashAttribute("notice", importedCount + "개 굿즈가 등록되었습니다.");
+			return "redirect:/admin/goods";
+		} catch (ResponseStatusException exception) {
+			model.addAttribute("preview", adminGoodsImportService.previewRaw(form.toRows()));
+			model.addAttribute("error", adminGoodsErrorMessage(exception));
+			return "admin/goods/import";
+		}
 	}
 
 	private List<AdminGoodsBulkRow> bulkRows(List<GoodsSummaryResponse> goods, Map<Long, Integer> stockCounts) {
