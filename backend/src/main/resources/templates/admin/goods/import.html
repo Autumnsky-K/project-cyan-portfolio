@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>굿즈 대량 등록</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='goods-import-20260701')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">상품 데이터 관리</p>
+        <h2>굿즈 대량 등록</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/goods}">굿즈 목록</a>
+        <a th:href="@{/admin/goods/import/template}">양식 다운로드</a>
+      </div>
+    </header>
+
+    <div class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}"></div>
+
+    <section class="admin-import-guide" aria-label="CSV 작성 기준">
+      <div>
+        <strong>이미지 폴더 규칙</strong>
+        <p>Storage의 goods-image 버킷에 <code>goods/아티스트/상품/main.png</code>, <code>1.png</code>부터 <code>4.png</code>까지 넣고 CSV의 이미지폴더에는 <code>아티스트/상품</code>만 적으면 됩니다.</p>
+      </div>
+      <div>
+        <strong>수정 기준</strong>
+        <p><code>goods_id</code>가 비어 있으면 신규 등록, 값이 있으면 해당 굿즈를 수정합니다. 판매상태는 <code>ON_SALE</code>, <code>SOLD_OUT</code>, <code>HIDDEN</code>, <code>DISCONTINUED</code>를 사용합니다.</p>
+      </div>
+    </section>
+
+    <form class="admin-import-upload"
+          method="post"
+          enctype="multipart/form-data"
+          th:action="@{/admin/goods/import/preview}">
+      <label>
+        <span>CSV 파일</span>
+        <input type="file" name="file" accept=".csv,text/csv" required>
+      </label>
+      <button class="admin-primary" type="submit">미리보기</button>
+    </form>
+
+    <section class="admin-table-panel admin-import-preview" th:if="${preview != null and preview.hasRows()}" aria-label="대량 등록 미리보기">
+      <header class="admin-import-preview-header">
+        <div>
+          <strong th:text="|총 ${#lists.size(preview.rows())}개 행|">총 0개 행</strong>
+          <span th:text="|${preview.validCount()}개 등록 가능|">0개 등록 가능</span>
+        </div>
+        <form method="post"
+              th:if="${!preview.hasErrors()}"
+              th:action="@{/admin/goods/import/commit}">
+          <div th:each="row : ${preview.rows()}">
+            <input type="hidden" name="goodsId" th:value="${row.goodsId()}">
+            <input type="hidden" name="name" th:value="${row.name()}">
+            <input type="hidden" name="price" th:value="${row.price()}">
+            <input type="hidden" name="artistName" th:value="${row.artistName()}">
+            <input type="hidden" name="categoryName" th:value="${row.categoryName()}">
+            <input type="hidden" name="stockCount" th:value="${row.stockCount()}">
+            <input type="hidden" name="salesStatus" th:value="${row.salesStatus()}">
+            <input type="hidden" name="imageFolder" th:value="${row.imageFolder()}">
+            <input type="hidden" name="tagsText" th:value="${row.tagsText()}">
+            <input type="hidden" name="description" th:value="${row.description()}">
+            <input type="hidden" name="bestSeller" th:value="${row.bestSeller()}">
+            <input type="hidden" name="aiPickDefault" th:value="${row.aiPickDefault()}">
+          </div>
+          <button class="admin-primary" type="submit">등록 실행</button>
+        </form>
+      </header>
+
+      <div class="admin-notice admin-notice-error" th:if="${preview.hasErrors()}">
+        오류가 있는 행이 있습니다. CSV를 수정한 뒤 다시 미리보기 해주세요.
+      </div>
+
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table admin-import-table">
+          <thead>
+          <tr>
+            <th>행</th>
+            <th>작업</th>
+            <th>상품명</th>
+            <th>가격</th>
+            <th>아티스트</th>
+            <th>카테고리</th>
+            <th>재고</th>
+            <th>상태</th>
+            <th>이미지</th>
+            <th>태그</th>
+            <th>오류</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="row : ${preview.rows()}" th:classappend="${row.valid()} ? ' is-valid' : ' is-invalid'">
+            <td th:text="${row.rowNumber()}">2</td>
+            <td th:text="${row.modeLabel()}">신규</td>
+            <td th:text="${row.name()}">상품명</td>
+            <td th:text="${row.price()}">0</td>
+            <td th:text="${row.artistName()}">아티스트</td>
+            <td th:text="${row.categoryName()}">카테고리</td>
+            <td th:text="${row.stockCount()}">0</td>
+            <td th:text="${row.salesStatus()}">ON_SALE</td>
+            <td>
+              <span th:text="${row.mainImageUrl() == null ? 'main 없음' : 'main 확인'}">main 확인</span>
+              <small th:text="|추가 ${#lists.size(row.extraImageUrls())}장|">추가 0장</small>
+            </td>
+            <td th:text="${row.tagsText()}">태그</td>
+            <td>
+              <span th:if="${row.valid()}">-</span>
+              <ul th:if="${!row.valid()}">
+                <li th:each="message : ${row.errors()}" th:text="${message}">오류</li>
+              </ul>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-state" th:if="${preview == null or !preview.hasRows()}">
+      CSV를 올리면 등록 전에 상품명, 이미지 매칭, 오류를 먼저 확인할 수 있습니다.
+    </section>
+  </section>
+</main>
+</body>
+</html>

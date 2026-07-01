@@ -746,6 +746,114 @@ button.admin-primary {
   text-align: center;
 }
 
+.admin-import-guide,
+.admin-import-upload,
+.admin-import-preview-header {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-surface);
+}
+
+.admin-import-guide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-import-guide strong,
+.admin-import-preview-header strong {
+  color: var(--admin-ink);
+}
+
+.admin-import-guide p {
+  margin: 6px 0 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.admin-import-guide code {
+  color: var(--admin-ink);
+  font-family: "Segoe UI Mono", Consolas, monospace;
+  font-size: 12px;
+}
+
+.admin-import-upload {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.admin-import-upload label {
+  display: grid;
+  gap: 8px;
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
+.admin-import-upload input,
+.admin-import-upload button {
+  box-sizing: border-box;
+  min-height: 42px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-control-bg);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.admin-import-upload input {
+  width: 100%;
+  padding: 8px 10px;
+}
+
+.admin-import-upload button {
+  min-width: 112px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.admin-import-preview {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-import-preview-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.admin-import-preview-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-import-preview-header span {
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.admin-import-table tr.is-invalid {
+  background: #fff7f7;
+}
+
+.admin-import-table td small {
+  display: block;
+  margin-top: 4px;
+}
+
+.admin-import-table ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 16px;
+  color: #9d2b2b;
+}
+
 .admin-table-panel,
 .admin-form {
   min-width: 0;
@@ -3738,6 +3846,9 @@ button.admin-primary {
 
   .admin-toolbar,
   .admin-stats,
+  .admin-import-guide,
+  .admin-import-upload,
+  .admin-import-preview-header,
   .admin-form-grid,
   .admin-upload-controls,
   .admin-goods-editor,
