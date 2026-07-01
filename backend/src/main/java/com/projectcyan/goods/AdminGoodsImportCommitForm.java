@@ -17,6 +17,8 @@ public class AdminGoodsImportCommitForm {
 	private List<String> description = new ArrayList<>();
 	private List<String> bestSeller = new ArrayList<>();
 	private List<String> aiPickDefault = new ArrayList<>();
+	private String imageSource = "SUPABASE";
+	private String imageBatchId;
 
 	public List<AdminGoodsImportRow> toRows() {
 		int rowCount = List.of(
@@ -163,5 +165,21 @@ public class AdminGoodsImportCommitForm {
 
 	public void setAiPickDefault(List<String> aiPickDefault) {
 		this.aiPickDefault = aiPickDefault == null ? new ArrayList<>() : aiPickDefault;
+	}
+
+	public String getImageSource() {
+		return imageSource;
+	}
+
+	public void setImageSource(String imageSource) {
+		this.imageSource = imageSource == null ? "SUPABASE" : imageSource;
+	}
+
+	public String getImageBatchId() {
+		return imageBatchId;
+	}
+
+	public void setImageBatchId(String imageBatchId) {
+		this.imageBatchId = imageBatchId;
 	}
 }

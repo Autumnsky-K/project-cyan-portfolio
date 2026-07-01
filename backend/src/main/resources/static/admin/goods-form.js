@@ -339,13 +339,29 @@ function bindGoodsImageEditor(root) {
       return
     }
 
+    if (!window.ProjectCyanImageCompression?.compressToWebp) {
+      setStatus('WebP 압축 스크립트를 불러오지 못했습니다.')
+      uploadInput.value = ''
+      return
+    }
+
+    setStatus('WebP 압축 중')
+    let compressed
+    try {
+      compressed = await window.ProjectCyanImageCompression.compressToWebp(file)
+    } catch (error) {
+      setStatus(error.message || 'WebP 압축 실패')
+      uploadInput.value = ''
+      return
+    }
+
     const formData = new FormData()
     formData.append('bucketName', bucketName)
     formData.append('path', path)
     formData.append('upsert', 'true')
     formData.append('allowSmallerOverwrite', 'false')
-    formData.append('relativePath', file.name)
-    formData.append('file', file)
+    formData.append('relativePath', compressed.file.name)
+    formData.append('file', compressed.file)
 
     setStatus('이미지 업로드 중')
     try {
@@ -356,7 +372,7 @@ function bindGoodsImageEditor(root) {
       let payload = await response.json().catch(() => ({}))
 
       if (response.status === 409 && payload.conflict && payload.conflictReason === 'SMALLER_THAN_EXISTING') {
-        if (!confirmSmallerOverwrite(file.name, payload)) {
+        if (!confirmSmallerOverwrite(compressed.file.name, payload)) {
           setStatus('업로드를 건너뛰었습니다.')
           return
         }
@@ -373,7 +389,8 @@ function bindGoodsImageEditor(root) {
       }
       setImageUrl(payload.publicUrl)
       window.addAdminImageTreeItem?.(library, payload, { draggable: true })
-      setStatus('업로드 후 대표 이미지로 선택 완료')
+      const savingsLabel = window.ProjectCyanImageCompression.savingsLabel(compressed.originalSize, compressed.compressedSize)
+      setStatus(`업로드 후 대표 이미지로 선택 완료${savingsLabel ? ` · ${savingsLabel}` : ''}`)
     } catch (error) {
       setStatus(error.message || '업로드 실패')
     } finally {

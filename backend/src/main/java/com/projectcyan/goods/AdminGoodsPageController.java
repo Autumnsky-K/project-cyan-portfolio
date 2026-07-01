@@ -260,8 +260,7 @@ public class AdminGoodsPageController {
 
 	@GetMapping("/admin/goods/import/template")
 	public ResponseEntity<byte[]> downloadImportTemplate() {
-		String csv = "\uFEFFgoods_id,상품명,가격,아티스트,카테고리,재고,판매상태,이미지폴더,태그,상세설명,베스트,AI추천\n"
-			+ ",루루 아크릴 스탠드,18000,루루,스탠드,15,ON_SALE,ruru/stand,\"루루,아크릴\",,,\n";
+		String csv = goodsImportTemplateCsv();
 		return ResponseEntity.ok()
 			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"goods-import-template.csv\"")
 			.contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
@@ -269,9 +268,20 @@ public class AdminGoodsPageController {
 	}
 
 	@PostMapping("/admin/goods/import/preview")
-	public String previewImportGoods(@RequestParam("file") MultipartFile file, Model model) {
+	public String previewImportGoods(
+		@RequestParam("file") MultipartFile file,
+		@RequestParam(defaultValue = "true") boolean useLocalImages,
+		@RequestParam(required = false) List<MultipartFile> imageFiles,
+		@RequestParam(required = false) List<String> imageRelativePath,
+		Model model
+	) {
 		try {
-			model.addAttribute("preview", adminGoodsImportService.preview(file));
+			model.addAttribute("preview", adminGoodsImportService.preview(
+				file,
+				imageFiles,
+				imageRelativePath,
+				useLocalImages
+			));
 		} catch (ResponseStatusException exception) {
 			model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
 			model.addAttribute("error", adminGoodsErrorMessage(exception));
@@ -286,11 +296,23 @@ public class AdminGoodsPageController {
 		RedirectAttributes redirectAttributes
 	) {
 		try {
-			int importedCount = adminGoodsImportService.importRows(form.toRows());
+			int importedCount = adminGoodsImportService.importRows(
+				form.toRows(),
+				form.getImageSource(),
+				form.getImageBatchId()
+			);
 			redirectAttributes.addFlashAttribute("notice", importedCount + "개 굿즈가 등록되었습니다.");
 			return "redirect:/admin/goods";
 		} catch (ResponseStatusException exception) {
-			model.addAttribute("preview", adminGoodsImportService.previewRaw(form.toRows()));
+			try {
+				model.addAttribute("preview", adminGoodsImportService.previewRaw(
+					form.toRows(),
+					form.getImageSource(),
+					form.getImageBatchId()
+				));
+			} catch (ResponseStatusException ignored) {
+				model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+			}
 			model.addAttribute("error", adminGoodsErrorMessage(exception));
 			return "admin/goods/import";
 		}
@@ -477,6 +499,94 @@ public class AdminGoodsPageController {
 		int startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages));
 		int endPage = Math.min(totalPages, startPage + maxVisiblePages);
 		return java.util.stream.IntStream.range(startPage, endPage).boxed().toList();
+	}
+
+	private String goodsImportTemplateCsv() {
+		GoodsFiltersResponse filters = goodsService.findGoodsFilters();
+		List<String> artists = filters.artists().stream()
+			.map(GoodsFilterOptionResponse::label)
+			.toList();
+		List<String> categories = filters.categories().stream()
+			.map(GoodsFilterOptionResponse::label)
+			.toList();
+		List<String> salesStatuses = List.of("HIDDEN");
+		List<String> booleanOptions = List.of("false", "true");
+
+		List<String[]> rows = new ArrayList<>();
+		rows.add(new String[] {
+			"상품ID",
+			"상품명",
+			"가격",
+			"아티스트명",
+			"카테고리명",
+			"재고",
+			"판매상태",
+			"이미지폴더",
+			"태그",
+			"상세설명",
+			"베스트",
+			"AI추천"
+		});
+		rows.add(new String[] {
+			"#(숫자)",
+			"#(글자)",
+			"#(숫자)",
+			templateOptionAt(artists, 0, "#아티스트DB값"),
+			templateOptionAt(categories, 0, "#카테고리DB값"),
+			"#(숫자)",
+			"#HIDDEN",
+			"#(경로)",
+			"#(글자)",
+			"#(글자)",
+			"#false",
+			"#false"
+		});
+
+		int guideRowCount = Math.max(
+			Math.max(artists.size(), categories.size()),
+			Math.max(salesStatuses.size(), booleanOptions.size())
+		);
+		for (int index = 1; index < guideRowCount; index++) {
+			rows.add(new String[] {
+				"#",
+				"",
+				"",
+				templateOptionAt(artists, index, ""),
+				templateOptionAt(categories, index, ""),
+				"",
+				templateOptionAt(salesStatuses, index, ""),
+				"",
+				"",
+				"",
+				templateOptionAt(booleanOptions, index, ""),
+				templateOptionAt(booleanOptions, index, "")
+			});
+		}
+		return "\uFEFF" + rows.stream()
+			.map(this::csvLine)
+			.collect(Collectors.joining("\n")) + "\n";
+	}
+
+	private String templateOptionAt(List<String> values, int index, String fallback) {
+		if (index >= values.size()) {
+			return fallback;
+		}
+		String value = values.get(index);
+		return value == null || value.isBlank() ? fallback : "#" + value.trim();
+	}
+
+	private String csvLine(String[] values) {
+		return java.util.Arrays.stream(values)
+			.map(this::csvValue)
+			.collect(Collectors.joining(","));
+	}
+
+	private String csvValue(String value) {
+		String normalizedValue = value == null ? "" : value;
+		if (normalizedValue.contains(",") || normalizedValue.contains("\"") || normalizedValue.contains("\n")) {
+			return "\"" + normalizedValue.replace("\"", "\"\"") + "\"";
+		}
+		return normalizedValue;
 	}
 
 	private static String trimTrailingSlash(String value) {

@@ -6,6 +6,7 @@ public record AdminStorageUploadResponse(
 	String name,
 	String publicUrl,
 	Long size,
+	boolean created,
 	String error,
 	boolean conflict,
 	String conflictReason,
@@ -19,6 +20,24 @@ public record AdminStorageUploadResponse(
 			object.name(),
 			object.publicUrl(),
 			object.size(),
+			false,
+			null,
+			false,
+			null,
+			null,
+			null
+		);
+	}
+
+	public static AdminStorageUploadResponse from(SupabaseStorageWriteResult result) {
+		SupabaseStorageObject object = result.object();
+		return new AdminStorageUploadResponse(
+			object.bucketName(),
+			object.path(),
+			object.name(),
+			object.publicUrl(),
+			object.size(),
+			result.created(),
 			null,
 			false,
 			null,
@@ -28,7 +47,7 @@ public record AdminStorageUploadResponse(
 	}
 
 	public static AdminStorageUploadResponse error(String message) {
-		return new AdminStorageUploadResponse(null, null, null, null, null, message, false, null, null, null);
+		return new AdminStorageUploadResponse(null, null, null, null, null, false, message, false, null, null, null);
 	}
 
 	public static AdminStorageUploadResponse conflict(SupabaseStorageConflictException exception) {
@@ -38,6 +57,7 @@ public record AdminStorageUploadResponse(
 			exception.name(),
 			null,
 			null,
+			false,
 			exception.getMessage(),
 			true,
 			exception.reason(),
