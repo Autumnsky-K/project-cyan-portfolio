@@ -556,6 +556,32 @@ html[data-admin-sidebar="rail"] .admin-rail-icon-payment {
   gap: 8px;
 }
 
+.admin-ai-publish-control {
+  display: grid;
+  gap: 5px;
+  max-width: 360px;
+}
+
+.admin-ai-publish-status {
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.admin-ai-publish-status[data-status="pending"] {
+  color: #7a5612;
+}
+
+.admin-ai-publish-status[data-status="success"] {
+  color: #176b3a;
+  font-weight: 700;
+}
+
+.admin-ai-publish-status[data-status="error"] {
+  color: #a32323;
+  font-weight: 700;
+}
+
 .admin-header a,
 .admin-header button,
 .admin-actions a,
@@ -3640,3 +3666,41 @@ button.admin-primary {
     justify-content: center;
   }
 }
+.admin-ai-connection-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid #cad8e6;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+.admin-ai-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.admin-ai-connection-grid label,
+.admin-ai-sensitive-actions label,
+.admin-ai-connection-rollbacks label {
+  display: grid;
+  gap: 5px;
+  color: #43566b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-ai-connection-actions,
+.admin-ai-sensitive-actions,
+.admin-ai-connection-rollbacks {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-ai-sensitive-actions label,
+.admin-ai-connection-rollbacks label { min-width: 280px; }
+.admin-ai-oauth-warning { color: #9a3412; font-weight: 750; }

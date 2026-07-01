@@ -35,6 +35,9 @@ public class AiHookPolicy {
 	@Column(name = "message", nullable = false, length = 1000)
 	private String message;
 
+	@Column(name = "replacement", length = 1000)
+	private String replacement;
+
 	@Column(name = "enabled", nullable = false)
 	private boolean enabled;
 
@@ -53,6 +56,7 @@ public class AiHookPolicy {
 		String threshold,
 		String action,
 		String message,
+		String replacement,
 		boolean enabled,
 		int priority
 	) {
@@ -61,6 +65,7 @@ public class AiHookPolicy {
 		this.threshold = threshold;
 		this.action = action;
 		this.message = message;
+		this.replacement = replacement;
 		this.enabled = enabled;
 		this.priority = priority;
 	}
@@ -71,10 +76,11 @@ public class AiHookPolicy {
 		String threshold,
 		String action,
 		String message,
+		String replacement,
 		boolean enabled,
 		int priority
 	) {
-		return new AiHookPolicy(hook, check, threshold, action, message, enabled, priority);
+		return new AiHookPolicy(hook, check, threshold, action, message, replacement, enabled, priority);
 	}
 
 	@PrePersist
@@ -105,6 +111,10 @@ public class AiHookPolicy {
 
 	public String getMessage() {
 		return message;
+	}
+
+	public String getReplacement() {
+		return replacement;
 	}
 
 	public boolean isEnabled() {

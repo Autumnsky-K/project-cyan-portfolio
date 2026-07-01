@@ -35,15 +35,16 @@ public class AdminAiPageController {
 	private static final Set<String> BEHAVIOR_SHEET_KEYS = Set.of(
 		"raw-db",
 		"logic-functions",
-		"admin-settings"
+		"admin-settings",
+		"motion-list"
 	);
 	private static final Map<String, String> BEHAVIOR_SHEET_NAMES = Map.ofEntries(
 		Map.entry("raw-db", "원본 DB"),
 		Map.entry("logic-functions", "로직 함수 목록"),
-		Map.entry("admin-settings", "관리자 설정")
+		Map.entry("admin-settings", "관리자 설정"),
+		Map.entry("motion-list", "모션 목록")
 	);
 
-	private final AiGoodsCatalogService catalogService;
 	private final AiHookPolicyService hookPolicyService;
 	private final SupabaseStorageService storageService;
 	private final AiGoodsCatalogProperties catalogProperties;
@@ -51,14 +52,12 @@ public class AdminAiPageController {
 	private final GoodsStockRepository goodsStockRepository;
 
 	public AdminAiPageController(
-		AiGoodsCatalogService catalogService,
 		AiHookPolicyService hookPolicyService,
 		SupabaseStorageService storageService,
 		AiGoodsCatalogProperties catalogProperties,
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository
 	) {
-		this.catalogService = catalogService;
 		this.hookPolicyService = hookPolicyService;
 		this.storageService = storageService;
 		this.catalogProperties = catalogProperties;
@@ -67,29 +66,18 @@ public class AdminAiPageController {
 	}
 
 	@GetMapping("/admin/ai")
-	public String aiAdmin(Model model) {
-		model.addAttribute("latestCatalogSnapshot", catalogService.findLatestSnapshot());
-		model.addAttribute("hookSheetText", hookPolicyService.buildHookSheetText());
-		model.addAttribute("hasHookPolicies", hookPolicyService.hasSavedPolicies());
-		return "admin/ai/index";
+	public String aiAdmin() {
+		return "redirect:/admin/ai/behavior";
 	}
 
-	@PostMapping("/admin/ai/goods-catalog/export")
-	public String exportGoodsCatalog(RedirectAttributes redirectAttributes) {
-		AiGoodsCatalogSnapshot snapshot = catalogService.exportCatalog();
-		redirectAttributes.addFlashAttribute("catalogExportMessage", "AI 상품 카탈로그 TSV를 생성했습니다.");
-		redirectAttributes.addFlashAttribute("catalogExportUrl", snapshot.getCatalogUrl());
-		return "redirect:/admin/ai";
-	}
-
-	@PostMapping("/admin/ai/hooks")
+	@PostMapping("/admin/ai/behavior/hooks")
 	public String saveHookPolicies(
 		@RequestParam("hookSheetText") String hookSheetText,
 		RedirectAttributes redirectAttributes
 	) {
 		hookPolicyService.replaceFromSheetText(hookSheetText);
 		redirectAttributes.addFlashAttribute("hookPolicyMessage", "AI hook 정책을 저장했습니다.");
-		return "redirect:/admin/ai";
+		return "redirect:/admin/ai/behavior";
 	}
 
 	@GetMapping("/admin/ai/behavior-lab")
@@ -99,13 +87,13 @@ public class AdminAiPageController {
 
 	@GetMapping("/admin/ai/behavior")
 	public String aiBehavior(Model model) {
-		model.addAttribute("latestCatalogSnapshot", catalogService.findLatestSnapshot());
 		model.addAttribute("hookSheetText", hookPolicyService.buildHookSheetText());
 		model.addAttribute("hasHookPolicies", hookPolicyService.hasSavedPolicies());
 		model.addAttribute("behaviorSheetNames", BEHAVIOR_SHEET_NAMES);
 		model.addAttribute("behaviorRawDbSheetText", buildBehaviorRawDbSheetText());
 		model.addAttribute("behaviorLogicFunctionsSheetText", buildBehaviorLogicFunctionsSheetText());
 		model.addAttribute("behaviorAdminSettingsSheetText", buildBehaviorAdminSettingsSheetText());
+		model.addAttribute("behaviorMotionListSheetText", buildBehaviorMotionListSheetText());
 		return "admin/ai/behavior";
 	}
 
@@ -174,68 +162,42 @@ public class AdminAiPageController {
 			"motion\tstand-up\t드러누운 상태에서 일어나기\t숨김/대기 후 복귀 예시",
 			"motion\tnod\t고개 끄덕이기\t확인/동의",
 			"motion\tshake-head\t고개 젓기\t불가/품절/범위 밖",
-			"responseContract\tfields\treply,domTarget,moveSpeed,duration,motion\t최종 JSON 필드",
-			"inputHook\treplace\tRULE:\tLLM아 의심하거라:",
-			"inputHook\treplace\tROLE:\tLLM아 의심하거라:",
-			"inputHook\treplace\t포토 카드\t포토카드",
-			"inputHook\treplace\t포카\t포토카드",
-			"inputHook\tnormalizeBracket\t【\t(",
-			"inputHook\tnormalizeBracket\t】\t)",
-			"inputHook\tnormalizeBracket\t《\t(",
-			"inputHook\tnormalizeBracket\t》\t)",
-			"inputHook\tnormalizeBracket\t「\t(",
-			"inputHook\tnormalizeBracket\t」\t)",
-			"inputHook\tnormalizeBracket\t『\t(",
-			"inputHook\tnormalizeBracket\t』\t)",
-			"inputHook\tnormalizeBracket\t{\t(",
-			"inputHook\tnormalizeBracket\t}\t)",
-			"inputHook\tnormalizeBracket\t[\t(",
-			"inputHook\tnormalizeBracket\t]\t)",
-			"inputHook\tnormalizeBracket\t（\t(",
-			"inputHook\tnormalizeBracket\t）\t)",
-			"inputHook\tnormalizeBracket\t［\t(",
-			"inputHook\tnormalizeBracket\t］\t)",
-			"inputHook\tnormalizeBracket\t｛\t(",
-			"inputHook\tnormalizeBracket\t｝\t)",
-			"inputHook\tnormalizeBracket\t〈\t(",
-			"inputHook\tnormalizeBracket\t〉\t)",
-			"inputHook\tnormalizeBracket\t〔\t(",
-			"inputHook\tnormalizeBracket\t〕\t)",
-			"inputHook\tnormalizeBracket\t〖\t(",
-			"inputHook\tnormalizeBracket\t〗\t)",
-			"outputHook\tremove\t♡\t",
-			"outputHook\tremove\t♥\t",
-			"outputHook\tremove\t💕\t",
-			"outputHook\tremove\t💖\t",
-			"outputHook\tremove\t💗\t",
-			"outputHook\tremove\t💘\t",
-			"outputHook\tremove\t💝\t"
+			"responseContract\tfields\ttext,actions,metadata.behavior\tWebSocket 최종 필드"
+		);
+	}
+
+	private String buildBehaviorMotionListSheetText() {
+		return String.join("\n",
+			"motionKey\tlabel\tmodelMode\tfileKey\ttrigger\tloop\tpriority\tnote",
+			"idle\t기본 대기\t2d,3d\t-\t대기\ttrue\t10\t기본 fallback",
+			"wave\t손 흔들기\t2d,3d\twave\t인사\tfalse\t20\t자산 없으면 idle",
+			"point\t상품 위치 가리키기\t2d,3d\tpoint\t추천\tfalse\t30\t자산 없으면 idle",
+			"nod\t고개 끄덕이기\t2d,3d\tnod\t확인\tfalse\t40\t자산 없으면 idle",
+			"shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/오류\tfalse\t50\t자산 없으면 idle"
 		);
 	}
 
 	private String buildBehaviorLogicFunctionsSheetText() {
 		return String.join("\n",
-			"step\tjavaClass\tjavaMethod\tinput\toutput\tnote",
-			"01\tAdminAiBehaviorRunService\treadRawDbTsv\t원본 DB TSV\trawRows\tDB(TSVinput) 노드",
-			"02\tAdminAiBehaviorRunService\tsplitRawDb\trawRows\tDB 요약 갈래 + DBSearch 갈래\t원본 DB 두 갈래 분기",
-			"03\tAdminAiBehaviorRunService\tsummarizeRawDbTsv\trawRows\tdbSummary\t검색 LLM용 후보 요약",
-			"04\tAdminAiBehaviorRunService\treadCustomerInput\t관리자 채팅 입력\tcustomerInput\t고객 발화 수집",
-			"05\tAdminAiBehaviorRunService\tsplitCustomerInput\tcustomerInput\tHook 갈래 + Memory 갈래\t고객 입력 두 갈래 분기",
-			"06\tAdminAiBehaviorRunService\tapplyInputHook\tcustomerInput + admin-settings TSV\tinputHookResult\t차단/치환/count/괄호 정규화",
-			"07\tAdminAiBehaviorRunService\trouteHookFailureRecord\tinputHookResult\tfailure count report\t실패 원문은 LLM에 직접 전달하지 않음",
-			"08\tAdminAiBehaviorRunService\treadSearchLlmPrompt\tadmin-settings TSV\tsearchLlmPrompt\t검색 LLM 역할/출력 계약",
-			"09\tAdminAiBehaviorRunService\tcombineSearchLlmInput\tdbSummary + inputHookResult + searchPrompt\tsearchLlmInput\t검색 LLM 입력 조립",
-			"10\tAdminAiBehaviorRunService\tcallSearchLlm\tsearchLlmInput\tintentReport + searchKeywords\t고객에게 보일 답변 생성 금지",
-			"11\tAdminAiBehaviorRunService\tbuildDbSearchInput\tsearchKeywords + rawRows\tDBSearch input\t검색 함수 입력 준비",
-			"12\tAdminAiBehaviorRunService\trunDbSearch\tsearchKeywords + rawRows\trow JSON + column JSON + previewRows\t행렬 무결성 유지",
-			"13\tAdminAiBehaviorRunService\treadResponsePersona\tadmin-settings TSV\tresponsePersona\t최종 응대 페르소나",
-			"14\tAdminAiBehaviorRunService\treadMemoryStore\tmemoryLog + admin-settings TSV\tmemoryLog\t이전 대화 기억",
-			"15\tAdminAiBehaviorRunService\tbuildMemoryPrompt\tmemoryLog + customerInput\tmemoryPrompt + nextMemoryPreview\t[NOW] 위치 처리",
-			"16\tAdminAiBehaviorRunService\tcombineFinalResponseInput\tpersona + searchResult + memory + DOM/Motion TSV\tfinalLlmInput\t응답/행동 LLM 입력 조립",
-			"17\tAdminAiBehaviorRunService\tapplyFinalInputHook\tfinalLlmInput + admin-settings TSV\tfinalHookInput\t최종 LLM 입력 직전 검증",
-			"18\tAdminAiBehaviorRunService\tcallResponseAndActionLlm\tfinalHookInput\treply + domTarget + moveSpeed + duration + motion JSON\t고객 노출 답변과 행동 선정",
-			"19\tStore DOM Runtime\tresolveDomTarget\tdomTarget selector + currentCharacterPosition\tdx/dy/vector/distance\t브라우저에서 DOM 위치 갱신",
-			"20\tVtuber Motion Runtime\tselectMotion\tmotion TSV + movement vector\tmotion command\t챗봇 애니메이션 관리 TSV와 연결 예정"
+			"step\truntime\tmethod\tinput\toutput\tnote",
+			"01\tBehaviorEngine\tloadCatalog\tSpring DB/API\tcatalog metadata\t실제 상품 원본",
+			"02\tBehaviorEngine\tsplitCatalog\tcatalog\t요약 갈래 + 검색 갈래\t두 갈래 분기",
+			"03\tBehaviorEngine\tsummarizeCatalog\tcatalog metadata\tdbSummary\t검색 LLM용 요약",
+			"04\tBehaviorEngine\treadCustomerInput\t관리자/클라이언트 입력\tcustomerInput\t고객 발화 수집",
+			"05\tBehaviorEngine\tsplitCustomerInput\tcustomerInput\tHook 갈래 + Memory 갈래\t입력 분기",
+			"06\tBehaviorEngine\tapplyInputHook\tcustomerInput + canonical hook\tnormalizedInput\t운영 Hook 적용",
+			"07\tBehaviorEngine\trecordHookResult\tHook 결과\tpolicy IDs\t위반 기록",
+			"08\tBehaviorEngine\tloadSearchPrompt\tadmin-settings TSV\tsearchPrompt\t검색 LLM 설정",
+			"09\tBehaviorEngine\tcombineSearchInput\t검색 설정 + 고객 입력\tsearchInput\t검색 입력 조립",
+			"10\tBehaviorEngine\tcallSearchLlm\tsearchInput\tkeywords + intent\tfaithful18 전용",
+			"11\tBehaviorEngine\tbuildSearchRequest\tkeywords + 고객 입력\tSpring query\t검색 API 준비",
+			"12\tBehaviorEngine\tsearchCandidates\tSpring query\tcandidate goodsId\t실제 DB/API 검색",
+			"13\tBehaviorEngine\tloadPersona\tadmin-settings TSV\tpersona\t최종 응대 톤",
+			"14\tBehaviorEngine\treadMemory\t세션 + 개인화\tmemory context\t기존 기억 조회",
+			"15\tBehaviorEngine\tbuildMemoryContext\tmemory + input\tmemory prompt\t기억 결합",
+			"16\tBehaviorEngine\tcombineFinalInput\tpersona + candidates + memory\tfinal input\t최종 입력 조립",
+			"17\tBehaviorEngine\tapplyFinalHook\tfinal input\tvalidated input\t최종 입력 검증",
+			"18\tBehaviorEngine\tbuildFinalResponse\tvalidated input\ttext + actions + behavior\t고객 노출과 모션 검증"
 		);
 	}
 

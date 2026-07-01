@@ -14,8 +14,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -38,62 +36,36 @@ public class AdminAiOAuthService {
 	private static final String CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses";
 	private static final String REDIRECT_URI = "http://localhost:1455/auth/callback";
 	private static final String SCOPE = "openid profile email offline_access";
-	private static final String TOKEN_KEY_ENV = "OAUTH_TOKEN_DIGIT_KEY";
-	private static final String TOKEN_KEY_MASK_ENV = "OAUTH_TOKEN_DIGIT_KEY_MASK";
 	private static final String JWT_AUTH_CLAIM = "https://api.openai.com/auth";
 	private static final String JWT_EMAIL_CLAIM = "https://api.openai.com/profile.email";
 	private static final int TOKEN_REFRESH_SKEW_SECONDS = 300;
 
-	private final OAuthTokenProtectService tokenProtectService;
+	private final AiLlmConnectionService connectionService;
 	private final ObjectMapper objectMapper;
 	private final HttpClient httpClient;
 	private final SecureRandom secureRandom = new SecureRandom();
 	private final Object lock = new Object();
-	private final Path tokenStorePath;
-	private final Path digitKeyStorePath;
-	private final Path bootstrapSettingsPath;
-
-	private String runtimeDigitKey = "";
+	private Long pendingProfileId;
 	private PendingFlow pendingFlow;
 	private HttpServer callbackServer;
 	private String callbackCode = "";
 	private String callbackError = "";
 
-	public AdminAiOAuthService(OAuthTokenProtectService tokenProtectService) {
-		this.tokenProtectService = tokenProtectService;
+	public AdminAiOAuthService(AiLlmConnectionService connectionService) {
+		this.connectionService = connectionService;
 		this.objectMapper = new ObjectMapper();
 		this.httpClient = HttpClient.newBuilder()
 				.connectTimeout(Duration.ofSeconds(20))
 				.build();
-		Path workspaceRoot = resolveWorkspaceRoot();
-		Path runtimeRoot = workspaceRoot.resolve(".oauth-llm-chat-runtime");
-		this.tokenStorePath = runtimeRoot.resolve("codex_oauth_tokens.json");
-		this.digitKeyStorePath = runtimeRoot.resolve("oauth_digit_key.txt");
-		this.bootstrapSettingsPath = Path.of(System.getProperty("user.home"), "pypy-orchestrator", "data", "settings.json");
 	}
 
-	public Map<String, Object> setDigitKey(String digitKey) {
-		synchronized (lock) {
-			runtimeDigitKey = tokenProtectService.validateDigitKey(digitKey);
-			saveDigitKey(runtimeDigitKey);
-			return status();
-		}
-	}
-
-	public Map<String, Object> status() {
+	public Map<String, Object> status(Long profileId) {
 		synchronized (lock) {
 			Map<String, Object> output = baseStatus();
-			String digitKey = digitKeyOrBlank();
-			output.put("keyRequired", digitKey.isBlank());
-			output.put("keyMask", OAuthTokenProtectService.KEY_MASK);
-			output.put("hasPendingFlow", pendingFlow != null);
+			output.put("hasPendingFlow", pendingFlow != null && Objects.equals(profileId, pendingProfileId));
 			output.put("callbackActive", callbackServer != null);
-			if (digitKey.isBlank()) {
-				output.put("error", TOKEN_KEY_ENV + " is required before OAuth token store access");
-				return output;
-			}
 			try {
-				CodexCredentials credentials = loadCredentials(digitKey);
+				CodexCredentials credentials = loadCredentials(profileId);
 				output.put("logged_in", credentials != null);
 				output.put("token_valid", credentials != null && !credentials.isExpired());
 				if (credentials != null) {
@@ -104,31 +76,33 @@ public class AdminAiOAuthService {
 			} catch (RuntimeException ex) {
 				output.put("logged_in", false);
 				output.put("token_valid", false);
-				output.put("token_store_mismatch", ex.getMessage().contains("password mismatch"));
 				output.put("error", ex.getMessage());
 			}
 			return output;
 		}
 	}
 
-	public Map<String, Object> startLogin() {
+	public Map<String, Object> startLogin(Long profileId) {
 		synchronized (lock) {
-			requireDigitKey();
+			connectionService.resolveDraft(profileId);
 			PendingFlow flow = createAuthorizationFlow();
 			pendingFlow = flow;
+			pendingProfileId = profileId;
 			callbackCode = "";
 			callbackError = "";
 			startCallbackServer(flow.state());
 			return Map.of(
 					"authorization_url", flow.url(),
 					"callback_active", callbackServer != null,
-					"status", status());
+					"status", status(profileId));
 		}
 	}
 
-	public Map<String, Object> poll() {
+	public Map<String, Object> poll(String clientIp) {
 		synchronized (lock) {
-			requireDigitKey();
+			if (pendingProfileId == null) {
+				throw new IllegalStateException("No pending OAuth flow.");
+			}
 			boolean completed = false;
 			if (!callbackError.isBlank()) {
 				String message = callbackError;
@@ -137,37 +111,38 @@ public class AdminAiOAuthService {
 			}
 			if (pendingFlow != null && !callbackCode.isBlank()) {
 				CodexCredentials credentials = exchangeAuthorizationCode(callbackCode, pendingFlow.verifier());
-				saveCredentials(credentials, requireDigitKey());
+				connectionService.saveOAuthCredential(
+					pendingProfileId,
+					credentials.toMap(),
+					Instant.ofEpochSecond(credentials.expires()),
+					clientIp
+				);
 				stopCallbackServer();
 				pendingFlow = null;
+				Long completedProfileId = pendingProfileId;
+				pendingProfileId = null;
 				callbackCode = "";
 				completed = true;
+				return Map.of("completed", true, "status", status(completedProfileId));
 			}
-			return Map.of("completed", completed, "status", status());
+			return Map.of("completed", completed, "status", status(pendingProfileId));
 		}
 	}
 
-	public Map<String, Object> clear() {
+	public Map<String, Object> clear(Long profileId, String clientIp) {
 		synchronized (lock) {
 			stopCallbackServer();
 			pendingFlow = null;
+			pendingProfileId = null;
 			callbackCode = "";
 			callbackError = "";
-			try {
-				Files.deleteIfExists(tokenStorePath);
-			} catch (IOException ex) {
-				throw new IllegalStateException("Failed to delete OAuth token store", ex);
-			}
-			return status();
+			connectionService.clearCredential(profileId, clientIp);
+			return status(profileId);
 		}
 	}
 
 	public String chat(String message) {
-		CodexCredentials credentials;
-		synchronized (lock) {
-			credentials = getFreshCredentials(requireDigitKey());
-		}
-		return callCodexResponse(credentials, message);
+		throw new IllegalStateException("Direct Spring OAuth chat is disabled; use the FastAPI behavior engine.");
 	}
 
 	private Map<String, Object> baseStatus() {
@@ -176,9 +151,6 @@ public class AdminAiOAuthService {
 		output.put("token_url", TOKEN_URL);
 		output.put("redirect_uri", REDIRECT_URI);
 		output.put("client_id", CLIENT_ID);
-		output.put("token_store_path", tokenStorePath.toString());
-		output.put("digit_key_store_path", digitKeyStorePath.toString());
-		output.put("bootstrap_settings_path", bootstrapSettingsPath.toString());
 		output.put("logged_in", false);
 		output.put("token_valid", false);
 		output.put("account_id", "");
@@ -187,8 +159,33 @@ public class AdminAiOAuthService {
 		return output;
 	}
 
-	private CodexCredentials getFreshCredentials(String digitKey) {
-		CodexCredentials credentials = loadCredentials(digitKey);
+	public Map<String, Object> getFreshCredential(Long profileId) {
+		synchronized (lock) {
+			return getFreshCredentials(profileId).toMap();
+		}
+	}
+
+	public Map<String, Object> getFreshCredential(Long credentialId, Map<String, Object> rawCredential) {
+		synchronized (lock) {
+			CodexCredentials credentials = CodexCredentials.from(rawCredential);
+			if (credentials == null) {
+				throw new IllegalStateException("No valid OAuth credentials are available.");
+			}
+			if (!credentials.isExpired()) {
+				return credentials.toMap();
+			}
+			CodexCredentials refreshed = refreshCredentials(credentials);
+			connectionService.refreshOAuthCredentialById(
+				credentialId,
+				refreshed.toMap(),
+				Instant.ofEpochSecond(refreshed.expires())
+			);
+			return refreshed.toMap();
+		}
+	}
+
+	private CodexCredentials getFreshCredentials(Long profileId) {
+		CodexCredentials credentials = loadCredentials(profileId);
 		if (credentials == null) {
 			throw new IllegalStateException("No valid OAuth credentials are available. Start OAuth login first.");
 		}
@@ -196,63 +193,13 @@ public class AdminAiOAuthService {
 			return credentials;
 		}
 		CodexCredentials refreshed = refreshCredentials(credentials);
-		saveCredentials(refreshed, digitKey);
+		connectionService.refreshOAuthCredential(profileId, refreshed.toMap(), Instant.ofEpochSecond(refreshed.expires()));
 		return refreshed;
 	}
 
-	private CodexCredentials loadCredentials(String digitKey) {
-		try {
-			if (Files.isRegularFile(tokenStorePath)) {
-				Map<String, Object> stored = objectMapper.readValue(
-						tokenStorePath.toFile(),
-						new TypeReference<>() {
-						});
-				Map<String, Object> raw = tokenProtectService.unprotect(stored, digitKey);
-				CodexCredentials credentials = CodexCredentials.from(raw);
-				if (credentials != null) {
-					if (!Boolean.TRUE.equals(stored.get("protected"))) {
-						saveCredentials(credentials, digitKey);
-					}
-					return credentials;
-				}
-			}
-			CodexCredentials bootstrapCredentials = loadBootstrapCredentials();
-			if (bootstrapCredentials != null) {
-				saveCredentials(bootstrapCredentials, digitKey);
-			}
-			return bootstrapCredentials;
-		} catch (IOException ex) {
-			throw new IllegalStateException("Failed to read OAuth token store", ex);
-		}
-	}
-
-	private CodexCredentials loadBootstrapCredentials() {
-		if (!Files.isRegularFile(bootstrapSettingsPath)) {
-			return null;
-		}
-		try {
-			Map<String, Object> settings = objectMapper.readValue(
-					bootstrapSettingsPath.toFile(),
-					new TypeReference<>() {
-					});
-			Object raw = settings.get("codex_oauth");
-			if (raw instanceof Map<?, ?> map) {
-				return CodexCredentials.from(toStringObjectMap(map));
-			}
-			return null;
-		} catch (IOException ex) {
-			return null;
-		}
-	}
-
-	private void saveCredentials(CodexCredentials credentials, String digitKey) {
-		try {
-			Files.createDirectories(tokenStorePath.getParent());
-			Map<String, Object> protectedStore = tokenProtectService.protect(credentials.toMap(), digitKey);
-			objectMapper.writerWithDefaultPrettyPrinter().writeValue(tokenStorePath.toFile(), protectedStore);
-		} catch (IOException ex) {
-			throw new IllegalStateException("Failed to save OAuth token store", ex);
-		}
+	private CodexCredentials loadCredentials(Long profileId) {
+		if (profileId == null) return null;
+		return CodexCredentials.from(connectionService.loadOAuthCredential(profileId));
 	}
 
 	private CodexCredentials exchangeAuthorizationCode(String code, String verifier) {
@@ -488,60 +435,6 @@ public class AdminAiOAuthService {
 		}
 	}
 
-	private String requireDigitKey() {
-		String digitKey = digitKeyOrBlank();
-		if (digitKey.isBlank()) {
-			throw new IllegalStateException(TOKEN_KEY_ENV + " is required before OAuth token store access");
-		}
-		return digitKey;
-	}
-
-	private String digitKeyOrBlank() {
-		String candidate = firstNonBlank(runtimeDigitKey, System.getenv(TOKEN_KEY_ENV), loadStoredDigitKey());
-		if (candidate.isBlank()) {
-			return "";
-		}
-		String validated = tokenProtectService.validateDigitKey(candidate);
-		if (runtimeDigitKey.isBlank()) {
-			runtimeDigitKey = validated;
-		}
-		return validated;
-	}
-
-	private void saveDigitKey(String digitKey) {
-		try {
-			Files.createDirectories(digitKeyStorePath.getParent());
-			Files.writeString(digitKeyStorePath, digitKey, StandardCharsets.UTF_8);
-		} catch (IOException ex) {
-			throw new IllegalStateException("Failed to save OAuth digit key", ex);
-		}
-	}
-
-	private String loadStoredDigitKey() {
-		try {
-			if (!Files.isRegularFile(digitKeyStorePath)) {
-				return "";
-			}
-			return Files.readString(digitKeyStorePath, StandardCharsets.UTF_8).trim();
-		} catch (IOException ex) {
-			throw new IllegalStateException("Failed to read OAuth digit key", ex);
-		}
-	}
-
-	private Path resolveWorkspaceRoot() {
-		Path userDir = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-		Path current = userDir;
-		while (current != null) {
-			if (Files.isDirectory(current.resolve("project-cyan")) && Files.isDirectory(current.resolve("individual"))) {
-				return current;
-			}
-			if ("project-cyan".equalsIgnoreCase(String.valueOf(current.getFileName())) && current.getParent() != null) {
-				return current.getParent();
-			}
-			current = current.getParent();
-		}
-		return userDir;
-	}
 
 	private String formEncode(Map<String, String> fields) {
 		List<String> parts = new ArrayList<>();

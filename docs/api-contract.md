@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.10` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.12` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -13,7 +13,7 @@
 **동결(freeze) vs 추가(additive) 규칙 — 가장 중요**
 
 - **동결 필드**: 옆 도메인(프론트·AI·다른 백엔드)이 당장 의존하는 필드. 한 번 적으면 함부로 못 바꾼다.
-- **필드 "추가"는 자유** — 남을 깨뜨리지 않으니 PR로 바로 반영하고 이 문서만 갱신한다.
+- **필드 "추가"는 자유** — 남을 깨뜨리지 않으니 PATCH 버전을 올리고 변경 로그를 기록한 뒤 PR로 반영한다.
 - **필드 "삭제·이름변경·타입변경"은 팀 합의 필요** — 남을 깨뜨린다. 슬랙에 공지 + 이 문서 변경 로그(§5)에 기록.
 
 **처음엔 "옆 사람이 화면/추천을 만들 수 있는 최소한"만 적는다.** 나머지는 만들면서 붙인다.
@@ -32,13 +32,13 @@
 
 규칙 세 줄 요약:
 
-1. **additive(추가)** → 버전 안 올림. §5 변경 로그에 한 줄만 적고 PR 반영.
+1. **additive(추가)** → **PATCH를 1 올림**(`v0.2.11 → v0.2.12`). §5 변경 로그에 한 줄 기록 후 PR 반영.
 2. **breaking(삭제·변경)** → **부**를 올림(`v0.2.0`, `v0.3.0`). 슬랙 공지 + §5 로그 필수.
 3. **Week 1 끝에 "전체 동결"** → **주**를 `v1.0.0`으로. 4주 프로젝트에선 사실상 처음이자 마지막 major.
 
 > 진행 예시: `v0.1.0`(초안) → 굿즈 필드 추가 `v0.1.1` → `price` 타입 변경(breaking) `v0.2.0` → Week 1 동결 `v1.0.0` → 통합 중 주문 status 값 추가(breaking) `v1.1.0`
 >
-> 부담되면 patch 없이 **major/부 두 단계만** 써도 충분하다 (additive=로그만 / breaking=부 올림 / 동결=`v1.0.0`).
+> PATCH 버전은 생략하지 않는다. additive·오타·설명 보정마다 PATCH를 1 올리고, breaking은 MINOR를 올리며, 전체 동결은 MAJOR를 올린다.
 
 ---
 
@@ -531,11 +531,13 @@
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
 - 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
-- 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional), `metadata.authRequired`, `metadata.authReason`, `metadata.loginPath` (로그인 CTA, optional)
+- 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional), `metadata.authRequired`, `metadata.authReason`, `metadata.loginPath` (로그인 CTA, optional), `metadata.configVersion`, `metadata.pipelineMode`, `metadata.behavior` (optional)
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
 - `auth.accessToken`은 로그인 사용자의 Supabase access token이며, AI 서버는 연결 메모리에만 보관하고 DB·로그에 저장하지 않는다.
 - `metadata.recommendations[]` 항목은 `{ goodsId, recommendationReason, rankOrder }` 형태이며, AI 서버는 채팅 이력 저장 시 `virtual_recommendation` 저장에 사용할 수 있다.
+- `metadata.behavior`는 `{ motionKey, source }` 형태다. `motionKey`는 발행된 모션 목록의 키이며 `source`는 `llm` 또는 `fallback`이다.
+- `metadata.pipelineMode`는 `faithful18` 또는 `optimized`이고, `metadata.configVersion`은 해당 응답에 적용된 발행 설정 버전이다.
 - 로그인 필요 응답은 기존 `full-text` 형태와 빈 `actions`를 유지하고 다음 additive metadata를 포함한다.
 
 ```json
@@ -583,14 +585,61 @@
 - 인증 필요: N
 - 응답: 배열
   - `hook`: `input` 또는 `output`
-  - `check`: 검사 이름 (`maxLength`, `forbiddenWords`, `specialCharRatio`, `numberRatio`, `englishRatio`, `actionScope`)
+  - `policyId`: 정책 ID
+  - `check`: 검사 이름 (`maxLength`, `forbiddenWords`, `specialCharRatio`, `numberRatio`, `englishRatio`, `actionScope`, `literalText`)
   - `threshold`: 검사 기준값 문자열 (`500`, `30%`, `navigate,highlight,addToCart` 등)
-  - `action`: 위반 시 동작 (`stop`, `review`, `rewrite`, `filter`)
+  - `action`: 위반 시 동작 (`stop`, `review`, `rewrite`, `filter`, `replace`, `remove`)
   - `message`: 차단/확인/교체 시 사용자에게 보낼 문장
+  - `replacement`: `literalText + replace` 정책의 치환 문자열, 그 외에는 null 또는 빈 문자열
   - `enabled`: 활성 여부
   - `priority`: 적용 순서
   - `updatedAt`: 마지막 변경 시각
 - 비고: WebSocket 메시지 형태는 바꾸지 않고, hook 위반 시에도 `{ type: "full-text", text, actions: [] }` 형태로 응답한다.
+- 상태: [x] additive
+
+#### [GET] /api/ai/runtime-config
+- 설명: FastAPI가 현재 발행된 Behavior 설정 manifest와 각 TSV signed URL을 조회
+- 인증 필요: N (운영 배포에서는 Spring↔AI 내부망 또는 서비스 인증으로 제한)
+- 응답:
+  - `configVersion`: 발행 버전
+  - `pipelineMode`: `faithful18` 또는 `optimized`
+  - `publishedAt`: ISO 8601 UTC 발행 시각
+  - `files`: `{ logicFunctionsUrl, adminSettingsUrl, motionListUrl }`
+  - `checksums`: `{ logicFunctions, adminSettings, motionList }` SHA-256
+  - `modelConnection`: `{ profileId, profileVersion }` 또는 `null`; credential은 포함하지 않음
+- 비고: FastAPI는 checksum 검증에 성공한 설정만 원자적으로 적용하며 실패 시 마지막 정상 버전을 유지한다.
+- 운영 상품 후보는 관리자 trace와 `/client-ws` 모두 Spring `GET /api/goods/recommendation-candidates`를 사용한다. TSV catalog URL은 운영 추천 실행 경로로 사용하지 않는다.
+- 상태: [x] additive
+
+#### [POST] /internal/admin/behavior/trace (FastAPI 내부 API)
+- 설명: Spring 관리자 페이지가 클라이언트와 동일한 FastAPI Behavior 엔진을 trace 모드로 실행
+- 인증 필요: 서비스 토큰 (`X-Project-Cyan-Service-Token`), 로컬에서 토큰 미설정 시 개발 모드
+- 요청: `{ customerInput, logicFunctions, adminSettings, motionList, pipelineMode, configVersion, memoryLog?, modelConnectionProfileId? }`
+- 응답: `{ ok, response, run }`; `response`는 실제 WebSocket `FullTextMessage`, `run.steps`는 18단계 상태·요약·duration을 포함하고 `run.latency`는 최근 최대 200건의 p50/p95와 5초 budget 초과 여부를 포함
+- 비고: 브라우저가 직접 호출하지 않고 Spring 관리자 프록시를 거친다.
+- 상태: [x] additive
+
+#### [GET/POST] /api/admin/ai/model-connections/**
+- 설명: 관리자 LLM 연결 프로필의 초안, API key, Codex OAuth, 연결 시험, 발행 이력과 롤백 관리
+- 인증 필요: 관리자 세션
+- 상태 변경 요청: `X-Project-Cyan-CSRF` 필수
+- credential 변경, OAuth 연결, Behavior 발행, 롤백: `X-Project-Cyan-Reauth` 추가 필수
+- 지원 조합: `OPENAI + API_KEY`, `CLAUDE + API_KEY`, `CODEX_OAUTH + OAUTH`, 개발용 `MOCK`
+- 비고: API key와 OAuth token은 쓰기 전용이며 응답에는 마스킹 힌트만 포함한다. OLV와 Claude OAuth 프로필은 지원하지 않는다.
+- 상태: [x] additive
+
+#### [POST] /api/ai/internal/model-connections/resolve
+- 설명: FastAPI가 WebSocket 연결 또는 관리자 trace 시작 시 특정 프로필 버전의 runtime credential을 조회
+- 인증 필요: 서비스 토큰 (`X-Project-Cyan-Service-Token`), 빈 토큰은 허용하지 않음
+- 요청: `{ profileId, profileVersion? }`; 버전 생략 시 관리자 draft 시험
+- 응답: 서버 내부 runtime connection 객체, `Cache-Control: no-store`
+- 비고: 브라우저 및 일반 클라이언트 호출 금지. FastAPI는 평문 credential을 연결 수명 동안 메모리에서만 사용한다.
+- 상태: [x] additive
+
+#### [POST] /internal/admin/model-connections/test (FastAPI 내부 API)
+- 설명: 발행 전 관리자 프로필을 실제 FastAPI provider adapter로 시험
+- 인증 필요: 서비스 토큰, 빈 토큰은 허용하지 않음
+- 요청: `{ profileId }`
 - 상태: [x] additive
 
 #### [GET] /api/ai/personalization-context
@@ -755,15 +804,15 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 
 모든 변경을 여기 기록한다. **종류(additive/breaking)와 버전(§0.1)을 함께 적는다.**
 
-- additive(추가): 버전 유지 또는 수(patch)만 ↑
+- additive(추가): 수(PATCH)를 반드시 1 올림
 - breaking(삭제·이름변경·타입변경·status 변경): 부(minor) ↑ + 슬랙 공지 필수
 
 ### 예시
 | 날짜 | 버전 | 도메인 | 종류 | 변경 내용 | 합의자 |
 |------|------|--------|------|-----------|--------|
 | 2026-06-11 | v0.1.0 | 전체 | — | 초안 작성 | 전원 |
-| 2026-06-12 | v0.1.0 | artists | additive | `GET /api/artists` 목록 계약 및 artist 요약 객체 추가 | 아티스트 |
-| 2026-06-1X | v0.1.1 | (예) goods | additive | `discountRate` 필드 추가 | 굿즈 |
+| 2026-06-12 | v0.1.1 | artists | additive | `GET /api/artists` 목록 계약 및 artist 요약 객체 추가 | 아티스트 |
+| 2026-06-1X | v0.1.2 | (예) goods | additive | `discountRate` 필드 추가 | 굿즈 |
 | 2026-06-1X | v0.2.0 | (예) goods | breaking | `price` 타입 String→int 변경 | 전원 |
 | 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
 | 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
@@ -813,5 +862,8 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-30 | v0.2.9 | member | correction | 탈퇴 회원 로그인 차단 안내 문구를 “계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.”로 변경 | Codex |
 | 2026-07-01 | v0.2.10 | member/cart | correction | `PATCH /api/members/me` 요청의 `addressDetail` 갱신과 checkout 주문 확인 주소 요약 기준을 명시 | Codex |
 | 2026-07-01 | v0.2.10 | member/cart | additive | `member_address.delivery_request`와 회원 프로필 `deliveryRequest`를 추가해 checkout 배송 요청사항 기본값 저장을 지원 | Codex |
+| 2026-06-30 | v0.2.10 | ai | additive | 발행된 Behavior runtime config, 공통 FastAPI 18단계 trace, Hook 문자열 변환, `metadata.behavior` 모션 계약 추가 | Codex |
+| 2026-06-30 | v0.2.11 | ai/admin | additive | AES-GCM LLM 연결 프로필 금고, 관리자 재인증·CSRF, FastAPI 내부 credential resolve, 새 WebSocket 연결 단위 provider 발행·롤백 추가 | Codex |
+| 2026-07-01 | v0.2.12 | 전체 | correction | additive 변경도 PATCH 버전을 반드시 1 올리도록 문서 버전 규칙 통일 | 강승민 |
 |  |  |  |  |  |  |
 
