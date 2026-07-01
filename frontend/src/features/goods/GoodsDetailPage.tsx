@@ -17,12 +17,21 @@ import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import { useGoodsFavorites } from './useGoodsFavorites'
+import { formatGoodsPrice } from './goodsFormatters'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
 type DetailTab = 'intro' | 'reviews'
+
+const PURCHASE_STATE_LABELS: Record<string, string> = {
+  AVAILABLE: '판매 중',
+  UPCOMING: '판매 예정',
+  ENDED: '판매 종료',
+  SOLD_OUT: '품절',
+  UNAVAILABLE: '구매 불가',
+}
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
@@ -229,6 +238,29 @@ function GoodsDetailPage() {
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
   const descriptionHtml = goods?.description?.trim()
+  const detailSpecs = goods
+    ? [
+        { label: '아티스트', value: goods.artistName },
+        { label: '카테고리', value: goods.categoryName },
+        {
+          label: '판매 상태',
+          value: PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus,
+        },
+        { label: '가격', value: formatGoodsPrice(Number(goods.price ?? 0)) },
+        {
+          label: '재고',
+          value: goods.stockCount === undefined || goods.stockCount === null
+            ? null
+            : `${goods.stockCount.toLocaleString()}개`,
+        },
+        {
+          label: '리뷰',
+          value: Number(goods.reviewCount ?? 0) > 0
+            ? `${Number(goods.reviewCount ?? 0).toLocaleString()}개`
+            : null,
+        },
+      ].filter((item): item is { label: string; value: string } => Boolean(item.value))
+    : []
 
   async function handleShare() {
     try {
@@ -273,49 +305,13 @@ function GoodsDetailPage() {
       {status === 'data' && goods && (
         <>
           <section className="detail-layout">
-              <div className="detail-content">
-                <div className="detail-image" aria-label={`${goods.name} 이미지`}>
-                  <GoodsImage
-                    src={goods.imageUrl}
-                    alt={goods.name}
-                    fallbackLabel={goods.categoryName}
-                  />
-                </div>
-
-              <div className="detail-tabs">
-                <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
-                  <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
-                    상품 소개
-                  </button>
-                  <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
-                    리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
-                  </button>
-                </div>
-                {activeTab === 'intro' ? (
-                  <div className="detail-tab-panel" role="tabpanel">
-                    {descriptionHtml ? (
-                      <div
-                        className="detail-description"
-                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                      />
-                    ) : (
-                      <p>상품 소개가 준비 중입니다.</p>
-                    )}
-                    <div className="detail-long-image">
-                      {goods.imageUrl && (
-                        <GoodsImage
-                          src={goods.imageUrl}
-                          alt={`${goods.name} 상세`}
-                          fallbackLabel={goods.categoryName}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="detail-tab-panel" role="tabpanel">
-                    <GoodsReviewsPanel goodsId={goods.goodsId} />
-                  </div>
-                )}
+            <div className="detail-content">
+              <div className="detail-image" aria-label={`${goods.name} 이미지`}>
+                <GoodsImage
+                  src={goods.imageUrl}
+                  alt={goods.name}
+                  fallbackLabel={goods.categoryName}
+                />
               </div>
             </div>
 
@@ -330,6 +326,47 @@ function GoodsDetailPage() {
               likeFeedback={likeFeedback}
               onLikeToggle={() => void handleLikeToggle()}
             />
+          </section>
+
+          <section className="detail-tabs">
+            <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
+              <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
+                상품 소개
+              </button>
+              <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
+                리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
+              </button>
+            </div>
+            {activeTab === 'intro' ? (
+              <div className="detail-tab-panel" role="tabpanel">
+                <div className="detail-overview">
+                  <dl className="detail-spec-list">
+                    {detailSpecs.map((item) => (
+                      <div key={item.label}>
+                        <dt>{item.label}</dt>
+                        <dd>{item.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <section className="detail-description-summary" aria-labelledby="detail-description-heading">
+                    <h2 id="detail-description-heading">상품 소개</h2>
+                    {descriptionHtml ? (
+                      <div
+                        className="detail-description"
+                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                      />
+                    ) : (
+                      <p>상품 소개가 준비 중입니다.</p>
+                    )}
+                  </section>
+                </div>
+              </div>
+            ) : (
+              <div className="detail-tab-panel" role="tabpanel">
+                <GoodsReviewsPanel goodsId={goods.goodsId} />
+              </div>
+            )}
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />
