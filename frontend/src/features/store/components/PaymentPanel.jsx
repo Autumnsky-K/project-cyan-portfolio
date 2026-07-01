@@ -17,6 +17,15 @@ function getPaymentStatusLabel(status) {
   return labels[contractStatus] || contractStatus
 }
 
+function getAddressSummary(checkoutForm) {
+  return [
+    checkoutForm.address.trim(),
+    checkoutForm.addressDetail.trim(),
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
 function PaymentPanel({
   checkoutForm,
   hasBlockingCartIssue = false,
@@ -39,6 +48,7 @@ function PaymentPanel({
     : paymentMethod === PAYMENT_METHODS.KAKAO_PAY
       ? PAYMENT_METHODS.KAKAO_PAY
       : PAYMENT_METHODS.TOSS
+  const addressSummary = getAddressSummary(checkoutForm)
 
   return (
     <aside className="payment-panel">
@@ -97,7 +107,7 @@ function PaymentPanel({
               {checkoutForm.email.trim() || '-'} /{' '}
               {checkoutForm.phone.trim() || '-'}
             </p>
-            <p>Address: {checkoutForm.address.trim() || '-'}</p>
+            <p>Address: {addressSummary || '-'}</p>
             <p>Delivery request: {checkoutForm.deliveryRequest.trim() || '-'}</p>
           </>
         )}

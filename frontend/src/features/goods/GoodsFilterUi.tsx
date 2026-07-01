@@ -40,8 +40,8 @@ function FilterContents({
 }: FilterContentsProps) {
   return (
     <>
-      {filterStatus === 'loading' && <p className="filter-note">Loading filters...</p>}
-      {filterStatus === 'error' && <p className="filter-note">Unable to load filters.</p>}
+      {filterStatus === 'loading' && <p className="filter-note">필터를 불러오는 중입니다.</p>}
+      {filterStatus === 'error' && <p className="filter-note">필터를 불러오지 못했습니다.</p>}
       {groups.map((group) => (
         <fieldset className="filter-group" key={group.title}>
           <legend>{group.title}</legend>
@@ -142,12 +142,12 @@ export function GoodsActiveFilterChips({
     <div
       className="active-filter-bar"
       data-empty={!hasActiveFilters}
-      aria-label={hasActiveFilters ? 'Applied filters' : undefined}
+      aria-label={hasActiveFilters ? '적용된 필터' : undefined}
       aria-hidden={!hasActiveFilters}
     >
       {hasActiveFilters && (
         <>
-          <span className="active-filter-label">Applied</span>
+          <span className="active-filter-label">적용됨</span>
           {visibleChips.map((chip) => (
             <button type="button" key={chip.key} onClick={chip.onRemove}>
               {chip.label} <span aria-hidden="true">×</span>
@@ -254,13 +254,13 @@ function GoodsFilterUi({
   return (
     <>
       <button className="mobile-filter-trigger" type="button" onClick={openMobileFilters}>
-        Filters {selectedCount > 0 && <span>{selectedCount}</span>}
+        필터 {selectedCount > 0 && <span>{selectedCount}</span>}
       </button>
 
-      <aside className="filter-panel desktop-filter-panel" aria-label="Goods filters">
+      <aside className="filter-panel desktop-filter-panel" aria-label="굿즈 필터">
         <div className="panel-heading">
-          <h2>Filters</h2>
-          <button type="button" onClick={onReset}>Reset</button>
+          <h2>필터</h2>
+          <button type="button" onClick={onReset}>초기화</button>
         </div>
         <FilterContents
           groups={groups}
@@ -281,10 +281,10 @@ function GoodsFilterUi({
           >
             <div className="mobile-filter-header">
               <div>
-                <p>Refine results</p>
-                <h2 id="mobile-filter-title">Filters</h2>
+                <p>결과 좁히기</p>
+                <h2 id="mobile-filter-title">필터</h2>
               </div>
-              <button type="button" aria-label="Close filters" onClick={onCloseMobile}>×</button>
+              <button type="button" aria-label="필터 닫기" onClick={onCloseMobile}>×</button>
             </div>
             <div className="mobile-filter-body">
               <FilterContents
@@ -299,10 +299,10 @@ function GoodsFilterUi({
                 type="button"
                 onClick={() => setDraftSelectedFilters({ categoryIds: [], artistIds: [], tags: [] })}
               >
-                Reset
+                초기화
               </button>
               <button className="mobile-filter-apply" type="button" onClick={applyMobileFilters}>
-                View results
+                결과 보기
               </button>
             </div>
           </section>

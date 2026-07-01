@@ -61,6 +61,10 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 			writeError(response, "MEMBER_NOT_REGISTERED", "회원 정보가 등록되어 있지 않습니다.", HttpStatus.FORBIDDEN);
 			return;
 		}
+		if (!member.get().isActive()) {
+			writeError(response, "MEMBER_WITHDRAWN", "계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.", HttpStatus.FORBIDDEN);
+			return;
+		}
 
 		request.setAttribute(AUTHENTICATED_MEMBER_ATTRIBUTE, AuthenticatedMember.from(member.get()));
 		filterChain.doFilter(request, response);

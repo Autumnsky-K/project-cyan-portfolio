@@ -69,7 +69,7 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'storage' or current == 'payment'} ? 'open' : null">
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'members' or current == 'storage' or current == 'payment'} ? 'open' : null">
       <summary class="admin-nav-parent">데이터 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -78,6 +78,9 @@
         <a class="admin-nav-child"
            th:href="@{/admin/goods}"
            th:attr="aria-current=${current == 'goods'} ? 'page' : null">굿즈 정보 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/members}"
+           th:attr="aria-current=${current == 'members'} ? 'page' : null">회원 정보 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/storage}"
            th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>
@@ -121,6 +124,10 @@
     <a th:href="@{/admin/goods}" title="굿즈" aria-label="굿즈">
       <span class="admin-rail-icon admin-rail-icon-goods" aria-hidden="true"></span>
       <span class="admin-rail-label">굿즈</span>
+    </a>
+    <a th:href="@{/admin/members}" title="회원" aria-label="회원">
+      <span class="admin-rail-icon admin-rail-icon-artists" aria-hidden="true"></span>
+      <span class="admin-rail-label">회원</span>
     </a>
     <a th:href="@{/admin/data}" title="데이터" aria-label="데이터">
       <span class="admin-rail-icon admin-rail-icon-data" aria-hidden="true"></span>

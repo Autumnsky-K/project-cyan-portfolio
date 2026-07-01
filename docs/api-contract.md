@@ -1,4 +1,4 @@
-# SM Universe · API 계약 (Week 1 동결본)
+﻿# SM Universe · API 계약 (Week 1 동결본)
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
@@ -80,6 +80,16 @@
 {
   "code": "MEMBER_NOT_REGISTERED",
   "message": "회원 정보가 등록되어 있지 않습니다.",
+  "status": 403
+}
+```
+
+토큰은 유효하지만 탈퇴 처리된 회원일 때:
+
+```json
+{
+  "code": "MEMBER_WITHDRAWN",
+  "message": "계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.",
   "status": 403
 }
 ```
@@ -182,8 +192,8 @@
 - 인증 필요: N
 - 요청 body: { email, password, name, phone, address, agreements }
 - 응답 (동결 필드): { userId(uuid), email, name }
-- 실패: 이미 가입된 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
-- 실패: 이미 가입된 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
+- 실패: 활성 회원이 이미 사용하는 이메일은 `{code:"MEMBER_EMAIL_ALREADY_EXISTS", message:"이미 가입된 이메일 주소입니다. 로그인하거나 비밀번호를 찾아주세요.", status:409}` 반환
+- 실패: 활성 회원이 이미 사용하는 휴대폰번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대폰 번호입니다. 기존 계정으로 로그인해주세요.", status:409}` 반환
 - 상태: [x] 동결
 ```
 
@@ -193,7 +203,7 @@
 - 인증 필요: N
 - 요청 body: { email, phone }
 - 응답 (동결 필드): { available(boolean), emailExists(boolean), phoneExists(boolean) }
-- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다.
+- 비고: 프론트는 available=false이면 다음 단계로 이동하지 않고 중복 안내 팝업을 표시한다. 탈퇴 회원의 이메일/휴대폰번호는 중복으로 보지 않는다.
 - 상태: [x] 동결
 ```
 
@@ -203,8 +213,39 @@
 - 인증 필요: N
 - 요청 body: { email }
 - 응답 (동결 필드): { exists(boolean) }
-- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다.
+- 비고: 프론트는 exists=false이면 Supabase resetPasswordForEmail을 호출하지 않는다. 탈퇴 회원 이메일은 exists=false로 본다.
 - 상태: [x] 동결
+```
+
+```
+#### [GET] /api/members/me
+- 설명: 로그인 사용자의 회원 프로필과 기본 배송 정보를 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail, deliveryRequest }`
+- 비고: `memberId`는 내부 bigint PK, `memberUuid`는 Supabase `auth.users.id`와 동일한 UUID다. 기본 배송지가 있으면 `member_address`의 기본 주소를 우선 사용하고, 없으면 빈 문자열을 반환한다.
+- 상태: [x] additive
+```
+
+```
+#### [PATCH] /api/members/me
+- 설명: 로그인 회원의 개인정보 수정
+- 인증 필요: Y
+- 요청 body: { email, name, phone, address, addressDetail, deliveryRequest }
+- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail, deliveryRequest }`
+- 실패: 이미 가입된 휴대전화번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대전화번호입니다. 다른 번호를 입력해주세요.", status:409}` 반환
+- 비고: phone은 `010-0000-0000` 형식으로 정규화한다. 현재 수정 요청은 기본 주소의 `address`, `addressDetail`, `deliveryRequest`를 함께 갱신한다.
+- 상태: [x] additive
+```
+
+```
+#### [DELETE] /api/members/me
+- 설명: 로그인 회원 탈퇴 처리
+- 인증 필요: Y
+- 요청: 없음
+- 응답: 204 No Content
+- 비고: 주문/결제 이력 참조 무결성을 유지하기 위해 회원 row는 탈퇴 상태로 익명화하고 Supabase Auth 사용자를 삭제한다.
+- 상태: [x] additive
 ```
 
 ```
@@ -216,7 +257,6 @@
 - 비고: `member_artist.member_id`는 인증된 회원에서 결정하며, access token과 내부 prompt에는 저장하지 않는다.
 - 상태: [x] additive
 ```
-
 `public.member` 동기화:
 
 - `member_uuid`: Supabase `auth.users.id`와 동일한 uuid
@@ -777,6 +817,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-18 | v0.1.3 | goods | additive | 상품 상세에 판매 기간, 구매 상태, 배송, 옵션 그룹, variant, 안내 필드를 추가하고 `GET /api/goods/{goodsId}/related`를 추가 | Codex |
 | 2026-06-19 | v0.1.4 | goods | additive | 상품 요약에 평균 별점과 리뷰 수를 추가하고 리뷰 목록 및 요약 조회 API를 추가 | Codex |
 | 2026-06-24 | v0.2.0 | goods/member | additive | 로그인 사용자의 상품 리뷰 작성·수정·삭제와 내 리뷰 조회 API 추가 (`GET /reviews/my`, `POST/PATCH/DELETE /reviews`) | Codex |
+| 2026-06-30 | v0.2.10 | member/cart | additive | `GET /api/members/me` 응답에 `phone`, `postalCode`, `address`, `addressDetail`을 추가하고 Cart checkout 기본 배송 정보 자동 채움을 지원 | Codex |
 |  |  |  |  |  |  |
 
 ### 로그 기록
@@ -805,6 +846,8 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-24 | v0.2.0 | goods/member | additive | 계정별 상품 즐겨찾기 조회·추가·삭제 API (`GET /api/goods/favorites`, `POST/DELETE /api/goods/{goodsId}/favorites`) 추가 | Codex |
 | 2026-06-24 | v0.2.0 | cart/member | additive | 계정별 장바구니 조회·추가·수량 변경·삭제 API (`GET /api/cart`, `POST/PATCH/DELETE /api/cart/items`) 추가 | Codex |
 | 2026-06-26 | v0.2.0 | member | additive | 회원가입 1단계 중복 확인 API `POST /api/members/signup/availability` 추가 및 중복 이메일 오류 코드 명시 | Codex |
+| 2026-06-26 | v0.2.0 | member | additive | 로그인 회원 개인정보 수정 API `PATCH /api/members/me` 추가 | Codex |
+| 2026-06-29 | v0.2.2 | member | additive | 로그인 회원 탈퇴 API `DELETE /api/members/me` 추가 | Codex |
 | 2026-06-24 | v0.2.1 | ai | additive | WebSocket plain text 입력 한도와 ACTION 실행 대상 allow-list 보안 규칙 추가 | 강승민 |
 | 2026-06-25 | v0.2.2 | ai/goods | additive | AI 서버가 최신 TSV 상품 카탈로그 URL을 조회하는 `GET /api/ai/goods-catalog/latest` 추가 | 강승민 |
 | 2026-06-25 | v0.2.3 | ai | additive | AI input/output hook 정책 조회 API `GET /api/ai/hooks` 추가 | 강승민 |
@@ -814,7 +857,13 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-26 | v0.2.7 | ai/member/goods | additive | 회원 선호 아티스트 조회 API `GET /api/members/me/favorite-artists`와 AI 추천 후보 `preferredArtistIds`, `artistId` 응답 필드 추가 | 강승민 |
 | 2026-06-29 | v0.2.8 | ai/virtual-chat | additive | 통합 개인화 컨텍스트 조회와 PostgreSQL JSONB 기반 세션 요약 upsert API 추가 | 강승민 |
 | 2026-06-29 | v0.2.9 | ai/cart | additive | 비로그인 WebSocket 대화·10회 연결 한도·결정적 로그인 CTA metadata와 로그인 후 게스트 장바구니 병합 정책 추가 | 강승민 |
+| 2026-06-30 | v0.2.9 | member | additive | 탈퇴 상태 회원의 인증 API 접근을 `MEMBER_WITHDRAWN` 403으로 거절하도록 명시 | Codex |
+| 2026-06-30 | v0.2.9 | member | additive | 회원가입·중복확인·비밀번호 재설정 eligibility에서 탈퇴 회원을 기존 회원 중복으로 보지 않도록 명시 | Codex |
+| 2026-06-30 | v0.2.9 | member | correction | 탈퇴 회원 로그인 차단 안내 문구를 “계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.”로 변경 | Codex |
+| 2026-07-01 | v0.2.10 | member/cart | correction | `PATCH /api/members/me` 요청의 `addressDetail` 갱신과 checkout 주문 확인 주소 요약 기준을 명시 | Codex |
+| 2026-07-01 | v0.2.10 | member/cart | additive | `member_address.delivery_request`와 회원 프로필 `deliveryRequest`를 추가해 checkout 배송 요청사항 기본값 저장을 지원 | Codex |
 | 2026-06-30 | v0.2.10 | ai | additive | 발행된 Behavior runtime config, 공통 FastAPI 18단계 trace, Hook 문자열 변환, `metadata.behavior` 모션 계약 추가 | Codex |
 | 2026-06-30 | v0.2.11 | ai/admin | additive | AES-GCM LLM 연결 프로필 금고, 관리자 재인증·CSRF, FastAPI 내부 credential resolve, 새 WebSocket 연결 단위 provider 발행·롤백 추가 | Codex |
 | 2026-07-01 | v0.2.12 | 전체 | correction | additive 변경도 PATCH 버전을 반드시 1 올리도록 문서 버전 규칙 통일 | 강승민 |
 |  |  |  |  |  |  |
+

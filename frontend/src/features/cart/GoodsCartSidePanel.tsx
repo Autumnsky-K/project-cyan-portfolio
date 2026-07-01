@@ -10,7 +10,6 @@ function GoodsCartSidePanel() {
   const {
     clearCart,
     error,
-    isSignedIn,
     items,
     removeCartItem,
     status,
@@ -83,7 +82,7 @@ function GoodsCartSidePanel() {
           <strong>{formatCartPrice(totalPrice)}</strong>
         </div>
         <Link className="goods-cart-panel-checkout" aria-disabled={isEmpty} to="/cart">
-          {isSignedIn ? 'Checkout' : 'Sign in to checkout'}
+          View cart
         </Link>
       </div>
     </aside>

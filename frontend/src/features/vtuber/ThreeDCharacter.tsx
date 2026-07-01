@@ -1,6 +1,8 @@
 import { type ReactElement, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 
 import {
   type VtuberCharacterConfig,
@@ -14,6 +16,10 @@ type ThreeDCharacterProps = {
 }
 
 type RenderStatus = 'loading' | 'ready' | 'fallback'
+type LoadedThreeDModel = {
+  object: THREE.Object3D
+  animations: THREE.AnimationClip[]
+}
 
 function canUseWebGL(): boolean {
   const canvas = document.createElement('canvas')
@@ -32,6 +38,38 @@ function disposeObject(root: THREE.Object3D) {
       material?.dispose()
     }
   })
+}
+
+function isGlbModelUrl(modelUrl: string): boolean {
+  return modelUrl.split('?', 1)[0].toLowerCase().endsWith('.glb')
+}
+
+async function loadThreeDModel(
+  modelUrl: string,
+  textureUrl?: string,
+): Promise<LoadedThreeDModel> {
+  if (isGlbModelUrl(modelUrl)) {
+    const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
+    const gltf = await loader.loadAsync(modelUrl)
+    return {
+      object: gltf.scene,
+      animations: gltf.animations,
+    }
+  }
+
+  const [object, texture] = await Promise.all([
+    new FBXLoader().loadAsync(modelUrl),
+    textureUrl
+      ? new THREE.TextureLoader().loadAsync(textureUrl)
+      : Promise.resolve(null),
+  ])
+
+  applyTexture(object, texture)
+  return {
+    object,
+    animations: object.animations,
+  }
 }
 
 function frameObject(
@@ -192,27 +230,23 @@ function ThreeDCharacter({
       try {
         setRenderStatus('loading')
 
-        const [object, texture] = await Promise.all([
-          new FBXLoader().loadAsync(character.threeModelUrl as string),
-          character.threeTextureUrl
-            ? new THREE.TextureLoader().loadAsync(character.threeTextureUrl)
-            : Promise.resolve(null),
-        ])
+        const { object, animations } = await loadThreeDModel(
+          character.threeModelUrl as string,
+          character.threeTextureUrl,
+        )
 
         if (isDisposed) {
           disposeObject(object)
-          texture?.dispose()
           return
         }
 
-        applyTexture(object, texture)
         frameObject(object, camera)
         scene.add(object)
         modelRef.current = object
 
-        if (object.animations[0]) {
+        if (animations[0]) {
           const mixer = new THREE.AnimationMixer(object)
-          const action = mixer.clipAction(object.animations[0])
+          const action = mixer.clipAction(animations[0])
           action.reset()
           action.play()
           mixerRef.current = mixer

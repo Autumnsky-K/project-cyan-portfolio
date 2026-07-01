@@ -68,11 +68,7 @@ function AppShell() {
           <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
           <Route
             path="/cart"
-            element={(
-              <CartAccessGate>
-                <Store />
-              </CartAccessGate>
-            )}
+            element={<Store mode="cart" />}
           />
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -81,7 +77,15 @@ function AppShell() {
             path="/store"
             element={(
               <CartAccessGate>
-                <Store />
+                <Store mode="checkout" />
+              </CartAccessGate>
+            )}
+          />
+          <Route
+            path="/checkout"
+            element={(
+              <CartAccessGate>
+                <Store mode="checkout" />
               </CartAccessGate>
             )}
           />
