@@ -75,7 +75,7 @@ function getDefaultCheckoutForm(defaults = {}) {
     phone: formatKoreanPhoneNumber(defaults.phone ?? ''),
     address: String(defaults.address ?? '').trim(),
     addressDetail: String(defaults.addressDetail ?? '').trim(),
-    deliveryRequest: '',
+    deliveryRequest: String(defaults.deliveryRequest ?? '').trim(),
   }
 }
 
@@ -98,6 +98,7 @@ function loadCheckoutForm(defaults = {}) {
     const defaultPhone = formatKoreanPhoneNumber(defaults.phone ?? '')
     const defaultAddress = String(defaults.address ?? '').trim()
     const defaultAddressDetail = String(defaults.addressDetail ?? '').trim()
+    const defaultDeliveryRequest = String(defaults.deliveryRequest ?? '').trim()
 
     return {
       ...defaultForm,
@@ -109,6 +110,8 @@ function loadCheckoutForm(defaults = {}) {
       address: defaultAddress || String(savedForm.address ?? defaultForm.address).trim(),
       addressDetail:
         defaultAddressDetail || String(savedForm.addressDetail ?? defaultForm.addressDetail ?? '').trim(),
+      deliveryRequest:
+        defaultDeliveryRequest || String(savedForm.deliveryRequest ?? defaultForm.deliveryRequest ?? '').trim(),
     }
   } catch {
     return defaultForm
@@ -167,6 +170,7 @@ export function useStoreFlow(options = {}) {
     defaultCustomerPhone = '',
     defaultCustomerAddress = '',
     defaultCustomerAddressDetail = '',
+    defaultCustomerDeliveryRequest = '',
     defaultMemberId = null,
     fetchOrderHistory = false,
   } = options
@@ -179,10 +183,12 @@ export function useStoreFlow(options = {}) {
         phone: defaultCustomerPhone,
         address: defaultCustomerAddress,
         addressDetail: defaultCustomerAddressDetail,
+        deliveryRequest: defaultCustomerDeliveryRequest,
       }),
     [
       defaultCustomerAddress,
       defaultCustomerAddressDetail,
+      defaultCustomerDeliveryRequest,
       defaultCustomerEmail,
       defaultCustomerName,
       defaultCustomerPhone,
@@ -214,6 +220,7 @@ export function useStoreFlow(options = {}) {
       phone: defaultCustomerPhone,
       address: defaultCustomerAddress,
       addressDetail: defaultCustomerAddressDetail,
+      deliveryRequest: defaultCustomerDeliveryRequest,
     }),
   )
   const [paymentMethod, setPaymentMethod] = useState(
@@ -244,7 +251,8 @@ export function useStoreFlow(options = {}) {
       !defaultCustomerEmail &&
       !defaultCustomerPhone &&
       !defaultCustomerAddress &&
-      !defaultCustomerAddressDetail
+      !defaultCustomerAddressDetail &&
+      !defaultCustomerDeliveryRequest
     ) return undefined
 
     const timerId = window.setTimeout(() => {
@@ -253,8 +261,9 @@ export function useStoreFlow(options = {}) {
         currentForm.name === defaultCheckoutForm.name &&
         currentForm.email === defaultCheckoutForm.email &&
         currentForm.phone === defaultCheckoutForm.phone &&
-        currentForm.address === defaultCheckoutForm.address &&
-        currentForm.addressDetail === defaultCheckoutForm.addressDetail
+            currentForm.address === defaultCheckoutForm.address &&
+            currentForm.addressDetail === defaultCheckoutForm.addressDetail &&
+            currentForm.deliveryRequest === defaultCheckoutForm.deliveryRequest
           ? currentForm
           : {
               ...currentForm,
@@ -264,6 +273,7 @@ export function useStoreFlow(options = {}) {
               phone: defaultCheckoutForm.phone || currentForm.phone,
               address: defaultCheckoutForm.address || currentForm.address,
               addressDetail: defaultCheckoutForm.addressDetail || currentForm.addressDetail,
+              deliveryRequest: defaultCheckoutForm.deliveryRequest || currentForm.deliveryRequest,
             },
       )
     }, 0)
@@ -273,6 +283,7 @@ export function useStoreFlow(options = {}) {
     defaultCheckoutForm,
     defaultCustomerAddress,
     defaultCustomerAddressDetail,
+    defaultCustomerDeliveryRequest,
     defaultCustomerEmail,
     defaultCustomerName,
     defaultCustomerPhone,

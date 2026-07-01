@@ -23,6 +23,7 @@ function Store({ mode = 'checkout' }) {
     defaultCustomerPhone: access.member?.phone,
     defaultCustomerAddress: access.member?.address,
     defaultCustomerAddressDetail: access.member?.addressDetail,
+    defaultCustomerDeliveryRequest: access.member?.deliveryRequest,
     defaultMemberId: access.member?.memberId,
     fetchOrderHistory: isAdmin,
   })
@@ -41,11 +42,50 @@ function Store({ mode = 'checkout' }) {
   async function handleCheckoutProfileConfirm() {
     try {
       await updateMemberProfile(store.checkoutForm)
+      await access.refreshMember?.()
     } catch (error) {
       console.error(error)
       window.alert('변경 내용을 저장하지 못했습니다. 다시 시도해 주세요.')
       throw error
     }
+  }
+
+  function canPersistCheckoutProfile() {
+    return (
+      store.isCartSignedIn &&
+      !store.isCartEmpty &&
+      !store.hasBlockingCartIssue &&
+      String(store.checkoutForm.memberId ?? '').trim() &&
+      store.checkoutForm.name.trim() &&
+      store.checkoutForm.email.trim() &&
+      store.checkoutForm.phone.trim() &&
+      store.checkoutForm.address.trim()
+    )
+  }
+
+  async function saveCheckoutProfile() {
+    try {
+      await updateMemberProfile(store.checkoutForm)
+      await access.refreshMember?.()
+    } catch (error) {
+      console.error(error)
+      window.alert('변경 내용을 저장하지 못했습니다. 다시 시도해 주세요.')
+      throw error
+    }
+  }
+
+  async function handleCheckoutSubmit(event) {
+    event.preventDefault()
+
+    if (canPersistCheckoutProfile()) {
+      try {
+        await saveCheckoutProfile()
+      } catch {
+        return
+      }
+    }
+
+    store.handleCheckout(event)
   }
 
   if (isCheckoutMode && access.isLoading) {
@@ -103,7 +143,7 @@ function Store({ mode = 'checkout' }) {
               <section className="store-section checkout-stage" id="checkout" aria-labelledby="checkout-title">
                 <div className="checkout-main">
                   <h2 id="checkout-title">Checkout</h2>
-                  <form className="checkout-form" onSubmit={store.handleCheckout}>
+                  <form className="checkout-form" onSubmit={handleCheckoutSubmit}>
                     <CheckoutForm
                       checkoutForm={store.checkoutForm}
                       errors={store.errors}

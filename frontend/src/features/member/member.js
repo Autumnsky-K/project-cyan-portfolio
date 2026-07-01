@@ -453,6 +453,7 @@ export async function getCurrentMember() {
     postalCode: memberProfile?.postalCode ?? '',
     address: memberProfile?.address ?? '',
     addressDetail: memberProfile?.addressDetail ?? '',
+    deliveryRequest: memberProfile?.deliveryRequest ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||
@@ -615,6 +616,7 @@ export async function updateMemberProfile(form) {
       phone: form.phone,
       address: form.address,
       addressDetail: form.addressDetail,
+      deliveryRequest: form.deliveryRequest,
     }),
   })
 

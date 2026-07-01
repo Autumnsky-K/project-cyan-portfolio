@@ -7,6 +7,7 @@ public record MemberProfileUpdateRequest(
 	@NotBlank String name,
 	@NotBlank String phone,
 	@NotBlank String address,
-	String addressDetail
+	String addressDetail,
+	String deliveryRequest
 ) {
 }

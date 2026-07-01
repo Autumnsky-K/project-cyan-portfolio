@@ -222,7 +222,7 @@
 - 설명: 로그인 사용자의 회원 프로필과 기본 배송 정보를 조회
 - 인증 필요: Y
 - 요청 header: `Authorization: Bearer <Supabase access_token>`
-- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail }`
+- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail, deliveryRequest }`
 - 비고: `memberId`는 내부 bigint PK, `memberUuid`는 Supabase `auth.users.id`와 동일한 UUID다. 기본 배송지가 있으면 `member_address`의 기본 주소를 우선 사용하고, 없으면 빈 문자열을 반환한다.
 - 상태: [x] additive
 ```
@@ -231,10 +231,10 @@
 #### [PATCH] /api/members/me
 - 설명: 로그인 회원의 개인정보 수정
 - 인증 필요: Y
-- 요청 body: { name, phone, address }
-- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail }`
+- 요청 body: { email, name, phone, address, addressDetail, deliveryRequest }
+- 응답: `{ memberId, memberUuid, email, name, phone, postalCode, address, addressDetail, deliveryRequest }`
 - 실패: 이미 가입된 휴대전화번호는 `{code:"MEMBER_PHONE_ALREADY_EXISTS", message:"이미 가입된 휴대전화번호입니다. 다른 번호를 입력해주세요.", status:409}` 반환
-- 비고: phone은 `010-0000-0000` 형식으로 정규화한다. 현재 수정 요청은 기본 주소의 `address`를 갱신하며 `addressDetail`은 조회 응답에만 포함된다.
+- 비고: phone은 `010-0000-0000` 형식으로 정규화한다. 현재 수정 요청은 기본 주소의 `address`, `addressDetail`, `deliveryRequest`를 함께 갱신한다.
 - 상태: [x] additive
 ```
 
@@ -811,5 +811,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-30 | v0.2.9 | member | additive | 탈퇴 상태 회원의 인증 API 접근을 `MEMBER_WITHDRAWN` 403으로 거절하도록 명시 | Codex |
 | 2026-06-30 | v0.2.9 | member | additive | 회원가입·중복확인·비밀번호 재설정 eligibility에서 탈퇴 회원을 기존 회원 중복으로 보지 않도록 명시 | Codex |
 | 2026-06-30 | v0.2.9 | member | correction | 탈퇴 회원 로그인 차단 안내 문구를 “계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.”로 변경 | Codex |
+| 2026-07-01 | v0.2.10 | member/cart | correction | `PATCH /api/members/me` 요청의 `addressDetail` 갱신과 checkout 주문 확인 주소 요약 기준을 명시 | Codex |
+| 2026-07-01 | v0.2.10 | member/cart | additive | `member_address.delivery_request`와 회원 프로필 `deliveryRequest`를 추가해 checkout 배송 요청사항 기본값 저장을 지원 | Codex |
 |  |  |  |  |  |  |
 

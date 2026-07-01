@@ -32,9 +32,13 @@ function CartPanel({
         <ul className="cart-list">
           {cartItems.map((item) => {
             const cartItemKey = item.cartItemKey ?? item.id
+            const imageUrl = item.image ?? item.imageUrl ?? ''
 
             return (
               <li key={cartItemKey}>
+                <div className={`cart-item-image ${imageUrl ? 'has-image' : 'is-empty'}`} aria-hidden="true">
+                  {imageUrl && <img src={imageUrl} alt="" />}
+                </div>
                 <div>
                   <strong>{item.name}</strong>
                   <span>{formatPrice(item.price)}</span>

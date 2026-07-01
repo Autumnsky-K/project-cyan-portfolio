@@ -126,6 +126,7 @@ public class MemberService {
 		String phone = normalizePhone(request.phone());
 		String address = normalizeAddress(request.address());
 		String addressDetail = normalizeOptionalText(request.addressDetail());
+		String deliveryRequest = normalizeOptionalText(request.deliveryRequest());
 
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
@@ -157,7 +158,7 @@ public class MemberService {
 		MemberAddress memberAddress = memberAddressRepository
 			.findFirstByMemberMemberIdOrderByDefaultAddressDescAddressIdAsc(member.getMemberId())
 			.orElseGet(() -> memberAddressRepository.save(MemberAddress.defaultAddress(member, name, phone, address)));
-		memberAddress.updateDefaultAddress(name, phone, address, addressDetail);
+		memberAddress.updateDefaultAddress(name, phone, address, addressDetail, deliveryRequest);
 
 		return MemberProfileResponse.from(member, memberAddress);
 	}

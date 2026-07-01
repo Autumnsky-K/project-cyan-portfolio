@@ -142,6 +142,9 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField }) {
         <textarea
           value={checkoutForm.deliveryRequest}
           onChange={(event) => onChange('deliveryRequest', event.target.value)}
+          onBlur={() => {
+            if (onConfirmField) void onConfirmField('deliveryRequest')
+          }}
           placeholder="Delivery instructions"
           rows="2"
         />

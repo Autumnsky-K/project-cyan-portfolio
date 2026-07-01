@@ -10,7 +10,8 @@ public record MemberProfileResponse(
 	String phone,
 	String postalCode,
 	String address,
-	String addressDetail
+	String addressDetail,
+	String deliveryRequest
 ) {
 
 	static MemberProfileResponse from(Member member, MemberAddress address) {
@@ -22,7 +23,8 @@ public record MemberProfileResponse(
 			isBlank(member.getPhone()) && address != null ? address.getPhone() : member.getPhone(),
 			address == null ? "" : valueOrEmpty(address.getPostalCode()),
 			address == null ? "" : valueOrEmpty(address.getAddress()),
-			address == null ? "" : valueOrEmpty(address.getAddressDetail())
+			address == null ? "" : valueOrEmpty(address.getAddressDetail()),
+			address == null ? "" : valueOrEmpty(address.getDeliveryRequest())
 		);
 	}
 
