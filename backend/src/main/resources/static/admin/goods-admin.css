@@ -780,7 +780,7 @@ button.admin-primary {
 }
 
 .admin-import-upload {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(210px, 0.45fr) minmax(240px, 1fr) minmax(260px, 1fr) auto;
   align-items: end;
 }
 
@@ -789,6 +789,31 @@ button.admin-primary {
   gap: 8px;
   color: var(--admin-muted);
   font-size: 14px;
+}
+
+.admin-import-source-toggle {
+  align-self: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-soft);
+  color: var(--admin-ink);
+}
+
+.admin-import-source-toggle input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+.admin-import-upload-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 13px;
 }
 
 .admin-import-upload input,
@@ -852,6 +877,11 @@ button.admin-primary {
   margin: 0;
   padding-left: 16px;
   color: #9d2b2b;
+}
+
+.admin-import-preview .admin-notice ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
 }
 
 .admin-table-panel,
@@ -1473,12 +1503,77 @@ button.admin-primary {
   font-size: 14px;
 }
 
+.admin-upload-controls select,
 .admin-upload-controls input[type="text"],
 .admin-upload-controls input[type="file"] {
   width: 100%;
   box-sizing: border-box;
   min-height: 42px;
   padding: 10px;
+}
+
+.admin-storage-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-storage-header-actions form {
+  margin: 0;
+}
+
+.admin-storage-header-actions a,
+.admin-storage-header-actions button,
+.admin-storage-directory-hint button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-control-bg);
+  color: var(--admin-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-storage-header-actions a {
+  color: var(--admin-accent, #2f6f64);
+}
+
+.admin-storage-directory {
+  gap: 12px;
+}
+
+.admin-storage-directory .admin-upload-controls {
+  grid-template-columns: minmax(180px, 0.7fr) minmax(260px, 1fr);
+}
+
+.admin-storage-upload-status {
+  justify-items: start;
+  text-align: left;
+}
+
+.admin-storage-directory-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-storage-directory-tree {
+  max-height: 680px;
+}
+
+.admin-upload-hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .admin-upload-progress {
@@ -1546,6 +1641,13 @@ button.admin-primary {
   grid-template-columns: 1fr !important;
   place-items: center;
   min-height: 58px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.admin-upload-empty:hover {
+  border-color: var(--admin-accent, #2f6f64);
+  color: var(--admin-accent, #2f6f64);
 }
 
 .admin-storage-image-grid,

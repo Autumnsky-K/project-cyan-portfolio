@@ -34,6 +34,13 @@ function relativePathForFile(file) {
   return rawPath.replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
+function webpPathForUpload(path) {
+  if (window.ProjectCyanImageCompression?.webpPathFor) {
+    return window.ProjectCyanImageCompression.webpPathFor(path)
+  }
+  return String(path || '').replace(/\.[^.\/\\]+$/, '.webp')
+}
+
 function isImageFile(file) {
   return file.type.startsWith('image/') || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(file.name)
 }
@@ -58,6 +65,7 @@ function bindStorageUploadQueue(root) {
   const statusMeta = root.querySelector('[data-upload-status-meta]')
   const progressBar = root.querySelector('[data-upload-progress-bar]')
   const libraryGrid = document.querySelector('[data-storage-image-library]')
+  const pathOptions = Array.from(pathInput.querySelectorAll('option[data-bucket]'))
 
   let queue = []
   let abortController = null
@@ -70,12 +78,36 @@ function bindStorageUploadQueue(root) {
     progressBar.style.width = `${Math.max(0, Math.min(progress, 100))}%`
   }
 
+  function selectedUploadPath() {
+    if (pathInput.tagName === 'SELECT') {
+      return pathInput.selectedOptions[0]?.dataset.path || ''
+    }
+    return pathInput.value
+  }
+
+  function openFilePicker() {
+    if (running) {
+      return
+    }
+    fileInput.value = ''
+    fileInput.click()
+  }
+
   function renderQueue() {
     queueList.replaceChildren()
     if (queue.length === 0) {
       const empty = document.createElement('li')
       empty.className = 'admin-upload-empty'
+      empty.role = 'button'
+      empty.tabIndex = 0
       empty.textContent = '업로드할 이미지 폴더를 선택하세요.'
+      empty.addEventListener('click', openFilePicker)
+      empty.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          openFilePicker()
+        }
+      })
       queueList.append(empty)
       return
     }
@@ -84,7 +116,13 @@ function bindStorageUploadQueue(root) {
       const row = document.createElement('li')
       row.dataset.uploadState = item.state
       appendText(row, 'admin-upload-file-name', item.relativePath)
-      appendText(row, 'admin-upload-file-size', formatFileSize(item.file.size))
+      appendText(
+        row,
+        'admin-upload-file-size',
+        item.compressedSize
+          ? `${formatFileSize(item.compressedSize)} · ${window.ProjectCyanImageCompression?.savingsLabel?.(item.originalSize, item.compressedSize) || 'WebP 변환'}`
+          : formatFileSize(item.file.size)
+      )
       appendText(row, 'admin-upload-file-state', item.label)
       queueList.append(row)
     })
@@ -94,7 +132,14 @@ function bindStorageUploadQueue(root) {
     const seenPaths = new Set()
     return Array.from(fileInput.files || [])
       .filter(isImageFile)
-      .map((file) => ({ file, relativePath: relativePathForFile(file) }))
+      .map((file) => {
+        const sourceRelativePath = relativePathForFile(file)
+        return {
+          file,
+          relativePath: webpPathForUpload(sourceRelativePath),
+          sourceRelativePath,
+        }
+      })
       .filter((item) => {
         const key = item.relativePath.toLowerCase()
         if (seenPaths.has(key)) {
@@ -112,23 +157,44 @@ function bindStorageUploadQueue(root) {
     }
     queue = selectedFiles()
     const queuedCount = queue.filter((item) => item.state === 'queued').length
-    startButton.disabled = queuedCount === 0
+    const hasUploadTarget = Boolean(bucketInput.value && selectedUploadPath())
+    startButton.disabled = queuedCount === 0 || !hasUploadTarget
     updateStatus(
       queuedCount === 0 ? '대기 중' : `${queuedCount}개 항목 대기 중`,
-      queuedCount === 0 ? '폴더를 선택하면 파일을 하나씩 업로드합니다.' : '하위 폴더 경로가 그대로 유지됩니다.',
+      queuedCount === 0
+        ? '대기열을 클릭하면 이미지 폴더를 선택합니다.'
+        : (hasUploadTarget ? '선택한 Bucket/Path 아래에 WebP로 압축해 저장합니다.' : 'Bucket과 기존 Path를 먼저 선택하세요.'),
       0
     )
+    renderQueue()
+  }
+
+  async function prepareWebpUpload(item) {
+    if (item.uploadFile) {
+      return
+    }
+    if (!window.ProjectCyanImageCompression?.compressToWebp) {
+      throw new Error('WebP 압축 스크립트를 불러오지 못했습니다.')
+    }
+    item.state = 'compressing'
+    item.label = 'WebP 압축 중'
+    renderQueue()
+    const compressed = await window.ProjectCyanImageCompression.compressToWebp(item.file)
+    item.uploadFile = compressed.file
+    item.originalSize = compressed.originalSize
+    item.compressedSize = compressed.compressedSize
+    item.label = window.ProjectCyanImageCompression.savingsLabel(compressed.originalSize, compressed.compressedSize)
     renderQueue()
   }
 
   function uploadFormData(item) {
     const formData = new FormData()
     formData.append('bucketName', bucketInput.value)
-    formData.append('path', pathInput.value)
+    formData.append('path', selectedUploadPath())
     formData.append('upsert', 'true')
     formData.append('allowSmallerOverwrite', item.allowSmallerOverwrite ? 'true' : 'false')
     formData.append('relativePath', item.relativePath)
-    formData.append('file', item.file)
+    formData.append('file', item.uploadFile || item.file)
     return formData
   }
 
@@ -145,6 +211,7 @@ function bindStorageUploadQueue(root) {
 
   async function uploadOne(item) {
     abortController = new AbortController()
+    await prepareWebpUpload(item)
     let response = await fetch(endpoint, {
       method: 'POST',
       body: uploadFormData(item),
@@ -175,8 +242,12 @@ function bindStorageUploadQueue(root) {
     if (!libraryGrid || !uploaded.publicUrl) {
       return
     }
+    const treeImage = {
+      ...uploaded,
+      path: uploaded.bucketName ? `${uploaded.bucketName}/${uploaded.path || uploaded.name}` : (uploaded.path || uploaded.name),
+    }
     if (window.addAdminImageTreeItem) {
-      window.addAdminImageTreeItem(libraryGrid, uploaded)
+      window.addAdminImageTreeItem(libraryGrid, treeImage, { countIncrement: uploaded.created ? 1 : 0 })
       return
     }
 
@@ -185,7 +256,7 @@ function bindStorageUploadQueue(root) {
     card.type = 'button'
     card.className = 'admin-image-library-item'
     card.dataset.imageUrl = uploaded.publicUrl
-    card.dataset.imagePath = uploaded.path || uploaded.name || objectUrlName(uploaded.publicUrl)
+    card.dataset.imagePath = treeImage.path || objectUrlName(uploaded.publicUrl)
     card.title = card.dataset.imagePath
 
     const image = document.createElement('img')
@@ -198,7 +269,8 @@ function bindStorageUploadQueue(root) {
   }
 
   async function runQueue() {
-    if (running || queue.length === 0) {
+    if (running || queue.length === 0 || !bucketInput.value || !selectedUploadPath()) {
+      updateStatus('업로드 위치 필요', 'Bucket과 기존 Path를 선택하세요.', 0)
       return
     }
 
@@ -238,7 +310,10 @@ function bindStorageUploadQueue(root) {
         } else {
           completed += 1
           item.state = 'done'
-          item.label = uploaded.path && uploaded.path !== item.relativePath ? `완료: ${uploaded.name}` : '완료'
+          const savingsLabel = window.ProjectCyanImageCompression?.savingsLabel?.(item.originalSize, item.compressedSize)
+          item.label = uploaded.path && uploaded.path !== item.relativePath
+            ? `완료: ${uploaded.name}${savingsLabel ? ` · ${savingsLabel}` : ''}`
+            : `완료${savingsLabel ? ` · ${savingsLabel}` : ''}`
           addImageToLibrary(uploaded)
         }
       } catch (error) {
@@ -288,9 +363,63 @@ function bindStorageUploadQueue(root) {
     renderQueue()
   }
 
+  function syncPathOptions() {
+    if (pathInput.tagName !== 'SELECT') {
+      return
+    }
+    const bucketName = bucketInput.value
+    let selectedOptionStillValid = false
+    pathOptions.forEach((option) => {
+      const matches = option.dataset.bucket === bucketName
+      option.hidden = !matches
+      option.disabled = !matches
+      if (matches && option.selected) {
+        selectedOptionStillValid = true
+      }
+    })
+    if (!selectedOptionStillValid) {
+      pathInput.value = ''
+    }
+  }
+
+  function selectUploadTarget(treePath) {
+    const parts = String(treePath || '').split('/').filter(Boolean)
+    const bucketName = parts.shift()
+    if (!bucketName) {
+      return
+    }
+    bucketInput.value = bucketName
+    syncPathOptions()
+    const path = parts.join('/')
+    const optionValue = path ? `${bucketName}/${path}` : ''
+    const option = pathOptions.find((item) => !item.disabled && item.value === optionValue)
+    pathInput.value = option ? option.value : ''
+    syncSelectedFiles()
+    updateStatus(
+      pathInput.value ? '업로드 위치 선택됨' : 'Path 선택 필요',
+      pathInput.value ? `${bucketInput.value}/${selectedUploadPath()}` : '기존 Path를 선택하거나 Path 생성에서 먼저 추가하세요.',
+      0
+    )
+  }
+
+  libraryGrid?.addEventListener('click', (event) => {
+    const summary = event.target.closest('.admin-image-tree-summary')
+    const folder = summary?.closest('.admin-image-tree-folder')
+    if (!folder) {
+      return
+    }
+    selectUploadTarget(folder.dataset.treePath)
+  })
+
   fileInput.addEventListener('change', syncSelectedFiles)
+  bucketInput.addEventListener('change', () => {
+    syncPathOptions()
+    syncSelectedFiles()
+  })
+  pathInput.addEventListener('change', syncSelectedFiles)
   startButton.addEventListener('click', runQueue)
   cancelButton.addEventListener('click', cancelQueue)
+  syncPathOptions()
   syncSelectedFiles()
 }
 

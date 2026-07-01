@@ -178,6 +178,182 @@ public class CmsContentService {
 		}
 	}
 
+	@Transactional
+	public CmsArtistProfileResponse createArtist(CmsArtistProfileRequest artist) {
+		ensureSchema();
+		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
+		String name = valueOrDefault(artist.name(), "Artist " + artistId);
+		jdbcTemplate.update(
+			"""
+			insert into cms_artist_profile (
+				artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible, updated_at
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+			""",
+			new Object[] {
+				artistId,
+				name,
+				blankToNull(artist.groupName()),
+				blankToNull(artist.imageUrl()),
+				blankToNull(artist.lore()),
+				parseDate(artist.debutDate()),
+				blankToNull(artist.collections()),
+				artist.sortOrder() == null ? 999 : artist.sortOrder(),
+				!Boolean.FALSE.equals(artist.visible())
+			},
+			new int[] {
+				Types.BIGINT,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.DATE,
+				Types.VARCHAR,
+				Types.INTEGER,
+				Types.BOOLEAN
+			}
+		);
+		supabaseUsageCounter.recordWrite("CMS 아티스트 신규 등록");
+		return new CmsArtistProfileResponse(
+			artistId,
+			name,
+			blankToNull(artist.groupName()),
+			blankToNull(artist.imageUrl()),
+			blankToNull(artist.lore()),
+			artist.debutDate(),
+			blankToNull(artist.collections()),
+			artist.sortOrder() == null ? 999 : artist.sortOrder(),
+			!Boolean.FALSE.equals(artist.visible())
+		);
+	}
+
+	@Transactional
+	public CmsArtistProfileChangeSummary applyArtistChanges(List<CmsArtistProfileChangeRequest> changes) {
+		ensureSchema();
+		int added = 0;
+		int modified = 0;
+		int deleted = 0;
+		for (CmsArtistProfileChangeRequest change : changes) {
+			String state = change.state() == null ? "" : change.state().trim().toLowerCase(Locale.ROOT);
+			if ("delete".equals(state)) {
+				if (change.originalArtistId() != null) {
+					deleted += jdbcTemplate.update(
+						"delete from cms_artist_profile where artist_id = ?",
+						change.originalArtistId()
+					);
+				}
+				continue;
+			}
+
+			if ("add".equals(state)) {
+				insertArtist(change);
+				added++;
+				continue;
+			}
+
+			if ("modify".equals(state) && change.originalArtistId() != null) {
+				modified += updateArtist(change);
+			}
+		}
+
+		CmsArtistProfileChangeSummary summary = new CmsArtistProfileChangeSummary(added, modified, deleted);
+		if (summary.total() > 0) {
+			supabaseUsageCounter.recordWrite("CMS 아티스트 변경사항 적용");
+		}
+		return summary;
+	}
+
+	private void insertArtist(CmsArtistProfileChangeRequest artist) {
+		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
+		String name = valueOrDefault(artist.name(), "Artist " + artistId);
+		jdbcTemplate.update(
+			"""
+			insert into cms_artist_profile (
+				artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible, updated_at
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+			""",
+			new Object[] {
+				artistId,
+				name,
+				blankToNull(artist.groupName()),
+				blankToNull(artist.imageUrl()),
+				blankToNull(artist.lore()),
+				parseDate(artist.debutDate()),
+				blankToNull(artist.collections()),
+				artist.sortOrder() == null ? 999 : artist.sortOrder(),
+				!Boolean.FALSE.equals(artist.visible())
+			},
+			artistSqlTypes()
+		);
+	}
+
+	private int updateArtist(CmsArtistProfileChangeRequest artist) {
+		Long nextArtistId = artist.artistId() == null ? artist.originalArtistId() : artist.artistId();
+		String name = valueOrDefault(artist.name(), "Artist " + nextArtistId);
+		return jdbcTemplate.update(
+			"""
+			update cms_artist_profile
+			set artist_id = ?,
+				name = ?,
+				group_name = ?,
+				image_url = ?,
+				lore = ?,
+				debut_date = ?,
+				collections = ?,
+				sort_order = ?,
+				visible = ?,
+				updated_at = now()
+			where artist_id = ?
+			""",
+			new Object[] {
+				nextArtistId,
+				name,
+				blankToNull(artist.groupName()),
+				blankToNull(artist.imageUrl()),
+				blankToNull(artist.lore()),
+				parseDate(artist.debutDate()),
+				blankToNull(artist.collections()),
+				artist.sortOrder() == null ? 999 : artist.sortOrder(),
+				!Boolean.FALSE.equals(artist.visible()),
+				artist.originalArtistId()
+			},
+			new int[] {
+				Types.BIGINT,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.DATE,
+				Types.VARCHAR,
+				Types.INTEGER,
+				Types.BOOLEAN,
+				Types.BIGINT
+			}
+		);
+	}
+
+	private int[] artistSqlTypes() {
+		return new int[] {
+			Types.BIGINT,
+			Types.VARCHAR,
+			Types.VARCHAR,
+			Types.VARCHAR,
+			Types.VARCHAR,
+			Types.DATE,
+			Types.VARCHAR,
+			Types.INTEGER,
+			Types.BOOLEAN
+		};
+	}
+
+	private Long nextArtistId() {
+		jdbcTemplate.execute("lock table cms_artist_profile in exclusive mode");
+		Long nextId = jdbcTemplate.queryForObject(
+			"select coalesce(max(artist_id), 0) + 1 from cms_artist_profile",
+			Long.class
+		);
+		return nextId == null ? 1L : nextId;
+	}
+
 	private void ensureSchema() {
 		jdbcTemplate.execute(
 			"""
