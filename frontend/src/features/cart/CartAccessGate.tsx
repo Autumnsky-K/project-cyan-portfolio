@@ -28,7 +28,7 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
       <main className="cart-access-gate">
         <section>
           <h1>Login required</h1>
-          <p>Please log in to view your cart and continue checkout.</p>
+          <p>Please log in to continue checkout.</p>
           <button type="button" onClick={() => requestCartLogin(navigate)}>
             Go to login
           </button>

@@ -60,5 +60,8 @@ export function useCurrentMemberAccess() {
     }
   }, [loadMember])
 
-  return state
+  return {
+    ...state,
+    refreshMember: loadMember,
+  }
 }

@@ -79,7 +79,7 @@ export function normalizeProduct(goods) {
     name: goods.name ?? goods.goodsName ?? goods.goods_name ?? 'Untitled goods',
     artist: goods.artist ?? goods.artistName ?? goods.artist_name ?? 'CYAN',
     description: goods.description ?? goods.summary ?? '',
-    image: goods.image ?? goods.imageUrl ?? goods.image_url ?? '',
+    image: goods.image ?? goods.imageUrl ?? goods.mainImageUrl ?? goods.image_url ?? goods.main_image_url ?? '',
     price: Number(goods.price ?? goods.unitPrice ?? goods.unit_price ?? 0),
   }
 }
