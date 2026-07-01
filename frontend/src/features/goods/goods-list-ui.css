@@ -299,7 +299,6 @@
   aspect-ratio: 1 / 1;
   height: auto;
   border: 0;
-  border-right: 1px solid var(--goods-line);
   border-radius: 0;
 }
 
