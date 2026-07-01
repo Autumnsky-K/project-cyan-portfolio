@@ -8,6 +8,10 @@ function bindGoodsImageEditor(root) {
   const library = root.querySelector('[data-goods-image-library]')
   const quillContainer = root.querySelector('#goods-description-editor')
   const quillEditor = quillContainer?.querySelector('.ql-editor')
+  const imageSlots = Array.from(root.querySelectorAll('[data-goods-image-slot]'))
+  const extraImageInputs = Array.from(root.querySelectorAll('[data-goods-extra-image-url]'))
+  const slotInputs = [imageUrlInput, ...extraImageInputs].filter(Boolean)
+  let selectedSlotIndex = null
 
   if (!endpoint || !imageUrlInput) {
     return
@@ -58,13 +62,109 @@ function bindGoodsImageEditor(root) {
     ))
   }
 
+  function inputForSlot(index) {
+    return slotInputs[index] || null
+  }
+
+  function slotValue(index) {
+    return inputForSlot(index)?.value.trim() || ''
+  }
+
+  function renderSlot(slot) {
+    const index = Number(slot.dataset.slotIndex)
+    const preview = slot.querySelector('.admin-goods-slot-preview')
+    const url = slotValue(index)
+    if (!preview) {
+      return
+    }
+    preview.replaceChildren()
+    if (!url) {
+      const emptyLabel = document.createElement('span')
+      emptyLabel.textContent = '비어 있음'
+      preview.append(emptyLabel)
+      slot.classList.remove('has-image')
+      slot.draggable = false
+      return
+    }
+
+    const image = document.createElement('img')
+    image.src = url
+    image.alt = ''
+    image.addEventListener('error', () => {
+      preview.replaceChildren()
+      const errorLabel = document.createElement('span')
+      errorLabel.textContent = '이미지 오류'
+      preview.append(errorLabel)
+    }, { once: true })
+    preview.append(image)
+    slot.classList.add('has-image')
+    slot.draggable = true
+  }
+
+  function renderSlots() {
+    imageSlots.forEach(renderSlot)
+  }
+
+  function selectSlot(index) {
+    selectedSlotIndex = index
+    imageSlots.forEach((slot) => {
+      slot.classList.toggle('is-selected', Number(slot.dataset.slotIndex) === index)
+    })
+  }
+
+  function clearSlotSelection() {
+    selectedSlotIndex = null
+    imageSlots.forEach((slot) => slot.classList.remove('is-selected'))
+  }
+
+  function firstEmptySlotIndex() {
+    const emptyIndex = slotInputs.findIndex((input) => !input.value.trim())
+    return emptyIndex === -1 ? null : emptyIndex
+  }
+
+  function targetSlotIndex() {
+    if (selectedSlotIndex !== null && inputForSlot(selectedSlotIndex)) {
+      return selectedSlotIndex
+    }
+    return firstEmptySlotIndex()
+  }
+
+  function setSlotUrl(index, url, options = {}) {
+    const input = inputForSlot(index)
+    if (!input) {
+      return false
+    }
+    input.value = url || ''
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    renderSlot(imageSlots[index])
+    if (options.select) {
+      selectSlot(index)
+    }
+    return true
+  }
+
   function setImageUrl(url) {
     if (!url) {
       return
     }
-    imageUrlInput.value = url
-    imageUrlInput.dispatchEvent(new Event('input', { bubbles: true }))
-    setStatus('대표 이미지 URL 선택 완료')
+    const index = targetSlotIndex()
+    if (index === null) {
+      setStatus('빈 이미지 슬롯이 없습니다.')
+      return
+    }
+    setSlotUrl(index, url)
+    setStatus(index === 0 ? '메인 이미지 선택 완료' : `추가 이미지 ${index} 선택 완료`)
+  }
+
+  function validateMainImage() {
+    if (imageUrlInput.value.trim()) {
+      return true
+    }
+    selectSlot(0)
+    imageSlots[0]?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setStatus('메인 이미지를 선택해주세요.')
+    window.alert('메인 이미지를 선택해주세요.')
+    return false
   }
 
   function insertDescriptionImage(url) {
@@ -104,12 +204,98 @@ function bindGoodsImageEditor(root) {
     }
     event.dataTransfer.effectAllowed = 'copy'
     event.dataTransfer.setData('application/x-project-cyan-image', button.dataset.imageUrl)
+    event.dataTransfer.setData('application/x-project-cyan-library-image', button.dataset.imageUrl)
     event.dataTransfer.setData('text/plain', button.dataset.imageUrl)
     event.dataTransfer.setData('text/uri-list', button.dataset.imageUrl)
   })
 
+  imageSlots.forEach((slot) => {
+    const index = Number(slot.dataset.slotIndex)
+
+    slot.addEventListener('click', (event) => {
+      if (event.target.closest('[data-goods-slot-clear]')) {
+        setSlotUrl(index, '')
+        setStatus(index === 0 ? 'Main image cleared.' : `Extra image ${index} cleared.`)
+        return
+      }
+      selectSlot(index)
+    })
+
+    slot.addEventListener('focus', () => selectSlot(index))
+
+    slot.addEventListener('dragstart', (event) => {
+      const url = slotValue(index)
+      if (!url) {
+        event.preventDefault()
+        return
+      }
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData('application/x-project-cyan-image-slot', String(index))
+      event.dataTransfer.setData('application/x-project-cyan-slot-image-url', url)
+      event.dataTransfer.setData('text/plain', url)
+      event.dataTransfer.setData('text/uri-list', url)
+    })
+
+    slot.addEventListener('dragover', (event) => {
+      if (!hasImageTransfer(event.dataTransfer)) {
+        return
+      }
+      event.preventDefault()
+      event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes('application/x-project-cyan-image-slot')
+        ? 'move'
+        : 'copy'
+      slot.classList.add('is-dragover')
+    })
+
+    slot.addEventListener('dragleave', (event) => {
+      if (!slot.contains(event.relatedTarget)) {
+        slot.classList.remove('is-dragover')
+      }
+    })
+
+    slot.addEventListener('drop', (event) => {
+      const url = imageUrlFromTransfer(event.dataTransfer)
+      if (!url) {
+        return
+      }
+      event.preventDefault()
+      slot.classList.remove('is-dragover')
+      const sourceIndexText = event.dataTransfer.getData('application/x-project-cyan-image-slot')
+      const sourceIndex = sourceIndexText === '' ? null : Number(sourceIndexText)
+      if (sourceIndex !== null && Number.isInteger(sourceIndex) && inputForSlot(sourceIndex) && sourceIndex !== index) {
+        const sourceUrl = event.dataTransfer.getData('application/x-project-cyan-slot-image-url') || url
+        const targetUrl = slotValue(index)
+        setSlotUrl(index, sourceUrl, { select: true })
+        setSlotUrl(sourceIndex, targetUrl)
+        setStatus('Image slots swapped.')
+        return
+      }
+      setSlotUrl(index, url, { select: true })
+      setStatus(index === 0 ? 'Main image selected.' : `Extra image ${index} selected.`)
+    })
+  })
+
+  renderSlots()
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('[data-goods-image-slot]')) {
+      return
+    }
+    clearSlotSelection()
+  }, { capture: true })
+
+  root.querySelector('form')?.addEventListener('submit', (event) => {
+    if (!validateMainImage()) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+  }, { capture: true })
+
   quillEditor?.addEventListener('dragover', (event) => {
     if (!hasImageTransfer(event.dataTransfer)) {
+      return
+    }
+    if (Array.from(event.dataTransfer.types).includes('application/x-project-cyan-image-slot')) {
       return
     }
     event.preventDefault()
@@ -124,6 +310,9 @@ function bindGoodsImageEditor(root) {
   })
 
   quillEditor?.addEventListener('drop', (event) => {
+    if (Array.from(event.dataTransfer.types).includes('application/x-project-cyan-image-slot')) {
+      return
+    }
     const url = imageUrlFromTransfer(event.dataTransfer)
     if (!url) {
       return
