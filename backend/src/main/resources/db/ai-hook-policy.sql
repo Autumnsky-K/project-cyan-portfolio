@@ -5,10 +5,14 @@ CREATE TABLE IF NOT EXISTS ai_hook_policy (
     threshold_value TEXT NOT NULL,
     action TEXT NOT NULL,
     message TEXT NOT NULL,
+    replacement TEXT,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     priority INTEGER NOT NULL DEFAULT 0,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE ai_hook_policy
+    ADD COLUMN IF NOT EXISTS replacement TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_ai_hook_policy_enabled_priority
     ON ai_hook_policy (enabled, priority ASC, policy_id ASC);

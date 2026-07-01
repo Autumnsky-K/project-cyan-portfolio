@@ -1,11 +1,11 @@
 const aiAdminRoot = document.querySelector('[data-ai-admin]')
 const aiBugLabRoot = document.querySelector('[data-ai-bug-lab]')
-const hookPolicyHeader = ['hook', 'check', 'threshold', 'action', 'message']
+const hookPolicyHeader = ['hook', 'check', 'threshold', 'action', 'message', 'replacement']
 const hookOptions = ['input', 'output']
 const actionTypes = ['navigate', 'highlight', 'addToCart']
 const checkOptionsByHook = {
-  input: ['maxLength', 'forbiddenWords', 'specialCharRatio', 'numberRatio', 'englishRatio'],
-  output: ['forbiddenWords', 'actionScope'],
+  input: ['maxLength', 'forbiddenWords', 'specialCharRatio', 'numberRatio', 'englishRatio', 'literalText'],
+  output: ['forbiddenWords', 'actionScope', 'literalText'],
 }
 const actionOptionsByCheck = {
   maxLength: ['stop', 'review'],
@@ -14,6 +14,7 @@ const actionOptionsByCheck = {
   numberRatio: ['review', 'stop'],
   englishRatio: ['review', 'stop'],
   actionScope: ['filter'],
+  literalText: ['replace', 'remove'],
 }
 const checkLabels = {
   maxLength: '최대 글자 수',
@@ -22,12 +23,15 @@ const checkLabels = {
   numberRatio: '숫자 비율',
   englishRatio: '영어 비율',
   actionScope: '허용 출력 액션',
+  literalText: '문자열 변환',
 }
 const actionLabels = {
   stop: '차단',
   review: '확인 요청',
   rewrite: '대체 문구',
   filter: '필터',
+  replace: '치환',
+  remove: '제거',
 }
 const defaultThresholdByCheck = {
   maxLength: '500',
@@ -36,6 +40,7 @@ const defaultThresholdByCheck = {
   numberRatio: '45%',
   englishRatio: '70%',
   actionScope: 'navigate,highlight,addToCart',
+  literalText: '',
 }
 const defaultMessageByCheck = {
   maxLength: '입력이 너무 길어요. 짧게 다시 입력해주세요.',
@@ -44,6 +49,7 @@ const defaultMessageByCheck = {
   numberRatio: '숫자가 많아요. 주문번호나 가격 문의인지 다시 알려주세요.',
   englishRatio: '영문 입력이 많아요. 상품명인지 다시 확인해주세요.',
   actionScope: '허용된 화면 동작만 실행할게요.',
+  literalText: '',
 }
 let hookPolicies = []
 const behaviorInitialSheets = window.projectCyanAiBehaviorInitialSheets || {}
@@ -188,6 +194,17 @@ const sampleSheets = {
       'outputHook\tremove\t💝\t',
     ].join('\n'),
   },
+  'motion-list': {
+    title: '모션 목록',
+    text: [
+      'motionKey\tlabel\tmodelMode\tfileKey\ttrigger\tloop\tpriority\tnote',
+      'idle\t기본 대기\t2d,3d\t-\t대기\ttrue\t10\t기본 fallback',
+      'wave\t손 흔들기\t2d,3d\twave\t인사\tfalse\t20\t자산 없으면 idle',
+      'point\t상품 위치 가리키기\t2d,3d\tpoint\t추천\tfalse\t30\t자산 없으면 idle',
+      'nod\t고개 끄덕이기\t2d,3d\tnod\t확인\tfalse\t40\t자산 없으면 idle',
+      'shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/오류\tfalse\t50\t자산 없으면 idle',
+    ].join('\n'),
+  },
 }
 
 function escapeHtml(value) {
@@ -265,6 +282,8 @@ function setSheet(sheetKey, textOverride) {
       ? behaviorInitialSheets.logicFunctions
     : sheetKey === 'admin-settings'
       ? behaviorInitialSheets.adminSettings
+    : sheetKey === 'motion-list'
+      ? behaviorInitialSheets.motionList
       : ''
   sheetSource.value = textOverride ?? (serverText || nextSheet.text)
   if (sheetKey === 'hook') {
@@ -310,6 +329,7 @@ function normalizeHookPolicy(policy) {
     threshold: policy.threshold || defaultThresholdByCheck[check] || '',
     action,
     message: policy.message || defaultMessageByCheck[check] || '',
+    replacement: policy.replacement || '',
   }
 }
 
@@ -330,6 +350,7 @@ function parseHookPolicies(text) {
       threshold: row[2],
       action: row[3],
       message: row[4],
+      replacement: row[5],
     }))
 }
 
@@ -342,6 +363,7 @@ function serializeHookPolicies(policies) {
       policy.threshold,
       policy.action,
       policy.message,
+      policy.replacement,
     ]),
   ])
 }
@@ -427,6 +449,7 @@ function renderHookPolicyTable() {
         </td>
         <td>
           <textarea rows="3" data-ai-hook-index="${index}" data-ai-hook-field="message">${escapeHtml(policy.message)}</textarea>
+          ${policy.action === 'replace' ? `<input placeholder="replacement" value="${escapeHtml(policy.replacement)}" data-ai-hook-index="${index}" data-ai-hook-field="replacement">` : ''}
         </td>
         <td>
           <button type="button" data-ai-hook-remove="${index}">삭제</button>
@@ -888,6 +911,283 @@ if (aiBugLabRoot) {
 
 const aiBehaviorRoot = document.querySelector('[data-ai-behavior-page]')
 const aiBehaviorMemoryStorageKey = 'projectCyanAiBehaviorMemoryLogV3'
+const modelConnectionState = {
+  csrfToken: '',
+  approvalToken: '',
+  approvalExpiresAt: '',
+  profiles: [],
+  publications: [],
+  published: null,
+}
+
+function selectedModelProfileId() {
+  const value = aiBehaviorRoot?.querySelector('[data-ai-connection-profile]')?.value || ''
+  return value ? Number(value) : null
+}
+
+function modelConnectionHeaders({ approval = false } = {}) {
+  if (!modelConnectionState.csrfToken) {
+    throw new Error('관리자 보안 토큰을 불러오지 못했습니다. 페이지를 새로고침해주세요.')
+  }
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    'X-Project-Cyan-CSRF': modelConnectionState.csrfToken,
+  }
+  if (approval) headers['X-Project-Cyan-Reauth'] = modelConnectionState.approvalToken
+  return headers
+}
+
+async function modelConnectionRequest(url, options = {}) {
+  const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...options })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(payload.message || payload.detail || `HTTP ${response.status}`)
+  return payload
+}
+
+function setModelConnectionStatus(text, error = false) {
+  const target = aiBehaviorRoot?.querySelector('[data-ai-connection-status]')
+  if (!target) return
+  target.textContent = text
+  target.style.color = error ? '#b91c1c' : ''
+}
+
+function applyProviderFields() {
+  const provider = aiBehaviorRoot?.querySelector('[data-ai-connection-provider]')?.value || 'OPENAI'
+  const apiKeyField = aiBehaviorRoot?.querySelector('[data-ai-api-key-field]')
+  const baseField = aiBehaviorRoot?.querySelector('[data-ai-connection-base-field]')
+  const oauthConnect = aiBehaviorRoot?.querySelector('[data-ai-oauth-connect]')
+  const oauthClear = aiBehaviorRoot?.querySelector('[data-ai-oauth-clear]')
+  const oauthWarning = aiBehaviorRoot?.querySelector('[data-ai-oauth-warning]')
+  const apiKeyMode = ['OPENAI', 'CLAUDE'].includes(provider)
+  const baseInput = aiBehaviorRoot?.querySelector('[data-ai-connection-base-url]')
+  const modelInput = aiBehaviorRoot?.querySelector('[data-ai-connection-model]')
+  if (apiKeyField) apiKeyField.hidden = !apiKeyMode
+  if (baseField) baseField.hidden = ['CODEX_OAUTH', 'MOCK'].includes(provider)
+  if (oauthConnect) oauthConnect.hidden = provider !== 'CODEX_OAUTH'
+  if (oauthClear) oauthClear.hidden = provider !== 'CODEX_OAUTH'
+  if (oauthWarning) oauthWarning.hidden = provider !== 'CODEX_OAUTH'
+  if (provider === 'CLAUDE') {
+    if (baseInput && (!baseInput.value || baseInput.value.includes('api.openai.com'))) baseInput.value = 'https://api.anthropic.com'
+    if (modelInput && (!modelInput.value || modelInput.value.startsWith('gpt-'))) modelInput.value = 'claude-3-haiku-20240307'
+  } else if (provider === 'OPENAI') {
+    if (baseInput && (!baseInput.value || baseInput.value.includes('api.anthropic.com'))) baseInput.value = 'https://api.openai.com/v1'
+    if (modelInput && (!modelInput.value || modelInput.value.startsWith('claude-'))) modelInput.value = 'gpt-5.4-mini'
+  } else if (provider === 'CODEX_OAUTH') {
+    if (modelInput && (!modelInput.value || modelInput.value.startsWith('claude-'))) modelInput.value = 'gpt-5.4'
+  } else if (provider === 'MOCK' && modelInput) {
+    modelInput.value = 'mock'
+  }
+}
+
+function renderModelConnectionConsole(preferredProfileId = null) {
+  const select = aiBehaviorRoot?.querySelector('[data-ai-connection-profile]')
+  const history = aiBehaviorRoot?.querySelector('[data-ai-publication-history]')
+  if (select) {
+    const current = preferredProfileId || selectedModelProfileId()
+    select.innerHTML = '<option value="">새 프로필</option>' + modelConnectionState.profiles
+      .map((profile) => `<option value="${profile.profileId}">${escapeHtml(profile.profileName)} · ${profile.provider} · v${profile.profileVersion}</option>`)
+      .join('')
+    if (current && modelConnectionState.profiles.some((profile) => profile.profileId === Number(current))) {
+      select.value = String(current)
+    }
+  }
+  if (history) {
+    history.innerHTML = '<option value="">이전 발행 선택</option>' + modelConnectionState.publications
+      .map((item) => `<option value="${item.publicationId}">#${item.publicationId} ${item.provider} ${escapeHtml(item.model)} · v${item.profileVersion}</option>`)
+      .join('')
+  }
+  populateSelectedModelProfile()
+}
+
+function populateSelectedModelProfile() {
+  const profile = modelConnectionState.profiles.find((item) => item.profileId === selectedModelProfileId())
+  const name = aiBehaviorRoot?.querySelector('[data-ai-connection-name]')
+  const provider = aiBehaviorRoot?.querySelector('[data-ai-connection-provider]')
+  const baseUrl = aiBehaviorRoot?.querySelector('[data-ai-connection-base-url]')
+  const model = aiBehaviorRoot?.querySelector('[data-ai-connection-model]')
+  if (profile) {
+    if (name) name.value = profile.profileName || ''
+    if (provider) provider.value = profile.provider || 'OPENAI'
+    if (baseUrl) baseUrl.value = profile.baseUrl || ''
+    if (model) model.value = profile.model || ''
+    setModelConnectionStatus(
+      `${profile.provider} v${profile.profileVersion} · credential=${profile.credentialHint || '없음'} · test=${profile.lastTestStatus || '미실행'}`,
+    )
+  } else {
+    if (name) name.value = ''
+    if (provider) provider.value = 'OPENAI'
+    if (baseUrl) baseUrl.value = 'https://api.openai.com/v1'
+    if (model) model.value = 'gpt-5.4-mini'
+    setModelConnectionStatus('새 연결 프로필을 작성하세요.')
+  }
+  applyProviderFields()
+}
+
+async function loadModelConnections(preferredProfileId = null) {
+  try {
+    const security = await modelConnectionRequest('/api/admin/ai/model-connections/security', {
+      headers: { Accept: 'application/json' },
+    })
+    modelConnectionState.csrfToken = security.csrfToken || ''
+    if (!modelConnectionState.csrfToken) {
+      throw new Error('CSRF 토큰 응답이 비어 있습니다.')
+    }
+    const payload = await modelConnectionRequest('/api/admin/ai/model-connections', {
+      headers: { Accept: 'application/json' },
+    })
+    modelConnectionState.csrfToken = payload.csrfToken || modelConnectionState.csrfToken
+    modelConnectionState.profiles = payload.profiles || []
+    modelConnectionState.publications = payload.publications || []
+    modelConnectionState.published = payload.published || null
+    renderModelConnectionConsole(preferredProfileId || payload.published?.profileId || null)
+  } catch (error) {
+    setModelConnectionStatus(`프로필 조회 실패: ${error.message}`, true)
+  }
+}
+
+async function reauthenticateModelConnection() {
+  const password = aiBehaviorRoot?.querySelector('[data-ai-reauth-password]')?.value || ''
+  const status = aiBehaviorRoot?.querySelector('[data-ai-reauth-status]')
+  try {
+    const payload = await modelConnectionRequest('/api/admin/ai/model-connections/reauth', {
+      method: 'POST',
+      headers: modelConnectionHeaders(),
+      body: JSON.stringify({ password }),
+    })
+    modelConnectionState.approvalToken = payload.approvalToken || ''
+    modelConnectionState.approvalExpiresAt = payload.expiresAt || ''
+    if (status) status.textContent = `승인 완료 · ${payload.expiresAt}`
+    const input = aiBehaviorRoot?.querySelector('[data-ai-reauth-password]')
+    if (input) input.value = ''
+  } catch (error) {
+    if (status) status.textContent = `재인증 실패: ${error.message}`
+  }
+}
+
+async function saveModelConnectionProfile() {
+  const provider = aiBehaviorRoot?.querySelector('[data-ai-connection-provider]')?.value || 'OPENAI'
+  try {
+    const profile = await modelConnectionRequest('/api/admin/ai/model-connections', {
+      method: 'POST',
+      headers: modelConnectionHeaders(),
+      body: JSON.stringify({
+        profileId: selectedModelProfileId(),
+        profileName: aiBehaviorRoot?.querySelector('[data-ai-connection-name]')?.value || '',
+        provider,
+        connectionType: provider === 'CODEX_OAUTH' ? 'OAUTH' : provider === 'MOCK' ? 'NONE' : 'API_KEY',
+        baseUrl: aiBehaviorRoot?.querySelector('[data-ai-connection-base-url]')?.value || '',
+        model: aiBehaviorRoot?.querySelector('[data-ai-connection-model]')?.value || '',
+      }),
+    })
+    await loadModelConnections(profile.profileId)
+    setModelConnectionStatus(`프로필 v${profile.profileVersion} 초안 저장 완료`)
+  } catch (error) {
+    setModelConnectionStatus(`초안 저장 실패: ${error.message}`, true)
+  }
+}
+
+async function saveModelCredential() {
+  const profileId = selectedModelProfileId()
+  const apiKey = aiBehaviorRoot?.querySelector('[data-ai-connection-api-key]')?.value || ''
+  if (!profileId) return setModelConnectionStatus('먼저 프로필 초안을 저장하세요.', true)
+  try {
+    const profile = await modelConnectionRequest(`/api/admin/ai/model-connections/${profileId}/credential`, {
+      method: 'POST',
+      headers: modelConnectionHeaders({ approval: true }),
+      body: JSON.stringify({ apiKey }),
+    })
+    const input = aiBehaviorRoot?.querySelector('[data-ai-connection-api-key]')
+    if (input) input.value = ''
+    await loadModelConnections(profile.profileId)
+    setModelConnectionStatus(`Credential ${profile.credentialHint} 저장 완료`)
+  } catch (error) {
+    setModelConnectionStatus(`Credential 저장 실패: ${error.message}`, true)
+  }
+}
+
+async function testModelConnection() {
+  const profileId = selectedModelProfileId()
+  if (!profileId) return setModelConnectionStatus('시험할 프로필을 선택하세요.', true)
+  setModelConnectionStatus('FastAPI 동일 provider로 연결 시험 중입니다.')
+  try {
+    await modelConnectionRequest(`/api/admin/ai/model-connections/${profileId}/test`, {
+      method: 'POST',
+      headers: modelConnectionHeaders(),
+      body: '{}',
+    })
+    await loadModelConnections(profileId)
+    setModelConnectionStatus('연결 시험 성공 · 현재 버전을 발행할 수 있습니다.')
+  } catch (error) {
+    await loadModelConnections(profileId)
+    setModelConnectionStatus(`연결 시험 실패: ${error.message}`, true)
+  }
+}
+
+async function startModelOAuth() {
+  const profileId = selectedModelProfileId()
+  if (!profileId) return setModelConnectionStatus('CODEX_OAUTH 프로필을 먼저 저장하세요.', true)
+  try {
+    const payload = await modelConnectionRequest(`/api/admin/ai/model-connections/${profileId}/oauth/start`, {
+      method: 'POST',
+      headers: modelConnectionHeaders({ approval: true }),
+      body: '{}',
+    })
+    window.open(payload.authorization_url, '_blank', 'noopener')
+    setModelConnectionStatus('OAuth 인증 창을 열었습니다. 완료를 기다립니다.')
+    const timer = window.setInterval(async () => {
+      try {
+        const poll = await modelConnectionRequest(`/api/admin/ai/model-connections/${profileId}/oauth/poll`, {
+          method: 'POST',
+          headers: modelConnectionHeaders({ approval: true }),
+          body: '{}',
+        })
+        if (poll.completed) {
+          window.clearInterval(timer)
+          await loadModelConnections(profileId)
+          setModelConnectionStatus('Codex OAuth 연결 완료')
+        }
+      } catch (error) {
+        window.clearInterval(timer)
+        setModelConnectionStatus(`OAuth 처리 실패: ${error.message}`, true)
+      }
+    }, 1000)
+  } catch (error) {
+    setModelConnectionStatus(`OAuth 시작 실패: ${error.message}`, true)
+  }
+}
+
+async function clearModelOAuth() {
+  const profileId = selectedModelProfileId()
+  if (!profileId) return
+  try {
+    await modelConnectionRequest(`/api/admin/ai/model-connections/${profileId}/oauth/clear`, {
+      method: 'POST',
+      headers: modelConnectionHeaders({ approval: true }),
+      body: '{}',
+    })
+    await loadModelConnections(profileId)
+    setModelConnectionStatus('OAuth 연결을 해제했습니다.')
+  } catch (error) {
+    setModelConnectionStatus(`OAuth 해제 실패: ${error.message}`, true)
+  }
+}
+
+async function rollbackModelConnection() {
+  const publicationId = aiBehaviorRoot?.querySelector('[data-ai-publication-history]')?.value || ''
+  if (!publicationId) return setModelConnectionStatus('롤백할 발행 이력을 선택하세요.', true)
+  try {
+    await modelConnectionRequest(`/api/admin/ai/model-connections/rollback/${publicationId}`, {
+      method: 'POST',
+      headers: modelConnectionHeaders({ approval: true }),
+      body: '{}',
+    })
+    await loadModelConnections()
+    setModelConnectionStatus(`발행 #${publicationId} 기준으로 롤백했습니다. 새 WebSocket 연결부터 적용됩니다.`)
+  } catch (error) {
+    setModelConnectionStatus(`롤백 실패: ${error.message}`, true)
+  }
+}
 
 function sheetLineCount(sheetKey) {
   const source = getSheetSource(sheetKey)
@@ -967,7 +1267,10 @@ function renderDbHighlight(run) {
   const target = aiBehaviorRoot?.querySelector('[data-ai-db-highlight]')
   if (!target) return
   const rawDb = getSheetSource('raw-db')?.value || ''
-  const terms = normalizeHighlightTerms(run?.highlightTerms || [])
+  const terms = normalizeHighlightTerms([
+    ...(run?.highlightTerms || []),
+    ...(run?.candidateGoodsIds || []).map(String),
+  ])
   if (!rawDb.trim()) {
     target.textContent = '원본 DB TSV가 비어 있습니다.'
     return
@@ -1018,31 +1321,31 @@ async function runDbSearchTest(event) {
   const input = aiBehaviorRoot?.querySelector('[data-ai-search-test-input]')
   const report = aiBehaviorRoot?.querySelector('[data-ai-search-report]')
   const query = String(input?.value || '').trim()
-  const rawDb = getSheetSource('raw-db')?.value || ''
   if (!query) {
     if (report) report.textContent = '검색어를 입력하세요.'
     renderDbHighlight()
     return
   }
-  if (report) report.textContent = 'Spring DBSearch 함수 실행 중'
+  if (report) report.textContent = 'FastAPI 동일 엔진과 Spring 추천 API 검색 중'
   try {
-    const response = await fetch('/admin/ai/behavior/search', {
+    const payload = behaviorRunPayload()
+    payload.customerInput = query
+    const response = await fetch('/admin/ai/behavior/runs', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ rawDb, query }),
+      body: JSON.stringify(payload),
     })
     const data = await response.json()
     if (!response.ok || data.ok === false) {
       throw new Error(data.message || `HTTP ${response.status}`)
     }
-    const result = data.result || {}
-    const terms = normalizeHighlightTerms(result.keywords || [])
-    renderDbHighlight({ highlightTerms: terms })
+    const result = data.run || {}
+    renderDbHighlight(result)
     if (report) {
-      report.textContent = `${result.report || ''}\n검색 열: ${(result.columns || []).join(', ') || '없음'}`
+      report.textContent = `검색어: ${(result.highlightTerms || []).join(', ') || '없음'}\ncandidate goodsId: ${(result.candidateGoodsIds || []).join(', ') || '없음'}\npipeline=${result.pipelineMode || 'unknown'}`
     }
   } catch (error) {
     if (report) report.textContent = `검색 실패: ${error.message || String(error)}`
@@ -1075,6 +1378,10 @@ function behaviorRunPayload(memoryTurnAt = behaviorTimestamp()) {
     rawDb: getSheetSource('raw-db')?.value || '',
     logicFunctions: getSheetSource('logic-functions')?.value || '',
     adminSettings: getSheetSource('admin-settings')?.value || '',
+    motionList: getSheetSource('motion-list')?.value || '',
+    pipelineMode: aiBehaviorRoot?.querySelector('[data-ai-pipeline-mode]')?.value || 'faithful18',
+    configVersion: Date.now(),
+    modelConnectionProfileId: selectedModelProfileId(),
     customerInput: aiBehaviorRoot?.querySelector('[data-ai-behavior-customer-input]')?.value || '',
     memoryLog: readBehaviorMemory(),
     memoryTurnAt,
@@ -1094,25 +1401,12 @@ async function readBehaviorRun(runId) {
 async function runBehaviorTrace(customerInputOverride, memoryTurnAt) {
   const button = aiBehaviorRoot?.querySelector('[data-ai-run-behavior]')
   if (!button) return
-  const oauthStatus = await checkOAuthStatus({ silent: true })
-  if (oauthStatus?.keyRequired) {
-    const log = document.querySelector('[data-ai-trace-log]')
-    if (log) {
-      log.innerHTML = ''
-      setTraceStep(0, 'LLM 실행 조건 부족', [
-        { part: 'admin', text: '관리자 확인: OAuth digit key가 서버에 등록되지 않아 Spring run을 시작하지 않았다.' },
-        { part: 'function-report', text: '실행 전 확인 API: GET /api/oauth/status' },
-        { part: 'function-output', text: 'keyRequired=true' },
-      ])
-    }
-    throw new Error('OAuth digit key를 먼저 서버에 등록해야 합니다.')
-  }
   const input = aiBehaviorRoot.querySelector('[data-ai-behavior-customer-input]')
   if (input && typeof customerInputOverride === 'string') {
     input.value = customerInputOverride
   }
   button.disabled = true
-  button.textContent = 'Spring 실행 중'
+  button.textContent = 'FastAPI 실행 중'
   let finalRun = null
   try {
     const response = await fetch('/admin/ai/behavior/runs', {
@@ -1149,7 +1443,36 @@ async function runBehaviorTrace(customerInputOverride, memoryTurnAt) {
     throw error
   } finally {
     button.disabled = false
-    button.textContent = 'Spring 실행'
+    button.textContent = 'FastAPI 동일 엔진 실행'
+  }
+}
+
+async function publishBehaviorConfig() {
+  const button = aiBehaviorRoot?.querySelector('[data-ai-publish-behavior]')
+  if (!button) return
+  button.disabled = true
+  button.textContent = '검증·발행 중'
+  try {
+    const response = await fetch('/admin/ai/behavior/config/publish', {
+      method: 'POST',
+      headers: modelConnectionHeaders({ approval: true }),
+      body: JSON.stringify({
+        logicFunctions: getSheetSource('logic-functions')?.value || '',
+        adminSettings: getSheetSource('admin-settings')?.value || '',
+        motionList: getSheetSource('motion-list')?.value || '',
+        pipelineMode: aiBehaviorRoot?.querySelector('[data-ai-pipeline-mode]')?.value || 'faithful18',
+        modelConnectionProfileId: selectedModelProfileId(),
+        oauthWarningAcknowledged: Boolean(aiBehaviorRoot?.querySelector('[data-ai-oauth-warning-ack]')?.checked),
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.message || `HTTP ${response.status}`)
+    appendAdminChatMessage('system', `설정 v${result.configVersion} 발행 완료 (${result.pipelineMode})`)
+  } catch (error) {
+    appendAdminChatMessage('system error', `설정 발행 실패: ${error.message || String(error)}`)
+  } finally {
+    button.disabled = false
+    button.textContent = '테스트 설정 발행'
   }
 }
 
@@ -1264,11 +1587,19 @@ function hideStoreChatbotFrame() {
 if (aiBehaviorRoot) {
   aiBehaviorRoot.querySelector('[data-ai-run-behavior]')?.addEventListener('click', runBehaviorTrace)
   aiBehaviorRoot.querySelector('[data-ai-admin-chat-form]')?.addEventListener('submit', runBehaviorChat)
-  aiBehaviorRoot.querySelector('[data-ai-oauth-save-key]')?.addEventListener('click', saveOAuthDigitKey)
-  aiBehaviorRoot.querySelector('[data-ai-oauth-check-status]')?.addEventListener('click', checkOAuthStatus)
+  aiBehaviorRoot.querySelector('[data-ai-publish-behavior]')?.addEventListener('click', publishBehaviorConfig)
   aiBehaviorRoot.querySelector('[data-ai-show-chatbot]')?.addEventListener('click', showStoreChatbot)
   aiBehaviorRoot.querySelector('[data-ai-hide-chatbot-frame]')?.addEventListener('click', hideStoreChatbotFrame)
   aiBehaviorRoot.querySelector('[data-ai-search-test-form]')?.addEventListener('submit', runDbSearchTest)
+  aiBehaviorRoot.querySelector('[data-ai-connection-profile]')?.addEventListener('change', populateSelectedModelProfile)
+  aiBehaviorRoot.querySelector('[data-ai-connection-provider]')?.addEventListener('change', applyProviderFields)
+  aiBehaviorRoot.querySelector('[data-ai-connection-save]')?.addEventListener('click', saveModelConnectionProfile)
+  aiBehaviorRoot.querySelector('[data-ai-credential-save]')?.addEventListener('click', saveModelCredential)
+  aiBehaviorRoot.querySelector('[data-ai-connection-test]')?.addEventListener('click', testModelConnection)
+  aiBehaviorRoot.querySelector('[data-ai-reauth]')?.addEventListener('click', reauthenticateModelConnection)
+  aiBehaviorRoot.querySelector('[data-ai-oauth-connect]')?.addEventListener('click', startModelOAuth)
+  aiBehaviorRoot.querySelector('[data-ai-oauth-clear]')?.addEventListener('click', clearModelOAuth)
+  aiBehaviorRoot.querySelector('[data-ai-connection-rollback]')?.addEventListener('click', rollbackModelConnection)
   renderDbHighlight()
-  checkOAuthStatus({ silent: true })
+  loadModelConnections()
 }
