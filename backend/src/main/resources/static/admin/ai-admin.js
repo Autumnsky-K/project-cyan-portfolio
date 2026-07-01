@@ -1449,9 +1449,14 @@ async function runBehaviorTrace(customerInputOverride, memoryTurnAt) {
 
 async function publishBehaviorConfig() {
   const button = aiBehaviorRoot?.querySelector('[data-ai-publish-behavior]')
+  const status = aiBehaviorRoot?.querySelector('[data-ai-publish-status]')
   if (!button) return
   button.disabled = true
   button.textContent = '검증·발행 중'
+  if (status) {
+    status.dataset.status = 'pending'
+    status.textContent = '설정을 검증하고 발행하고 있습니다.'
+  }
   try {
     const response = await fetch('/admin/ai/behavior/config/publish', {
       method: 'POST',
@@ -1465,14 +1470,25 @@ async function publishBehaviorConfig() {
         oauthWarningAcknowledged: Boolean(aiBehaviorRoot?.querySelector('[data-ai-oauth-warning-ack]')?.checked),
       }),
     })
-    const result = await response.json()
-    if (!response.ok) throw new Error(result.message || `HTTP ${response.status}`)
-    appendAdminChatMessage('system', `설정 v${result.configVersion} 발행 완료 (${result.pipelineMode})`)
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const detail = Array.isArray(result.detail)
+        ? result.detail.map((item) => item.message || item.msg).filter(Boolean).join(', ')
+        : result.detail
+      throw new Error(result.message || detail || `HTTP ${response.status}`)
+    }
+    if (status) {
+      status.dataset.status = 'success'
+      status.textContent = `설정 v${result.configVersion} 발행 완료 · ${result.pipelineMode} · 신규 클라이언트 연결부터 적용됩니다.`
+    }
   } catch (error) {
-    appendAdminChatMessage('system error', `설정 발행 실패: ${error.message || String(error)}`)
+    if (status) {
+      status.dataset.status = 'error'
+      status.textContent = `설정 발행 실패: ${error.message || String(error)}`
+    }
   } finally {
     button.disabled = false
-    button.textContent = '테스트 설정 발행'
+    button.textContent = '설정 발행'
   }
 }
 

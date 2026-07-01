@@ -45,7 +45,6 @@ public class AdminAiPageController {
 		Map.entry("motion-list", "모션 목록")
 	);
 
-	private final AiGoodsCatalogService catalogService;
 	private final AiHookPolicyService hookPolicyService;
 	private final SupabaseStorageService storageService;
 	private final AiGoodsCatalogProperties catalogProperties;
@@ -53,14 +52,12 @@ public class AdminAiPageController {
 	private final GoodsStockRepository goodsStockRepository;
 
 	public AdminAiPageController(
-		AiGoodsCatalogService catalogService,
 		AiHookPolicyService hookPolicyService,
 		SupabaseStorageService storageService,
 		AiGoodsCatalogProperties catalogProperties,
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository
 	) {
-		this.catalogService = catalogService;
 		this.hookPolicyService = hookPolicyService;
 		this.storageService = storageService;
 		this.catalogProperties = catalogProperties;
@@ -69,29 +66,18 @@ public class AdminAiPageController {
 	}
 
 	@GetMapping("/admin/ai")
-	public String aiAdmin(Model model) {
-		model.addAttribute("latestCatalogSnapshot", catalogService.findLatestSnapshot());
-		model.addAttribute("hookSheetText", hookPolicyService.buildHookSheetText());
-		model.addAttribute("hasHookPolicies", hookPolicyService.hasSavedPolicies());
-		return "admin/ai/index";
+	public String aiAdmin() {
+		return "redirect:/admin/ai/behavior";
 	}
 
-	@PostMapping("/admin/ai/goods-catalog/export")
-	public String exportGoodsCatalog(RedirectAttributes redirectAttributes) {
-		AiGoodsCatalogSnapshot snapshot = catalogService.exportCatalog();
-		redirectAttributes.addFlashAttribute("catalogExportMessage", "AI 상품 카탈로그 TSV를 생성했습니다.");
-		redirectAttributes.addFlashAttribute("catalogExportUrl", snapshot.getCatalogUrl());
-		return "redirect:/admin/ai";
-	}
-
-	@PostMapping("/admin/ai/hooks")
+	@PostMapping("/admin/ai/behavior/hooks")
 	public String saveHookPolicies(
 		@RequestParam("hookSheetText") String hookSheetText,
 		RedirectAttributes redirectAttributes
 	) {
 		hookPolicyService.replaceFromSheetText(hookSheetText);
 		redirectAttributes.addFlashAttribute("hookPolicyMessage", "AI hook 정책을 저장했습니다.");
-		return "redirect:/admin/ai";
+		return "redirect:/admin/ai/behavior";
 	}
 
 	@GetMapping("/admin/ai/behavior-lab")
@@ -101,7 +87,6 @@ public class AdminAiPageController {
 
 	@GetMapping("/admin/ai/behavior")
 	public String aiBehavior(Model model) {
-		model.addAttribute("latestCatalogSnapshot", catalogService.findLatestSnapshot());
 		model.addAttribute("hookSheetText", hookPolicyService.buildHookSheetText());
 		model.addAttribute("hasHookPolicies", hookPolicyService.hasSavedPolicies());
 		model.addAttribute("behaviorSheetNames", BEHAVIOR_SHEET_NAMES);

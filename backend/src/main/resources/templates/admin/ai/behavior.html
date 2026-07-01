@@ -23,9 +23,15 @@
             <option value="optimized">optimized</option>
           </select>
         </label>
-        <button type="button" data-ai-publish-behavior>테스트 설정 발행</button>
+        <div class="admin-ai-publish-control">
+          <button type="button" class="admin-primary-button" data-ai-publish-behavior>설정 발행</button>
+          <output class="admin-ai-publish-status"
+                  data-ai-publish-status
+                  data-status="idle"
+                  role="status"
+                  aria-live="polite">발행하면 신규 클라이언트 연결부터 적용됩니다.</output>
+        </div>
         <button type="button" data-ai-show-chatbot>챗봇 띄우기</button>
-        <a th:href="@{/admin/ai}">워크북</a>
         <a th:href="@{/admin/ai/behavior-lab-project/dist/index.html}" target="_blank" rel="noopener">그래프 실험 열기</a>
       </div>
     </header>
@@ -39,6 +45,9 @@
     <div class="admin-notice admin-notice-error"
          th:if="${behaviorSheetError}"
          th:text="${behaviorSheetError}">지원하지 않는 AI 행동 TSV입니다.</div>
+    <div class="admin-notice admin-notice-success"
+         th:if="${hookPolicyMessage}"
+         th:text="${hookPolicyMessage}">AI hook 정책을 저장했습니다.</div>
 
     <section class="admin-ai-connection-panel" data-ai-model-connections>
       <header class="admin-ai-sheet-panel-header">
@@ -140,6 +149,17 @@
               <li>DOM LIST와 Motion LIST도 같은 설정 TSV 안에서 관리</li>
             </ul>
           </details>
+
+          <details open>
+            <summary>
+              <strong>04. Input / Output Hook</strong>
+              <span>차단 / 치환 / ACTION 검증</span>
+            </summary>
+            <ul>
+              <li>Hook 정책은 발행 TSV가 아니라 ai_hook_policy에서 단일 관리</li>
+              <li>저장된 정책은 관리자 Trace와 클라이언트 FastAPI에 동일하게 적용</li>
+            </ul>
+          </details>
         </div>
       </aside>
 
@@ -147,7 +167,7 @@
         <header class="admin-ai-sheet-panel-header">
           <div>
             <p class="admin-eyebrow">Excel Input</p>
-            <h3>3개 TSV 입력</h3>
+            <h3>Behavior 설정과 Hook 정책</h3>
           </div>
         </header>
 
@@ -203,8 +223,66 @@
             </form>
           </details>
 
+          <details class="admin-ai-sheet-section" open data-ai-sheet-section="hook">
+            <summary><span><em>04</em><strong>Input / Output Hook 정책</strong></span><b>접기</b></summary>
+            <div class="admin-ai-sheet-actions">
+              <button type="button" data-ai-hook-add>정책 추가</button>
+              <button type="button" data-ai-reset="hook">샘플 불러오기</button>
+              <form method="post" th:action="@{/admin/ai/behavior/hooks}" data-ai-hook-form>
+                <input type="hidden" name="hookSheetText" data-ai-hook-hidden>
+                <button class="admin-primary-button" type="submit">Hook 정책 저장</button>
+              </form>
+            </div>
+            <p class="admin-ai-sheet-note" th:if="${!hasHookPolicies}">
+              저장된 Hook 정책이 없습니다. 샘플을 불러온 뒤 저장하거나 정책을 직접 추가해야 FastAPI에 적용됩니다.
+            </p>
+            <div class="admin-ai-hook-table-wrap" aria-label="Input Output Hook 정책 테이블">
+              <table class="admin-ai-hook-table">
+                <colgroup>
+                  <col class="admin-ai-hook-col-hook">
+                  <col class="admin-ai-hook-col-check">
+                  <col class="admin-ai-hook-col-threshold">
+                  <col class="admin-ai-hook-col-action">
+                  <col class="admin-ai-hook-col-message">
+                  <col class="admin-ai-hook-col-manage">
+                </colgroup>
+                <thead>
+                <tr>
+                  <th>hook</th>
+                  <th>check</th>
+                  <th>threshold</th>
+                  <th>action</th>
+                  <th>message / replacement</th>
+                  <th>관리</th>
+                </tr>
+                </thead>
+                <tbody data-ai-hook-policy-table></tbody>
+              </table>
+            </div>
+            <textarea hidden data-ai-sheet-source="hook" th:text="${hookSheetText}"></textarea>
+            <div class="admin-ai-hook-test-grid" aria-label="Hook 정책 테스트">
+              <section>
+                <h4>입력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-input placeholder="사용자 입력 예시를 넣어보세요."></textarea>
+                <button type="button" data-ai-hook-test-run="input">테스트 입력</button>
+                <output data-ai-hook-test-result="input">아직 테스트하지 않았습니다.</output>
+              </section>
+              <section>
+                <h4>출력 테스트</h4>
+                <textarea rows="4" spellcheck="false" data-ai-hook-test-output placeholder="챗봇 출력 예시를 넣어보세요."></textarea>
+                <div class="admin-ai-hook-checkboxes">
+                  <label><input type="checkbox" value="navigate" data-ai-hook-test-action checked><span>navigate</span></label>
+                  <label><input type="checkbox" value="highlight" data-ai-hook-test-action checked><span>highlight</span></label>
+                  <label><input type="checkbox" value="addToCart" data-ai-hook-test-action checked><span>addToCart</span></label>
+                </div>
+                <button type="button" data-ai-hook-test-run="output">테스트 출력</button>
+                <output data-ai-hook-test-result="output">아직 테스트하지 않았습니다.</output>
+              </section>
+            </div>
+          </details>
+
           <details class="admin-ai-sheet-section" open data-ai-sheet-section="motion-list">
-            <summary><span><em>04</em><strong>모션 목록</strong></span><b>접기</b></summary>
+            <summary><span><em>05</em><strong>모션 목록</strong></span><b>접기</b></summary>
             <form method="post" th:action="@{/admin/ai/behavior/sheets/motion-list}">
               <div class="admin-ai-sheet-actions">
                 <label class="admin-ai-file-button"><span>파일 불러오기</span><input type="file" accept=".tsv,.csv,.txt" data-ai-file-input="motion-list"></label>

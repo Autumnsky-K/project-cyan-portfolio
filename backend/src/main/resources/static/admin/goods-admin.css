@@ -556,6 +556,32 @@ html[data-admin-sidebar="rail"] .admin-rail-icon-payment {
   gap: 8px;
 }
 
+.admin-ai-publish-control {
+  display: grid;
+  gap: 5px;
+  max-width: 360px;
+}
+
+.admin-ai-publish-status {
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.admin-ai-publish-status[data-status="pending"] {
+  color: #7a5612;
+}
+
+.admin-ai-publish-status[data-status="success"] {
+  color: #176b3a;
+  font-weight: 700;
+}
+
+.admin-ai-publish-status[data-status="error"] {
+  color: #a32323;
+  font-weight: 700;
+}
+
 .admin-header a,
 .admin-header button,
 .admin-actions a,
