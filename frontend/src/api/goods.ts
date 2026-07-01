@@ -22,12 +22,20 @@ export type GoodsSummary = {
   likeCount?: number | null
 }
 
+export type GoodsExtraImage = {
+  imageId: number
+  imageUrl: string
+  altText?: string | null
+  sortOrder?: number | null
+}
+
 export type GoodsDetail = GoodsSummary & {
   description?: string | null
   artistId?: number | null
   stockCount?: number | null
   purchaseState?: string | null
   purchaseMessage?: string | null
+  extraImages?: GoodsExtraImage[] | null
 }
 
 export type GoodsReview = {

@@ -46,6 +46,7 @@ function GoodsDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isLikePending, setIsLikePending] = useState(false)
   const [likeFeedback, setLikeFeedback] = useState('')
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const shareFeedbackTimerRef = useRef<number | null>(null)
   const likeFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
@@ -157,6 +158,7 @@ function GoodsDetailPage() {
       setError('')
       try {
         const detail = await fetchGoodsDetail(goodsId, { signal: controller.signal })
+        setSelectedImageIndex(0)
         setGoods(detail)
         setStatus('data')
         void recordGoodsView(detail.goodsId).catch(() => undefined)
@@ -238,6 +240,20 @@ function GoodsDetailPage() {
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
   const descriptionHtml = goods?.description?.trim()
+  const galleryImages = goods
+    ? [
+        ...(goods.imageUrl
+          ? [{
+              imageId: 0,
+              imageUrl: goods.imageUrl,
+              altText: goods.name,
+              sortOrder: 0,
+            }]
+          : []),
+        ...(goods.extraImages ?? []).filter((image) => Boolean(image.imageUrl)),
+      ]
+    : []
+  const selectedGalleryImage = galleryImages[selectedImageIndex] ?? galleryImages[0] ?? null
   const detailSpecs = goods
     ? [
         { label: '아티스트', value: goods.artistName },
@@ -308,11 +324,30 @@ function GoodsDetailPage() {
             <div className="detail-content">
               <div className="detail-image" aria-label={`${goods.name} 이미지`}>
                 <GoodsImage
-                  src={goods.imageUrl}
-                  alt={goods.name}
+                  src={selectedGalleryImage?.imageUrl ?? goods.imageUrl}
+                  alt={selectedGalleryImage?.altText || goods.name}
                   fallbackLabel={goods.categoryName}
                 />
               </div>
+              {galleryImages.length > 1 && (
+                <div className="detail-gallery-thumbnails" aria-label="상품 이미지 사진첩">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={`${image.imageId}-${image.imageUrl}`}
+                      type="button"
+                      aria-label={`${goods.name} 이미지 ${index + 1}`}
+                      aria-current={selectedImageIndex === index ? 'true' : undefined}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <GoodsImage
+                        src={image.imageUrl}
+                        alt=""
+                        fallbackLabel={goods.categoryName}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <GoodsPurchasePanel

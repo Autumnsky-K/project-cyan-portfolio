@@ -39,6 +39,7 @@ public class GoodsService {
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsReviewRepository goodsReviewRepository;
 	private final GoodsLikeRepository goodsLikeRepository;
+	private final GoodsExtraImageRepository goodsExtraImageRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -47,7 +48,8 @@ public class GoodsService {
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
 		GoodsReviewRepository goodsReviewRepository,
-		GoodsLikeRepository goodsLikeRepository
+		GoodsLikeRepository goodsLikeRepository,
+		GoodsExtraImageRepository goodsExtraImageRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -56,6 +58,7 @@ public class GoodsService {
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsReviewRepository = goodsReviewRepository;
 		this.goodsLikeRepository = goodsLikeRepository;
+		this.goodsExtraImageRepository = goodsExtraImageRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -135,7 +138,10 @@ public class GoodsService {
 			availability.state(),
 			availability.message(),
 			goodsReviewRepository.findSummary(goodsId),
-			goodsLikeRepository.countByGoodsId(goodsId)
+			goodsLikeRepository.countByGoodsId(goodsId),
+			goodsExtraImageRepository.findByGoodsGoodsIdOrderBySortOrderAscImageIdAsc(goodsId).stream()
+				.map(GoodsExtraImageResponse::from)
+				.toList()
 		);
 	}
 

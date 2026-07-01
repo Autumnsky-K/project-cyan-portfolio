@@ -20,9 +20,14 @@ public record GoodsDetailResponse(
 	String purchaseMessage,
 	Double averageRating,
 	Long reviewCount,
-	Long likeCount
+	Long likeCount,
+	List<GoodsExtraImageResponse> extraImages
 ) {
 	public static GoodsDetailResponse from(Goods goods) {
+		return from(goods, List.of());
+	}
+
+	public static GoodsDetailResponse from(Goods goods, List<GoodsExtraImageResponse> extraImages) {
 		return from(
 			goods,
 			goods.getStockCount() != null && goods.getStockCount() > 0 ? "AVAILABLE" : "SOLD_OUT",
@@ -30,7 +35,8 @@ public record GoodsDetailResponse(
 				? "구매 가능한 상품입니다."
 				: "품절된 상품입니다.",
 			GoodsReviewSummary.empty(),
-			0L
+			0L,
+			extraImages
 		);
 	}
 
@@ -39,7 +45,8 @@ public record GoodsDetailResponse(
 		String purchaseState,
 		String purchaseMessage,
 		GoodsReviewSummary reviewSummary,
-		Long likeCount
+		Long likeCount,
+		List<GoodsExtraImageResponse> extraImages
 	) {
 		return new GoodsDetailResponse(
 			goods.getGoodsId(),
@@ -59,7 +66,8 @@ public record GoodsDetailResponse(
 			purchaseMessage,
 			reviewSummary.averageRating(),
 			reviewSummary.reviewCount(),
-			likeCount == null ? 0L : likeCount
+			likeCount == null ? 0L : likeCount,
+			extraImages == null ? List.of() : extraImages
 		);
 	}
 }

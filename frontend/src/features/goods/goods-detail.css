@@ -5,6 +5,10 @@
 .detail-content { min-width: 0; }
 .detail-image { display: grid; place-items: center; min-height: 560px; background: var(--goods-soft); overflow: hidden; }
 .detail-image img { width: auto; max-width: min(82%, 520px); max-height: 560px; object-fit: contain; }
+.detail-gallery-thumbnails { display: flex; align-items: center; gap: 10px; margin-top: 14px; overflow-x: auto; padding-bottom: 2px; }
+.detail-gallery-thumbnails button { flex: 0 0 auto; width: 76px; aspect-ratio: 1; padding: 0; border: 1px solid transparent; border-radius: 4px; background: var(--goods-soft); overflow: hidden; cursor: pointer; }
+.detail-gallery-thumbnails button[aria-current="true"] { border-color: #111; }
+.detail-gallery-thumbnails img, .detail-gallery-thumbnails .goods-image-fallback { width: 100%; height: 100%; object-fit: contain; }
 .purchase-panel { display: grid; gap: 20px; padding: 0 0 0 4px; box-sizing: border-box; }
 .purchase-heading { display: grid; gap: 8px; }
 .purchase-heading-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
