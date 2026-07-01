@@ -10,8 +10,8 @@ AuthReason: TypeAlias = Literal[
     "guestLimit",
 ]
 
-GUEST_REQUEST_LIMIT = 5
-GUEST_HISTORY_MESSAGE_LIMIT = 10
+GUEST_REQUEST_LIMIT = 10
+GUEST_HISTORY_MESSAGE_LIMIT = 20
 LOGIN_PATH = "/login"
 
 AUTH_REQUIRED_PHRASES: tuple[tuple[AuthReason, tuple[str, ...]], ...] = (
