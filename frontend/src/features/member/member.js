@@ -450,6 +450,10 @@ export async function getCurrentMember() {
     memberUuid: memberProfile?.memberUuid ?? data.user.id,
     email: memberProfile?.email ?? data.user.email,
     phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
+    postalCode: memberProfile?.postalCode ?? '',
+    address: memberProfile?.address ?? '',
+    addressDetail: memberProfile?.addressDetail ?? '',
+    deliveryRequest: memberProfile?.deliveryRequest ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||
@@ -607,9 +611,12 @@ export async function updateMemberProfile(form) {
   const response = await apiFetch('/members/me', {
     method: 'PATCH',
     body: JSON.stringify({
+      email: form.email,
       name: form.name,
       phone: form.phone,
       address: form.address,
+      addressDetail: form.addressDetail,
+      deliveryRequest: form.deliveryRequest,
     }),
   })
 

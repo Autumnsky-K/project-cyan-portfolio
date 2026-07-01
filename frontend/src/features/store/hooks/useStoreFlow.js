@@ -61,46 +61,69 @@ function formatKoreanPhoneNumber(value) {
 
 const CHECKOUT_FORM_STORAGE_KEY = 'checkoutForm'
 
-function getDefaultCheckoutForm(defaultMemberId, defaultCustomerName = '') {
+function getCheckoutFormStorageKey(defaultMemberId) {
+  const memberId = normalizeMemberId(defaultMemberId)
+
+  return memberId ? `${CHECKOUT_FORM_STORAGE_KEY}:${memberId}` : CHECKOUT_FORM_STORAGE_KEY
+}
+
+function getDefaultCheckoutForm(defaults = {}) {
   return {
-    memberId: defaultMemberId == null ? '' : String(defaultMemberId),
-    name: String(defaultCustomerName ?? '').trim(),
-    email: '',
-    phone: '',
-    address: '',
-    deliveryRequest: '',
+    memberId: defaults.memberId == null ? '' : String(defaults.memberId),
+    name: String(defaults.name ?? '').trim(),
+    email: String(defaults.email ?? '').trim(),
+    phone: formatKoreanPhoneNumber(defaults.phone ?? ''),
+    address: String(defaults.address ?? '').trim(),
+    addressDetail: String(defaults.addressDetail ?? '').trim(),
+    deliveryRequest: String(defaults.deliveryRequest ?? '').trim(),
   }
 }
 
-function loadCheckoutForm(defaultMemberId, defaultCustomerName = '') {
-  const defaultForm = getDefaultCheckoutForm(defaultMemberId, defaultCustomerName)
+function loadCheckoutForm(defaults = {}) {
+  const defaultForm = getDefaultCheckoutForm(defaults)
+  const storageKey = getCheckoutFormStorageKey(defaults.memberId)
 
   try {
-    const value = localStorage.getItem(CHECKOUT_FORM_STORAGE_KEY)
+    const value =
+      localStorage.getItem(storageKey) ??
+      localStorage.getItem(CHECKOUT_FORM_STORAGE_KEY)
     const savedForm = value ? JSON.parse(value) : null
 
     if (!savedForm || typeof savedForm !== 'object') {
       return defaultForm
     }
 
+    const defaultName = String(defaults.name ?? '').trim()
+    const defaultEmail = String(defaults.email ?? '').trim()
+    const defaultPhone = formatKoreanPhoneNumber(defaults.phone ?? '')
+    const defaultAddress = String(defaults.address ?? '').trim()
+    const defaultAddressDetail = String(defaults.addressDetail ?? '').trim()
+    const defaultDeliveryRequest = String(defaults.deliveryRequest ?? '').trim()
+
     return {
       ...defaultForm,
       ...savedForm,
-      memberId: savedForm.memberId || defaultForm.memberId,
-      name: savedForm.name || defaultForm.name,
-      phone: formatKoreanPhoneNumber(savedForm.phone ?? defaultForm.phone),
+      memberId: defaultForm.memberId || savedForm.memberId,
+      name: defaultName || String(savedForm.name ?? defaultForm.name).trim(),
+      email: defaultEmail || String(savedForm.email ?? defaultForm.email).trim(),
+      phone: defaultPhone || formatKoreanPhoneNumber(savedForm.phone ?? defaultForm.phone),
+      address: defaultAddress || String(savedForm.address ?? defaultForm.address).trim(),
+      addressDetail:
+        defaultAddressDetail || String(savedForm.addressDetail ?? defaultForm.addressDetail ?? '').trim(),
+      deliveryRequest:
+        defaultDeliveryRequest || String(savedForm.deliveryRequest ?? defaultForm.deliveryRequest ?? '').trim(),
     }
   } catch {
     return defaultForm
   }
 }
 
-function saveCheckoutForm(form) {
-  localStorage.setItem(CHECKOUT_FORM_STORAGE_KEY, JSON.stringify(form))
+function saveCheckoutForm(form, defaultMemberId) {
+  localStorage.setItem(getCheckoutFormStorageKey(defaultMemberId), JSON.stringify(form))
 }
 
-function clearCheckoutForm() {
-  localStorage.removeItem(CHECKOUT_FORM_STORAGE_KEY)
+function clearCheckoutForm(defaultMemberId) {
+  localStorage.removeItem(getCheckoutFormStorageKey(defaultMemberId))
 }
 
 function markLocalDevOrders(orders) {
@@ -143,9 +166,35 @@ export function useStoreFlow(options = {}) {
   const {
     allowLocalFallback = false,
     defaultCustomerName = '',
+    defaultCustomerEmail = '',
+    defaultCustomerPhone = '',
+    defaultCustomerAddress = '',
+    defaultCustomerAddressDetail = '',
+    defaultCustomerDeliveryRequest = '',
     defaultMemberId = null,
     fetchOrderHistory = false,
   } = options
+  const defaultCheckoutForm = useMemo(
+    () =>
+      getDefaultCheckoutForm({
+        memberId: defaultMemberId,
+        name: defaultCustomerName,
+        email: defaultCustomerEmail,
+        phone: defaultCustomerPhone,
+        address: defaultCustomerAddress,
+        addressDetail: defaultCustomerAddressDetail,
+        deliveryRequest: defaultCustomerDeliveryRequest,
+      }),
+    [
+      defaultCustomerAddress,
+      defaultCustomerAddressDetail,
+      defaultCustomerDeliveryRequest,
+      defaultCustomerEmail,
+      defaultCustomerName,
+      defaultCustomerPhone,
+      defaultMemberId,
+    ],
+  )
   const {
     items: sharedCartItems,
     status: cartStatus,
@@ -164,7 +213,15 @@ export function useStoreFlow(options = {}) {
   const [orderHistoryMessage, setOrderHistoryMessage] = useState('')
   const [pendingPayment, setPendingPayment] = useState(loadPendingPayment)
   const [checkoutForm, setCheckoutForm] = useState(() =>
-    loadCheckoutForm(defaultMemberId, defaultCustomerName),
+    loadCheckoutForm({
+      memberId: defaultMemberId,
+      name: defaultCustomerName,
+      email: defaultCustomerEmail,
+      phone: defaultCustomerPhone,
+      address: defaultCustomerAddress,
+      addressDetail: defaultCustomerAddressDetail,
+      deliveryRequest: defaultCustomerDeliveryRequest,
+    }),
   )
   const [paymentMethod, setPaymentMethod] = useState(
     pendingPayment?.paymentMethod || PAYMENT_METHODS.KAKAO_PAY,
@@ -184,26 +241,54 @@ export function useStoreFlow(options = {}) {
   const [lastKakaoReadyError, setLastKakaoReadyError] = useState('')
 
   useEffect(() => {
-    saveCheckoutForm(checkoutForm)
-  }, [checkoutForm])
+    saveCheckoutForm(checkoutForm, defaultMemberId)
+  }, [checkoutForm, defaultMemberId])
 
   useEffect(() => {
-    if (!defaultMemberId && !defaultCustomerName) return undefined
+    if (
+      !defaultMemberId &&
+      !defaultCustomerName &&
+      !defaultCustomerEmail &&
+      !defaultCustomerPhone &&
+      !defaultCustomerAddress &&
+      !defaultCustomerAddressDetail &&
+      !defaultCustomerDeliveryRequest
+    ) return undefined
 
     const timerId = window.setTimeout(() => {
       setCheckoutForm((currentForm) =>
-        currentForm.memberId && currentForm.name
+        currentForm.memberId === defaultCheckoutForm.memberId &&
+        currentForm.name === defaultCheckoutForm.name &&
+        currentForm.email === defaultCheckoutForm.email &&
+        currentForm.phone === defaultCheckoutForm.phone &&
+            currentForm.address === defaultCheckoutForm.address &&
+            currentForm.addressDetail === defaultCheckoutForm.addressDetail &&
+            currentForm.deliveryRequest === defaultCheckoutForm.deliveryRequest
           ? currentForm
           : {
               ...currentForm,
-              memberId: currentForm.memberId || (defaultMemberId == null ? '' : String(defaultMemberId)),
-              name: currentForm.name || String(defaultCustomerName ?? '').trim(),
+              memberId: defaultCheckoutForm.memberId || currentForm.memberId,
+              name: defaultCheckoutForm.name || currentForm.name,
+              email: defaultCheckoutForm.email || currentForm.email,
+              phone: defaultCheckoutForm.phone || currentForm.phone,
+              address: defaultCheckoutForm.address || currentForm.address,
+              addressDetail: defaultCheckoutForm.addressDetail || currentForm.addressDetail,
+              deliveryRequest: defaultCheckoutForm.deliveryRequest || currentForm.deliveryRequest,
             },
       )
     }, 0)
 
     return () => window.clearTimeout(timerId)
-  }, [defaultCustomerName, defaultMemberId])
+  }, [
+    defaultCheckoutForm,
+    defaultCustomerAddress,
+    defaultCustomerAddressDetail,
+    defaultCustomerDeliveryRequest,
+    defaultCustomerEmail,
+    defaultCustomerName,
+    defaultCustomerPhone,
+    defaultMemberId,
+  ])
 
   const cartItems = useMemo(
     () =>
@@ -487,6 +572,7 @@ export function useStoreFlow(options = {}) {
         email: checkoutForm.email.trim(),
         phone: checkoutForm.phone.trim(),
         address: checkoutForm.address.trim(),
+        addressDetail: checkoutForm.addressDetail.trim(),
         deliveryRequest: checkoutForm.deliveryRequest.trim(),
       },
       paymentMethod: getPaymentMethodLabel(paymentMethod),
@@ -501,7 +587,7 @@ export function useStoreFlow(options = {}) {
     setOrders((currentOrders) => [order, ...currentOrders])
     setCompletedOrder(order)
     clearCart()
-    clearCheckoutForm()
+    clearCheckoutForm(defaultMemberId)
     setPendingPayment(null)
     setErrors([])
     setPaymentStatus(ORDER_STATUS.PAID)
@@ -572,7 +658,7 @@ export function useStoreFlow(options = {}) {
           recipientPhone: readyOrder.customer.phone,
           postalCode: readyOrder.customer.postalCode ?? '',
           address: readyOrder.customer.address,
-          addressDetail: readyOrder.customer.addressDetail ?? '-',
+          addressDetail: readyOrder.customer.addressDetail || '-',
           deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
         },
         paymentProvider: 'KAKAO_PAY',
@@ -662,7 +748,7 @@ export function useStoreFlow(options = {}) {
           recipientPhone: readyOrder.customer.phone,
           postalCode: readyOrder.customer.postalCode ?? '',
           address: readyOrder.customer.address,
-          addressDetail: readyOrder.customer.addressDetail ?? '-',
+          addressDetail: readyOrder.customer.addressDetail || '-',
           deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
         },
         paymentProvider: 'TOSS',
