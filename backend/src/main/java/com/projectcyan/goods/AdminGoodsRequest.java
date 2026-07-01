@@ -18,6 +18,7 @@ public record AdminGoodsRequest(
 	Boolean isBestSeller,
 	Boolean aiPickDefault,
 	@Min(value = 0, message = "재고는 0 이상이어야 합니다.") Integer stockCount,
-	List<String> tags
+	List<String> tags,
+	List<String> extraImageUrls
 ) {
 }

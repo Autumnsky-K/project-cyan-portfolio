@@ -1216,6 +1216,14 @@ button.admin-primary {
   gap: 14px;
 }
 
+.admin-hidden-field {
+  display: none !important;
+}
+
+.admin-form-grid label:has([data-goods-image-url]) {
+  display: none;
+}
+
 .admin-form textarea {
   resize: vertical;
 }
@@ -1580,6 +1588,107 @@ button.admin-primary {
   gap: 8px;
   color: var(--admin-muted);
   font-size: 13px;
+}
+
+.admin-goods-image-slots {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-surface);
+}
+
+.admin-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.admin-section-heading h3 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 18px;
+}
+
+.admin-section-heading small {
+  max-width: 320px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.admin-goods-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-goods-image-slot {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-control-bg);
+  cursor: pointer;
+}
+
+.admin-goods-image-slot.is-selected,
+.admin-goods-image-slot.is-dragover {
+  border-color: var(--admin-accent, #2f6f64);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent, #2f6f64) 18%, transparent);
+}
+
+.admin-goods-image-slot header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-goods-image-slot strong {
+  overflow: hidden;
+  color: var(--admin-ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-goods-image-slot button {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 4px 7px;
+  border: 1px solid var(--admin-line);
+  border-radius: 999px;
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.admin-goods-slot-preview {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px dashed var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-soft);
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.admin-goods-slot-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .admin-ai-main {

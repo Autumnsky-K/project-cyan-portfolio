@@ -27,6 +27,7 @@ public class AdminGoodsService {
 	private final GoodsStockRepository goodsStockRepository;
 	private final GoodsDescriptionSanitizer goodsDescriptionSanitizer;
 	private final SupabaseUsageCounter supabaseUsageCounter;
+	private final GoodsExtraImageRepository goodsExtraImageRepository;
 
 	public AdminGoodsService(
 		GoodsRepository goodsRepository,
@@ -35,7 +36,8 @@ public class AdminGoodsService {
 		TagRepository tagRepository,
 		GoodsStockRepository goodsStockRepository,
 		GoodsDescriptionSanitizer goodsDescriptionSanitizer,
-		SupabaseUsageCounter supabaseUsageCounter
+		SupabaseUsageCounter supabaseUsageCounter,
+		GoodsExtraImageRepository goodsExtraImageRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -44,6 +46,7 @@ public class AdminGoodsService {
 		this.goodsStockRepository = goodsStockRepository;
 		this.goodsDescriptionSanitizer = goodsDescriptionSanitizer;
 		this.supabaseUsageCounter = supabaseUsageCounter;
+		this.goodsExtraImageRepository = goodsExtraImageRepository;
 	}
 
 	public GoodsDetailResponse createGoods(AdminGoodsRequest request) {
@@ -59,7 +62,7 @@ public class AdminGoodsService {
 		goodsStockRepository.save(stock);
 		savedGoods.setStockCount(stock.getCurrentStock());
 		supabaseUsageCounter.recordWrite("굿즈 등록");
-		return GoodsDetailResponse.from(savedGoods);
+		return GoodsDetailResponse.from(savedGoods, syncExtraImages(savedGoods, request.extraImageUrls()));
 	}
 
 	public GoodsDetailResponse updateGoods(Long goodsId, AdminGoodsRequest request) {
@@ -68,7 +71,7 @@ public class AdminGoodsService {
 		GoodsStock stock = upsertStock(goods, request.stockCount());
 		goods.setStockCount(stock.getCurrentStock());
 		supabaseUsageCounter.recordWrite("굿즈 수정");
-		return GoodsDetailResponse.from(goods);
+		return GoodsDetailResponse.from(goods, syncExtraImages(goods, request.extraImageUrls()));
 	}
 
 	public int bulkUpdateGoods(List<AdminGoodsBulkRow> rows) {
@@ -215,6 +218,39 @@ public class AdminGoodsService {
 		goods.setStockCount(goodsStockRepository.findById(goods.getGoodsId())
 			.map(GoodsStock::getCurrentStock)
 			.orElse(null));
+	}
+
+	private List<GoodsExtraImageResponse> syncExtraImages(Goods goods, List<String> imageUrls) {
+		List<GoodsExtraImage> existingImages = goodsExtraImageRepository
+			.findByGoodsGoodsIdOrderBySortOrderAscImageIdAsc(goods.getGoodsId());
+		if (!existingImages.isEmpty()) {
+			goodsExtraImageRepository.deleteAllInBatch(existingImages);
+			goodsExtraImageRepository.flush();
+		}
+		List<GoodsExtraImage> images = normalizedExtraImages(goods, imageUrls);
+		if (images.isEmpty()) {
+			return List.of();
+		}
+		return goodsExtraImageRepository.saveAll(images).stream()
+			.map(GoodsExtraImageResponse::from)
+			.toList();
+	}
+
+	private List<GoodsExtraImage> normalizedExtraImages(Goods goods, List<String> imageUrls) {
+		if (imageUrls == null || imageUrls.isEmpty()) {
+			return List.of();
+		}
+		List<GoodsExtraImage> images = new java.util.ArrayList<>();
+		int sortOrder = 1;
+		for (String imageUrl : imageUrls) {
+			String normalizedUrl = blankToNull(imageUrl);
+			if (normalizedUrl == null) {
+				continue;
+			}
+			images.add(new GoodsExtraImage(goods, normalizedUrl, goods.getGoodsName(), sortOrder));
+			sortOrder++;
+		}
+		return images;
 	}
 
 	private Integer normalizeStockCount(Integer stockCount) {
