@@ -202,6 +202,7 @@ function bindGoodsImageEditor(root) {
     if (!button?.dataset.imageUrl) {
       return
     }
+    clearSlotSelection()
     event.dataTransfer.effectAllowed = 'copy'
     event.dataTransfer.setData('application/x-project-cyan-image', button.dataset.imageUrl)
     event.dataTransfer.setData('application/x-project-cyan-library-image', button.dataset.imageUrl)
@@ -265,12 +266,14 @@ function bindGoodsImageEditor(root) {
       if (sourceIndex !== null && Number.isInteger(sourceIndex) && inputForSlot(sourceIndex) && sourceIndex !== index) {
         const sourceUrl = event.dataTransfer.getData('application/x-project-cyan-slot-image-url') || url
         const targetUrl = slotValue(index)
-        setSlotUrl(index, sourceUrl, { select: true })
+        setSlotUrl(index, sourceUrl)
         setSlotUrl(sourceIndex, targetUrl)
+        clearSlotSelection()
         setStatus('Image slots swapped.')
         return
       }
-      setSlotUrl(index, url, { select: true })
+      setSlotUrl(index, url)
+      clearSlotSelection()
       setStatus(index === 0 ? 'Main image selected.' : `Extra image ${index} selected.`)
     })
   })
@@ -278,7 +281,10 @@ function bindGoodsImageEditor(root) {
   renderSlots()
 
   document.addEventListener('pointerdown', (event) => {
-    if (event.target.closest('[data-goods-image-slot]')) {
+    if (
+      event.target.closest('[data-goods-image-slot]')
+      || event.target.closest('[data-image-url]')
+    ) {
       return
     }
     clearSlotSelection()
