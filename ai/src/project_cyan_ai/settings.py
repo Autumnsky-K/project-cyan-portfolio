@@ -52,6 +52,14 @@ class ProjectCyanAiSettings(BaseSettings):
         default=30,
         alias="PROJECT_CYAN_HOOK_POLICY_CACHE_TTL_SECONDS",
     )
+    runtime_config_cache_ttl_seconds: int = Field(
+        default=30,
+        alias="PROJECT_CYAN_RUNTIME_CONFIG_CACHE_TTL_SECONDS",
+    )
+    internal_service_token: str | None = Field(
+        default=None,
+        alias="PROJECT_CYAN_INTERNAL_SERVICE_TOKEN",
+    )
 
 
 def get_settings() -> ProjectCyanAiSettings:

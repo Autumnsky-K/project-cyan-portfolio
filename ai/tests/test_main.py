@@ -20,6 +20,7 @@ from project_cyan_ai.goods_catalog import (
     HttpGoodsCatalogClient,
     MetadataTsvGoodsCatalogClient,
     TsvGoodsCatalogClient,
+    build_runtime_goods_catalog_client,
     build_catalog_prompt,
     extract_max_price,
     filter_tsv_candidates,
@@ -472,6 +473,13 @@ def test_http_goods_catalog_client_calls_recommendation_candidates(monkeypatch):
             "stockCount": 5,
         }
     ]
+
+
+def test_runtime_catalog_factory_always_uses_spring_recommendation_api():
+    catalog_client = build_runtime_goods_catalog_client("http://backend.test/api")
+
+    assert isinstance(catalog_client, HttpGoodsCatalogClient)
+    assert catalog_client.spring_api_url == "http://backend.test/api"
 
 
 def test_http_goods_catalog_client_sends_extracted_max_price(monkeypatch):
@@ -2224,7 +2232,7 @@ def test_client_ws_guest_recommendation_skips_member_and_history_apis(monkeypatc
     FakeFavoriteArtistClient.instances = []
     FakeWebSocketGoodsCatalogClient.instances = []
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
     monkeypatch.setattr(
@@ -2361,7 +2369,7 @@ def test_client_ws_guest_returns_structured_auth_cta(text, reason):
 
 def test_client_ws_auth_clears_guest_recent_recommendations(monkeypatch):
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
 
@@ -2525,7 +2533,7 @@ def test_client_ws_combines_mock_actions_when_keywords_overlap():
 
 def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatch):
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
 
@@ -2575,7 +2583,7 @@ def test_client_ws_persists_messages_when_auth_and_session_are_present(monkeypat
     FakeChatHistoryClient.instances = []
     FakeChatHistoryClient.should_succeed = True
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
     monkeypatch.setattr(
@@ -2642,7 +2650,7 @@ def test_client_ws_fetches_favorite_artists_once_per_cache_ttl(monkeypatch):
     FakeFavoriteArtistClient.instances = []
     FakeFavoriteArtistClient.artists = [{"artistId": 3, "name": "Artist C", "imageUrl": None}]
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
     monkeypatch.setattr(
@@ -2725,7 +2733,7 @@ def test_client_ws_continues_when_history_save_fails(monkeypatch):
 
 def test_client_ws_does_not_share_recent_candidates_across_connections(monkeypatch):
     monkeypatch.setattr(
-        "project_cyan_ai.api.websocket.HttpGoodsCatalogClient",
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
         FakeWebSocketGoodsCatalogClient,
     )
 

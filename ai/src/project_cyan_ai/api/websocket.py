@@ -15,9 +15,7 @@ from project_cyan_ai.favorite_artists import (
 )
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
-    HttpGoodsCatalogClient,
-    MetadataTsvGoodsCatalogClient,
-    TsvGoodsCatalogClient,
+    build_runtime_goods_catalog_client,
     has_product_intent,
 )
 from project_cyan_ai.guest_chat_policy import (
@@ -25,8 +23,9 @@ from project_cyan_ai.guest_chat_policy import (
     build_auth_required_response,
     classify_auth_required,
 )
-from project_cyan_ai.providers import get_chat_response_provider
+from project_cyan_ai.providers import OpenAiChatResponseProvider, get_chat_response_provider
 from project_cyan_ai.hook_policy import build_hook_filter
+from project_cyan_ai.behavior import BehaviorEngine, apply_behavior_metadata
 from project_cyan_ai.personalization_context import (
     PersonalizationContextClient,
     build_recent_sessions_fallback,
@@ -42,6 +41,7 @@ from project_cyan_ai.schemas.ws import (
     ModelConfigMessage,
 )
 from project_cyan_ai.settings import get_settings
+from project_cyan_ai.runtime_config import RuntimeConfigProvider, RuntimeModelConnectionProvider
 
 router = APIRouter()
 
@@ -51,25 +51,39 @@ async def client_ws(websocket: WebSocket):
     await websocket.accept()
     client_uid = str(uuid4())
     settings = get_settings()
-    if settings.goods_catalog_metadata_url:
-        catalog_client = MetadataTsvGoodsCatalogClient(
-            settings.goods_catalog_metadata_url,
-            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
-        )
-    elif settings.goods_catalog_tsv_url:
-        catalog_client = TsvGoodsCatalogClient(
-            settings.goods_catalog_tsv_url,
-            cache_ttl_seconds=settings.goods_catalog_cache_ttl_seconds,
-        )
-    else:
-        catalog_client = HttpGoodsCatalogClient(settings.spring_api_url)
-    base_response_provider = get_chat_response_provider()
+    runtime_config_provider = RuntimeConfigProvider(
+        settings.spring_api_url,
+        settings.runtime_config_cache_ttl_seconds,
+        service_token=settings.internal_service_token,
+    )
+    runtime_config = runtime_config_provider.get()
+    runtime_connection = None
+    runtime_connection_failed = False
+    if runtime_config.model_connection:
+        try:
+            runtime_connection = RuntimeModelConnectionProvider(
+                settings.spring_api_url,
+                service_token=settings.internal_service_token,
+            ).resolve(
+                runtime_config.model_connection["profileId"],
+                runtime_config.model_connection["profileVersion"],
+            )
+        except (OSError, TimeoutError, ValueError, KeyError):
+            runtime_connection_failed = True
+    catalog_client = build_runtime_goods_catalog_client(settings.spring_api_url)
+    base_response_provider = (
+        OpenAiChatResponseProvider(client=None)
+        if runtime_connection_failed
+        else get_chat_response_provider(enable_shopping_tools=False, runtime_connection=runtime_connection)
+    )
     response_provider = CatalogGroundedChatResponseProvider(
         delegate=base_response_provider,
         catalog_client=catalog_client,
     )
     summary_provider = ConversationSummaryProvider(
-        get_chat_response_provider(enable_shopping_tools=False)
+        OpenAiChatResponseProvider(client=None)
+        if runtime_connection_failed
+        else get_chat_response_provider(enable_shopping_tools=False, runtime_connection=runtime_connection)
     )
     chat_history_client = ChatHistoryClient(settings.spring_api_url)
     personalization_client = PersonalizationContextClient(settings.spring_api_url)
@@ -89,6 +103,16 @@ async def client_ws(websocket: WebSocket):
     hook_filter = build_hook_filter(
         settings.spring_api_url,
         settings.hook_policy_cache_ttl_seconds,
+    )
+    search_response_provider = (
+        OpenAiChatResponseProvider(client=None)
+        if runtime_connection_failed
+        else get_chat_response_provider(enable_shopping_tools=False, runtime_connection=runtime_connection)
+    )
+    behavior_engine = BehaviorEngine(
+        base_provider=search_response_provider,
+        response_provider=response_provider,
+        hook_filter=hook_filter,
     )
 
     await websocket.send_json(
@@ -140,7 +164,13 @@ async def client_ws(websocket: WebSocket):
             if isinstance(raw_text, str):
                 blocked_response = hook_filter.filter_input(raw_text.strip())
                 if blocked_response is not None:
-                    await websocket.send_json(blocked_response.model_dump())
+                    await websocket.send_json(
+                        apply_behavior_metadata(
+                            blocked_response,
+                            runtime_config_provider.get(),
+                            blocked=True,
+                        ).model_dump()
+                    )
                     continue
 
             try:
@@ -238,16 +268,17 @@ async def client_ws(websocket: WebSocket):
                     if isinstance(context_artists, list)
                     else favorite_artist_provider.favorite_artists(access_token)
                 )
-            response = response_provider.build_response(
+            execution = behavior_engine.run(
                 message.text,
-                message.context,
-                favorite_artists,
-                with_current_session_history(
+                runtime_config_provider.get(),
+                context=message.context,
+                favorite_artists=favorite_artists,
+                personalization_context=with_current_session_history(
                     personalization_context,
                     current_session_history if access_token else guest_state.history,
                 ),
             )
-            response = hook_filter.filter_output(response)
+            response = execution.response
 
             if access_token and message.sessionId:
                 chat_history_client.create_message(

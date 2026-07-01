@@ -16,7 +16,7 @@ import com.projectcyan.common.ApiErrorException;
 @Service
 public class AiHookPolicyService {
 
-	static final String TSV_HEADER = "hook\tcheck\tthreshold\taction\tmessage";
+	static final String TSV_HEADER = "hook\tcheck\tthreshold\taction\tmessage\treplacement";
 
 	private static final Set<String> HOOKS = Set.of("input", "output");
 	private static final Set<String> CHECKS = Set.of(
@@ -25,9 +25,10 @@ public class AiHookPolicyService {
 		"specialCharRatio",
 		"numberRatio",
 		"englishRatio",
-		"actionScope"
+		"actionScope",
+		"literalText"
 	);
-	private static final Set<String> ACTIONS = Set.of("stop", "review", "rewrite", "filter");
+	private static final Set<String> ACTIONS = Set.of("stop", "review", "rewrite", "filter", "replace", "remove");
 
 	private final AiHookPolicyRepository repository;
 
@@ -78,16 +79,17 @@ public class AiHookPolicyService {
 				continue;
 			}
 			String[] cells = lines[index].split("\\t", -1);
-			if (cells.length < 5) {
-				throw validationError("AI hook TSV row " + (index + 1) + " must include 5 columns.");
+			if (cells.length < 4) {
+				throw validationError("AI hook TSV row " + (index + 1) + " must include at least 4 columns.");
 			}
 			String hook = normalize(cells[0]);
 			String check = normalize(cells[1]);
 			String threshold = normalize(cells[2]);
 			String action = normalize(cells[3]);
-			String message = normalize(cells[4]);
-			validatePolicy(hook, check, threshold, action, message);
-			policies.add(AiHookPolicy.create(hook, check, threshold, action, message, true, policies.size() + 1));
+			String message = cells.length >= 5 ? normalize(cells[4]) : "";
+			String replacement = cells.length >= 6 ? normalize(cells[5]) : "";
+			validatePolicy(hook, check, threshold, action, message, replacement);
+			policies.add(AiHookPolicy.create(hook, check, threshold, action, message, replacement, true, policies.size() + 1));
 		}
 
 		if (policies.isEmpty()) {
@@ -100,12 +102,14 @@ public class AiHookPolicyService {
 	public String defaultHookSheetText() {
 		return String.join("\n",
 			TSV_HEADER,
-			"input\tmaxLength\t500\tstop\t입력이 너무 길어요. 500자 이하로 다시 입력해주세요.",
-			"input\tspecialCharRatio\t30%\treview\t특수문자가 많아요. 상품명이나 요청 내용을 다시 확인해주세요.",
-			"input\tnumberRatio\t45%\treview\t숫자가 많아요. 주문번호나 가격 문의인지 다시 알려주세요.",
-			"input\tenglishRatio\t70%\treview\t영문 입력이 많아요. 상품명인지 다시 확인해주세요.",
-			"output\tforbiddenWords\t관리자 목록\trewrite\t안내가 부적절해 다시 정리했어요.",
-			"output\tactionScope\tnavigate,highlight,addToCart\tfilter\t허용된 화면 동작만 실행할게요."
+			"input\tmaxLength\t500\tstop\t입력이 너무 길어요. 500자 이하로 다시 입력해주세요.\t",
+			"input\tspecialCharRatio\t30%\treview\t특수문자가 많아요. 상품명이나 요청 내용을 다시 확인해주세요.\t",
+			"input\tnumberRatio\t45%\treview\t숫자가 많아요. 주문번호나 가격 문의인지 다시 알려주세요.\t",
+			"input\tenglishRatio\t70%\treview\t영문 입력이 많아요. 상품명인지 다시 확인해주세요.\t",
+			"input\tliteralText\t포카\treplace\t\t포토카드",
+			"output\tliteralText\t♡\tremove\t\t",
+			"output\tforbiddenWords\t관리자 목록\trewrite\t안내가 부적절해 다시 정리했어요.\t",
+			"output\tactionScope\tnavigate,highlight,addToCart\tfilter\t허용된 화면 동작만 실행할게요.\t"
 		);
 	}
 
@@ -115,11 +119,12 @@ public class AiHookPolicyService {
 			tsvCell(policy.getCheck()),
 			tsvCell(policy.getThreshold()),
 			tsvCell(policy.getAction()),
-			tsvCell(policy.getMessage())
+			tsvCell(policy.getMessage()),
+			tsvCell(policy.getReplacement())
 		);
 	}
 
-	private void validatePolicy(String hook, String check, String threshold, String action, String message) {
+	private void validatePolicy(String hook, String check, String threshold, String action, String message, String replacement) {
 		if (!HOOKS.contains(hook)) {
 			throw validationError("Unsupported AI hook: " + hook);
 		}
@@ -132,8 +137,15 @@ public class AiHookPolicyService {
 		if (!StringUtils.hasText(threshold)) {
 			throw validationError("AI hook threshold is required.");
 		}
-		if (!StringUtils.hasText(message)) {
+		boolean transform = "replace".equals(action) || "remove".equals(action);
+		if (!transform && !StringUtils.hasText(message)) {
 			throw validationError("AI hook message is required.");
+		}
+		if (transform && !"literalText".equals(check)) {
+			throw validationError("AI hook transform actions require literalText check.");
+		}
+		if ("replace".equals(action) && !StringUtils.hasText(replacement)) {
+			throw validationError("AI hook replacement is required for replace action.");
 		}
 	}
 

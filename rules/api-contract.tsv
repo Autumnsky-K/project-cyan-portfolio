@@ -1,7 +1,7 @@
 번호	파트	지시사항
 1	source	Read docs/api-contract.md for exact API contract details before changing API behavior.
 2	source	Treat docs/api-contract.md as canonical when code and contract disagree.
-3	change	Additive API changes must update the docs/api-contract.md change log.
+3	change	Additive API changes must increment the PATCH version and update the docs/api-contract.md change log.
 4	change	Breaking API changes require team agreement, Slack notice, version update, and change log entry.
 5	change	Do not silently delete, rename, retype, or change frozen fields, statuses, DOM hooks, or actions.
 6	member	Use Supabase Auth for member authentication and treat public.member.member_uuid as auth.users.id.

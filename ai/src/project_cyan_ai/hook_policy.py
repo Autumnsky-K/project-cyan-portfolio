@@ -20,8 +20,10 @@ class HookPolicy:
     threshold: str
     action: str
     message: str
+    replacement: str = ""
     enabled: bool = True
     priority: int = 0
+    policy_id: int | None = None
 
 
 class HookPolicyClient(Protocol):
@@ -58,11 +60,17 @@ class SpringHookPolicyClient:
             try:
                 policies.append(
                     HookPolicy(
+                        policy_id=(
+                            int(item["policyId"])
+                            if item.get("policyId") is not None
+                            else None
+                        ),
                         hook=str(item["hook"]),
                         check=str(item["check"]),
                         threshold=str(item["threshold"]),
                         action=str(item["action"]),
                         message=str(item["message"]),
+                        replacement=str(item.get("replacement") or ""),
                         enabled=bool(item.get("enabled", True)),
                         priority=int(item.get("priority", 0)),
                     )
@@ -104,16 +112,26 @@ class HookFilter:
         self.policy_provider = policy_provider
 
     def filter_input(self, text: str) -> FullTextMessage | None:
+        transformed_text, _ = self.transform_text(text, "input")
         for policy in self._policies_for("input"):
-            if not self._violates_text_policy(text, policy):
+            if self._is_transform(policy):
+                continue
+            if not self._violates_text_policy(transformed_text, policy):
                 continue
             if policy.action in ("stop", "review"):
                 return FullTextMessage(text=policy.message or DEFAULT_HOOK_MESSAGE, actions=[])
         return None
 
     def filter_output(self, response: FullTextMessage) -> FullTextMessage:
-        next_response = response
+        transformed_text, _ = self.transform_text(response.text, "output")
+        next_response = FullTextMessage(
+            text=transformed_text,
+            actions=response.actions,
+            metadata=response.metadata,
+        )
         for policy in self._policies_for("output"):
+            if self._is_transform(policy):
+                continue
             if policy.check == "actionScope" and policy.action == "filter":
                 next_response = FullTextMessage(
                     text=next_response.text,
@@ -129,6 +147,32 @@ class HookFilter:
                     next_response = FullTextMessage(text=policy.message or DEFAULT_HOOK_MESSAGE, actions=[])
 
         return next_response
+
+    def transform_text(self, text: str, hook: str) -> tuple[str, list[int]]:
+        output = text
+        applied_policy_ids: list[int] = []
+        for policy in self._policies_for(hook):
+            if not self._is_transform(policy) or not policy.threshold:
+                continue
+            if policy.threshold not in output:
+                continue
+            replacement = policy.replacement if policy.action == "replace" else ""
+            output = output.replace(policy.threshold, replacement)
+            if policy.policy_id is not None:
+                applied_policy_ids.append(policy.policy_id)
+        return output, applied_policy_ids
+
+    def violated_text_policy_ids(self, text: str, hook: str) -> list[int]:
+        return [
+            policy.policy_id
+            for policy in self._policies_for(hook)
+            if policy.policy_id is not None
+            and not self._is_transform(policy)
+            and self._violates_text_policy(text, policy)
+        ]
+
+    def _is_transform(self, policy: HookPolicy) -> bool:
+        return policy.check == "literalText" and policy.action in ("replace", "remove")
 
     def _policies_for(self, hook: str) -> list[HookPolicy]:
         return [

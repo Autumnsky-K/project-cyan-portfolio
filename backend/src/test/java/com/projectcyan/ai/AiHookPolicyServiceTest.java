@@ -21,7 +21,19 @@ class AiHookPolicyServiceTest {
 		when(repository.findAllByOrderByPriorityAscPolicyIdAsc()).thenReturn(List.of());
 		AiHookPolicyService emptyService = new AiHookPolicyService(repository);
 
-		assertThat(emptyService.buildHookSheetText()).isEqualTo("hook\tcheck\tthreshold\taction\tmessage\n");
+		assertThat(emptyService.buildHookSheetText()).isEqualTo("hook\tcheck\tthreshold\taction\tmessage\treplacement\n");
+	}
+
+	@Test
+	void parsesLiteralReplacementPolicy() {
+		List<AiHookPolicy> policies = service.parseSheetText("""
+			hook\tcheck\tthreshold\taction\tmessage\treplacement
+			input\tliteralText\t포카\treplace\t\t포토카드
+			output\tliteralText\t♡\tremove\t\t
+			""");
+
+		assertThat(policies.get(0).getReplacement()).isEqualTo("포토카드");
+		assertThat(policies.get(1).getAction()).isEqualTo("remove");
 	}
 
 	@Test
