@@ -49,6 +49,7 @@ function GoodsReviewsPanel({ goodsId }: { goodsId: number }) {
   const [optionLabel, setOptionLabel] = useState('')
   const [formMessage, setFormMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
 
   const loadReviews = useCallback(async (signal?: AbortSignal) => {
     setStatus('loading')
@@ -133,6 +134,7 @@ function GoodsReviewsPanel({ goodsId }: { goodsId: number }) {
         : await createGoodsReview(goodsId, payload)
       setMyReview(savedReview)
       setFormMessage(myReview ? '리뷰를 수정했습니다.' : '리뷰를 등록했습니다.')
+      setIsFormOpen(false)
       await loadReviews()
     } catch (reviewError) {
       setFormMessage(reviewError instanceof Error ? reviewError.message : '리뷰를 저장하지 못했습니다.')
@@ -155,6 +157,7 @@ function GoodsReviewsPanel({ goodsId }: { goodsId: number }) {
       setContent('')
       setOptionLabel('')
       setFormMessage('리뷰를 삭제했습니다.')
+      setIsFormOpen(false)
       await loadReviews()
     } catch (reviewError) {
       setFormMessage(reviewError instanceof Error ? reviewError.message : '리뷰를 삭제하지 못했습니다.')
@@ -188,60 +191,73 @@ function GoodsReviewsPanel({ goodsId }: { goodsId: number }) {
         </div>
       </div>
 
-      <form className="review-form" onSubmit={handleSubmit}>
-        <div className="review-list-heading">
-          <h2>내 리뷰</h2>
+      <div className="review-compose-bar">
+        <div>
+          <strong>{myReview ? '내 리뷰가 등록되어 있습니다.' : '상품을 사용해보셨나요?'}</strong>
+          {formMessage && <p className="review-form-message" role="status">{formMessage}</p>}
+        </div>
+        <div>
           {myReview && (
             <button disabled={isSaving} type="button" onClick={() => void handleDelete()}>
               삭제
             </button>
           )}
+          <button
+            type="button"
+            aria-expanded={isFormOpen}
+            onClick={() => setIsFormOpen((value) => !value)}
+          >
+            {isFormOpen ? '작성 취소' : myReview ? '내 리뷰 수정' : '리뷰 남기기'}
+          </button>
         </div>
+      </div>
 
-        {!isSignedIn ? (
-          <div className="review-state">
-            <strong>로그인 후 리뷰를 작성할 수 있습니다.</strong>
-            <button type="button" onClick={navigateToLogin}>로그인</button>
-          </div>
-        ) : (
-          <>
-            <label>
-              <span>별점</span>
-              <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>{value}점</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>옵션</span>
-              <input
-                maxLength={80}
-                placeholder="예: 포토카드 세트"
-                value={optionLabel}
-                onChange={(event) => setOptionLabel(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>내용</span>
-              <textarea
-                maxLength={1000}
-                placeholder="상품에 대한 리뷰를 남겨주세요."
-                rows={4}
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-              />
-            </label>
-            <div className="review-form-actions">
-              <span>{content.trim().length}/1000</span>
-              <button disabled={isSaving} type="submit">
-                {isSaving ? '저장 중...' : myReview ? '리뷰 수정' : '리뷰 등록'}
-              </button>
+      {isFormOpen && (
+        <form className="review-form" onSubmit={handleSubmit}>
+          {!isSignedIn ? (
+            <div className="review-state">
+              <strong>로그인 후 리뷰를 작성할 수 있습니다.</strong>
+              <button type="button" onClick={navigateToLogin}>로그인</button>
             </div>
-            {formMessage && <p className="review-form-message" role="status">{formMessage}</p>}
-          </>
-        )}
-      </form>
+          ) : (
+            <>
+              <label>
+                <span>별점</span>
+                <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                  {[5, 4, 3, 2, 1].map((value) => (
+                    <option key={value} value={value}>{value}점</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>옵션</span>
+                <input
+                  maxLength={80}
+                  placeholder="예: 포토카드 세트"
+                  value={optionLabel}
+                  onChange={(event) => setOptionLabel(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>내용</span>
+                <textarea
+                  maxLength={1000}
+                  placeholder="상품에 대한 리뷰를 남겨주세요."
+                  rows={4}
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                />
+              </label>
+              <div className="review-form-actions">
+                <span>{content.trim().length}/1000</span>
+                <button disabled={isSaving} type="submit">
+                  {isSaving ? '저장 중...' : myReview ? '리뷰 수정' : '리뷰 등록'}
+                </button>
+              </div>
+            </>
+          )}
+        </form>
+      )}
 
       <div className="review-list-heading">
         <h2 id="goods-reviews-heading">상품 리뷰</h2>

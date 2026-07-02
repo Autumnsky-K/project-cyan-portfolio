@@ -16,7 +16,6 @@ import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
-import { useGoodsFavorites } from './useGoodsFavorites'
 import { formatGoodsPrice } from './goodsFormatters'
 import './goods.css'
 import './goods-detail.css'
@@ -26,11 +25,11 @@ type DetailStatus = 'loading' | 'data' | 'error'
 type DetailTab = 'intro' | 'reviews'
 
 const PURCHASE_STATE_LABELS: Record<string, string> = {
-  AVAILABLE: '판매 중',
-  UPCOMING: '판매 예정',
-  ENDED: '판매 종료',
-  SOLD_OUT: '품절',
-  UNAVAILABLE: '구매 불가',
+  AVAILABLE: 'On sale',
+  UPCOMING: 'Coming soon',
+  ENDED: 'Sale ended',
+  SOLD_OUT: 'Sold out',
+  UNAVAILABLE: 'Unavailable',
 }
 
 function GoodsDetailPage() {
@@ -51,24 +50,13 @@ function GoodsDetailPage() {
   const likeFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
-  const {
-    isFavorite,
-    toggleFavorite,
-  } = useGoodsFavorites()
+  const detailTabsRef = useRef<HTMLElement | null>(null)
   const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
 
   const navigateToLogin = useCallback(() => {
     window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
-
-  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
-    await toggleFavorite(targetGoodsId)
-  }, [navigateToLogin, toggleFavorite])
 
   const handleLikeToggle = useCallback(async () => {
     if (!goods) return
@@ -254,6 +242,7 @@ function GoodsDetailPage() {
       ]
     : []
   const selectedGalleryImage = galleryImages[selectedImageIndex] ?? galleryImages[0] ?? null
+  const hasGalleryNavigation = galleryImages.length > 1
   const detailSpecs = goods
     ? [
         { label: '아티스트', value: goods.artistName },
@@ -291,15 +280,19 @@ function GoodsDetailPage() {
     shareFeedbackTimerRef.current = window.setTimeout(() => setShareFeedback(''), 1800)
   }
 
+  function handleReviewJump() {
+    setActiveTab('reviews')
+    window.requestAnimationFrame(() => {
+      detailTabsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  }
+
   return (
     <main className="goods-page goods-detail-page">
       <Header />
 
       <section className="detail-toolbar">
         <Link className="detail-action" to="/goods">← 상품 목록</Link>
-        <button className="detail-share" type="button" onClick={handleShare}>
-          {shareFeedback || '공유'}
-        </button>
       </section>
 
       {status === 'loading' && <div className="goods-state detail-state">상품 정보를 불러오는 중입니다...</div>}
@@ -328,6 +321,30 @@ function GoodsDetailPage() {
                   alt={selectedGalleryImage?.altText || goods.name}
                   fallbackLabel={goods.categoryName}
                 />
+                {hasGalleryNavigation && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-prev"
+                    type="button"
+                    aria-label="이전 이미지"
+                    onClick={() => setSelectedImageIndex((index) => (
+                      index <= 0 ? galleryImages.length - 1 : index - 1
+                    ))}
+                  >
+                    ‹
+                  </button>
+                )}
+                {hasGalleryNavigation && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-next"
+                    type="button"
+                    aria-label="다음 이미지"
+                    onClick={() => setSelectedImageIndex((index) => (
+                      index >= galleryImages.length - 1 ? 0 : index + 1
+                    ))}
+                  >
+                    ›
+                  </button>
+                )}
               </div>
               {galleryImages.length > 1 && (
                 <div className="detail-gallery-thumbnails" aria-label="상품 이미지 사진첩">
@@ -353,23 +370,23 @@ function GoodsDetailPage() {
             <GoodsPurchasePanel
               key={goods.goodsId}
               goods={goods}
-              onReviewClick={() => setActiveTab('reviews')}
-              isFavorite={isFavorite(goods.goodsId)}
-              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
+              onReviewClick={handleReviewJump}
               isLiked={isLiked}
               isLikePending={isLikePending}
               likeFeedback={likeFeedback}
               onLikeToggle={() => void handleLikeToggle()}
+              shareFeedback={shareFeedback}
+              onShare={handleShare}
             />
           </section>
 
-          <section className="detail-tabs">
+          <section className="detail-tabs" ref={detailTabsRef}>
             <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
               <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
                 상품 소개
               </button>
               <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
-                리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
+                리뷰 ({Number(goods.reviewCount ?? 0).toLocaleString()})
               </button>
             </div>
             {activeTab === 'intro' ? (
