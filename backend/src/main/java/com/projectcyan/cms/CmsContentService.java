@@ -4,10 +4,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +23,12 @@ import com.projectcyan.admin.SupabaseUsageCounter;
 public class CmsContentService {
 
 	private static final List<String> ALLOWED_PAGE_KEYS = List.of("home", "artists");
+	private static final TypeReference<Map<String, String>> COPY_SETTINGS_TYPE = new TypeReference<>() {
+	};
 
 	private final JdbcTemplate jdbcTemplate;
 	private final SupabaseUsageCounter supabaseUsageCounter;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public CmsContentService(JdbcTemplate jdbcTemplate, SupabaseUsageCounter supabaseUsageCounter) {
 		this.jdbcTemplate = jdbcTemplate;
@@ -33,7 +41,7 @@ public class CmsContentService {
 		String normalizedPageKey = normalizePageKey(pageKey);
 		List<CmsPageResponse> pages = jdbcTemplate.query(
 			"""
-			select page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url
+			select page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url, copy_settings::text as copy_settings
 			from cms_page_setting
 			where page_key = ?
 			""",
@@ -42,7 +50,7 @@ public class CmsContentService {
 		);
 
 		if (!pages.isEmpty()) {
-			return pages.get(0);
+			return normalizeLegacyHomePage(pages.get(0));
 		}
 		return defaultPage(normalizedPageKey);
 	}
@@ -62,14 +70,15 @@ public class CmsContentService {
 			colorOrDefault(request.primaryColor(), fallback.primaryColor()),
 			colorOrDefault(request.accentColor(), fallback.accentColor()),
 			colorOrDefault(request.backgroundColor(), fallback.backgroundColor()),
-			blankToNull(request.heroImageUrl())
+			blankToNull(request.heroImageUrl()),
+			normalizeCopySettings(request.copySettings(), fallback.copySettings())
 		);
 
 		jdbcTemplate.update(
 			"""
 			insert into cms_page_setting (
-				page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url, updated_at
-			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+				page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url, copy_settings, updated_at
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, now())
 			on conflict (page_key) do update set
 				eyebrow = excluded.eyebrow,
 				title = excluded.title,
@@ -79,6 +88,7 @@ public class CmsContentService {
 				accent_color = excluded.accent_color,
 				background_color = excluded.background_color,
 				hero_image_url = excluded.hero_image_url,
+				copy_settings = excluded.copy_settings,
 				updated_at = now()
 			""",
 			nextPage.pageKey(),
@@ -89,7 +99,8 @@ public class CmsContentService {
 			nextPage.primaryColor(),
 			nextPage.accentColor(),
 			nextPage.backgroundColor(),
-			nextPage.heroImageUrl()
+			nextPage.heroImageUrl(),
+			writeCopySettings(nextPage.copySettings())
 		);
 		supabaseUsageCounter.recordWrite("CMS 페이지 설정 저장");
 		return nextPage;
@@ -98,7 +109,7 @@ public class CmsContentService {
 	private Optional<CmsPageResponse> findStoredPage(String normalizedPageKey) {
 		List<CmsPageResponse> pages = jdbcTemplate.query(
 			"""
-			select page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url
+			select page_key, eyebrow, title, summary_title, summary_body, primary_color, accent_color, background_color, hero_image_url, copy_settings::text as copy_settings
 			from cms_page_setting
 			where page_key = ?
 			""",
@@ -129,9 +140,12 @@ public class CmsContentService {
 		ensureSchema();
 		boolean savedAnyArtist = false;
 		for (CmsArtistProfileRequest artist : artists) {
-			if (artist.artistId() == null) {
+			if (artist.artistId() == null && blankToNull(artist.name()) == null) {
 				continue;
 			}
+			Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
+			String name = valueOrDefault(artist.name(), "Artist " + artistId);
+			String groupName = blankToNull(artist.groupName());
 			jdbcTemplate.update(
 				"""
 				insert into cms_artist_profile (
@@ -149,9 +163,9 @@ public class CmsContentService {
 					updated_at = now()
 				""",
 				new Object[] {
-					artist.artistId(),
-					valueOrDefault(artist.name(), "Artist " + artist.artistId()),
-					blankToNull(artist.groupName()),
+					artistId,
+					name,
+					groupName,
 					blankToNull(artist.imageUrl()),
 					blankToNull(artist.lore()),
 					parseDate(artist.debutDate()),
@@ -171,6 +185,7 @@ public class CmsContentService {
 					Types.BOOLEAN
 				}
 			);
+			syncCatalogArtist(artistId, name, groupName);
 			savedAnyArtist = true;
 		}
 		if (savedAnyArtist) {
@@ -183,6 +198,7 @@ public class CmsContentService {
 		ensureSchema();
 		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + artistId);
+		String groupName = blankToNull(artist.groupName());
 		jdbcTemplate.update(
 			"""
 			insert into cms_artist_profile (
@@ -192,7 +208,7 @@ public class CmsContentService {
 			new Object[] {
 				artistId,
 				name,
-				blankToNull(artist.groupName()),
+				groupName,
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -212,11 +228,12 @@ public class CmsContentService {
 				Types.BOOLEAN
 			}
 		);
+		syncCatalogArtist(artistId, name, groupName);
 		supabaseUsageCounter.recordWrite("CMS 아티스트 신규 등록");
 		return new CmsArtistProfileResponse(
 			artistId,
 			name,
-			blankToNull(artist.groupName()),
+			groupName,
 			blankToNull(artist.imageUrl()),
 			blankToNull(artist.lore()),
 			artist.debutDate(),
@@ -265,6 +282,7 @@ public class CmsContentService {
 	private void insertArtist(CmsArtistProfileChangeRequest artist) {
 		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + artistId);
+		String groupName = blankToNull(artist.groupName());
 		jdbcTemplate.update(
 			"""
 			insert into cms_artist_profile (
@@ -274,7 +292,7 @@ public class CmsContentService {
 			new Object[] {
 				artistId,
 				name,
-				blankToNull(artist.groupName()),
+				groupName,
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -284,12 +302,14 @@ public class CmsContentService {
 			},
 			artistSqlTypes()
 		);
+		syncCatalogArtist(artistId, name, groupName);
 	}
 
 	private int updateArtist(CmsArtistProfileChangeRequest artist) {
 		Long nextArtistId = artist.artistId() == null ? artist.originalArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + nextArtistId);
-		return jdbcTemplate.update(
+		String groupName = blankToNull(artist.groupName());
+		int updated = jdbcTemplate.update(
 			"""
 			update cms_artist_profile
 			set artist_id = ?,
@@ -307,7 +327,7 @@ public class CmsContentService {
 			new Object[] {
 				nextArtistId,
 				name,
-				blankToNull(artist.groupName()),
+				groupName,
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -329,6 +349,76 @@ public class CmsContentService {
 				Types.BIGINT
 			}
 		);
+		if (updated > 0) {
+			syncCatalogArtist(nextArtistId, name, groupName);
+		}
+		return updated;
+	}
+
+	private void syncCatalogArtist(Long artistId, String artistName, String groupName) {
+		if (artistId == null || blankToNull(artistName) == null) {
+			return;
+		}
+		Long groupId = syncCatalogArtistGroup(groupName);
+		jdbcTemplate.update(
+			"""
+			insert into artist (artist_id, artist_name, group_id)
+			values (?, ?, ?)
+			on conflict (artist_id) do update set
+				artist_name = excluded.artist_name,
+				group_id = excluded.group_id
+			""",
+			new Object[] {
+				artistId,
+				artistName.trim(),
+				groupId
+			},
+			new int[] {
+				Types.BIGINT,
+				Types.VARCHAR,
+				Types.BIGINT
+			}
+		);
+	}
+
+	private Long syncCatalogArtistGroup(String rawGroupName) {
+		String groupName = valueOrDefault(rawGroupName, "미지정 그룹");
+		return findCatalogArtistGroupId(groupName)
+			.orElseGet(() -> insertCatalogArtistGroup(groupName));
+	}
+
+	private Optional<Long> findCatalogArtistGroupId(String groupName) {
+		List<Long> groupIds = jdbcTemplate.query(
+			"""
+			select group_id
+			from artist_group
+			where lower(group_name) = lower(?)
+			order by group_id asc
+			limit 1
+			""",
+			(resultSet, rowNumber) -> resultSet.getLong("group_id"),
+			groupName
+		);
+		return groupIds.stream().findFirst();
+	}
+
+	private Long insertCatalogArtistGroup(String groupName) {
+		jdbcTemplate.execute("lock table artist_group in exclusive mode");
+		Optional<Long> existingGroupId = findCatalogArtistGroupId(groupName);
+		if (existingGroupId.isPresent()) {
+			return existingGroupId.get();
+		}
+		Long groupId = jdbcTemplate.queryForObject(
+			"select coalesce(max(group_id), 0) + 1 from artist_group",
+			Long.class
+		);
+		Long nextGroupId = groupId == null ? 1L : groupId;
+		jdbcTemplate.update(
+			"insert into artist_group (group_id, group_name) values (?, ?)",
+			new Object[] { nextGroupId, groupName },
+			new int[] { Types.BIGINT, Types.VARCHAR }
+		);
+		return nextGroupId;
 	}
 
 	private int[] artistSqlTypes() {
@@ -346,9 +436,14 @@ public class CmsContentService {
 	}
 
 	private Long nextArtistId() {
-		jdbcTemplate.execute("lock table cms_artist_profile in exclusive mode");
+		jdbcTemplate.execute("lock table cms_artist_profile, artist in exclusive mode");
 		Long nextId = jdbcTemplate.queryForObject(
-			"select coalesce(max(artist_id), 0) + 1 from cms_artist_profile",
+			"""
+			select greatest(
+				coalesce((select max(artist_id) from cms_artist_profile), 0),
+				coalesce((select max(artist_id) from artist), 0)
+			) + 1
+			""",
 			Long.class
 		);
 		return nextId == null ? 1L : nextId;
@@ -367,9 +462,13 @@ public class CmsContentService {
 				accent_color varchar(32) not null,
 				background_color varchar(32) not null,
 				hero_image_url text,
+				copy_settings jsonb not null default '{}'::jsonb,
 				updated_at timestamptz not null default now()
 			)
 			"""
+		);
+		jdbcTemplate.execute(
+			"alter table cms_page_setting add column if not exists copy_settings jsonb not null default '{}'::jsonb"
 		);
 		jdbcTemplate.execute(
 			"""
@@ -415,7 +514,8 @@ public class CmsContentService {
 			resultSet.getString("primary_color"),
 			resultSet.getString("accent_color"),
 			resultSet.getString("background_color"),
-			resultSet.getString("hero_image_url")
+			resultSet.getString("hero_image_url"),
+			readCopySettings(resultSet.getString("copy_settings"))
 		);
 	}
 
@@ -453,20 +553,148 @@ public class CmsContentService {
 				"#111111",
 				"#2f6f64",
 				"#ffffff",
-				null
+				null,
+				Map.of()
 			);
 		}
 		return new CmsPageResponse(
 			"home",
-			"SM Universe Store",
-			"Goods",
-			"Featured Goods",
-			"Showing store items",
-			"#111111",
-			"#2f6f64",
+			"Project Cyan",
+			"Project Cyan SHOP",
+			"Official shop signal",
+			"A vertical shop map for characters, physical goods, digital drops, artist collections, and category browsing.",
 			"#ffffff",
-			null
+			"#00d5ff",
+			"#030308",
+			null,
+			defaultHomeCopySettings()
 		);
+	}
+
+	private CmsPageResponse normalizeLegacyHomePage(CmsPageResponse page) {
+		if (!"home".equals(page.pageKey())) {
+			return page;
+		}
+		if (!isLegacyHomePage(page)) {
+			return page;
+		}
+		CmsPageResponse fallback = defaultPage("home");
+		return new CmsPageResponse(
+			page.pageKey(),
+			fallback.eyebrow(),
+			fallback.title(),
+			fallback.summaryTitle(),
+			fallback.summaryBody(),
+			fallback.primaryColor(),
+			fallback.accentColor(),
+			fallback.backgroundColor(),
+			page.heroImageUrl(),
+			fallback.copySettings()
+		);
+	}
+
+	private boolean isLegacyHomePage(CmsPageResponse page) {
+		return page.copySettings().isEmpty()
+			&& "SM Universe Store".equals(page.eyebrow())
+			&& "Goods".equals(page.title())
+			&& "Featured Goods".equals(page.summaryTitle())
+			&& "Showing store items".equals(page.summaryBody());
+	}
+
+	private Map<String, String> defaultHomeCopySettings() {
+		Map<String, String> settings = new LinkedHashMap<>();
+		settings.put("navHome", "Home");
+		settings.put("navArtists", "Artists");
+		settings.put("navGoods", "Goods");
+		settings.put("navCart", "Cart");
+		settings.put("statusSignalLabel", "SHOP SIGNAL");
+		settings.put("statusReadyLabel", "Live");
+		settings.put("statusLoadingLabel", "Loading");
+		settings.put("statusErrorLabel", "Offline");
+		settings.put("statusModeLabel", "FULLPAGE MODE");
+		settings.put("artistsEyebrow", "Cyan Idol Network");
+		settings.put("artistsTitle", "Artist Signals");
+		settings.put("physicalEyebrow", "Physical Goods");
+		settings.put("physicalTitle", "Goods you can hold");
+		settings.put("physicalCta", "View physical");
+		settings.put("digitalEyebrow", "Digital Goods");
+		settings.put("digitalTitle", "Voice, message, and download drops");
+		settings.put("digitalCta", "Open digital");
+		settings.put("digitalFeatureEyebrow", "DATA DROP");
+		settings.put("digitalFeatureDescription", "{artistName} channel goods for voice, message, download, or AI-assisted shopping flows.");
+		settings.put("digitalFeatureCta", "Open drop");
+		settings.put("byArtistEyebrow", "Goods By Artist");
+		settings.put("byArtistTitle", "Shop from each artist channel");
+		settings.put("byArtistCta", "Browse artist goods");
+		settings.put("categoryEyebrow", "Goods Categories");
+		settings.put("categoryTitle", "Browse by type");
+		settings.put("categoryCta", "Open categories");
+		settings.put("footerEyebrow", "Project Cyan SHOP");
+		settings.put("footerTitle", "Official Shop Index");
+		settings.put("footerShopTitle", "Shop");
+		settings.put("footerShopAllGoods", "All goods");
+		settings.put("footerShopPhysicalGoods", "Physical goods");
+		settings.put("footerShopDigitalGoods", "Digital goods");
+		settings.put("footerArtistTitle", "Artist");
+		settings.put("footerArtistArtistsPage", "Artists page");
+		settings.put("footerArtistGroups", "Artist groups");
+		settings.put("footerArtistGoodsByArtist", "Goods by artist");
+		settings.put("footerAccountTitle", "Account");
+		settings.put("footerAccountSignIn", "Sign in");
+		settings.put("footerAccountCart", "Cart");
+		settings.put("footerAccountLikes", "Likes");
+		settings.put("footerInfoTitle", "Info");
+		settings.put("footerInfoTop", "Top");
+		settings.put("footerInfoCategories", "Categories");
+		settings.put("footerBottomLabel", "CYAN PRODUCTION");
+		settings.put("footerBackToFirst", "Back to first page");
+		return settings;
+	}
+
+	private Map<String, String> normalizeCopySettings(
+		Map<String, String> requestedSettings,
+		Map<String, String> fallbackSettings
+	) {
+		Map<String, String> normalized = new LinkedHashMap<>();
+		if (fallbackSettings != null) {
+			normalized.putAll(fallbackSettings);
+		}
+		if (requestedSettings == null) {
+			return normalized;
+		}
+		for (Map.Entry<String, String> entry : requestedSettings.entrySet()) {
+			if (entry.getKey() == null || entry.getValue() == null) {
+				continue;
+			}
+			normalized.put(entry.getKey(), entry.getValue().trim());
+		}
+		return normalized;
+	}
+
+	private Map<String, String> readCopySettings(String rawCopySettings) {
+		if (rawCopySettings == null || rawCopySettings.isBlank()) {
+			return Map.of();
+		}
+		try {
+			Map<String, String> parsed = objectMapper.readValue(rawCopySettings, COPY_SETTINGS_TYPE);
+			Map<String, String> normalized = new LinkedHashMap<>();
+			for (Map.Entry<String, String> entry : parsed.entrySet()) {
+				if (entry.getKey() != null && entry.getValue() != null) {
+					normalized.put(entry.getKey(), entry.getValue());
+				}
+			}
+			return normalized;
+		} catch (JsonProcessingException exception) {
+			return Map.of();
+		}
+	}
+
+	private String writeCopySettings(Map<String, String> copySettings) {
+		try {
+			return objectMapper.writeValueAsString(copySettings == null ? Map.of() : copySettings);
+		} catch (JsonProcessingException exception) {
+			throw new IllegalArgumentException("CMS page copy settings are not valid JSON.", exception);
+		}
 	}
 
 	private String valueOrDefault(String value, String fallback) {

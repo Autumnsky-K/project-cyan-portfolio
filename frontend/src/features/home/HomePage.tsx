@@ -7,6 +7,54 @@ import CartNavLink from '../cart/CartNavLink'
 import { applyPreviewTheme, previewTypographyStyle } from '../theme/previewTheme'
 import './home.css'
 
+const defaultHomeCopySettings = {
+  navHome: 'Home',
+  navArtists: 'Artists',
+  navGoods: 'Goods',
+  navCart: 'Cart',
+  statusSignalLabel: 'SHOP SIGNAL',
+  statusReadyLabel: 'Live',
+  statusLoadingLabel: 'Loading',
+  statusErrorLabel: 'Offline',
+  statusModeLabel: 'FULLPAGE MODE',
+  artistsEyebrow: 'Cyan Idol Network',
+  artistsTitle: 'Artist Signals',
+  physicalEyebrow: 'Physical Goods',
+  physicalTitle: 'Goods you can hold',
+  physicalCta: 'View physical',
+  digitalEyebrow: 'Digital Goods',
+  digitalTitle: 'Voice, message, and download drops',
+  digitalCta: 'Open digital',
+  digitalFeatureEyebrow: 'DATA DROP',
+  digitalFeatureDescription: '{artistName} channel goods for voice, message, download, or AI-assisted shopping flows.',
+  digitalFeatureCta: 'Open drop',
+  byArtistEyebrow: 'Goods By Artist',
+  byArtistTitle: 'Shop from each artist channel',
+  byArtistCta: 'Browse artist goods',
+  categoryEyebrow: 'Goods Categories',
+  categoryTitle: 'Browse by type',
+  categoryCta: 'Open categories',
+  footerEyebrow: 'Project Cyan SHOP',
+  footerTitle: 'Official Shop Index',
+  footerShopTitle: 'Shop',
+  footerShopAllGoods: 'All goods',
+  footerShopPhysicalGoods: 'Physical goods',
+  footerShopDigitalGoods: 'Digital goods',
+  footerArtistTitle: 'Artist',
+  footerArtistArtistsPage: 'Artists page',
+  footerArtistGroups: 'Artist groups',
+  footerArtistGoodsByArtist: 'Goods by artist',
+  footerAccountTitle: 'Account',
+  footerAccountSignIn: 'Sign in',
+  footerAccountCart: 'Cart',
+  footerAccountLikes: 'Likes',
+  footerInfoTitle: 'Info',
+  footerInfoTop: 'Top',
+  footerInfoCategories: 'Categories',
+  footerBottomLabel: 'CYAN PRODUCTION',
+  footerBackToFirst: 'Back to first page',
+}
+
 const defaultHomePage: CmsPage = {
   pageKey: 'home',
   eyebrow: 'Project Cyan',
@@ -17,6 +65,7 @@ const defaultHomePage: CmsPage = {
   accentColor: '#00d5ff',
   backgroundColor: '#030308',
   heroImageUrl: null,
+  copySettings: defaultHomeCopySettings,
 }
 
 type HomeArtist = {
@@ -151,6 +200,19 @@ function isDemoArtist(artist: CmsArtistProfile) {
 function isDigitalGoods(item: GoodsSummary) {
   const haystack = [item.name, item.categoryName, ...(item.tags ?? [])].join(' ').toLowerCase()
   return ['digital', 'voice', 'message', 'download', 'wallpaper', 'stream', 'ticket'].some((keyword) => haystack.includes(keyword))
+}
+
+function textOrDefault(value: string | null | undefined, fallback: string) {
+  const normalized = value?.trim()
+  return normalized || fallback
+}
+
+function isLegacyHomeCmsPage(page: CmsPage) {
+  return page.eyebrow === 'SM Universe Store'
+    && page.title === 'Goods'
+    && page.summaryTitle === 'Featured Goods'
+    && page.summaryBody === 'Showing store items'
+    && !Object.keys(page.copySettings ?? {}).length
 }
 
 function toHomeArtist(artist: CmsArtistProfile, index: number): HomeArtist {
@@ -315,12 +377,18 @@ function HomePage() {
   }, [])
 
   const previewPage = applyPreviewTheme(cmsPage)
+  const legacyHomeCmsPage = isLegacyHomeCmsPage(previewPage)
+  const homeCopySettings = {
+    ...defaultHomeCopySettings,
+    ...(legacyHomeCmsPage ? {} : previewPage.copySettings ?? {}),
+  }
+  const copy = (key: keyof typeof defaultHomeCopySettings) => textOrDefault(homeCopySettings[key], defaultHomeCopySettings[key])
   const displayPage = {
     ...previewPage,
-    eyebrow: defaultHomePage.eyebrow,
-    title: defaultHomePage.title,
-    summaryTitle: defaultHomePage.summaryTitle,
-    summaryBody: defaultHomePage.summaryBody,
+    eyebrow: textOrDefault(legacyHomeCmsPage ? '' : previewPage.eyebrow, defaultHomePage.eyebrow),
+    title: textOrDefault(legacyHomeCmsPage ? '' : previewPage.title, defaultHomePage.title),
+    summaryTitle: textOrDefault(legacyHomeCmsPage ? '' : previewPage.summaryTitle, defaultHomePage.summaryTitle),
+    summaryBody: textOrDefault(legacyHomeCmsPage ? '' : previewPage.summaryBody, defaultHomePage.summaryBody),
     primaryColor: previewPage.primaryColor === '#111111' ? defaultHomePage.primaryColor : previewPage.primaryColor,
     accentColor: previewPage.accentColor === '#2f6f64' ? defaultHomePage.accentColor : previewPage.accentColor,
     backgroundColor: previewPage.backgroundColor === '#ffffff' ? defaultHomePage.backgroundColor : previewPage.backgroundColor,
@@ -405,7 +473,7 @@ function HomePage() {
       .slice(0, 8)
   }, [goods])
 
-  const statusLabel = status === 'loading' ? 'Loading' : status === 'error' ? 'Offline' : 'Live'
+  const statusLabel = status === 'loading' ? copy('statusLoadingLabel') : status === 'error' ? copy('statusErrorLabel') : copy('statusReadyLabel')
   const artistDeckCardWidth = Math.min(252, Math.max(168, artistDeckViewportWidth * 0.16))
   const artistDeckSideGuard = Math.min(180, Math.max(60, artistDeckViewportWidth * 0.12))
   const artistDeckGapCount = Math.max(artistGroups.length - 1, 1)
@@ -478,11 +546,11 @@ function HomePage() {
 
       <nav className="home-floating-nav" aria-label="Home navigation">
         <Link to="/" aria-current="page">
-          Home
+          {copy('navHome')}
         </Link>
-        <Link to="/artists">Artists</Link>
-        <Link to="/goods">Goods</Link>
-        <CartNavLink />
+        <Link to="/artists">{copy('navArtists')}</Link>
+        <Link to="/goods">{copy('navGoods')}</Link>
+        <CartNavLink label={copy('navCart')} />
       </nav>
 
       <div className="home-menu-wrap">
@@ -526,16 +594,16 @@ function HomePage() {
           <strong>{displayPage.summaryTitle}</strong>
         </div>
         <div className="home-brand-status" aria-label="Shop status">
-          <span>SHOP SIGNAL</span>
+          <span>{copy('statusSignalLabel')}</span>
           <span>{statusLabel}</span>
-          <span>FULLPAGE MODE</span>
+          <span>{copy('statusModeLabel')}</span>
         </div>
       </section>
 
       <section className="home-panel home-artists-panel" id="home-2" aria-labelledby="home-artists-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Cyan Idol Network</p>
-          <h2 id="home-artists-title">Artist Signals</h2>
+          <p className="home-eyebrow">{copy('artistsEyebrow')}</p>
+          <h2 id="home-artists-title">{copy('artistsTitle')}</h2>
         </div>
         <div
           className="home-artist-signal-deck"
@@ -592,9 +660,9 @@ function HomePage() {
 
       <section className="home-panel home-physical-panel" id="home-3" aria-labelledby="home-physical-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Physical Goods</p>
-          <h2 id="home-physical-title">Goods you can hold</h2>
-          <Link to="/goods">View physical</Link>
+          <p className="home-eyebrow">{copy('physicalEyebrow')}</p>
+          <h2 id="home-physical-title">{copy('physicalTitle')}</h2>
+          <Link to="/goods">{copy('physicalCta')}</Link>
         </div>
         <div className="home-goods-strip">
           {physicalGoods.map((item) => (
@@ -610,16 +678,16 @@ function HomePage() {
 
       <section className="home-panel home-digital-panel" id="home-4" aria-labelledby="home-digital-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Digital Goods</p>
-          <h2 id="home-digital-title">Voice, message, and download drops</h2>
-          <Link to="/goods">Open digital</Link>
+          <p className="home-eyebrow">{copy('digitalEyebrow')}</p>
+          <h2 id="home-digital-title">{copy('digitalTitle')}</h2>
+          <Link to="/goods">{copy('digitalCta')}</Link>
         </div>
         <div className="home-digital-layout">
           <article className="home-digital-feature">
-            <span>DATA DROP</span>
+            <span>{copy('digitalFeatureEyebrow')}</span>
             <h3>{digitalDrops[0]?.name ?? 'Digital Signal Pack'}</h3>
-            <p>{digitalDrops[0]?.artistName ?? 'Project Cyan'} channel goods for voice, message, download, or AI-assisted shopping flows.</p>
-            <Link to={digitalDrops[0]?.href ?? '/goods'}>Open drop</Link>
+            <p>{copy('digitalFeatureDescription').replace('{artistName}', digitalDrops[0]?.artistName ?? 'Project Cyan')}</p>
+            <Link to={digitalDrops[0]?.href ?? '/goods'}>{copy('digitalFeatureCta')}</Link>
           </article>
           <div className="home-digital-list">
             {digitalDrops.map((item) => (
@@ -635,9 +703,9 @@ function HomePage() {
 
       <section className="home-panel home-by-artist-panel" id="home-5" aria-labelledby="home-by-artist-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Goods By Artist</p>
-          <h2 id="home-by-artist-title">Shop from each artist channel</h2>
-          <Link to="/goods">Browse artist goods</Link>
+          <p className="home-eyebrow">{copy('byArtistEyebrow')}</p>
+          <h2 id="home-by-artist-title">{copy('byArtistTitle')}</h2>
+          <Link to="/goods">{copy('byArtistCta')}</Link>
         </div>
         <div className="home-by-artist-grid">
           {(artistGoodsGroups.length ? artistGoodsGroups : artistGroups.map((artist) => ({ artistName: artist.name, count: 0, imageUrl: artist.imageUrl, sampleGoods: null }))).map((group) => (
@@ -652,9 +720,9 @@ function HomePage() {
 
       <section className="home-panel home-category-panel" id="home-6" aria-labelledby="home-category-title">
         <div className="home-section-heading">
-          <p className="home-eyebrow">Goods Categories</p>
-          <h2 id="home-category-title">Browse by type</h2>
-          <Link to="/goods">Open categories</Link>
+          <p className="home-eyebrow">{copy('categoryEyebrow')}</p>
+          <h2 id="home-category-title">{copy('categoryTitle')}</h2>
+          <Link to="/goods">{copy('categoryCta')}</Link>
         </div>
         <div className="home-category-grid">
           {(categories.length ? categories : [{ code: 'GD', label: 'Goods', count: totalGoods || goods.length }]).map((category) => (
@@ -671,39 +739,39 @@ function HomePage() {
         <footer className="home-footer">
           <div className="home-footer-brand">
             <Link to="/" className="home-footer-logo">PC</Link>
-            <p className="home-eyebrow">Project Cyan SHOP</p>
-            <h2 id="home-footer-title">Official Shop Index</h2>
+            <p className="home-eyebrow">{copy('footerEyebrow')}</p>
+            <h2 id="home-footer-title">{copy('footerTitle')}</h2>
             <span>{displayPage.summaryBody}</span>
           </div>
           <div className="home-footer-columns">
             <div>
-              <h3>Shop</h3>
-              <Link to="/goods">All goods</Link>
-              <a href="#home-3">Physical goods</a>
-              <a href="#home-4">Digital goods</a>
+              <h3>{copy('footerShopTitle')}</h3>
+              <Link to="/goods">{copy('footerShopAllGoods')}</Link>
+              <a href="#home-3">{copy('footerShopPhysicalGoods')}</a>
+              <a href="#home-4">{copy('footerShopDigitalGoods')}</a>
             </div>
             <div>
-              <h3>Artist</h3>
-              <Link to="/artists">Artists page</Link>
-              <a href="#home-2">Artist groups</a>
-              <a href="#home-5">Goods by artist</a>
+              <h3>{copy('footerArtistTitle')}</h3>
+              <Link to="/artists">{copy('footerArtistArtistsPage')}</Link>
+              <a href="#home-2">{copy('footerArtistGroups')}</a>
+              <a href="#home-5">{copy('footerArtistGoodsByArtist')}</a>
             </div>
             <div>
-              <h3>Account</h3>
-              <Link to="/login">Sign in</Link>
-              <Link to="/cart">Cart</Link>
-              <Link to="/like">Likes</Link>
+              <h3>{copy('footerAccountTitle')}</h3>
+              <Link to="/login">{copy('footerAccountSignIn')}</Link>
+              <Link to="/cart">{copy('footerAccountCart')}</Link>
+              <Link to="/like">{copy('footerAccountLikes')}</Link>
             </div>
             <div>
-              <h3>Info</h3>
-              <a href="#home-1">Top</a>
-              <a href="#home-6">Categories</a>
+              <h3>{copy('footerInfoTitle')}</h3>
+              <a href="#home-1">{copy('footerInfoTop')}</a>
+              <a href="#home-6">{copy('footerInfoCategories')}</a>
               <span>{statusLabel}</span>
             </div>
           </div>
           <div className="home-footer-bottom">
-            <span>CYAN PRODUCTION</span>
-            <a href="#home-1">Back to first page</a>
+            <span>{copy('footerBottomLabel')}</span>
+            <a href="#home-1">{copy('footerBackToFirst')}</a>
           </div>
         </footer>
       </section>

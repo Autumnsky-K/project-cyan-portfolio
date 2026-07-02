@@ -22,13 +22,16 @@ public class MemberController {
 
 	private final MemberService memberService;
 	private final FavoriteArtistService favoriteArtistService;
+	private final MemberGoodsActivityService memberGoodsActivityService;
 
 	public MemberController(
 		MemberService memberService,
-		FavoriteArtistService favoriteArtistService
+		FavoriteArtistService favoriteArtistService,
+		MemberGoodsActivityService memberGoodsActivityService
 	) {
 		this.memberService = memberService;
 		this.favoriteArtistService = favoriteArtistService;
+		this.memberGoodsActivityService = memberGoodsActivityService;
 	}
 
 	@GetMapping("/me")
@@ -53,6 +56,11 @@ public class MemberController {
 	@GetMapping("/me/favorite-artists")
 	public List<FavoriteArtistResponse> findFavoriteArtists(AuthenticatedMember currentMember) {
 		return favoriteArtistService.findFavoriteArtists(currentMember.memberId());
+	}
+
+	@GetMapping("/me/goods-activity")
+	public MemberGoodsActivityResponse findGoodsActivity(AuthenticatedMember currentMember) {
+		return memberGoodsActivityService.findGoodsActivity(currentMember.memberId());
 	}
 
 	@PostMapping("/signup")

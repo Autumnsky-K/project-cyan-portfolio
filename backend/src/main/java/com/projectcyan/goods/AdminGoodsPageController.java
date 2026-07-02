@@ -528,18 +528,32 @@ public class AdminGoodsPageController {
 			"AI추천"
 		});
 		rows.add(new String[] {
-			"#(숫자)",
+			"#(비우면 신규, 숫자면 수정)",
 			"#(글자)",
 			"#(숫자)",
 			templateOptionAt(artists, 0, "#아티스트DB값"),
 			templateOptionAt(categories, 0, "#카테고리DB값"),
 			"#(숫자)",
 			"#HIDDEN",
-			"#(경로)",
+			"#(로컬 폴더 동시 등록 시 공란 가능)",
 			"#(글자)",
-			"#(글자)",
+			"#(글자 또는 HTML)",
 			"#false",
 			"#false"
+		});
+		rows.add(new String[] {
+			"#안내",
+			"상품명 자유 입력",
+			"숫자만 입력",
+			"DB 등록명과 정확히 일치",
+			"DB 등록명과 정확히 일치",
+			"숫자만 입력",
+			"일괄등록은 항상 HIDDEN 저장",
+			"Supabase 기존 이미지 사용 시 goods/ 아래 경로 입력, 로컬 폴더 동시 등록 시 공란이면 폴더 순서대로 자동 배정",
+			"쉼표로 여러 태그 입력",
+			"이미지 정렬순 5장 이후는 상세설명에 이미지 HTML로 자동 첨부",
+			"false 또는 true",
+			"false 또는 true"
 		});
 
 		int guideRowCount = Math.max(

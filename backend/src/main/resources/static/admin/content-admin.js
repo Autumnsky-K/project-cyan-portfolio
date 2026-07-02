@@ -262,14 +262,75 @@ function handleImageInput(input) {
   updatePreview()
 }
 
-document.querySelectorAll('input').forEach((input) => {
-  input.addEventListener('input', updatePreview)
-  input.addEventListener('change', () => {
-    if (input.type === 'file') {
-      handleImageInput(input)
+function syncArtistVisibleInput(input) {
+  const hiddenInput = input.closest('td')?.querySelector('[data-artist-visible-value]')
+  if (hiddenInput) {
+    hiddenInput.value = input.checked ? 'true' : 'false'
+  }
+}
+
+function bindCmsInputs(root = document) {
+  root.querySelectorAll('input').forEach((input) => {
+    if (input.dataset.cmsBound === 'true') {
+      return
     }
-    updatePreview()
+    input.dataset.cmsBound = 'true'
+    if (input.matches('[data-artist-visible]')) {
+      syncArtistVisibleInput(input)
+    }
+    input.addEventListener('input', updatePreview)
+    input.addEventListener('change', () => {
+      if (input.matches('[data-artist-visible]')) {
+        syncArtistVisibleInput(input)
+      }
+      if (input.type === 'file') {
+        handleImageInput(input)
+      }
+      updatePreview()
+    })
   })
+}
+
+function nextArtistSortOrder() {
+  const orders = Array.from(document.querySelectorAll('[data-artist-field="sortOrder"]'))
+    .map((input) => Number(input.value || input.dataset.fallbackValue || 0))
+    .filter((value) => Number.isFinite(value))
+  return Math.max(0, ...orders) + 1
+}
+
+function artistRowHtml(sortOrder) {
+  return `
+    <tr class="cms-artist-new-row">
+      <td>
+        <input type="hidden" name="visible" data-artist-visible-value value="true">
+        <input type="checkbox" data-artist-visible checked>
+      </td>
+      <td><input type="number" name="sortOrder" data-artist-field="sortOrder" value="${sortOrder}" placeholder="${sortOrder}"></td>
+      <td><input name="artistId" data-artist-field="artistId" value="" readonly placeholder="자동"></td>
+      <td><input name="name" data-artist-field="name" value="" placeholder="아티스트 이름"></td>
+      <td><input name="groupName" data-artist-field="groupName" value="" placeholder="그룹 이름"></td>
+      <td><input type="date" name="debutDate" data-artist-field="debutDate" value=""></td>
+      <td>
+        <input name="imageUrl" data-artist-field="imageUrl" value="" placeholder="현재 이미지 없음">
+        <input class="cms-file-input" type="file" accept="image/*" data-row-image>
+      </td>
+      <td><input name="lore" data-artist-field="lore" value="" placeholder="소개"></td>
+      <td><input name="collections" data-artist-field="collections" value="" placeholder="컬렉션"></td>
+    </tr>
+  `
+}
+
+document.querySelector('[data-add-artist-row]')?.addEventListener('click', () => {
+  const artistRowsBody = document.querySelector('#artistRows')
+  if (!artistRowsBody) {
+    return
+  }
+  artistRowsBody.insertAdjacentHTML('beforeend', artistRowHtml(nextArtistSortOrder()))
+  const insertedRow = artistRowsBody.lastElementChild
+  bindCmsInputs(insertedRow)
+  insertedRow?.querySelector('[data-artist-field="name"]')?.focus()
+  updatePreview()
 })
 
+bindCmsInputs()
 updatePreview()

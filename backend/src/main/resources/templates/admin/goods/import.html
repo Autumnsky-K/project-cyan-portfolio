@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>굿즈 대량 등록</title>
-  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='goods-import-20260701')}">
-  <script defer th:src="@{/admin/image-webp-compressor.js(v='goods-import-20260701')}"></script>
-  <script defer th:src="@{/admin/goods-import.js(v='goods-import-20260701')}"></script>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='goods-import-commit-progress-20260702')}">
+  <script defer th:src="@{/admin/image-webp-compressor.js(v='goods-import-commit-progress-20260702')}"></script>
+  <script defer th:src="@{/admin/goods-import.js(v='goods-import-commit-progress-20260702')}"></script>
 </head>
 <body>
 <main class="admin-page">
@@ -29,8 +29,9 @@
     <section class="admin-import-guide" aria-label="CSV 작성 기준">
       <div>
         <strong>이미지 폴더 규칙</strong>
-        <p>기본 등록은 CSV와 로컬 이미지 폴더를 함께 올립니다. 상품 폴더마다 <code>main.webp</code>, <code>1.webp</code>부터 <code>4.webp</code>까지 매칭됩니다.</p>
-        <p>예: 업로드 폴더 안의 <code>genshin/raiden/main.webp</code>는 CSV의 <code>이미지폴더</code> 값 <code>genshin/raiden</code>와 일치해야 합니다.</p>
+        <p>기본 등록은 CSV와 로컬 이미지 폴더를 함께 올립니다. <code>main.webp</code>가 있으면 메인 이미지로 먼저 쓰고, 없으면 폴더 안 첫 번째 이미지를 메인으로 씁니다.</p>
+        <p>정렬순 5장까지는 이미지 슬롯에 들어가고, 6장째부터는 상세 설명에 이미지 HTML로 자동 첨부됩니다.</p>
+        <p>CSV의 <code>이미지폴더</code>가 비어 있으면 선택한 로컬 상품 폴더 대기열 순서대로 자동 배정됩니다.</p>
       </div>
       <div>
         <strong>수정 기준</strong>
@@ -53,13 +54,51 @@
         <span>CSV 파일</span>
         <input type="file" name="file" accept=".csv,text/csv" required data-import-csv>
       </label>
-      <label data-import-local-fields>
+      <label class="admin-import-file-picker" data-import-local-fields>
         <span>로컬 이미지 폴더</span>
-        <input type="file" name="imageFiles" accept="image/*" multiple webkitdirectory directory required data-import-images>
+        <input class="admin-file-native-input" type="file" name="imageFiles" accept="image/*" multiple webkitdirectory directory required data-import-images>
+        <span class="admin-file-picker-row">
+          <span class="admin-file-trigger">폴더 선택</span>
+          <span class="admin-file-summary" data-import-image-summary>선택된 폴더 없음</span>
+        </span>
       </label>
       <p class="admin-import-upload-status" data-import-status></p>
-      <button class="admin-primary" type="submit">미리보기</button>
+      <button class="admin-primary" type="submit">대기열 승인</button>
     </form>
+
+    <section class="admin-import-queue" data-import-queue hidden aria-label="업로드 대기열">
+      <header class="admin-import-queue-header">
+        <div>
+          <strong data-import-queue-title>업로드 대기열</strong>
+          <span data-import-queue-summary>CSV와 로컬 이미지 폴더를 선택하면 표시됩니다.</span>
+        </div>
+        <p data-import-queue-warning></p>
+      </header>
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table admin-import-queue-table" data-import-queue-table>
+          <thead>
+          <tr>
+            <th>상태</th>
+            <th>저장소 경로</th>
+            <th>이미지</th>
+            <th>상품ID</th>
+            <th>상품명</th>
+            <th>가격</th>
+            <th>아티스트명</th>
+            <th>카테고리명</th>
+            <th>재고</th>
+            <th>판매상태</th>
+            <th>이미지폴더</th>
+            <th>태그</th>
+            <th>상세설명</th>
+            <th>베스트</th>
+            <th>AI추천</th>
+          </tr>
+          </thead>
+          <tbody data-import-queue-body></tbody>
+        </table>
+      </div>
+    </section>
 
     <section class="admin-table-panel admin-import-preview" th:if="${preview != null and preview.hasRows()}" aria-label="대량 등록 미리보기">
       <header class="admin-import-preview-header">
@@ -68,12 +107,14 @@
           <span th:text="|${preview.validCount()}개 등록 가능 · ${preview.usesLocalImages() ? '로컬 폴더 검증' : 'Supabase 저장소 기준'}|">0개 등록 가능</span>
           <span th:if="${preview.usesLocalImages()}" th:text="|로컬 이미지 폴더 ${#lists.size(preview.imageFolders())}개|">로컬 이미지 폴더 0개</span>
         </div>
-        <form method="post"
+        <form class="admin-import-commit-form"
+              method="post"
               th:if="${!preview.hasErrors()}"
+              data-import-commit-form
               th:action="@{/admin/goods/import/commit}">
           <input type="hidden" name="imageSource" th:value="${preview.imageSource()}">
           <input type="hidden" name="imageBatchId" th:value="${preview.imageBatchId()}">
-          <div th:each="row : ${preview.rows()}">
+          <th:block th:each="row : ${preview.rows()}">
             <input type="hidden" name="goodsId" th:value="${row.goodsId()}">
             <input type="hidden" name="name" th:value="${row.name()}">
             <input type="hidden" name="price" th:value="${row.price()}">
@@ -86,8 +127,12 @@
             <input type="hidden" name="description" th:value="${row.description()}">
             <input type="hidden" name="bestSeller" th:value="${row.bestSeller()}">
             <input type="hidden" name="aiPickDefault" th:value="${row.aiPickDefault()}">
+          </th:block>
+          <button class="admin-primary" type="submit" data-import-commit-button>등록 실행</button>
+          <div class="admin-import-commit-progress" data-import-commit-progress hidden role="status" aria-live="polite">
+            <span>등록 처리 중입니다.</span>
+            <div class="admin-upload-progress" aria-hidden="true"><span></span></div>
           </div>
-          <button class="admin-primary" type="submit">등록 실행</button>
         </form>
       </header>
 
@@ -126,8 +171,8 @@
             <td th:text="${row.stockCount()}">0</td>
             <td th:text="${row.salesStatus()}">HIDDEN</td>
             <td>
-              <span th:text="${row.mainImageUrl() == null ? 'main 없음' : 'main 확인'}">main 확인</span>
-              <small th:text="|추가 ${#lists.size(row.extraImageUrls())}장|">추가 0장</small>
+              <span th:text="${row.mainImageUrl() == null ? '이미지 없음' : '메인 확인'}">메인 확인</span>
+              <small th:text="|추가 ${#lists.size(row.extraImageUrls())}장 · 상세 ${#lists.size(row.detailImageUrls())}장|">추가 0장 · 상세 0장</small>
             </td>
             <td th:text="${row.tagsText()}">태그</td>
             <td>

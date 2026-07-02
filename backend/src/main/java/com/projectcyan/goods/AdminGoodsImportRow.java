@@ -21,6 +21,7 @@ public record AdminGoodsImportRow(
 	Long resolvedCategoryId,
 	String mainImageUrl,
 	List<String> extraImageUrls,
+	List<String> detailImageUrls,
 	List<String> errors
 ) {
 	public boolean valid() {
