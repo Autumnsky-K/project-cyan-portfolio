@@ -199,8 +199,8 @@
   min-height: 46px;
   border: 1px solid #111111;
   border-radius: 999px;
-  background: #111111;
-  color: #ffffff;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 15px;
   font-weight: 800;
@@ -215,10 +215,12 @@
 .signup-submit:hover,
 .signup-submit:focus,
 .signup-secondary:hover,
-.signup-secondary:focus {
+.signup-secondary:focus,
+.signup-submit:active,
+.signup-secondary:active {
   border-color: #111111;
-  background: #ffffff;
-  color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .signup-submit:focus,

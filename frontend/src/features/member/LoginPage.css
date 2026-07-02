@@ -104,8 +104,8 @@
   margin-top: 0;
   border: 1px solid #111111;
   border-radius: 999px;
-  background: #111111;
-  color: #ffffff;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 15px;
   font-weight: 800;
@@ -117,10 +117,11 @@
 }
 
 .login-submit:hover,
-.login-submit:focus {
+.login-submit:focus,
+.login-submit:active {
   border-color: #111111;
-  background: #ffffff;
-  color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .login-submit:focus {
@@ -198,7 +199,8 @@
 }
 
 .social-login-button:hover,
-.social-login-button:focus {
+.social-login-button:focus,
+.social-login-button:active {
   border-color: #111111;
   background: #111111;
   color: #ffffff;

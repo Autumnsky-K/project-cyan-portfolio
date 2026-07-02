@@ -45,6 +45,18 @@ function getItemMeta(item) {
   return formatPrice(item.price) ?? item.status ?? ''
 }
 
+function getDeliveryLabel(item) {
+  if (item.status?.includes('배송 완료')) {
+    return '배송완료'
+  }
+
+  if (item.status?.includes('배송중')) {
+    return '배송중'
+  }
+
+  return '준비중'
+}
+
 function formatPhoneNumber(value) {
   const digits = value.replace(/\D/g, '').slice(0, 11)
 
@@ -74,12 +86,116 @@ function DashboardItemCard({ item }) {
   )
 }
 
-function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore, actionLabel = '더보기' }) {
-  const startIndex = pageIndex * SECTION_PAGE_SIZE
-  const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
-  const canGoPrevious = pageIndex > 0
-  const canGoNext = startIndex + SECTION_PAGE_SIZE < items.length
+function OrderHistoryCard({ item }) {
+  return (
+    <article className="mypage-item-card mypage-order-card">
+      <div className="mypage-item-image" aria-hidden="true">
+        이미지
+      </div>
+      <div className="mypage-item-body">
+        <h3>{item.name}</h3>
+        {item.status && <p className="mypage-item-meta">{item.status}</p>}
+        <p>{item.description}</p>
+        <div className="mypage-order-actions" aria-label={`${item.name} 구매 작업`}>
+          <button type="button">{getDeliveryLabel(item)}</button>
+          <button type="button">{item.confirmAction ?? '구매확정'}</button>
+          <button type="button">{item.reviewAction ?? '리뷰작성'}</button>
+        </div>
+      </div>
+    </article>
+  )
+}
 
+function PaymentHistoryRow({ payment, isExpanded, onToggle }) {
+  return (
+    <article className={`mypage-payment-row ${isExpanded ? 'is-expanded' : ''}`}>
+      <button
+        className="mypage-payment-summary"
+        type="button"
+        aria-expanded={isExpanded}
+        onClick={onToggle}
+      >
+        <span>
+          <strong>결제 금액</strong>
+          {formatPrice(payment.price)}
+        </span>
+        <span>
+          <strong>결제 수단</strong>
+          {payment.method}
+        </span>
+        <span>
+          <strong>영수증</strong>
+          {payment.receipt}
+        </span>
+        <span>
+          <strong>환불 내역</strong>
+          {payment.refundHistory}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="mypage-payment-products">
+          {payment.products?.map((product) => (
+            <article className="mypage-payment-product" key={product.goodsId}>
+              <div className="mypage-payment-product-image" aria-hidden="true">
+                이미지
+              </div>
+              <div>
+                <h3>{product.name}</h3>
+                <p>{formatPrice(product.price)} · {product.quantity}개</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </article>
+  )
+}
+
+function PaymentHistorySection({ title, items, expandedPaymentIds, onTogglePayment, onMore, actionLabel = '더보기' }) {
+  return (
+    <section className="account-panel mypage-section" aria-label={title}>
+      <div className="mypage-section-heading">
+        <h2>{title}</h2>
+        <button className="mypage-more-button" type="button" onClick={onMore}>
+          {actionLabel}
+        </button>
+      </div>
+
+      <div className="mypage-payment-list">
+        {items.length > 0 ? (
+          items.map((payment) => (
+            <PaymentHistoryRow
+              payment={payment}
+              isExpanded={expandedPaymentIds.has(payment.paymentId)}
+              key={payment.paymentId}
+              onToggle={() => onTogglePayment(payment.paymentId)}
+            />
+          ))
+        ) : (
+          <p className="mypage-empty">표시할 항목이 없습니다.</p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function DashboardSection({ id, title, items, onMore, actionLabel = '더보기', expandedPaymentIds, onTogglePayment }) {
+  if (id === 'payments') {
+    return (
+      <PaymentHistorySection
+        title={title}
+        items={items}
+        expandedPaymentIds={expandedPaymentIds}
+        onMore={onMore}
+        onTogglePayment={onTogglePayment}
+        actionLabel={actionLabel}
+      />
+    )
+  }
+
+  const startIndex = 0
+  const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
   return (
     <section className="account-panel mypage-section" aria-label={title}>
       <div className="mypage-section-heading">
@@ -90,37 +206,19 @@ function DashboardSection({ title, items, pageIndex, onNext, onPrevious, onMore,
       </div>
 
       <div className="mypage-carousel">
-        {canGoPrevious && (
-          <button
-            className="mypage-arrow mypage-arrow-left"
-            type="button"
-            aria-label={`${title} 이전 항목`}
-            onClick={onPrevious}
-          >
-            ‹
-          </button>
-        )}
-
         <div className="mypage-card-row">
           {visibleItems.length > 0 ? (
             visibleItems.map((item) => (
-              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
+              id === 'orders' ? (
+                <OrderHistoryCard item={item} key={item.orderId} />
+              ) : (
+                <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
+              )
             ))
           ) : (
             <p className="mypage-empty">표시할 항목이 없습니다.</p>
           )}
         </div>
-
-        {canGoNext && (
-          <button
-            className="mypage-arrow mypage-arrow-right"
-            type="button"
-            aria-label={`${title} 다음 항목`}
-            onClick={onNext}
-          >
-            ›
-          </button>
-        )}
       </div>
     </section>
   )
@@ -236,6 +334,7 @@ function ProfileEditModal({
   onShowEdit,
   onSubmit,
   onShowWithdraw,
+  onChangePassword,
 }) {
   useEffect(() => {
     function handleKeyDown(event) {
@@ -358,8 +457,11 @@ function ProfileEditModal({
             />
           </label>
 
-          <div className="mypage-withdraw mypage-modal-withdraw">
-            <button type="button" onClick={onShowWithdraw}>
+          <div className="mypage-profile-actions">
+            <button type="button" onClick={onChangePassword}>
+              비밀번호 변경하기
+            </button>
+            <button type="button" className="is-danger" onClick={onShowWithdraw}>
               탈퇴하기
             </button>
           </div>
@@ -375,8 +477,8 @@ function MyPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [sectionPages, setSectionPages] = useState({})
   const [selectedSection, setSelectedSection] = useState(null)
+  const [expandedPaymentIds, setExpandedPaymentIds] = useState(() => new Set())
   const [allArtistOptions, setAllArtistOptions] = useState([])
   const [draftFavoriteArtistIds, setDraftFavoriteArtistIds] = useState([])
   const [isSavingFavorites, setIsSavingFavorites] = useState(false)
@@ -521,11 +623,16 @@ function MyPage() {
     }
   }
 
-  const handleSectionMove = (sectionId, direction) => {
-    setSectionPages((currentPages) => ({
-      ...currentPages,
-      [sectionId]: Math.max(0, (currentPages[sectionId] ?? 0) + direction),
-    }))
+  const togglePayment = (paymentId) => {
+    setExpandedPaymentIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      if (nextIds.has(paymentId)) {
+        nextIds.delete(paymentId)
+      } else {
+        nextIds.add(paymentId)
+      }
+      return nextIds
+    })
   }
 
   const openSection = async (section) => {
@@ -666,7 +773,7 @@ function MyPage() {
               <div className="mypage-profile">
                 <div className="mypage-profile-text">
                   <h1>{summary.member.name}님</h1>
-                  <p>{summary.member.email ?? '이메일 정보 없음'}</p>
+                  <p>{summary.member.memberGrade || '등급 정보 없음'}</p>
                 </div>
                 <button
                   className="mypage-edit-link"
@@ -706,13 +813,13 @@ function MyPage() {
 
             {dashboardSections.map((section) => (
               <DashboardSection
+                id={section.id}
                 key={section.id}
                 title={section.title}
                 items={section.items}
-                pageIndex={sectionPages[section.id] ?? 0}
-                onPrevious={() => handleSectionMove(section.id, -1)}
-                onNext={() => handleSectionMove(section.id, 1)}
+                expandedPaymentIds={expandedPaymentIds}
                 onMore={() => openSection(section)}
+                onTogglePayment={togglePayment}
                 actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
               />
             ))}
@@ -740,6 +847,11 @@ function MyPage() {
           setProfileModalMode('edit')
         }}
         onConfirmWithdraw={handleWithdraw}
+        onChangePassword={() => {
+          setProfileForm(null)
+          setProfileModalMode('edit')
+          navigate('/reset-password')
+        }}
         onShowEdit={() => setProfileModalMode('edit')}
         onSubmit={handleSaveProfile}
         onShowWithdraw={showWithdrawConfirmation}

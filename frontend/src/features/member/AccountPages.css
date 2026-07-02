@@ -153,6 +153,86 @@
   max-width: 420px;
 }
 
+.reset-password-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 560px;
+  border: 0;
+}
+
+.reset-password-panel .account-heading {
+  text-align: center;
+}
+
+.reset-password-form {
+  width: min(640px, 100%);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.reset-password-topbar {
+  justify-content: flex-start;
+  padding-top: 28px;
+  margin-bottom: 24px;
+}
+
+.reset-password-back {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #111111;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.reset-password-back::before,
+.reset-password-back::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  width: 19px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: left center;
+}
+
+.reset-password-back::before {
+  top: 18px;
+  transform: rotate(-45deg);
+}
+
+.reset-password-back::after {
+  top: 18px;
+  transform: rotate(45deg);
+}
+
+.reset-password-back:hover,
+.reset-password-back:focus,
+.reset-password-back:active {
+  background: transparent;
+  color: #777777;
+}
+
+.reset-password-page .account-shell {
+  min-height: calc(100svh - 56px);
+}
+
+.account-panel.reset-password-panel {
+  min-height: calc(100svh - 160px);
+  border: 0;
+}
+
 .mypage-page .account-card {
   border-color: transparent;
   background: transparent;
@@ -199,10 +279,10 @@
 .account-secondary {
   min-height: 46px;
   padding: 0 20px;
-  border: 1px solid #ffffff;
+  border: 1px solid #111111;
   border-radius: 999px;
-  background: #000000;
-  color: #ffffff;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 15px;
   font-weight: 800;
@@ -213,10 +293,12 @@
 .account-button:hover,
 .account-button:focus,
 .account-secondary:hover,
-.account-secondary:focus {
+.account-secondary:focus,
+.account-button:active,
+.account-secondary:active {
   border-color: #111111;
-  background: #ffffff;
-  color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .account-button:disabled,
@@ -362,7 +444,7 @@
   min-height: 38px;
   min-width: 104px;
   padding: 0 16px;
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 13px;
 }
 
@@ -412,16 +494,18 @@
 
 .mypage-edit-link {
   flex: 0 0 auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #d8d8d8;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #111111;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 13px;
   font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .mypage-edit-link + .mypage-edit-link {
@@ -464,25 +548,74 @@
 }
 
 .mypage-withdraw button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #9f9f9f;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid #111111;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #666666;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .mypage-withdraw button:hover,
-.mypage-withdraw button:focus {
-  color: #ffffff;
+.mypage-withdraw button:focus,
+.mypage-withdraw button:active {
+  background: #ffffff;
+  color: #b8b8b8;
 }
 
 .mypage-modal-withdraw {
   padding-top: 4px;
+}
+
+.mypage-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.mypage-profile-actions button {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid #111111;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.mypage-profile-actions button:hover,
+.mypage-profile-actions button:focus,
+.mypage-profile-actions button:active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.mypage-profile-actions .is-danger {
+  border-color: #111111;
+  background: #ffffff;
+  color: #666666;
+}
+
+.mypage-profile-actions .is-danger:hover,
+.mypage-profile-actions .is-danger:focus,
+.mypage-profile-actions .is-danger:active {
+  border-color: transparent;
+  background: #eeeeee;
+  color: #666666;
 }
 
 .mypage-withdraw-panel {
@@ -519,9 +652,9 @@
 .mypage-withdraw-actions button {
   min-height: 34px;
   padding: 0 14px;
-  border: 1px solid #d8d8d5;
+  border: 1px solid #111111;
   border-radius: 999px;
-  background: #f4f4f2;
+  background: #ffffff;
   color: #111111;
   font: inherit;
   font-size: 12px;
@@ -530,16 +663,25 @@
 }
 
 .mypage-withdraw-actions button:hover,
-.mypage-withdraw-actions button:focus {
+.mypage-withdraw-actions button:focus,
+.mypage-withdraw-actions button:active {
   border-color: #111111;
   background: #111111;
   color: #ffffff;
 }
 
 .mypage-withdraw-actions .is-danger {
-  border-color: #c8c8c4;
-  background: #ededeb;
-  color: #111111;
+  border-color: #111111;
+  background: #ffffff;
+  color: #666666;
+}
+
+.mypage-withdraw-actions .is-danger:hover,
+.mypage-withdraw-actions .is-danger:focus,
+.mypage-withdraw-actions .is-danger:active {
+  border-color: transparent;
+  background: #eeeeee;
+  color: #666666;
 }
 
 .mypage-section {
@@ -568,10 +710,10 @@
   flex: 0 0 auto;
   min-height: 32px;
   padding: 0 12px;
-  border: 1px solid #5f5f5f;
+  border: 1px solid #111111;
   border-radius: 999px;
-  background: #181818;
-  color: #f5f5f5;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 12px;
   font-weight: 800;
@@ -582,10 +724,12 @@
 .mypage-more-button:hover,
 .mypage-more-button:focus,
 .mypage-modal-heading button:hover,
-.mypage-modal-heading button:focus {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #111111;
+.mypage-modal-heading button:focus,
+.mypage-more-button:active,
+.mypage-modal-heading button:active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .mypage-carousel {
@@ -602,8 +746,8 @@
 }
 
 .mypage-card-row {
-  grid-template-columns: repeat(4, 360px);
-  overflow-x: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: visible;
   padding-bottom: 2px;
 }
 
@@ -617,9 +761,9 @@
 }
 
 .mypage-card-row .mypage-item-card {
-  width: 360px;
-  min-width: 360px;
-  height: 544px;
+  width: 100%;
+  min-width: 0;
+  height: 360px;
 }
 
 .mypage-item-image {
@@ -635,7 +779,7 @@
 }
 
 .mypage-card-row .mypage-item-image {
-  height: 268px;
+  height: 160px;
   aspect-ratio: auto;
 }
 
@@ -646,7 +790,153 @@
 }
 
 .mypage-card-row .mypage-item-body {
-  height: 274px;
+  height: 198px;
+}
+
+.mypage-order-card .mypage-item-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.mypage-order-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.mypage-order-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid #666666;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #666666;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.mypage-order-actions button:hover,
+.mypage-order-actions button:focus,
+.mypage-order-actions button:active {
+  border-color: #666666;
+  background: #eeeeee;
+  color: #666666;
+}
+
+.mypage-payment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mypage-payment-row {
+  width: 100%;
+  border: 1px solid #dededb;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.mypage-payment-row.is-expanded {
+  border-color: #111111;
+}
+
+.mypage-payment-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  width: min(1120px, 100%);
+  min-height: 78px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  border: 0;
+  background: transparent;
+  color: #111111;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.mypage-payment-summary:hover,
+.mypage-payment-summary:focus,
+.mypage-payment-summary:active {
+  background: transparent;
+}
+
+.mypage-payment-summary span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #111111;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.mypage-payment-summary strong {
+  color: #666666;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.mypage-payment-products {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 0 20px 20px;
+}
+
+.mypage-payment-product {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  flex: 0 0 240px;
+  min-height: 96px;
+  padding: 10px;
+  border: 1px solid #dededb;
+  background: #f7f7f5;
+  box-sizing: border-box;
+}
+
+.mypage-payment-product-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 74px;
+  background: linear-gradient(135deg, #e6e6e3, #f8f8f7);
+  color: #9b9b95;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.mypage-payment-product h3 {
+  display: -webkit-box;
+  margin: 0 0 8px;
+  overflow: hidden;
+  color: #111111;
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mypage-payment-product p {
+  margin: 0;
+  color: #666666;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .mypage-item-card h3 {
@@ -684,8 +974,8 @@
 }
 
 .mypage-artist-edit-card.is-selected {
-  border-color: #ffffff;
-  box-shadow: inset 0 0 0 1px #ffffff;
+  border-color: #111111;
+  box-shadow: inset 0 0 0 1px #111111;
 }
 
 .mypage-artist-edit-card:not(.is-selected) .mypage-item-meta {
@@ -704,8 +994,8 @@
   padding: 0;
   border: 1px solid #8c8c8c;
   border-radius: 50%;
-  background: #050505;
-  color: #ffffff;
+  background: #ffffff;
+  color: #111111;
   font: inherit;
   font-size: 24px;
   line-height: 1;
@@ -715,10 +1005,11 @@
 }
 
 .mypage-arrow:hover,
-.mypage-arrow:focus {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #111111;
+.mypage-arrow:focus,
+.mypage-arrow:active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .mypage-arrow-left {
@@ -823,9 +1114,19 @@
   }
 
   .mypage-card-row .mypage-item-body {
-    height: 274px;
+    height: 198px;
     min-height: 0;
-    padding: 14px;
+    padding: 12px;
+  }
+
+  .mypage-payment-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .mypage-payment-products {
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
   .mypage-arrow {
@@ -1006,9 +1307,9 @@
 .account-secondary,
 .like-action-button {
   border-color: #111111;
-  border-radius: 0;
-  background: #111111;
-  color: #ffffff;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 1.2px;
@@ -1020,9 +1321,12 @@
 .account-secondary:hover,
 .account-secondary:focus,
 .like-action-button:hover,
-.like-action-button:focus {
-  background: #ffffff;
-  color: #111111;
+.like-action-button:focus,
+.account-button:active,
+.account-secondary:active,
+.like-action-button:active {
+  background: #111111;
+  color: #ffffff;
 }
 
 .account-secondary {
@@ -1129,6 +1433,13 @@
   text-transform: uppercase;
 }
 
+.mypage-edit-link:hover,
+.mypage-edit-link:focus,
+.mypage-edit-link:active {
+  background: #111111;
+  color: #ffffff;
+}
+
 .mypage-profile-list {
   border-top: 1px solid #111111;
 }
@@ -1165,7 +1476,7 @@
 .mypage-modal-heading button,
 .mypage-withdraw-actions button {
   border-color: #111111;
-  border-radius: 0;
+  border-radius: 999px;
   background: #ffffff;
   color: #111111;
   font-size: 10px;
@@ -1178,9 +1489,47 @@
 .mypage-modal-heading button:hover,
 .mypage-modal-heading button:focus,
 .mypage-withdraw-actions button:hover,
-.mypage-withdraw-actions button:focus {
+.mypage-withdraw-actions button:focus,
+.mypage-more-button:active,
+.mypage-modal-heading button:active,
+.mypage-withdraw-actions button:active {
   background: #111111;
   color: #ffffff;
+}
+
+.mypage-profile-actions button {
+  border-color: #111111;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+}
+
+.mypage-profile-actions button:hover,
+.mypage-profile-actions button:focus,
+.mypage-profile-actions button:active {
+  background: #111111;
+  color: #ffffff;
+}
+
+.mypage-profile-actions .is-danger,
+.mypage-withdraw-actions .is-danger,
+.mypage-withdraw button {
+  background: #ffffff;
+  color: #666666;
+}
+
+.mypage-profile-actions .is-danger:hover,
+.mypage-profile-actions .is-danger:focus,
+.mypage-profile-actions .is-danger:active,
+.mypage-withdraw-actions .is-danger:hover,
+.mypage-withdraw-actions .is-danger:focus,
+.mypage-withdraw-actions .is-danger:active,
+.mypage-withdraw button:hover,
+.mypage-withdraw button:focus,
+.mypage-withdraw button:active {
+  border-color: transparent;
+  background: #eeeeee;
+  color: #666666;
 }
 
 .mypage-item-card {
@@ -1202,16 +1551,17 @@
 
 .mypage-arrow {
   border-color: #111111;
-  border-radius: 0;
-  background: #111111;
-  color: #ffffff;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
   box-shadow: none;
 }
 
 .mypage-arrow:hover,
-.mypage-arrow:focus {
-  background: #ffffff;
-  color: #111111;
+.mypage-arrow:focus,
+.mypage-arrow:active {
+  background: #111111;
+  color: #ffffff;
 }
 
 .mypage-modal-backdrop {
@@ -1220,21 +1570,24 @@
 
 .mypage-modal {
   border-color: #111111;
-  border-radius: 0;
+  border-radius: 8px;
   background: #ffffff;
   color: #111111;
   box-shadow: none;
 }
 
 .mypage-withdraw button {
-  color: #555555;
+  color: #666666;
   letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .mypage-withdraw button:hover,
-.mypage-withdraw button:focus {
-  color: #111111;
+.mypage-withdraw button:focus,
+.mypage-withdraw button:active {
+  border-color: transparent;
+  background: #eeeeee;
+  color: #666666;
 }
 
 @media (max-width: 520px) {
