@@ -124,9 +124,11 @@ export function useVtuberWebSocket(
   cartItems: VtuberClientCartItem[] = [],
   sessionId: number | null = null,
   accessToken: string | null = null,
+  currentPath: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const sentAccessTokenRef = useRef<string | null>(null)
+  const recentRecommendationsRef = useRef<VtuberRecommendationMetadata[]>([])
   const closedByHookRef = useRef(false)
   const sawConnectionErrorRef = useRef(false)
   const [connectionStatus, setConnectionStatus] = useState<VtuberConnectionStatus>('idle')
@@ -160,6 +162,9 @@ export function useVtuberWebSocket(
         setLatestText(message.text)
         setActions(message.actions)
         setMetadata(message.metadata ?? {})
+        if (message.metadata?.recommendations?.length) {
+          recentRecommendationsRef.current = message.metadata.recommendations
+        }
         setActionBatchId((currentId) => currentId + 1)
       } catch {
         return
@@ -242,6 +247,11 @@ export function useVtuberWebSocket(
           artistName: item.artistName,
           categoryName: item.categoryName,
         })),
+        recentRecommendations: recentRecommendationsRef.current.map((recommendation) => ({
+          goodsId: recommendation.goodsId,
+          rankOrder: recommendation.rankOrder,
+        })),
+        ...(currentPath ? { currentPath } : {}),
       },
     }
 
@@ -251,7 +261,7 @@ export function useVtuberWebSocket(
 
     socket.send(JSON.stringify(message))
     return true
-  }, [cartItems, sessionId])
+  }, [cartItems, currentPath, sessionId])
 
   return {
     actionBatchId,

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from urllib.parse import parse_qs, urlparse
 
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
+from project_cyan_ai.api.websocket import send_websocket_json
 from project_cyan_ai.chat_history import (
     ChatHistoryClient,
     build_assistant_message_payload,
@@ -69,11 +71,17 @@ from project_cyan_ai.schemas.ws import (
     FullTextMessage,
     HighlightAction,
     NavigateAction,
+    ShowRecommendationsAction,
 )
 from project_cyan_ai.settings import get_settings
 
 client = TestClient(app)
 mock_provider = MockChatResponseProvider()
+
+
+class DisconnectedWebSocket:
+    async def send_json(self, payload):
+        raise OSError("client disconnected")
 
 
 @pytest.fixture(autouse=True)
@@ -837,7 +845,7 @@ def test_catalog_grounding_includes_recommendation_metadata():
     }
 
 
-def test_catalog_grounding_limits_navigation_to_first_candidate():
+def test_catalog_grounding_shows_multiple_candidates_without_detail_navigation():
     catalog = FakeGoodsCatalogClient(
         [
             {"goodsId": 1001, "name": "샤를로트 포토카드"},
@@ -857,10 +865,10 @@ def test_catalog_grounding_limits_navigation_to_first_candidate():
     response = provider.build_response("샤를로트 포토카드 추천해줘")
 
     assert response.model_dump()["actions"] == [
-        {"type": "navigate", "path": "/goods/1001"},
-        {"type": "highlight", "selector": "[data-goods-id='1001']"},
-        {"type": "highlight", "selector": "[data-goods-id='1002']"},
-        {"type": "highlight", "selector": "[data-goods-id='1003']"},
+        {
+            "type": "showRecommendations",
+            "goodsIds": ["1001", "1002", "1003"],
+        },
     ]
 
 
@@ -914,6 +922,224 @@ def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up()
         "actions": [
             {"type": "addToCart", "goodsId": "1007"},
         ],
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["두 번째로 이동해줘", "두번째 상품으로 이동해줘"],
+)
+def test_catalog_grounding_navigates_to_numbered_recommendation(text):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response(text)
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 추천 상품으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods/1006"}],
+    }
+
+
+def test_catalog_grounding_shows_first_numbered_recommendation():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("첫 번째 보여줘")
+
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods/1005"}
+    ]
+
+
+def test_catalog_grounding_shows_multiple_numbered_recommendations():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("1번과 3번 보여줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 2개 추천 상품을 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1007"],
+            }
+        ],
+    }
+
+
+def test_catalog_grounding_reports_recommendation_count_for_out_of_range_number():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("네 번째로 이동해줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 상품은 3개예요.",
+        "actions": [],
+    }
+
+
+def test_catalog_grounding_restores_recent_candidates_from_client_context():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "첫번째 걸 장바구니에 담아줘",
+        context={
+            "recentRecommendations": [
+                {"goodsId": 1006, "rankOrder": 1},
+                {"goodsId": 1005, "rankOrder": 0},
+            ]
+        },
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [{"type": "addToCart", "goodsId": "1005"}],
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["굿즈 리스트로 돌아가줘", "상품 목록 보여줘", "굿즈 페이지로 가줘"],
+)
+def test_catalog_grounding_routes_explicit_goods_list_navigation(text):
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response(text, context={"currentPath": "/goods/42"})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "굿즈 목록으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods"}],
+    }
+    assert catalog.received_texts == []
+
+
+@pytest.mark.parametrize("text", ["카트 보여줘", "장바구니로 가줘"])
+def test_catalog_grounding_routes_explicit_cart_navigation(text):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(text, context={"currentPath": "/goods"})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "장바구니로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/cart"}],
+    }
+
+
+def test_catalog_grounding_routes_back_from_goods_detail_to_goods_list():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "뒤로 가줘",
+        context={"currentPath": "/goods/42"},
+    )
+
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods"}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "current_path", "expected_text"),
+    [
+        ("상품 목록 보여줘", "/goods", "이미 굿즈 목록에 있어요."),
+        ("뒤로 가줘", "/goods", "이미 굿즈 목록에 있어요."),
+        ("카트 보여줘", "/cart", "이미 장바구니에 있어요."),
+        ("뒤로 가줘", "/cart", "이미 장바구니에 있어요."),
+    ],
+)
+def test_catalog_grounding_does_not_navigate_to_current_page(
+    text,
+    current_path,
+    expected_text,
+):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(text, context={"currentPath": current_path})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": expected_text,
+        "actions": [],
+    }
+
+
+def test_catalog_grounding_uses_llm_only_for_ambiguous_navigation():
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient('{"intent":"cart","confidence":0.91}')
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=delegate,
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "쇼핑하던 곳으로 이동해줘",
+        context={"currentPath": "/goods"},
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "장바구니로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/cart"}],
+    }
+    assert "goodsList, cart, uncertain" in delegate.client.received_texts[0]
+
+
+def test_catalog_grounding_asks_when_navigation_classification_is_uncertain():
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient('{"intent":"goodsList","confidence":0.4}')
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=delegate,
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "저쪽으로 이동해줘",
+        context={"currentPath": "/cart"},
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "상품 목록과 장바구니 중 어디로 이동할까요?",
+        "actions": [],
     }
 
 
@@ -1077,8 +1303,55 @@ def test_client_text_input_accepts_optional_cart_context():
                 "artistName": "Artist A",
                 "categoryName": "Photocard",
             }
-        ]
+        ],
+        "recentRecommendations": [],
+        "currentPath": None,
     }
+
+
+def test_client_text_input_accepts_recent_recommendation_context():
+    message = ClientTextInput.model_validate(
+        {
+            "type": "text-input",
+            "text": "첫번째 걸 카트에 담아줘",
+            "context": {
+                "cartItems": [],
+                "recentRecommendations": [
+                    {"goodsId": 42, "rankOrder": 0},
+                    {"goodsId": 84, "rankOrder": 1},
+                ],
+            },
+        }
+    )
+
+    assert [
+        recommendation.model_dump()
+        for recommendation in message.context.recentRecommendations
+    ] == [
+        {"goodsId": 42, "rankOrder": 0},
+        {"goodsId": 84, "rankOrder": 1},
+    ]
+
+
+def test_client_text_input_accepts_current_shopping_path():
+    for current_path in ("/goods", "/goods/42", "/cart"):
+        message = ClientTextInput.model_validate(
+            {
+                "type": "text-input",
+                "text": "이동해줘",
+                "context": {"currentPath": current_path},
+            }
+        )
+        assert message.context.currentPath == current_path
+
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate(
+            {
+                "type": "text-input",
+                "text": "이동해줘",
+                "context": {"currentPath": "https://evil.example"},
+            }
+        )
 
 
 def test_client_text_input_accepts_optional_session_id():
@@ -1192,6 +1465,49 @@ def test_full_text_message_rejects_unsafe_action_targets():
                     "type": "full-text",
                     "text": "안녕",
                     "actions": [action],
+                }
+            )
+
+
+def test_full_text_message_accepts_shopping_navigation_targets():
+    for path in ("/goods", "/goods/42", "/cart"):
+        message = FullTextMessage.model_validate(
+            {
+                "type": "full-text",
+                "text": "이동할게요.",
+                "actions": [{"type": "navigate", "path": path}],
+            }
+        )
+        assert message.actions[0].path == path
+
+
+def test_full_text_message_validates_show_recommendations_action():
+    message = FullTextMessage.model_validate(
+        {
+            "type": "full-text",
+            "text": "추천 상품을 보여드릴게요.",
+            "actions": [
+                {
+                    "type": "showRecommendations",
+                    "goodsIds": ["42", "84"],
+                }
+            ],
+        }
+    )
+    assert message.actions[0].goodsIds == ["42", "84"]
+
+    for goods_ids in (["42"], ["42", "42"], ["42", "../admin"]):
+        with pytest.raises(ValidationError):
+            FullTextMessage.model_validate(
+                {
+                    "type": "full-text",
+                    "text": "추천 상품을 보여드릴게요.",
+                    "actions": [
+                        {
+                            "type": "showRecommendations",
+                            "goodsIds": goods_ids,
+                        }
+                    ],
                 }
             )
 
@@ -2134,6 +2450,14 @@ def test_openai_provider_falls_back_without_leaking_error_details():
     assert "secret-api-key" not in response.text
 
 
+def test_safe_websocket_send_treats_client_disconnect_as_closed_connection():
+    result = asyncio.run(
+        send_websocket_json(DisconnectedWebSocket(), {"type": "full-text"})
+    )
+
+    assert result is False
+
+
 def test_client_ws_sends_initial_messages():
     with client.websocket_connect("/client-ws") as websocket:
         greeting = websocket.receive_json()
@@ -2141,7 +2465,7 @@ def test_client_ws_sends_initial_messages():
 
     assert greeting == {
         "type": "full-text",
-        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카드 담기까지 모두 해드릴게요!",
+        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카트 담기까지 모두 해드릴게요!",
         "actions": [],
     }
 
@@ -2549,10 +2873,12 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
 
     assert recommendation_response == {
         "type": "full-text",
-        "text": "Tour Poster A2을 추천해요.",
+        "text": "조건에 맞는 2개 상품을 추천해요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/1005"},
-            {"type": "highlight", "selector": "[data-goods-id='1005']"},
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006"],
+            },
         ],
         "metadata": {
             "recommendations": [
@@ -2576,6 +2902,31 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
             {"type": "addToCart", "goodsId": "1005"},
             {"type": "addToCart", "goodsId": "1006"},
         ],
+    }
+
+
+def test_client_ws_routes_navigation_with_current_path_context(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json(
+            {
+                "type": "text-input",
+                "text": "뒤로 가줘",
+                "context": {"currentPath": "/goods/42"},
+            }
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "굿즈 목록으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods"}],
     }
 
 
@@ -2626,8 +2977,8 @@ def test_client_ws_persists_messages_when_auth_and_session_are_present(monkeypat
     assert history_client.calls[1]["access_token"] == "supabase-access-token"
     assert history_client.calls[1]["session_id"] == 77
     assert history_client.calls[1]["payload"]["speaker"] == "ASSISTANT"
-    assert history_client.calls[1]["payload"]["messageText"] == "Tour Poster A2을 추천해요."
-    assert history_client.calls[1]["payload"]["action"] == "navigate"
+    assert history_client.calls[1]["payload"]["messageText"] == "조건에 맞는 2개 상품을 추천해요."
+    assert history_client.calls[1]["payload"]["action"] == "showRecommendations"
     assert history_client.calls[1]["payload"]["recommendations"] == [
         {
             "goodsId": 1005,
@@ -2882,6 +3233,7 @@ def test_hook_filter_filters_output_actions_by_scope():
                 NavigateAction(path="/goods/42"),
                 HighlightAction(selector="[data-goods-id='42']"),
                 AddToCartAction(goodsId="42"),
+                ShowRecommendationsAction(goodsIds=["42", "84"]),
             ],
         )
     )
@@ -2891,6 +3243,7 @@ def test_hook_filter_filters_output_actions_by_scope():
         actions=[
             NavigateAction(path="/goods/42"),
             HighlightAction(selector="[data-goods-id='42']"),
+            ShowRecommendationsAction(goodsIds=["42", "84"]),
         ],
     )
 
