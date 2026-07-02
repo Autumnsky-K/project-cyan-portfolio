@@ -12,7 +12,7 @@ const HIGHLIGHT_CLASS_NAME = 'vtuber-action-highlight'
 const HIGHLIGHT_DURATION_MS = 2200
 const ROUTE_SETTLE_DELAY_MS = 160
 const GOODS_ID_PATTERN = /^\d+$/
-const GOODS_PATH_PATTERN = /^\/goods\/\d+$/
+const SHOPPING_PATH_PATTERN = /^\/(?:goods(?:\/\d+)?|cart)$/
 const GOODS_SELECTOR_PATTERN = /^\[data-goods-id=(['"])\d+\1\]$/
 
 type CartGoods = {
@@ -39,7 +39,7 @@ function isNavigateAction(action: VtuberAction): action is NavigateAction {
   return (
     action.type === 'navigate' &&
     typeof action.path === 'string' &&
-    GOODS_PATH_PATTERN.test(action.path)
+    SHOPPING_PATH_PATTERN.test(action.path)
   )
 }
 

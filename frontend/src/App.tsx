@@ -19,30 +19,11 @@ import MyPage from './features/member/MyPage'
 import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot'
-
-const VTUBER_HIDDEN_PATHS = [
-  '/',
-  '/artists',
-  '/login',
-  '/signup',
-  '/auth/callback',
-  '/forgot-password',
-  '/reset-password',
-  '/like',
-  '/likes/artists',
-  '/mypage',
-]
-
-function isVtuberHiddenPath(pathname: string): boolean {
-  return VTUBER_HIDDEN_PATHS.some(
-    (hiddenPath) =>
-      pathname === hiddenPath || pathname.startsWith(`${hiddenPath}/`),
-  )
-}
+import { isVtuberVisiblePath } from './features/vtuber/visibility'
 
 function AppShell() {
   const { pathname } = useLocation()
-  const hideVtuber = isVtuberHiddenPath(pathname)
+  const showVtuber = isVtuberVisiblePath(pathname)
 
   useEffect(() => {
     const pageName = pathname.startsWith('/goods/')
@@ -102,7 +83,7 @@ function AppShell() {
           <Route path="/mypage" element={<MyPage />} />
         </Routes>
       </div>
-      {!hideVtuber && <VtuberChatbot />}
+      {showVtuber && <VtuberChatbot />}
     </>
   )
 }

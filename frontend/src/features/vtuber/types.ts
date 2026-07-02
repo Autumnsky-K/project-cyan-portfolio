@@ -24,6 +24,7 @@ export type VtuberClientTextInputMessage = {
   context?: {
     cartItems?: VtuberClientCartItem[]
     recentRecommendations?: VtuberClientRecentRecommendation[]
+    currentPath?: string
   }
 }
 

@@ -124,6 +124,7 @@ export function useVtuberWebSocket(
   cartItems: VtuberClientCartItem[] = [],
   sessionId: number | null = null,
   accessToken: string | null = null,
+  currentPath: string | null = null,
 ): UseVtuberWebSocketResult {
   const socketRef = useRef<WebSocket | null>(null)
   const sentAccessTokenRef = useRef<string | null>(null)
@@ -250,6 +251,7 @@ export function useVtuberWebSocket(
           goodsId: recommendation.goodsId,
           rankOrder: recommendation.rankOrder,
         })),
+        ...(currentPath ? { currentPath } : {}),
       },
     }
 
@@ -259,7 +261,7 @@ export function useVtuberWebSocket(
 
     socket.send(JSON.stringify(message))
     return true
-  }, [cartItems, sessionId])
+  }, [cartItems, currentPath, sessionId])
 
   return {
     actionBatchId,

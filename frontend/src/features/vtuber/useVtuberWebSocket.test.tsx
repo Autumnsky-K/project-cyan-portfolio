@@ -91,7 +91,7 @@ describe('useVtuberWebSocket', () => {
   })
 
   it('sends the last recommendations as follow-up selection context', () => {
-    const { result } = renderHook(() => useVtuberWebSocket('처음'))
+    const { result } = renderHook(() => useVtuberWebSocket('처음', [], null, null, '/goods/42'))
     const socket = FakeWebSocket.instances[0]
 
     act(() => {
@@ -116,5 +116,6 @@ describe('useVtuberWebSocket', () => {
       { goodsId: 42, rankOrder: 0 },
       { goodsId: 84, rankOrder: 1 },
     ])
+    expect(JSON.parse(socket.sent[0]).context.currentPath).toBe('/goods/42')
   })
 })
