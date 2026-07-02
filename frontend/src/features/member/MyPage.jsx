@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { removeGoodsFavorite, removeGoodsLike } from '../../api/goods'
 import Header from '../../shared/components/Header'
 import {
   getArtistOptions,
@@ -71,11 +72,39 @@ function formatPhoneNumber(value) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
 }
 
-function DashboardItemCard({ item }) {
+function getDashboardItemKey(item) {
+  return item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId
+}
+
+function isSameGoodsId(firstGoodsId, secondGoodsId) {
+  return String(firstGoodsId) === String(secondGoodsId)
+}
+
+function DashboardItemCard({ item, isLikedGoods = false, isLikeSelected = true, onToggleLike }) {
+  const canToggleLike = isLikedGoods && typeof onToggleLike === 'function'
+
   return (
-    <article className="mypage-item-card">
-      <div className="mypage-item-image" aria-hidden="true">
-        이미지
+    <article className={`mypage-item-card ${isLikedGoods ? 'is-liked-goods' : ''}`}>
+      <div className="mypage-item-image">
+        {canToggleLike && (
+          <button
+            className="mypage-like-toggle"
+            type="button"
+            aria-label={isLikeSelected ? `${item.name} 찜 해제` : `${item.name} 찜 유지`}
+            aria-pressed={isLikeSelected}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleLike?.(item.goodsId)
+            }}
+          >
+            <span className="mypage-heart-icon" data-filled={isLikeSelected} aria-hidden="true" />
+          </button>
+        )}
+        {item.imageUrl ? (
+          <img src={item.imageUrl} alt="" />
+        ) : (
+          <span aria-hidden="true">이미지</span>
+        )}
       </div>
       <div className="mypage-item-body">
         <h3>{item.name}</h3>
@@ -90,7 +119,7 @@ function OrderHistoryCard({ item }) {
   return (
     <article className="mypage-item-card mypage-order-card">
       <div className="mypage-item-image" aria-hidden="true">
-        이미지
+        {item.imageUrl ? <img src={item.imageUrl} alt="" /> : '이미지'}
       </div>
       <div className="mypage-item-body">
         <h3>{item.name}</h3>
@@ -212,7 +241,11 @@ function DashboardSection({ id, title, items, onMore, actionLabel = '더보기',
               id === 'orders' ? (
                 <OrderHistoryCard item={item} key={item.orderId} />
               ) : (
-                <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
+                <DashboardItemCard
+                  item={item}
+                  isLikedGoods={id === 'likedGoods'}
+                  key={getDashboardItemKey(item)}
+                />
               )
             ))
           ) : (
@@ -227,10 +260,12 @@ function DashboardSection({ id, title, items, onMore, actionLabel = '더보기',
 function SectionModal({
   allArtistOptions,
   draftFavoriteArtistIds,
+  draftUnlikedGoodsIds,
   isSavingFavorites,
   onClose,
   onSaveFavoriteArtists,
   onToggleFavoriteArtist,
+  onToggleLikedGoods,
   section,
 }) {
   useEffect(() => {
@@ -252,6 +287,7 @@ function SectionModal({
   }
 
   const isFavoriteArtistSection = section.id === 'favoriteArtists'
+  const isLikedGoodsSection = section.id === 'likedGoods'
 
   return (
     <div
@@ -313,7 +349,16 @@ function SectionModal({
         ) : (
           <div className="mypage-modal-grid">
             {section.items.map((item) => (
-              <DashboardItemCard item={item} key={item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId} />
+              <DashboardItemCard
+                item={item}
+                isLikedGoods={isLikedGoodsSection}
+                isLikeSelected={
+                  !isLikedGoodsSection ||
+                  !draftUnlikedGoodsIds.has(String(item.goodsId))
+                }
+                key={getDashboardItemKey(item)}
+                onToggleLike={isLikedGoodsSection ? onToggleLikedGoods : undefined}
+              />
             ))}
           </div>
         )}
@@ -481,6 +526,7 @@ function MyPage() {
   const [expandedPaymentIds, setExpandedPaymentIds] = useState(() => new Set())
   const [allArtistOptions, setAllArtistOptions] = useState([])
   const [draftFavoriteArtistIds, setDraftFavoriteArtistIds] = useState([])
+  const [draftUnlikedGoodsIds, setDraftUnlikedGoodsIds] = useState(() => new Set())
   const [isSavingFavorites, setIsSavingFavorites] = useState(false)
   const [profileForm, setProfileForm] = useState(null)
   const [profileModalMode, setProfileModalMode] = useState('edit')
@@ -638,6 +684,7 @@ function MyPage() {
   const openSection = async (section) => {
     setError('')
     setSelectedSection(section)
+    setDraftUnlikedGoodsIds(new Set())
 
     if (section.id !== 'favoriteArtists') {
       return
@@ -660,6 +707,62 @@ function MyPage() {
         ? currentArtistIds.filter((currentArtistId) => !isSameArtistId(currentArtistId, artistId))
         : [...currentArtistIds, artistId],
     )
+  }
+
+  const toggleLikedGoods = (goodsId) => {
+    setDraftUnlikedGoodsIds((currentGoodsIds) => {
+      const nextGoodsIds = new Set(currentGoodsIds)
+      const targetGoodsId = String(goodsId)
+
+      if (nextGoodsIds.has(targetGoodsId)) {
+        nextGoodsIds.delete(targetGoodsId)
+      } else {
+        nextGoodsIds.add(targetGoodsId)
+      }
+
+      return nextGoodsIds
+    })
+  }
+
+  const syncUnlikedGoods = async (goodsIds) => {
+    const results = await Promise.allSettled(
+      goodsIds.map((goodsId) =>
+        Promise.all([
+          removeGoodsLike(goodsId),
+          removeGoodsFavorite(goodsId),
+        ]),
+      ),
+    )
+
+    if (results.some((result) => result.status === 'rejected')) {
+      setError('찜한 상품 일부를 해제하지 못했습니다. 새로고침 후 다시 확인해주세요.')
+    }
+  }
+
+  const closeSection = () => {
+    if (selectedSection?.id !== 'likedGoods' || draftUnlikedGoodsIds.size === 0) {
+      setSelectedSection(null)
+      setDraftUnlikedGoodsIds(new Set())
+      return
+    }
+
+    const unlikedGoodsIds = [...draftUnlikedGoodsIds]
+
+    setSummary((currentSummary) => {
+      if (!currentSummary) {
+        return currentSummary
+      }
+
+      return {
+        ...currentSummary,
+        likedGoods: currentSummary.likedGoods.filter(
+          (goods) => !unlikedGoodsIds.some((goodsId) => isSameGoodsId(goods.goodsId, goodsId)),
+        ),
+      }
+    })
+    setSelectedSection(null)
+    setDraftUnlikedGoodsIds(new Set())
+    void syncUnlikedGoods(unlikedGoodsIds)
   }
 
   const handleSaveFavoriteArtists = async () => {
@@ -716,6 +819,16 @@ function MyPage() {
 
   const dashboardSections = [
     {
+      id: 'likedGoods',
+      title: '찜한상품',
+      items: summary.likedGoods,
+    },
+    {
+      id: 'recentlyViewedGoods',
+      title: '최근본상품',
+      items: summary.recentlyViewedGoods,
+    },
+    {
       id: 'orders',
       title: '구매내역',
       items: summary.orders,
@@ -741,19 +854,9 @@ function MyPage() {
       items: summary.supportInquiries,
     },
     {
-      id: 'recentlyViewedGoods',
-      title: '최근본상품',
-      items: summary.recentlyViewedGoods,
-    },
-    {
       id: 'favoriteArtists',
       title: '관심 아티스트',
       items: summary.favoriteArtists,
-    },
-    {
-      id: 'likedGoods',
-      title: '찜한상품',
-      items: summary.likedGoods,
     },
   ]
 
@@ -829,11 +932,13 @@ function MyPage() {
       <SectionModal
         allArtistOptions={allArtistOptions}
         draftFavoriteArtistIds={draftFavoriteArtistIds}
+        draftUnlikedGoodsIds={draftUnlikedGoodsIds}
         isSavingFavorites={isSavingFavorites}
         section={selectedSection}
-        onClose={() => setSelectedSection(null)}
+        onClose={closeSection}
         onSaveFavoriteArtists={handleSaveFavoriteArtists}
         onToggleFavoriteArtist={toggleFavoriteArtist}
+        onToggleLikedGoods={toggleLikedGoods}
       />
       <ProfileEditModal
         form={profileForm}

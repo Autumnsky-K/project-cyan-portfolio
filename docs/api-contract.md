@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.15` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.16` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -260,6 +260,17 @@
 - 요청 header: `Authorization: Bearer <Supabase access_token>`
 - 응답: 배열 `{ artistId, name, imageUrl }`
 - 비고: `member_artist.member_id`는 인증된 회원에서 결정하며, access token과 내부 prompt에는 저장하지 않는다.
+- 상태: [x] additive
+```
+
+```
+#### [GET] /api/members/me/goods-activity
+- 설명: 로그인 사용자의 마이페이지 상품 활동 요약 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: `{ likedGoods, recentlyViewedGoods }`
+- 응답 항목: `{ goodsId, name, price, imageUrl, description, activityAt }`
+- 정렬: 찜한 상품과 최근 본 상품 모두 최신 활동순
 - 상태: [x] additive
 ```
 `public.member` 동기화:
@@ -883,4 +894,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-07-01 | v0.2.13 | ai/cart | additive | WebSocket `context.recentRecommendations`를 추가해 재연결·인증 경계에서도 직전 추천 번호 선택을 복구 | 강승민 |
 | 2026-07-02 | v0.2.14 | ai/navigation | additive | WebSocket `context.currentPath`와 `/goods`·`/cart` 이동 action을 추가하고 쇼핑 화면 이동 의도 라우팅 기준을 명시 | Codex |
 | 2026-07-02 | v0.2.15 | ai/goods | additive | 복수 추천을 `/goods`의 정확한 상품 집합으로 표시하는 `showRecommendations.goodsIds` action 추가 | Codex |
+| 2026-07-02 | v0.2.16 | member/goods | additive | 마이페이지 상품 활동 요약 조회 API `GET /api/members/me/goods-activity` 추가 | Codex |
 |  |  |  |  |  |  |
