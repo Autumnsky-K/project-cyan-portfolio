@@ -41,40 +41,52 @@ export function useGoodsReviews(goodsId: number, onRequireSignIn: () => void) {
   const [isSaving, setIsSaving] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
 
-  const loadReviews = useCallback(async (signal?: AbortSignal) => {
-    setStatus('loading')
-    setError('')
+  const fetchReviewData = useCallback(async (signal?: AbortSignal) => {
     const signedIn = await hasSpringApiSession()
-    if (signal?.aborted) return
-    setIsSignedIn(signedIn)
-
     const [nextSummary, nextReviewsPage, nextMyReview] = await Promise.all([
       fetchGoodsReviewSummary(goodsId, signal ? { signal } : {}),
       fetchGoodsReviews(goodsId, page, 5, sort, signal ? { signal } : {}),
       signedIn ? fetchMyGoodsReview(goodsId) : Promise.resolve(null),
     ])
 
-    if (signal?.aborted) return
-    setSummary(nextSummary)
-    setReviewsPage(nextReviewsPage)
-    setMyReview(nextMyReview)
-    setRating(nextMyReview?.rating ?? 5)
-    setContent(nextMyReview?.content ?? '')
-    setOptionLabel(nextMyReview?.optionLabel ?? '')
-    setStatus('data')
+    return { nextMyReview, nextReviewsPage, nextSummary, signedIn }
   }, [goodsId, page, sort])
+
+  const applyReviewData = useCallback((reviewData: Awaited<ReturnType<typeof fetchReviewData>>) => {
+    setSummary(reviewData.nextSummary)
+    setReviewsPage(reviewData.nextReviewsPage)
+    setMyReview(reviewData.nextMyReview)
+    setRating(reviewData.nextMyReview?.rating ?? 5)
+    setContent(reviewData.nextMyReview?.content ?? '')
+    setOptionLabel(reviewData.nextMyReview?.optionLabel ?? '')
+    setIsSignedIn(reviewData.signedIn)
+    setStatus('data')
+  }, [])
+
+  const loadReviews = useCallback(async () => {
+    applyReviewData(await fetchReviewData())
+  }, [applyReviewData, fetchReviewData])
 
   useEffect(() => {
     const controller = new AbortController()
 
-    loadReviews(controller.signal).catch((loadError) => {
+    async function loadInitialReviews() {
+      setStatus('loading')
+      setError('')
+      const reviewData = await fetchReviewData(controller.signal)
+
+      if (controller.signal.aborted) return
+      applyReviewData(reviewData)
+    }
+
+    loadInitialReviews().catch((loadError) => {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return
       setError(loadError instanceof Error ? loadError.message : '리뷰를 불러오지 못했습니다.')
       setStatus('error')
     })
 
     return () => controller.abort()
-  }, [loadReviews])
+  }, [applyReviewData, fetchReviewData])
 
   const ratingCounts = useMemo(
     () => [
