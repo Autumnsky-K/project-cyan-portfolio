@@ -3,6 +3,7 @@ import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 const ACCOUNT_NOT_FOUND_MESSAGE = '계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.'
+const MY_PAGE_SECTION_LIMIT = 20
 
 
 const MY_PAGE_DUMMY_DATA = {
@@ -286,6 +287,191 @@ function pickAddressFromRow(row) {
     row.detail_address ??
     ''
   )
+}
+
+function formatDateLabel(value) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+function formatOrderStatus(status) {
+  const statusLabels = {
+    PENDING: '결제 대기',
+    PAID: '결제 완료',
+    PREPARING: '배송 준비중',
+    SHIPPED: '배송중',
+    DONE: '배송 완료',
+    CANCELED: '취소 완료',
+  }
+
+  return statusLabels[status] ?? status ?? '주문 상태 확인 중'
+}
+
+function getFirstOrderItem(items) {
+  return Array.isArray(items) && items.length > 0 ? items[0] : null
+}
+
+function normalizeGoodsSummary(goods, fallback = {}) {
+  return {
+    goodsId: goods?.goods_id ?? goods?.goodsId ?? fallback.goodsId,
+    name:
+      goods?.goods_name ??
+      goods?.goodsName ??
+      fallback.name ??
+      '상품명 확인 중',
+    price: Number(goods?.price ?? fallback.price ?? 0),
+    imageUrl: goods?.main_image_url ?? goods?.imageUrl ?? fallback.imageUrl ?? '',
+    description:
+      fallback.description ??
+      goods?.description ??
+      '상품 정보를 확인해 주세요.',
+  }
+}
+
+async function getGoodsByIds(goodsIds) {
+  const uniqueGoodsIds = [...new Set(goodsIds.filter(Boolean))]
+
+  if (uniqueGoodsIds.length === 0) {
+    return new Map()
+  }
+
+  const { data, error } = await supabase
+    .from('goods')
+    .select('goods_id, goods_name, price, description, main_image_url')
+    .in('goods_id', uniqueGoodsIds)
+
+  if (error) {
+    console.warn(error)
+    return new Map()
+  }
+
+  return new Map(data.map((goods) => [goods.goods_id, goods]))
+}
+
+async function getMyPageOrders(memberId) {
+  const { data: orders, error: ordersError } = await supabase
+    .from('orders')
+    .select('order_id, order_no, order_status, total_amount, ordered_at')
+    .eq('member_id', memberId)
+    .order('ordered_at', { ascending: false })
+    .limit(MY_PAGE_SECTION_LIMIT)
+
+  if (ordersError) {
+    console.warn(ordersError)
+    return []
+  }
+
+  if (!orders || orders.length === 0) {
+    return []
+  }
+
+  const orderIds = orders.map((order) => order.order_id)
+  const { data: orderItems, error: orderItemsError } = await supabase
+    .from('order_item')
+    .select('order_id, order_item_id, goods_id, goods_name, artist_name, unit_price, quantity, item_total_amount, main_image_url')
+    .in('order_id', orderIds)
+    .order('order_item_id', { ascending: true })
+
+  if (orderItemsError) {
+    console.warn(orderItemsError)
+  }
+
+  const itemsByOrderId = new Map()
+
+  for (const item of orderItems ?? []) {
+    const items = itemsByOrderId.get(item.order_id) ?? []
+    items.push(item)
+    itemsByOrderId.set(item.order_id, items)
+  }
+
+  return orders.map((order) => {
+    const items = itemsByOrderId.get(order.order_id) ?? []
+    const firstItem = getFirstOrderItem(items)
+    const extraItemCount = Math.max(items.length - 1, 0)
+    const orderedAt = formatDateLabel(order.ordered_at)
+    const orderStatus = formatOrderStatus(order.order_status)
+
+    return {
+      orderId: order.order_id,
+      name: firstItem
+        ? `${firstItem.goods_name}${extraItemCount > 0 ? ` 외 ${extraItemCount}건` : ''}`
+        : order.order_no ?? `주문 #${order.order_id}`,
+      status: orderStatus,
+      price: Number(order.total_amount ?? firstItem?.item_total_amount ?? 0),
+      imageUrl: firstItem?.main_image_url ?? '',
+      description: [
+        order.order_no ? `주문번호 ${order.order_no}` : null,
+        orderedAt ? `${orderedAt} 주문` : null,
+        firstItem?.quantity ? `${firstItem.quantity}개` : null,
+      ].filter(Boolean).join(' · '),
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
+    }
+  })
+}
+
+async function getMyPageRecentlyViewedGoods(memberId) {
+  const { data, error } = await supabase
+    .from('goods_view_history')
+    .select('view_history_id, goods_id, viewed_at')
+    .eq('member_id', memberId)
+    .order('viewed_at', { ascending: false })
+    .limit(MY_PAGE_SECTION_LIMIT)
+
+  if (error) {
+    console.warn(error)
+    return []
+  }
+
+  const goodsById = await getGoodsByIds((data ?? []).map((row) => row.goods_id))
+
+  return (data ?? []).map((row) => {
+    const viewedAt = formatDateLabel(row.viewed_at)
+
+    return normalizeGoodsSummary(goodsById.get(row.goods_id), {
+      goodsId: row.goods_id,
+      description: viewedAt ? `${viewedAt}에 본 상품` : '최근 본 상품',
+    })
+  })
+}
+
+async function getMyPageLikedGoods(memberId) {
+  const { data, error } = await supabase
+    .from('goods_like')
+    .select('like_id, goods_id, created_at')
+    .eq('member_id', memberId)
+    .order('created_at', { ascending: false })
+    .limit(MY_PAGE_SECTION_LIMIT)
+
+  if (error) {
+    console.warn(error)
+    return []
+  }
+
+  const goodsById = await getGoodsByIds((data ?? []).map((row) => row.goods_id))
+
+  return (data ?? []).map((row) => {
+    const likedAt = formatDateLabel(row.created_at)
+
+    return normalizeGoodsSummary(goodsById.get(row.goods_id), {
+      goodsId: row.goods_id,
+      description: likedAt ? `${likedAt}에 찜한 상품` : '찜한 상품',
+    })
+  })
 }
 
 async function getMemberGradeFromTable(userId) {
@@ -664,6 +850,12 @@ export async function getMyPageSummary() {
   const favoriteArtistIdSet = new Set(favoriteArtistIds)
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
+  const memberId = await getMemberId(member.memberId ?? member.userId)
+  const [orders, recentlyViewedGoods, likedGoods] = await Promise.all([
+    getMyPageOrders(memberId),
+    getMyPageRecentlyViewedGoods(memberId),
+    getMyPageLikedGoods(memberId),
+  ])
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
     null,
@@ -675,18 +867,18 @@ export async function getMyPageSummary() {
       address,
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
-    orders: MY_PAGE_DUMMY_DATA.orders,
+    orders,
     payments: MY_PAGE_DUMMY_DATA.payments,
     refunds: MY_PAGE_DUMMY_DATA.refunds,
     productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,
     supportInquiries: MY_PAGE_DUMMY_DATA.supportInquiries,
-    recentlyViewedGoods: MY_PAGE_DUMMY_DATA.recentlyViewedGoods,
+    recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
       status: '선택됨',
       description: `${artist.name} 공식 굿즈와 새 소식을 모아볼 수 있습니다.`,
     })),
-    likedGoods: MY_PAGE_DUMMY_DATA.likedGoods,
+    likedGoods,
   }
 }
 
