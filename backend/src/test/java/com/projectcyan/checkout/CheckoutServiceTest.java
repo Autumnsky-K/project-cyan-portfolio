@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -249,6 +250,81 @@ class CheckoutServiceTest {
 	}
 
 	@Test
+	void approvePaymentDecreasesStockOnlyOnce() {
+		Member member = member();
+		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
+		GoodsStock approvalStock = stock(goods, 10);
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
+		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
+		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 10)));
+
+		checkoutService.prepare(
+			member.getMemberUuid(),
+			new CheckoutPrepareRequest(
+				List.of(item(1001L, 2)),
+				new ShippingAddressRequest(
+					"Hong Gil-dong",
+					"01012345678",
+					"01234",
+					"Seoul ...",
+					"101",
+					"Leave at the door"
+				),
+				"KAKAO_PAY"
+			)
+		);
+		when(paymentRepository.findById(456L)).thenReturn(Optional.of(savedPayment));
+		when(orderItemRepository.findByOrder_OrderId(123L)).thenReturn(List.of(OrderItem.snapshot(savedOrder, goods, 2)));
+		when(goodsStockRepository.findByGoodsIdInForUpdate(Set.of(1001L))).thenReturn(List.of(approvalStock));
+
+		PaymentResultResponse response = checkoutService.approvePayment(
+			member.getMemberUuid(),
+			paymentResult(456L, BigDecimal.valueOf(70000))
+		);
+		checkoutService.approvePayment(member.getMemberUuid(), paymentResult(456L, BigDecimal.valueOf(70000)));
+
+		assertThat(response.paymentStatus()).isEqualTo("APPROVED");
+		assertThat(response.orderStatus()).isEqualTo("PAID");
+		assertThat(approvalStock.getCurrentStock()).isEqualTo(8);
+		verify(goodsStockRepository, times(1)).findByGoodsIdInForUpdate(Set.of(1001L));
+	}
+
+	@Test
+	void approvePaymentRejectsInsufficientStockBeforeMarkingPaid() {
+		Member member = member();
+		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
+		when(goodsRepository.findAllById(Set.of(1001L))).thenReturn(List.of(goods));
+		when(goodsStockRepository.findByGoodsIdIn(Set.of(1001L))).thenReturn(List.of(stock(goods, 10)));
+
+		checkoutService.prepare(
+			member.getMemberUuid(),
+			new CheckoutPrepareRequest(
+				List.of(item(1001L, 2)),
+				new ShippingAddressRequest(
+					"Hong Gil-dong",
+					"01012345678",
+					"01234",
+					"Seoul ...",
+					"101",
+					"Leave at the door"
+				),
+				"KAKAO_PAY"
+			)
+		);
+		when(paymentRepository.findById(456L)).thenReturn(Optional.of(savedPayment));
+		when(orderItemRepository.findByOrder_OrderId(123L)).thenReturn(List.of(OrderItem.snapshot(savedOrder, goods, 2)));
+		when(goodsStockRepository.findByGoodsIdInForUpdate(Set.of(1001L))).thenReturn(List.of(stock(goods, 1)));
+
+		assertError("OUT_OF_STOCK", () -> checkoutService.approvePayment(
+			member.getMemberUuid(),
+			paymentResult(456L, BigDecimal.valueOf(70000))
+		));
+		assertThat(ReflectionTestUtils.getField(savedPayment, "paymentStatus")).isEqualTo("READY");
+		assertThat(ReflectionTestUtils.getField(savedOrder, "orderStatus")).isEqualTo("PENDING");
+	}
+
+	@Test
 	void wrapsUnexpectedFailureAndDoesNotContinueSaving() {
 		Member member = member();
 		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
@@ -296,6 +372,19 @@ class CheckoutServiceTest {
 
 	private CheckoutItemRequest item(Long goodsId, Integer quantity) {
 		return new CheckoutItemRequest(goodsId, quantity);
+	}
+
+	private PaymentResultRequest paymentResult(Long paymentId, BigDecimal amount) {
+		return new PaymentResultRequest(
+			null,
+			null,
+			paymentId,
+			"KAKAO",
+			"tid-test",
+			"KAKAO_PAY",
+			amount,
+			null
+		);
 	}
 
 	private Member member() {
