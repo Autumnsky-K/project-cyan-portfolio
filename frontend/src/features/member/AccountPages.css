@@ -913,6 +913,7 @@
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: inherit;
 }
 
 .mypage-payment-product p {
@@ -932,6 +933,7 @@
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: inherit;
 }
 
 .mypage-item-card p,
