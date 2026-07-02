@@ -1,6 +1,5 @@
 import type { MouseEvent, RefObject } from 'react'
 import type { GoodsSummary } from '../../api/goods'
-import GoodsActiveFilterChips from './GoodsActiveFilterChips'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, { type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
@@ -137,11 +136,6 @@ function GoodsAllSection({
               <button type="button" onClick={clearRecommendations}>전체 상품 보기</button>
             </div>
           )}
-          <GoodsActiveFilterChips
-            groups={filters}
-            selectedFilters={selectedFilters}
-            onRemoveFilter={onToggleFilter}
-          />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
               <p>
