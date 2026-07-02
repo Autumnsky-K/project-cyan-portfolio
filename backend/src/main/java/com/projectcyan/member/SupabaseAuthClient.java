@@ -69,6 +69,23 @@ public class SupabaseAuthClient {
 		}
 	}
 
+	public void updateUserPassword(UUID userId, String password) {
+		validateConfigured();
+		try {
+			restClient.put()
+				.uri(authUrl("/admin/users/" + userId))
+				.headers(headers -> {
+					applyAuthHeaders(headers);
+					headers.setContentType(MediaType.APPLICATION_JSON);
+				})
+				.body(Map.of("password", password))
+				.retrieve()
+				.toBodilessEntity();
+		} catch (RestClientResponseException exception) {
+			throw new SupabaseAuthException(authErrorMessage(exception), exception.getStatusCode().value());
+		}
+	}
+
 	private void validateConfigured() {
 		if (!StringUtils.hasText(properties.getProjectUrl()) || !StringUtils.hasText(properties.getServiceRoleKey())) {
 			throw new SupabaseAuthException("Supabase Auth is not configured.", 500);

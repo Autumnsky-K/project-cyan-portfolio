@@ -18,7 +18,7 @@ function ForgotPasswordPage() {
 
     try {
       await sendPasswordResetEmail(email)
-      setMessage('비밀번호 재설정 링크를 이메일로 보냈습니다.')
+      setMessage('비밀번호 수정 가능한 링크가 발송되었습니다.')
     } catch (resetError) {
       setError(resetError.message)
     } finally {

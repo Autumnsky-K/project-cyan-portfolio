@@ -19,7 +19,7 @@ class CheckoutControllerTest {
 		CheckoutService checkoutService = mock(CheckoutService.class);
 		CheckoutController controller = new CheckoutController(checkoutService);
 		UUID memberUuid = UUID.randomUUID();
-		AuthenticatedMember currentMember = new AuthenticatedMember(7L, memberUuid, "buyer@example.com", "Buyer", "010-1234-5678");
+		AuthenticatedMember currentMember = new AuthenticatedMember(7L, memberUuid, "buyer@example.com", "Buyer", "010-1234-5678", "BASIC");
 		CheckoutPrepareRequest request = new CheckoutPrepareRequest(
 			List.of(new CheckoutItemRequest(1001L, 1)),
 			new ShippingAddressRequest("Buyer", "01012345678", "01234", "Seoul", "101", "Door"),

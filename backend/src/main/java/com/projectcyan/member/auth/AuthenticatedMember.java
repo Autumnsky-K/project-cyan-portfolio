@@ -9,7 +9,8 @@ public record AuthenticatedMember(
 	UUID memberUuid,
 	String email,
 	String name,
-	String phone
+	String phone,
+	String memberGrade
 ) {
 
 	public static AuthenticatedMember from(Member member) {
@@ -18,7 +19,8 @@ public record AuthenticatedMember(
 			member.getMemberUuid(),
 			member.getEmail(),
 			member.getName(),
-			member.getPhone()
+			member.getPhone(),
+			member.getMemberGrade()
 		);
 	}
 }
