@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { GoodsDetail } from '../../api/goods'
 import GoodsImage from './GoodsImage'
 
 function GoodsGallery({ goods }: { goods: GoodsDetail }) {
+  return <GoodsGalleryContent key={goods.goodsId} goods={goods} />
+}
+
+function GoodsGalleryContent({ goods }: { goods: GoodsDetail }) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const galleryImages = useMemo(
     () => [
@@ -20,10 +24,6 @@ function GoodsGallery({ goods }: { goods: GoodsDetail }) {
   )
   const selectedGalleryImage = galleryImages[selectedImageIndex] ?? galleryImages[0] ?? null
   const hasGalleryNavigation = galleryImages.length > 1
-
-  useEffect(() => {
-    setSelectedImageIndex(0)
-  }, [goods.goodsId])
 
   return (
     <div className="detail-content">
