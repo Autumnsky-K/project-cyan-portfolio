@@ -116,7 +116,7 @@ async def client_ws(websocket: WebSocket):
     )
 
     await websocket.send_json(
-        FullTextMessage(text="안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카드 담기까지 모두 해드릴게요!").model_dump()
+        FullTextMessage(text="안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카트 담기까지 모두 해드릴게요!").model_dump()
     )
     await websocket.send_json(
         ModelConfigMessage(
