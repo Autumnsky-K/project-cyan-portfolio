@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { removeGoodsFavorite, removeGoodsLike } from '../../api/goods'
+import { removeGoodsLike } from '../../api/goods'
 import Header from '../../shared/components/Header'
 import {
   getArtistOptions,
@@ -726,12 +726,7 @@ function MyPage() {
 
   const syncUnlikedGoods = async (goodsIds) => {
     const results = await Promise.allSettled(
-      goodsIds.map((goodsId) =>
-        Promise.all([
-          removeGoodsLike(goodsId),
-          removeGoodsFavorite(goodsId),
-        ]),
-      ),
+      goodsIds.map((goodsId) => removeGoodsLike(goodsId)),
     )
 
     if (results.some((result) => result.status === 'rejected')) {
