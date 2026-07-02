@@ -1,3 +1,4 @@
+import asyncio
 import json
 from urllib.parse import parse_qs, urlparse
 
@@ -6,6 +7,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from project_cyan_ai.main import app
+from project_cyan_ai.api.websocket import send_websocket_json
 from project_cyan_ai.chat_history import (
     ChatHistoryClient,
     build_assistant_message_payload,
@@ -75,6 +77,11 @@ from project_cyan_ai.settings import get_settings
 
 client = TestClient(app)
 mock_provider = MockChatResponseProvider()
+
+
+class DisconnectedWebSocket:
+    async def send_json(self, payload):
+        raise OSError("client disconnected")
 
 
 @pytest.fixture(autouse=True)
@@ -2441,6 +2448,14 @@ def test_openai_provider_falls_back_without_leaking_error_details():
         "actions": [],
     }
     assert "secret-api-key" not in response.text
+
+
+def test_safe_websocket_send_treats_client_disconnect_as_closed_connection():
+    result = asyncio.run(
+        send_websocket_json(DisconnectedWebSocket(), {"type": "full-text"})
+    )
+
+    assert result is False
 
 
 def test_client_ws_sends_initial_messages():
