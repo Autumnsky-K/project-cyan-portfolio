@@ -168,6 +168,9 @@ public class GoodsService {
 		if (isViewCountSort(sort)) {
 			return findGoodsByViewCount(specification, normalizedPage, normalizedSize, viewPeriod);
 		}
+		if (isLikeCountSort(sort)) {
+			return findGoodsByLikeCount(specification, normalizedPage, normalizedSize);
+		}
 
 		Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, parseSort(sort));
 
@@ -221,6 +224,43 @@ public class GoodsService {
 					goods,
 					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
 					likeCounts.getOrDefault(goods.getGoodsId(), 0L)
+				))
+				.toList(),
+			page,
+			size,
+			totalElements,
+			(int) Math.ceil((double) totalElements / size)
+		);
+	}
+
+	private PageResponse<GoodsSummaryResponse> findGoodsByLikeCount(
+		Specification<Goods> specification,
+		int page,
+		int size
+	) {
+		List<Goods> sortedGoods = new ArrayList<>(
+			goodsRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "createdAt"))
+		);
+		Map<Long, Long> likeCounts = likeCounts(sortedGoods);
+		sortedGoods.sort(Comparator
+			.comparing((Goods goods) -> likeCounts.getOrDefault(goods.getGoodsId(), 0L)).reversed()
+			.thenComparing(Goods::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+			.thenComparing(Goods::getGoodsId, Comparator.reverseOrder()));
+
+		int totalElements = sortedGoods.size();
+		int fromIndex = Math.min(page * size, totalElements);
+		int toIndex = Math.min(fromIndex + size, totalElements);
+		List<Goods> pageGoods = sortedGoods.subList(fromIndex, toIndex);
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			pageGoods.stream().map(Goods::getGoodsId).toList()
+		);
+		Map<Long, Long> pageLikeCounts = likeCounts(pageGoods);
+		return new PageResponse<>(
+			pageGoods.stream()
+				.map(goods -> GoodsSummaryResponse.from(
+					goods,
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+					pageLikeCounts.getOrDefault(goods.getGoodsId(), 0L)
 				))
 				.toList(),
 			page,
@@ -526,6 +566,13 @@ public class GoodsService {
 			return false;
 		}
 		return "viewCount".equalsIgnoreCase(rawSort.split(",", 2)[0].trim());
+	}
+
+	private boolean isLikeCountSort(String rawSort) {
+		if (rawSort == null || rawSort.isBlank()) {
+			return false;
+		}
+		return "likeCount".equalsIgnoreCase(rawSort.split(",", 2)[0].trim());
 	}
 
 	private PurchaseAvailability purchaseAvailability(Goods goods) {

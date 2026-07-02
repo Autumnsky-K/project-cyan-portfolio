@@ -7,8 +7,9 @@ export type GoodsSection = 'all' | 'favorites'
 export type GoodsViewMode = 'grid' | 'list'
 
 const VIEW_COUNT_SORT = 'viewCount,desc'
+const LIKE_COUNT_SORT = 'likeCount,desc'
 const DEFAULT_VIEW_PERIOD = 'all'
-const ALLOWED_SORTS = new Set(['createdAt,desc', VIEW_COUNT_SORT, 'price,asc', 'price,desc', 'goodsName,asc'])
+const ALLOWED_SORTS = new Set(['createdAt,desc', VIEW_COUNT_SORT, LIKE_COUNT_SORT, 'price,asc', 'price,desc', 'goodsName,asc'])
 const ALLOWED_VIEW_PERIODS = new Set([DEFAULT_VIEW_PERIOD, 'day', '7d', '30d'])
 const EMPTY_FILTERS: GoodsSelectedFilters = { categoryIds: [], artistIds: [], tags: [] }
 const GOODS_LIST_SCROLL_STATE_KEY = 'goodsListScrollY'

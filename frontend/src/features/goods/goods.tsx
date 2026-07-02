@@ -335,6 +335,7 @@ function GoodsPage() {
           <select value={sort} onChange={handleSortChange}>
             <option value="createdAt,desc">최신순</option>
             <option value="viewCount,desc">조회순</option>
+            <option value="likeCount,desc">좋아요순</option>
             <option value="price,asc">낮은 가격순</option>
             <option value="price,desc">높은 가격순</option>
             <option value="goodsName,asc">이름순</option>
