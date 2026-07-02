@@ -10,6 +10,7 @@ SERVER_ERROR_TYPE = "error"
 ACTION_NAVIGATE_TYPE = "navigate"
 ACTION_HIGHLIGHT_TYPE = "highlight"
 ACTION_ADD_TO_CART_TYPE = "addToCart"
+ACTION_SHOW_RECOMMENDATIONS_TYPE = "showRecommendations"
 CLIENT_TEXT_MAX_LENGTH = 1000
 CLIENT_CART_ITEMS_MAX_LENGTH = 50
 CLIENT_RECENT_RECOMMENDATIONS_MAX_LENGTH = 20
@@ -53,7 +54,28 @@ class AddToCartAction(BaseModel):
     goodsId: str = Field(pattern=r"^\d+$")
 
 
-ActionPayload: TypeAlias = Union[NavigateAction, HighlightAction, AddToCartAction]
+class ShowRecommendationsAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["showRecommendations"] = ACTION_SHOW_RECOMMENDATIONS_TYPE
+    goodsIds: list[str] = Field(min_length=2, max_length=20)
+
+    @field_validator("goodsIds")
+    @classmethod
+    def validate_goods_ids(cls, values: list[str]) -> list[str]:
+        if any(not value.isdigit() for value in values):
+            raise ValueError("goodsIds must contain numeric strings")
+        if len(set(values)) != len(values):
+            raise ValueError("goodsIds must be unique")
+        return values
+
+
+ActionPayload: TypeAlias = Union[
+    NavigateAction,
+    HighlightAction,
+    AddToCartAction,
+    ShowRecommendationsAction,
+]
 
 
 class ClientTextInput(BaseModel):

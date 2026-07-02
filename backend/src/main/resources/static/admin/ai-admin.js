@@ -2,7 +2,7 @@ const aiAdminRoot = document.querySelector('[data-ai-admin]')
 const aiBugLabRoot = document.querySelector('[data-ai-bug-lab]')
 const hookPolicyHeader = ['hook', 'check', 'threshold', 'action', 'message', 'replacement']
 const hookOptions = ['input', 'output']
-const actionTypes = ['navigate', 'highlight', 'addToCart']
+const actionTypes = ['navigate', 'highlight', 'addToCart', 'showRecommendations']
 const checkOptionsByHook = {
   input: ['maxLength', 'forbiddenWords', 'specialCharRatio', 'numberRatio', 'englishRatio', 'literalText'],
   output: ['forbiddenWords', 'actionScope', 'literalText'],
@@ -39,7 +39,7 @@ const defaultThresholdByCheck = {
   specialCharRatio: '30%',
   numberRatio: '45%',
   englishRatio: '70%',
-  actionScope: 'navigate,highlight,addToCart',
+  actionScope: 'navigate,highlight,addToCart,showRecommendations',
   literalText: '',
 }
 const defaultMessageByCheck = {
@@ -72,7 +72,7 @@ const sampleSheets = {
     text: [
       'layer\tfield\tcontent\towner\tpriority',
       'identity\tname\t시안은 Project Cyan 매장 안의 버츄얼 캐릭터다\tadmin\t1',
-      'authority\tactions\tnavigate, highlight, addToCart만 화면 액션으로 사용\tadmin\t1',
+      'authority\tactions\tnavigate, highlight, addToCart, showRecommendations만 화면 액션으로 사용\tadmin\t1',
       'knowledge\tcatalog\tDB 요약 시트와 재고 스냅샷을 근거로 답변\tSpring\t1',
       'cache\trefresh\t최초 요청 후 5분 동안 같은 요약본 사용\tSpring\t2',
       'unknown\tfallback\t요약본에 없으면 지어내지 않고 추가 조회가 필요하다고 말함\tadmin\t1',
@@ -87,14 +87,14 @@ const sampleSheets = {
       'input\tnumberRatio\t45%\treview\t숫자가 많아요. 주문번호나 가격 문의인지 다시 알려주세요.',
       'input\tenglishRatio\t70%\treview\t영문 입력이 많아요. 상품명인지 다시 확인해주세요.',
       'output\tforbiddenWords\t관리자 목록\trewrite\t안내가 부적절해 다시 정리했어요.',
-      'output\tactionScope\tnavigate,highlight,addToCart\tfilter\t허용된 화면 동작만 실행할게요.',
+      'output\tactionScope\tnavigate,highlight,addToCart,showRecommendations\tfilter\t허용된 화면 동작만 실행할게요.',
     ].join('\n'),
   },
   scenario: {
     title: '응답 시나리오 시트',
     text: [
       'context\tmotion\tresponse\tallowedAction\tfallback',
-      '상품 추천\thighlight\t후보 1~3개를 짧게 소개\tnavigate,highlight\t후보 없음 안내',
+      '상품 추천\thighlight\t후보 1~3개를 짧게 소개\tnavigate,highlight,showRecommendations\t후보 없음 안내',
       '장바구니\tpoint\t명시적 담기 요청일 때만 실행\taddToCart\t확인 질문',
       '상세 질문\tthinking\t요약본에 없으면 추가 조회 필요 안내\tnavigate\t상품 상세로 이동',
       '잡담\tsmile\t짧게 반응 후 쇼핑 맥락 복귀\tnone\t취향 질문',

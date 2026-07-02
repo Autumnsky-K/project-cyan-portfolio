@@ -20,6 +20,7 @@ from project_cyan_ai.schemas.ws import (
     FullTextMessage,
     HighlightAction,
     NavigateAction,
+    ShowRecommendationsAction,
 )
 
 GOODS_SEARCH_TIMEOUT_SECONDS = 2.0
@@ -339,25 +340,28 @@ class CatalogGroundedChatResponseProvider:
                 ),
                 context,
             )
-        self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
         if not candidates:
             return FullTextMessage(
                 text="조건에 맞는 판매 가능한 상품을 찾지 못했어요.",
                 actions=[],
             )
+        recommended_candidates = candidates[:3]
+        self.recent_recommendation_candidates = normalize_recent_candidates(
+            recommended_candidates
+        )
 
         if isinstance(self.delegate, MockChatResponseProvider):
-            return build_mock_catalog_response(text, candidates)
+            return build_mock_catalog_response(text, recommended_candidates)
 
         prompt = build_personalized_prompt(
-            build_catalog_prompt(text, candidates, favorite_artists),
+            build_catalog_prompt(text, recommended_candidates, favorite_artists),
             personalization_context,
         )
         prompt = self._with_instruction(prompt, response_instruction)
         response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
-            for candidate in candidates
+            for candidate in recommended_candidates
             if candidate.get("goodsId") is not None
         }
         return FullTextMessage(
@@ -368,9 +372,12 @@ class CatalogGroundedChatResponseProvider:
                     for action in response.actions
                     if action_goods_id(action) in allowed_goods_ids
                 ],
-                candidates,
+                recommended_candidates,
             ),
-            metadata={**response.metadata, **recommendation_metadata(candidates)},
+            metadata={
+                **response.metadata,
+                **recommendation_metadata(recommended_candidates),
+            },
         )
 
     def _with_instruction(self, text: str, instruction: str) -> str:
@@ -1037,9 +1044,19 @@ def build_catalog_prompt(
     )
 
 
-def default_candidate_actions(candidates: list[dict[str, Any]]) -> list[NavigateAction | HighlightAction]:
+def default_candidate_actions(
+    candidates: list[dict[str, Any]],
+) -> list[NavigateAction | HighlightAction | ShowRecommendationsAction]:
+    goods_ids = [
+        str(candidate["goodsId"])
+        for candidate in candidates
+        if candidate.get("goodsId") is not None and str(candidate["goodsId"]).isdigit()
+    ]
+    if len(goods_ids) >= 2:
+        return [ShowRecommendationsAction(goodsIds=goods_ids)]
+
     actions: list[NavigateAction | HighlightAction] = []
-    for index, candidate in enumerate(candidates[:3]):
+    for index, candidate in enumerate(candidates):
         goods_id = candidate.get("goodsId")
         if goods_id is None:
             continue
@@ -1072,6 +1089,12 @@ def merge_candidate_actions(
     actions: list[Any],
     candidates: list[dict[str, Any]],
 ) -> list[Any]:
+    if len(candidates) >= 2:
+        return [
+            *default_candidate_actions(candidates),
+            *[action for action in actions if isinstance(action, AddToCartAction)],
+        ]
+
     merged_actions = limit_navigate_actions(actions)
     existing_keys = {
         (action.__class__.__name__, action_goods_id(action))
@@ -1102,15 +1125,16 @@ def build_mock_catalog_response(
     candidates: list[dict[str, Any]],
 ) -> FullTextMessage:
     first = candidates[0]
-    goods_id = str(first["goodsId"])
-    actions = [
-        NavigateAction(path=f"/goods/{goods_id}"),
-        HighlightAction(selector=f"[data-goods-id='{goods_id}']"),
-    ]
+    actions: list[Any] = default_candidate_actions(candidates)
     if "장바구니" in text or "담아" in text:
-        actions.append(AddToCartAction(goodsId=goods_id))
+        actions.append(AddToCartAction(goodsId=str(first["goodsId"])))
+    response_text = (
+        f"{first.get('name', '추천 상품')}을 추천해요."
+        if len(candidates) == 1
+        else f"조건에 맞는 {len(candidates)}개 상품을 추천해요."
+    )
     return FullTextMessage(
-        text=f"{first.get('name', '추천 상품')}을 추천해요.",
+        text=response_text,
         actions=actions,
         metadata=recommendation_metadata(candidates),
     )

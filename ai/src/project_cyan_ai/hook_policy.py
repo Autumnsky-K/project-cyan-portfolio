@@ -209,6 +209,9 @@ class HookFilter:
         allowed_types = set(parse_list(threshold))
         if not allowed_types:
             return actions
+        # showRecommendations is constructed and schema-validated by the server,
+        # so keep it compatible with previously published three-action policies.
+        allowed_types.add("showRecommendations")
         return [action for action in actions if action.type in allowed_types]
 
 

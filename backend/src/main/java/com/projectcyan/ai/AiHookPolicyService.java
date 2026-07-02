@@ -109,7 +109,7 @@ public class AiHookPolicyService {
 			"input\tliteralText\t포카\treplace\t\t포토카드",
 			"output\tliteralText\t♡\tremove\t\t",
 			"output\tforbiddenWords\t관리자 목록\trewrite\t안내가 부적절해 다시 정리했어요.\t",
-			"output\tactionScope\tnavigate,highlight,addToCart\tfilter\t허용된 화면 동작만 실행할게요.\t"
+			"output\tactionScope\tnavigate,highlight,addToCart,showRecommendations\tfilter\t허용된 화면 동작만 실행할게요.\t"
 		);
 	}
 

@@ -69,6 +69,7 @@ from project_cyan_ai.schemas.ws import (
     FullTextMessage,
     HighlightAction,
     NavigateAction,
+    ShowRecommendationsAction,
 )
 from project_cyan_ai.settings import get_settings
 
@@ -837,7 +838,7 @@ def test_catalog_grounding_includes_recommendation_metadata():
     }
 
 
-def test_catalog_grounding_limits_navigation_to_first_candidate():
+def test_catalog_grounding_shows_multiple_candidates_without_detail_navigation():
     catalog = FakeGoodsCatalogClient(
         [
             {"goodsId": 1001, "name": "샤를로트 포토카드"},
@@ -857,10 +858,10 @@ def test_catalog_grounding_limits_navigation_to_first_candidate():
     response = provider.build_response("샤를로트 포토카드 추천해줘")
 
     assert response.model_dump()["actions"] == [
-        {"type": "navigate", "path": "/goods/1001"},
-        {"type": "highlight", "selector": "[data-goods-id='1001']"},
-        {"type": "highlight", "selector": "[data-goods-id='1002']"},
-        {"type": "highlight", "selector": "[data-goods-id='1003']"},
+        {
+            "type": "showRecommendations",
+            "goodsIds": ["1001", "1002", "1003"],
+        },
     ]
 
 
@@ -1400,6 +1401,37 @@ def test_full_text_message_accepts_shopping_navigation_targets():
             }
         )
         assert message.actions[0].path == path
+
+
+def test_full_text_message_validates_show_recommendations_action():
+    message = FullTextMessage.model_validate(
+        {
+            "type": "full-text",
+            "text": "추천 상품을 보여드릴게요.",
+            "actions": [
+                {
+                    "type": "showRecommendations",
+                    "goodsIds": ["42", "84"],
+                }
+            ],
+        }
+    )
+    assert message.actions[0].goodsIds == ["42", "84"]
+
+    for goods_ids in (["42"], ["42", "42"], ["42", "../admin"]):
+        with pytest.raises(ValidationError):
+            FullTextMessage.model_validate(
+                {
+                    "type": "full-text",
+                    "text": "추천 상품을 보여드릴게요.",
+                    "actions": [
+                        {
+                            "type": "showRecommendations",
+                            "goodsIds": goods_ids,
+                        }
+                    ],
+                }
+            )
 
 
 def test_chat_history_client_posts_authenticated_message(monkeypatch):
@@ -2755,10 +2787,12 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
 
     assert recommendation_response == {
         "type": "full-text",
-        "text": "Tour Poster A2을 추천해요.",
+        "text": "조건에 맞는 2개 상품을 추천해요.",
         "actions": [
-            {"type": "navigate", "path": "/goods/1005"},
-            {"type": "highlight", "selector": "[data-goods-id='1005']"},
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006"],
+            },
         ],
         "metadata": {
             "recommendations": [
@@ -2857,8 +2891,8 @@ def test_client_ws_persists_messages_when_auth_and_session_are_present(monkeypat
     assert history_client.calls[1]["access_token"] == "supabase-access-token"
     assert history_client.calls[1]["session_id"] == 77
     assert history_client.calls[1]["payload"]["speaker"] == "ASSISTANT"
-    assert history_client.calls[1]["payload"]["messageText"] == "Tour Poster A2을 추천해요."
-    assert history_client.calls[1]["payload"]["action"] == "navigate"
+    assert history_client.calls[1]["payload"]["messageText"] == "조건에 맞는 2개 상품을 추천해요."
+    assert history_client.calls[1]["payload"]["action"] == "showRecommendations"
     assert history_client.calls[1]["payload"]["recommendations"] == [
         {
             "goodsId": 1005,
@@ -3113,6 +3147,7 @@ def test_hook_filter_filters_output_actions_by_scope():
                 NavigateAction(path="/goods/42"),
                 HighlightAction(selector="[data-goods-id='42']"),
                 AddToCartAction(goodsId="42"),
+                ShowRecommendationsAction(goodsIds=["42", "84"]),
             ],
         )
     )
@@ -3122,6 +3157,7 @@ def test_hook_filter_filters_output_actions_by_scope():
         actions=[
             NavigateAction(path="/goods/42"),
             HighlightAction(selector="[data-goods-id='42']"),
+            ShowRecommendationsAction(goodsIds=["42", "84"]),
         ],
     )
 

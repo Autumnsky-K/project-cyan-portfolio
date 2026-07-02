@@ -75,7 +75,7 @@ def _fallback_motion(response: FullTextMessage, *, blocked: bool = False) -> str
     action_types = {action.type for action in response.actions}
     if "addToCart" in action_types:
         return "nod"
-    if action_types.intersection({"navigate", "highlight"}):
+    if action_types.intersection({"navigate", "highlight", "showRecommendations"}):
         return "point"
     return "idle"
 
