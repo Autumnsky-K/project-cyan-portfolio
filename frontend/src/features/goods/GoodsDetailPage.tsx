@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
-import GoodsDetailSpecs from './GoodsDetailSpecs'
+import GoodsDetailTabs, { type DetailTab } from './GoodsDetailTabs'
 import GoodsGallery from './GoodsGallery'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
-import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import { useDetailScrollRestore } from './useDetailScrollRestore'
 import { useGoodsDetail } from './useGoodsDetail'
@@ -13,8 +12,6 @@ import { useRelatedGoods } from './useRelatedGoods'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
-
-type DetailTab = 'intro' | 'reviews'
 
 function readGoodsListUrl(state: unknown) {
   if (typeof state !== 'object' || state === null) return '/goods'
@@ -59,7 +56,6 @@ function GoodsDetailPage() {
   )
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
-  const descriptionHtml = goods?.description?.trim()
 
   async function handleShare() {
     try {
@@ -123,39 +119,12 @@ function GoodsDetailPage() {
             />
           </section>
 
-          <section className="detail-tabs" ref={detailTabsRef}>
-            <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
-              <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
-                상품 소개
-              </button>
-              <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
-                리뷰 ({Number(goods.reviewCount ?? 0).toLocaleString()})
-              </button>
-            </div>
-            {activeTab === 'intro' ? (
-              <div className="detail-tab-panel" role="tabpanel">
-                <div className="detail-overview">
-                  <GoodsDetailSpecs goods={goods} />
-
-                  <section className="detail-description-summary" aria-labelledby="detail-description-heading">
-                    <h2 id="detail-description-heading">상품 소개</h2>
-                    {descriptionHtml ? (
-                      <div
-                        className="detail-description"
-                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                      />
-                    ) : (
-                      <p>상품 소개가 준비 중입니다.</p>
-                    )}
-                  </section>
-                </div>
-              </div>
-            ) : (
-              <div className="detail-tab-panel" role="tabpanel">
-                <GoodsReviewsPanel goodsId={goods.goodsId} />
-              </div>
-            )}
-          </section>
+          <GoodsDetailTabs
+            ref={detailTabsRef}
+            activeTab={activeTab}
+            goods={goods}
+            onTabChange={setActiveTab}
+          />
 
           <RelatedGoodsSection goods={relatedGoods} />
           <GoodsCartSidePanel />
