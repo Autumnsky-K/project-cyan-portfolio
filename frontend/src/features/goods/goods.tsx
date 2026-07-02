@@ -13,11 +13,7 @@ import {
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
-import GoodsFilterUi, {
-  GoodsActiveFilterChips,
-  type GoodsFilterGroup,
-  type GoodsSelectedFilters,
-} from './GoodsFilterUi'
+import GoodsFilterUi, { type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
@@ -357,11 +353,6 @@ function GoodsPage() {
         />
 
         <div className="goods-content">
-          <GoodsActiveFilterChips
-            groups={filters}
-            selectedFilters={selectedFilters}
-            onRemoveFilter={toggleFilter}
-          />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
               <p>
@@ -373,17 +364,19 @@ function GoodsPage() {
               </p>
             </div>
             <div className="result-controls">
-              {isViewCountSort && (
-                <label className="view-period-field">
-                  <span>조회 기간</span>
-                  <select value={viewPeriod} onChange={handleViewPeriodChange}>
-                    <option value="all">전체</option>
-                    <option value="day">최근 24시간</option>
-                    <option value="7d">최근 7일</option>
-                    <option value="30d">최근 30일</option>
-                  </select>
-                </label>
-              )}
+              <label className="view-period-field" aria-hidden={!isViewCountSort} data-visible={isViewCountSort}>
+                <span>조회 기간</span>
+                <select
+                  value={viewPeriod}
+                  tabIndex={isViewCountSort ? undefined : -1}
+                  onChange={handleViewPeriodChange}
+                >
+                  <option value="all">전체</option>
+                  <option value="day">최근 24시간</option>
+                  <option value="7d">최근 7일</option>
+                  <option value="30d">최근 30일</option>
+                </select>
+              </label>
               <div className="view-toggle" aria-label="보기 방식">
                 <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
                   <span className="view-icon view-icon-grid" aria-hidden="true" />
