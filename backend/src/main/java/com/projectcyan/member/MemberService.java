@@ -2,11 +2,21 @@ package com.projectcyan.member;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Base64;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import com.projectcyan.common.ApiErrorException;
 
 import org.springframework.dao.DataAccessException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,15 +27,51 @@ public class MemberService {
 	private final SupabaseAuthClient supabaseAuthClient;
 	private final MemberRepository memberRepository;
 	private final MemberAddressRepository memberAddressRepository;
+	private final PasswordResetTokenRepository passwordResetTokenRepository;
+	private final PasswordResetMailService passwordResetMailService;
+	private final PasswordResetProperties passwordResetProperties;
+	private final SecureRandom secureRandom;
+	private final Clock clock;
 
+	@Autowired
 	public MemberService(
 		SupabaseAuthClient supabaseAuthClient,
 		MemberRepository memberRepository,
-		MemberAddressRepository memberAddressRepository
+		MemberAddressRepository memberAddressRepository,
+		PasswordResetTokenRepository passwordResetTokenRepository,
+		PasswordResetMailService passwordResetMailService,
+		PasswordResetProperties passwordResetProperties
+	) {
+		this(
+			supabaseAuthClient,
+			memberRepository,
+			memberAddressRepository,
+			passwordResetTokenRepository,
+			passwordResetMailService,
+			passwordResetProperties,
+			new SecureRandom(),
+			Clock.systemUTC()
+		);
+	}
+
+	MemberService(
+		SupabaseAuthClient supabaseAuthClient,
+		MemberRepository memberRepository,
+		MemberAddressRepository memberAddressRepository,
+		PasswordResetTokenRepository passwordResetTokenRepository,
+		PasswordResetMailService passwordResetMailService,
+		PasswordResetProperties passwordResetProperties,
+		SecureRandom secureRandom,
+		Clock clock
 	) {
 		this.supabaseAuthClient = supabaseAuthClient;
 		this.memberRepository = memberRepository;
 		this.memberAddressRepository = memberAddressRepository;
+		this.passwordResetTokenRepository = passwordResetTokenRepository;
+		this.passwordResetMailService = passwordResetMailService;
+		this.passwordResetProperties = passwordResetProperties;
+		this.secureRandom = secureRandom;
+		this.clock = clock;
 	}
 
 	@Transactional
@@ -101,6 +147,59 @@ public class MemberService {
 		String email = normalizeEmail(request.email());
 
 		return new PasswordResetEligibilityResponse(memberRepository.existsByEmailAndStatus(email, "ACTIVE"));
+	}
+
+	@Transactional
+	public PasswordResetRequestedResponse requestPasswordReset(PasswordResetRequest request) {
+		String email = normalizeEmail(request.email());
+		Member member = memberRepository.findByEmail(email)
+			.filter(Member::isActive)
+			.orElseThrow(() -> new ApiErrorException("MEMBER_EMAIL_NOT_FOUND", "등록되어 있지 않은 이메일입니다.", HttpStatus.NOT_FOUND));
+		Instant now = clock.instant();
+		String token = generateResetToken();
+		String tokenHash = hashResetToken(token);
+
+		passwordResetTokenRepository.markUnusedTokensUsed(member.getMemberId(), now);
+		passwordResetTokenRepository.save(PasswordResetToken.create(
+			member.getMemberId(),
+			tokenHash,
+			now.plus(passwordResetProperties.getTokenTtl()),
+			now
+		));
+
+		try {
+			passwordResetMailService.send(email, resetLink(token));
+		} catch (MailException exception) {
+			throw new ApiErrorException("MEMBER_PASSWORD_RESET_EMAIL_FAILED", "비밀번호 재설정 메일을 발송하지 못했습니다.", HttpStatus.BAD_GATEWAY);
+		}
+
+		return new PasswordResetRequestedResponse(true);
+	}
+
+	@Transactional
+	public void confirmPasswordReset(PasswordResetConfirmRequest request) {
+		if (!StringUtils.hasText(request.password()) || request.password().length() < 6) {
+			throw new ApiErrorException("MEMBER_INVALID_PASSWORD", "비밀번호는 6자 이상이어야 합니다.", HttpStatus.BAD_REQUEST);
+		}
+
+		Instant now = clock.instant();
+		PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(hashResetToken(request.token()))
+			.orElseThrow(() -> invalidPasswordResetToken());
+		if (resetToken.isUsed() || resetToken.getExpiresAt().isBefore(now)) {
+			throw invalidPasswordResetToken();
+		}
+
+		Member member = memberRepository.findById(resetToken.getMemberId())
+			.filter(Member::isActive)
+			.orElseThrow(() -> invalidPasswordResetToken());
+
+		try {
+			supabaseAuthClient.updateUserPassword(member.getMemberUuid(), request.password());
+		} catch (SupabaseAuthException exception) {
+			throw authException(exception);
+		}
+		resetToken.markUsed(now);
+		passwordResetTokenRepository.markUnusedTokensUsed(member.getMemberId(), now);
 	}
 
 	@Transactional
@@ -216,6 +315,31 @@ public class MemberService {
 
 	private String normalizeEmail(String email) {
 		return email.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private String generateResetToken() {
+		byte[] bytes = new byte[32];
+		secureRandom.nextBytes(bytes);
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+	}
+
+	private String hashResetToken(String token) {
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			byte[] hashed = digest.digest(token.trim().getBytes(StandardCharsets.UTF_8));
+			return Base64.getUrlEncoder().withoutPadding().encodeToString(hashed);
+		} catch (NoSuchAlgorithmException exception) {
+			throw new IllegalStateException("SHA-256 is not available.", exception);
+		}
+	}
+
+	private String resetLink(String token) {
+		String baseUrl = passwordResetProperties.getFrontendBaseUrl().replaceAll("/+$", "");
+		return baseUrl + "/reset-password?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+	}
+
+	private ApiErrorException invalidPasswordResetToken() {
+		return new ApiErrorException("MEMBER_PASSWORD_RESET_TOKEN_INVALID", "비밀번호 재설정 링크가 만료되었거나 유효하지 않습니다.", HttpStatus.BAD_REQUEST);
 	}
 
 	private String normalizeName(String name) {

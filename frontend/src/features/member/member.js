@@ -12,36 +12,54 @@ const MY_PAGE_DUMMY_DATA = {
       name: 'aespa OFFICIAL LIGHT STICK',
       status: '배송 준비중',
       description: '응원봉 단독 주문 · 2026.06.18 결제',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
     {
       orderId: 102,
       name: 'RIIZE PHOTOBOOK SET',
       status: '배송 완료',
       description: '포토북 + 포토카드 세트 · 2026.06.12 도착',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
     {
       orderId: 103,
       name: 'NCT DREAM MD PACKAGE',
       status: '결제 완료',
       description: '예약 상품 · 2026.07.02 출고 예정',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
     {
       orderId: 104,
       name: 'Red Velvet MINI BAG',
       status: '구매 확정',
       description: '공식 굿즈 스토어 구매 · 리뷰 작성 가능',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
     {
       orderId: 105,
       name: 'SHINee ANNIVERSARY KIT',
       status: '배송중',
       description: '한정판 키트 · 오늘 오후 도착 예정',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
     {
       orderId: 106,
       name: 'EXO POSTCARD BOOK',
       status: '취소 완료',
       description: '환불 처리 완료 · 재입고 알림 신청 가능',
+      deliveryAction: '배송조회',
+      confirmAction: '구매확정',
+      reviewAction: '리뷰작성',
     },
   ],
   recentlyViewedGoods: [
@@ -126,21 +144,63 @@ const MY_PAGE_DUMMY_DATA = {
       name: 'ORD20260618-0001',
       status: 'APPROVED',
       price: 69000,
+      paidAt: '2026.06.18',
+      method: '카카오페이',
+      receipt: '영수증 보기',
+      refundHistory: '환불 내역 없음',
       description: '카카오페이 · 2026.06.18 결제 완료',
+      products: [
+        {
+          goodsId: 201,
+          name: 'aespa OFFICIAL LIGHT STICK',
+          price: 69000,
+          quantity: 1,
+        },
+      ],
     },
     {
       paymentId: 402,
       name: 'ORD20260612-0007',
       status: 'APPROVED',
       price: 87000,
+      paidAt: '2026.06.12',
+      method: '00은행 체크카드',
+      receipt: '영수증 보기',
+      refundHistory: '환불 내역 없음',
       description: '카드 간편결제 · 2026.06.12 결제 완료',
+      products: [
+        {
+          goodsId: 202,
+          name: 'RIIZE PHOTOBOOK SET',
+          price: 54000,
+          quantity: 1,
+        },
+        {
+          goodsId: 203,
+          name: 'RIIZE Lucky Photocard',
+          price: 33000,
+          quantity: 1,
+        },
+      ],
     },
     {
       paymentId: 403,
       name: 'ORD20260603-0012',
       status: 'READY',
       price: 42000,
+      paidAt: '2026.06.03',
+      method: '카카오페이',
+      receipt: '영수증 대기',
+      refundHistory: '환불 내역 없음',
       description: '결제 대기 · 주문서 확인 필요',
+      products: [
+        {
+          goodsId: 204,
+          name: 'SMTOWN Live T-shirt',
+          price: 42000,
+          quantity: 1,
+        },
+      ],
     },
   ],
   refunds: [
@@ -226,6 +286,21 @@ function pickAddressFromRow(row) {
     row.detail_address ??
     ''
   )
+}
+
+async function getMemberGradeFromTable(userId) {
+  const { data, error } = await supabase
+    .from('member')
+    .select('member_grade')
+    .eq('member_uuid', userId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn(error)
+    return ''
+  }
+
+  return data?.member_grade ?? ''
 }
 
 export async function loginMember(form) {
@@ -359,34 +434,40 @@ export async function checkSignupAvailability(form) {
 }
 
 export async function sendPasswordResetEmail(email) {
-  checkSupabaseConfig()
-
   const normalizedEmail = email.trim().toLowerCase()
-  const response = await apiFetch('/members/password-reset/eligibility', {
+  const response = await apiFetch('/members/password-reset/request', {
     method: 'POST',
     body: JSON.stringify({
       email: normalizedEmail,
     }),
   })
-  const eligibility = await parseApiResponse(
+
+  return parseApiResponse(
     response,
-    '이메일 가입 여부를 확인하지 못했습니다.',
+    '비밀번호 재설정 메일을 발송하지 못했습니다.',
   )
-
-  if (!eligibility?.exists) {
-    throw new Error('등록되어 있지 않은 이메일입니다.')
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
-  })
-
-  if (error) {
-    throw new Error(error.message)
-  }
 }
 
-export async function updateMemberPassword(password) {
+export async function updateMemberPassword(password, resetToken = '') {
+  if (resetToken) {
+    await parseApiResponse(
+      await apiFetch('/members/password-reset/confirm', {
+        method: 'POST',
+        body: JSON.stringify({
+          token: resetToken,
+          password,
+        }),
+      }),
+      '비밀번호를 변경하지 못했습니다.',
+    )
+
+    return {
+      member: {
+        passwordUpdatedAt: new Date().toISOString(),
+      },
+    }
+  }
+
   checkSupabaseConfig()
 
   const { data, error } = await supabase.auth.updateUser({ password })
@@ -443,6 +524,7 @@ export async function getCurrentMember() {
   const role =
     data.user.app_metadata?.role ??
     null
+  const memberGrade = memberProfile?.memberGrade || await getMemberGradeFromTable(data.user.id)
 
   return {
     userId: data.user.id,
@@ -450,6 +532,7 @@ export async function getCurrentMember() {
     memberUuid: memberProfile?.memberUuid ?? data.user.id,
     email: memberProfile?.email ?? data.user.email,
     phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
+    memberGrade,
     role,
     isAdmin:
       role === 'ADMIN' ||
