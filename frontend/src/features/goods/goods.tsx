@@ -51,6 +51,8 @@ function GoodsPage() {
     setQuery,
     sort,
     setSort,
+    viewPeriod,
+    setViewPeriod,
     page,
     setPage,
     section: activeSection,
@@ -276,6 +278,7 @@ function GoodsPage() {
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
   const hasGoods = goods.length > 0
+  const isViewCountSort = sort === 'viewCount,desc'
 
   function handleQueryChange(value: string) {
     searchScrollPositionRef.current = window.scrollY
@@ -289,6 +292,11 @@ function GoodsPage() {
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
+  }
+
+  function handleViewPeriodChange(event: ChangeEvent<HTMLSelectElement>) {
+    setPage(0)
+    setViewPeriod(event.target.value)
   }
 
   function handlePageChange(nextPage: number) {
@@ -326,6 +334,8 @@ function GoodsPage() {
           <span>정렬</span>
           <select value={sort} onChange={handleSortChange}>
             <option value="createdAt,desc">최신순</option>
+            <option value="viewCount,desc">조회순</option>
+            <option value="likeCount,desc">좋아요순</option>
             <option value="price,asc">낮은 가격순</option>
             <option value="price,desc">높은 가격순</option>
             <option value="goodsName,asc">이름순</option>
@@ -362,13 +372,26 @@ function GoodsPage() {
                   : `총 ${totalElements}개의 상품`}
               </p>
             </div>
-            <div className="view-toggle" aria-label="보기 방식">
-              <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
-                <span className="view-icon view-icon-grid" aria-hidden="true" />
-              </button>
-              <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                <span className="view-icon view-icon-list" aria-hidden="true" />
-              </button>
+            <div className="result-controls">
+              {isViewCountSort && (
+                <label className="view-period-field">
+                  <span>조회 기간</span>
+                  <select value={viewPeriod} onChange={handleViewPeriodChange}>
+                    <option value="all">전체</option>
+                    <option value="day">최근 24시간</option>
+                    <option value="7d">최근 7일</option>
+                    <option value="30d">최근 30일</option>
+                  </select>
+                </label>
+              )}
+              <div className="view-toggle" aria-label="보기 방식">
+                <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
+                  <span className="view-icon view-icon-grid" aria-hidden="true" />
+                </button>
+                <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                  <span className="view-icon view-icon-list" aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
 

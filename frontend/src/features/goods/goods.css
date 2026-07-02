@@ -283,6 +283,36 @@ button.goods-rating-summary {
   font-size: 15px;
 }
 
+.result-controls {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.view-period-field {
+  display: grid;
+  gap: 5px;
+  color: var(--goods-muted);
+  font-size: 12px;
+}
+
+.view-period-field span {
+  text-align: right;
+}
+
+.view-period-field select {
+  min-height: 34px;
+  width: 128px;
+  box-sizing: border-box;
+  padding: 6px 28px 6px 9px;
+  border: 1px solid var(--goods-line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--goods-text);
+  font: inherit;
+  font-size: 13px;
+}
+
 .view-toggle {
   display: inline-flex;
   gap: 6px;
