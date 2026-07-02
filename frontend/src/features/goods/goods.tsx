@@ -1,43 +1,21 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import {
-  addGoodsLike,
-  fetchGoods,
-  fetchGoodsFilters,
-  fetchMyGoodsLike,
-  removeGoodsLike,
-  type GoodsFilterOption,
-  type GoodsSummary,
-  type PageResponse,
-} from '../../api/goods'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
-import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
+import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
-import {
-  clearGoodsLikeSyncUpdates,
-  publishGoodsLikeSyncUpdate,
-  readGoodsLikeSyncUpdates,
-  subscribeGoodsLikeSyncUpdates,
-  type GoodsLikeSyncUpdate,
-} from './goodsLikeSync'
+import { useGoodsFilters } from './useGoodsFilters'
 import { useGoodsFavorites } from './useGoodsFavorites'
+import { useGoodsLikeState } from './useGoodsLikeState'
+import { useGoodsListData } from './useGoodsListData'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
 import Header from '../../shared/components/Header'
-
-type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
-type FilterStatus = 'loading' | 'data' | 'error'
-function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
-  return [...new Map(
-    options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
-  ).values()]
-}
 
 function GoodsPage() {
   const location = useLocation()
@@ -74,18 +52,18 @@ function GoodsPage() {
     commitSearch,
     goToPage,
   } = useGoodsListQueryState()
-  const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
-  const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
-  const [status, setStatus] = useState<LoadStatus>('loading')
-  const [error, setError] = useState('')
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('loading')
+  const { filters, filterStatus } = useGoodsFilters()
+  const {
+    goods,
+    status,
+    error,
+    totalElements,
+    totalPages,
+    currentPage,
+    retry: retryGoods,
+  } = useGoodsListData(requestParams, page)
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
-  const [likedGoodsIds, setLikedGoodsIds] = useState<Set<number>>(() => new Set())
-  const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(() => new Set())
-  const [likeCountOverrides, setLikeCountOverrides] = useState<Record<number, number>>({})
-  const hasLoadedGoodsRef = useRef(false)
   const resultsStartRef = useRef<HTMLDivElement | null>(null)
   const searchToolbarRef = useRef<HTMLElement | null>(null)
   const goodsResultsRef = useRef<HTMLDivElement | null>(null)
@@ -97,78 +75,13 @@ function GoodsPage() {
     window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
-
-  const updateGoodsLikeCount = useCallback((goodsId: number, likeCount: number) => {
-    setLikeCountOverrides((currentCounts) => ({ ...currentCounts, [goodsId]: likeCount }))
-    setGoodsPage((currentPageData) => (
-      currentPageData
-        ? {
-            ...currentPageData,
-            content: currentPageData.content.map((item) =>
-              item.goodsId === goodsId ? { ...item, likeCount } : item,
-            ),
-          }
-        : currentPageData
-    ))
-  }, [])
-
-  const applyGoodsLikeUpdate = useCallback((update: GoodsLikeSyncUpdate) => {
-    setLikedGoodsIds((currentIds) => {
-      const nextIds = new Set(currentIds)
-      if (update.liked) {
-        nextIds.add(update.goodsId)
-      } else {
-        nextIds.delete(update.goodsId)
-      }
-      return nextIds
-    })
-    updateGoodsLikeCount(update.goodsId, update.likeCount)
-  }, [updateGoodsLikeCount])
-
-  const handleLikeToggle = useCallback(async (item: GoodsSummary) => {
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
-
-    const goodsId = item.goodsId
-    setPendingLikeIds((currentIds) => new Set(currentIds).add(goodsId))
-
-    try {
-      const knownLiked = likedGoodsIds.has(goodsId)
-      const currentLike = knownLiked ? { liked: true, likeCount: Number(item.likeCount ?? 0) } : await fetchMyGoodsLike(goodsId)
-      const result = currentLike?.liked
-        ? await removeGoodsLike(goodsId)
-        : await addGoodsLike(goodsId)
-
-      setLikedGoodsIds((currentIds) => {
-        const nextIds = new Set(currentIds)
-        if (result.liked) {
-          nextIds.add(goodsId)
-        } else {
-          nextIds.delete(goodsId)
-        }
-        return nextIds
-      })
-      updateGoodsLikeCount(goodsId, result.likeCount)
-      publishGoodsLikeSyncUpdate({
-        goodsId,
-        liked: result.liked,
-        likeCount: result.likeCount,
-      })
-    } finally {
-      setPendingLikeIds((currentIds) => {
-        const nextIds = new Set(currentIds)
-        nextIds.delete(goodsId)
-        return nextIds
-      })
-    }
-  }, [likedGoodsIds, navigateToLogin, updateGoodsLikeCount])
-
-  useEffect(() => {
-    readGoodsLikeSyncUpdates().forEach(applyGoodsLikeUpdate)
-    return subscribeGoodsLikeSyncUpdates(applyGoodsLikeUpdate)
-  }, [applyGoodsLikeUpdate])
+  const {
+    visibleGoods,
+    visibleFavoriteGoods,
+    isLiked,
+    isLikePending,
+    handleLikeToggle,
+  } = useGoodsLikeState(goods, favoriteGoods, navigateToLogin)
 
   useEffect(() => {
     if (activeSection !== 'favorites') return
@@ -226,66 +139,6 @@ function GoodsPage() {
     })
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function loadFilters() {
-      setFilterStatus('loading')
-
-      try {
-        const data = await fetchGoodsFilters({ signal: controller.signal })
-        setFilters([
-          { title: '카테고리', param: 'categoryIds', options: uniqueFilterOptions(data.categories) },
-          { title: '아티스트', param: 'artistIds', options: uniqueFilterOptions(data.artists) },
-          { title: '태그', param: 'tags', options: uniqueFilterOptions(data.tags) },
-        ])
-        setFilterStatus('data')
-      } catch (loadError) {
-        if (loadError instanceof Error && loadError.name === 'AbortError') {
-          return
-        }
-        setFilters([])
-        setFilterStatus('error')
-      }
-    }
-
-    loadFilters()
-
-    return () => {
-      controller.abort()
-    }
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function loadGoods() {
-      setStatus((currentStatus) =>
-        hasLoadedGoodsRef.current && currentStatus !== 'empty' ? 'refreshing' : 'loading',
-      )
-      setError('')
-
-      try {
-        const data = await fetchGoods(requestParams, { signal: controller.signal })
-        hasLoadedGoodsRef.current = true
-        setGoodsPage(data)
-        setStatus(data.content?.length ? 'data' : 'empty')
-      } catch (loadError) {
-        if (loadError instanceof Error && loadError.name === 'AbortError') {
-          return
-        }
-        setError(loadError instanceof Error ? loadError.message : '굿즈를 불러오지 못했습니다.')
-        setStatus('error')
-      }
-    }
-
-    loadGoods()
-
-    return () => {
-      controller.abort()
-    }
-  }, [requestParams, retryKey])
-
   function resetFilters() {
     reset()
   }
@@ -296,81 +149,6 @@ function GoodsPage() {
     scrollToResults()
   }
 
-  const goods = useMemo(() => goodsPage?.content ?? [], [goodsPage])
-  const visibleGoods = useMemo(
-    () => goods.map((item) => (
-      likeCountOverrides[item.goodsId] === undefined
-        ? item
-        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
-    )),
-    [goods, likeCountOverrides],
-  )
-  const visibleFavoriteGoods = useMemo(
-    () => favoriteGoods.map((item) => (
-      likeCountOverrides[item.goodsId] === undefined
-        ? item
-        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
-    )),
-    [favoriteGoods, likeCountOverrides],
-  )
-  const goodsIdsKey = useMemo(() => goods.map((item) => item.goodsId).join(','), [goods])
-
-  useEffect(() => {
-    let ignore = false
-
-    async function loadVisibleGoodsLikes() {
-      try {
-        if (goods.length === 0) return
-        if (!(await hasSpringApiSession())) {
-          if (!ignore) {
-            setLikedGoodsIds(new Set())
-            clearGoodsLikeSyncUpdates()
-          }
-          return
-        }
-
-        const likeResults = await Promise.all(
-          goods.map((item) => fetchMyGoodsLike(item.goodsId).catch(() => null)),
-        )
-        if (ignore) return
-
-        setLikedGoodsIds((currentIds) => {
-          const nextIds = new Set(currentIds)
-          likeResults.forEach((like, index) => {
-            const goodsId = goods[index]?.goodsId
-            if (!goodsId) return
-            if (like?.liked) {
-              nextIds.add(goodsId)
-            } else {
-              nextIds.delete(goodsId)
-            }
-          })
-          return nextIds
-        })
-        setLikeCountOverrides((currentCounts) => {
-          const nextCounts = { ...currentCounts }
-          likeResults.forEach((like, index) => {
-            const goodsId = goods[index]?.goodsId
-            if (!goodsId || like?.likeCount === undefined) return
-            nextCounts[goodsId] = like.likeCount
-          })
-          return nextCounts
-        })
-      } catch {
-        // 좋아요 상태 조회 실패는 목록 렌더링을 막지 않는다.
-      }
-    }
-
-    void loadVisibleGoodsLikes()
-
-    return () => {
-      ignore = true
-    }
-  }, [goods, goodsIdsKey])
-
-  const totalElements = goodsPage?.totalElements ?? 0
-  const totalPages = goodsPage?.totalPages ?? 0
-  const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
   const hasGoods = goods.length > 0
   const isViewCountSort = sort === 'viewCount,desc'
 
@@ -539,7 +317,7 @@ function GoodsPage() {
             {status === 'loading' && !hasGoods && <GoodsCardSkeleton />}
 
             {status === 'error' && (
-              <GoodsListState kind="error" message={error} onAction={() => setRetryKey((value) => value + 1)} />
+              <GoodsListState kind="error" message={error} onAction={retryGoods} />
             )}
 
             {status === 'empty' && !hasGoods && <GoodsListState kind="empty" onAction={resetFilters} />}
@@ -549,8 +327,8 @@ function GoodsPage() {
                 <GoodsCards
                   items={visibleGoods}
                   viewMode={viewMode}
-                  isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
-                  isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+                  isLiked={isLiked}
+                  isLikePending={isLikePending}
                   toggleLike={handleLikeToggle}
                   onOpenDetail={openGoodsDetail}
                 />
@@ -597,7 +375,7 @@ function GoodsPage() {
               <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
             </div>
           )}
-          {favoritesStatus !== 'signedOut' && favoriteIds.length === 0 && (
+          {favoritesStatus === 'data' && favoriteIds.length === 0 && (
             <div className="goods-state favorites-empty" role="status">
               <span className="goods-state-mark" aria-hidden="true">♡</span>
               <strong>No favorite goods yet</strong>
@@ -609,8 +387,8 @@ function GoodsPage() {
             <GoodsCards
               items={visibleFavoriteGoods}
               viewMode={viewMode}
-              isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
-              isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+              isLiked={isLiked}
+              isLikePending={isLikePending}
               toggleLike={handleLikeToggle}
               onOpenDetail={openGoodsDetail}
             />
