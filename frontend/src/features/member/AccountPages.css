@@ -19,23 +19,6 @@
   color: #ffffff;
 }
 
-.account-page .site-nav a {
-  border-color: #5f5f5f;
-  background: #151515;
-  color: #f5f5f5;
-}
-
-.account-page .site-nav a:hover,
-.account-page .site-nav a:focus {
-  border-color: #ffffff;
-}
-
-.account-page .site-nav a[aria-current='page'] {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #111111;
-}
-
 .account-shell {
   width: min(960px, 100%);
   margin: 0 auto;
@@ -1170,38 +1153,12 @@
   color: #111111;
 }
 
-.account-page .site-header {
-  margin: 0 -40px 44px;
-  border-bottom: 1px solid #dededb;
-  background: #ffffff;
-  color: #111111;
-}
-
 .account-page .site-eyebrow {
   color: #777777;
 }
 
 .account-page .site-header h1 {
   color: #111111;
-}
-
-.account-page .site-nav a {
-  border-color: transparent;
-  border-radius: 0;
-  background: transparent;
-  color: #111111;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-
-.account-page .site-nav a:hover,
-.account-page .site-nav a:focus,
-.account-page .site-nav a[aria-current='page'] {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
 }
 
 .account-shell {
@@ -1623,11 +1580,6 @@
 
   .account-page .site-menu-button span::after {
     top: 6px;
-  }
-
-  .account-page .site-nav {
-    top: 58px;
-    right: 11px;
   }
 
 }

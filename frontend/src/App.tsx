@@ -20,6 +20,7 @@ import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot'
 import { isVtuberVisiblePath } from './features/vtuber/visibility'
+import ImmersiveLayout from './shared/layouts/ImmersiveLayout'
 import StoreLayout from './shared/layouts/StoreLayout'
 
 function AppShell() {
@@ -47,7 +48,10 @@ function AppShell() {
     <>
       <div id="content">
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route element={<ImmersiveLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/artists" element={<ArtistPage />} />
+          </Route>
           <Route element={<StoreLayout />}>
             <Route path="/goods" element={<GoodsPage />} />
             <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
@@ -57,7 +61,6 @@ function AppShell() {
             />
             <Route path="/mypage" element={<MyPage />} />
           </Route>
-          <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route
