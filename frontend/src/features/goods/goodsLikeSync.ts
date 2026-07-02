@@ -22,6 +22,11 @@ export function readGoodsLikeSyncUpdates(): GoodsLikeSyncUpdate[] {
   return Object.values(readStoredUpdates())
 }
 
+export function clearGoodsLikeSyncUpdates() {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(GOODS_LIKE_SYNC_STORAGE_KEY)
+}
+
 export function publishGoodsLikeSyncUpdate(update: GoodsLikeSyncUpdate) {
   if (typeof window === 'undefined') return
 
