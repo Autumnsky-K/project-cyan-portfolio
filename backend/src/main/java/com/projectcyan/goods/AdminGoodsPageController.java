@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -271,22 +272,47 @@ public class AdminGoodsPageController {
 	public String previewImportGoods(
 		@RequestParam("file") MultipartFile file,
 		@RequestParam(defaultValue = "true") boolean useLocalImages,
+		@RequestParam(required = false) String imageBatchId,
 		@RequestParam(required = false) List<MultipartFile> imageFiles,
 		@RequestParam(required = false) List<String> imageRelativePath,
 		Model model
 	) {
 		try {
-			model.addAttribute("preview", adminGoodsImportService.preview(
-				file,
-				imageFiles,
-				imageRelativePath,
-				useLocalImages
-			));
+			if (useLocalImages && imageBatchId != null && !imageBatchId.isBlank()) {
+				model.addAttribute("preview", adminGoodsImportService.preview(file, imageBatchId, true));
+			} else {
+				model.addAttribute("preview", adminGoodsImportService.preview(
+					file,
+					imageFiles,
+					imageRelativePath,
+					useLocalImages
+				));
+			}
 		} catch (ResponseStatusException exception) {
 			model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
 			model.addAttribute("error", adminGoodsErrorMessage(exception));
 		}
 		return "admin/goods/import";
+	}
+
+	@PostMapping("/admin/goods/import/local-images/batch")
+	@ResponseBody
+	public Map<String, Object> createLocalImageBatch() {
+		return Map.of("batchId", adminGoodsImportService.createLocalImageBatch());
+	}
+
+	@PostMapping("/admin/goods/import/local-images/batch/{batchId}/images")
+	@ResponseBody
+	public Map<String, Object> appendLocalImageBatch(
+		@PathVariable String batchId,
+		@RequestParam(required = false) List<MultipartFile> imageFiles,
+		@RequestParam(required = false) List<String> imageRelativePath
+	) {
+		int imageCount = adminGoodsImportService.appendLocalImageBatch(batchId, imageFiles, imageRelativePath);
+		return Map.of(
+			"batchId", batchId,
+			"imageCount", imageCount
+		);
 	}
 
 	@PostMapping("/admin/goods/import/commit")
@@ -528,18 +554,32 @@ public class AdminGoodsPageController {
 			"AI추천"
 		});
 		rows.add(new String[] {
-			"#(숫자)",
+			"#(비우면 신규, 숫자면 수정)",
 			"#(글자)",
 			"#(숫자)",
 			templateOptionAt(artists, 0, "#아티스트DB값"),
 			templateOptionAt(categories, 0, "#카테고리DB값"),
 			"#(숫자)",
 			"#HIDDEN",
-			"#(경로)",
+			"#(로컬 폴더 동시 등록 시 공란 가능)",
 			"#(글자)",
-			"#(글자)",
+			"#(글자 또는 HTML)",
 			"#false",
 			"#false"
+		});
+		rows.add(new String[] {
+			"#안내",
+			"상품명 자유 입력",
+			"숫자만 입력",
+			"DB 등록명과 정확히 일치",
+			"DB 등록명과 정확히 일치",
+			"숫자만 입력",
+			"일괄등록은 항상 HIDDEN 저장",
+			"Supabase 기존 이미지 사용 시 goods/ 아래 경로 입력, 로컬 폴더 동시 등록 시 공란이면 폴더 순서대로 자동 배정",
+			"쉼표로 여러 태그 입력",
+			"이미지 정렬순 5장 이후는 상세설명에 이미지 HTML로 자동 첨부",
+			"false 또는 true",
+			"false 또는 true"
 		});
 
 		int guideRowCount = Math.max(

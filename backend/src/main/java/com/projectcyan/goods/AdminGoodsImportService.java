@@ -41,7 +41,6 @@ public class AdminGoodsImportService {
 	private static final String IMAGE_SOURCE_SUPABASE = "SUPABASE";
 	private static final String IMAGE_SOURCE_LOCAL = "LOCAL";
 	private static final List<String> IMAGE_EXTENSIONS = List.of("png", "jpg", "jpeg", "webp");
-	private static final Set<String> IMPORT_IMAGE_NAMES = Set.of("main", "1", "2", "3", "4");
 	private static final Path LOCAL_IMPORT_BATCH_ROOT = Path.of(
 		System.getProperty("java.io.tmpdir"),
 		"project-cyan-goods-import"
@@ -89,14 +88,13 @@ public class AdminGoodsImportService {
 				return preview(rawRows, imageUrlsByPath(), IMAGE_SOURCE_SUPABASE, null, List.of(), List.of());
 			}
 			LocalImageBatch batch = saveLocalImageBatch(imageFiles, imageRelativePaths);
-			List<String> folderErrors = validateLocalFolderAgreement(rawRows, batch.imageFolders());
 			AdminGoodsImportPreview localPreview = preview(
 				rawRows,
 				batch.logicalImageUrls(),
 				IMAGE_SOURCE_LOCAL,
 				batch.batchId(),
 				batch.imageFolders(),
-				folderErrors
+				List.of()
 			);
 			if (localPreview.hasErrors()) {
 				deleteLocalImageBatch(batch.batchId());
@@ -104,6 +102,65 @@ public class AdminGoodsImportService {
 			return localPreview;
 		} catch (IOException exception) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CSV 파일을 읽을 수 없습니다.");
+		}
+	}
+
+	public AdminGoodsImportPreview preview(
+		MultipartFile file,
+		String imageBatchId,
+		boolean useLocalImages
+	) {
+		if (file == null || file.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CSV 파일을 선택해주세요.");
+		}
+		try {
+			List<List<String>> rawRows = parseCsv(file);
+			if (!useLocalImages) {
+				return preview(rawRows, imageUrlsByPath(), IMAGE_SOURCE_SUPABASE, null, List.of(), List.of());
+			}
+			LocalImageBatch batch = loadLocalImageBatch(imageBatchId);
+			return preview(
+				rawRows,
+				batch.logicalImageUrls(),
+				IMAGE_SOURCE_LOCAL,
+				batch.batchId(),
+				batch.imageFolders(),
+				List.of()
+			);
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CSV 파일을 읽을 수 없습니다.");
+		}
+	}
+
+	public String createLocalImageBatch() {
+		String batchId = UUID.randomUUID().toString();
+		try {
+			Files.createDirectories(localBatchDir(batchId));
+			return batchId;
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 만들 수 없습니다.");
+		}
+	}
+
+	public int appendLocalImageBatch(
+		String batchId,
+		List<MultipartFile> imageFiles,
+		List<String> imageRelativePaths
+	) {
+		try {
+			List<LocalUploadCandidate> candidates = localUploadCandidates(imageFiles, imageRelativePaths);
+			Path batchDir = localBatchDir(batchId);
+			if (!Files.isDirectory(batchDir)) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 찾을 수 없습니다. CSV와 이미지 폴더를 다시 미리보기 해주세요.");
+			}
+			copyLocalImageCandidates(
+				batchDir,
+				candidates,
+				candidates.stream().map(LocalUploadCandidate::relativePath).toList()
+			);
+			return loadLocalImageBatch(batchId).files().size();
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 저장할 수 없습니다.");
 		}
 	}
 
@@ -125,7 +182,7 @@ public class AdminGoodsImportService {
 				IMAGE_SOURCE_LOCAL,
 				batch.batchId(),
 				batch.imageFolders(),
-				validateLocalFolderAgreement(rawRows, batch.imageFolders())
+				List.of()
 			);
 		}
 		return preview(rawRows, imageUrlsByPath(), IMAGE_SOURCE_SUPABASE, null, List.of(), List.of());
@@ -144,11 +201,12 @@ public class AdminGoodsImportService {
 		}
 		int importedCount = 0;
 		for (AdminGoodsImportRow row : preview.rows()) {
+			String description = descriptionWithDetailImages(row.description(), row.detailImageUrls());
 			AdminGoodsRequest request = new AdminGoodsRequest(
 				row.resolvedGoodsId(),
 				row.name().trim(),
 				Integer.parseInt(row.price().trim()),
-				blankToNull(row.description()),
+				blankToNull(description),
 				row.mainImageUrl(),
 				row.resolvedArtistId(),
 				row.resolvedCategoryId(),
@@ -178,7 +236,7 @@ public class AdminGoodsImportService {
 			IMAGE_SOURCE_LOCAL,
 			batch.batchId(),
 			batch.imageFolders(),
-			validateLocalFolderAgreement(rawRows, batch.imageFolders())
+			List.of()
 		);
 		if (preUploadPreview.hasErrors()) {
 			return preUploadPreview;
@@ -227,15 +285,22 @@ public class AdminGoodsImportService {
 		Map<String, Long> artistIds = artistIdsByName();
 		Map<String, Long> categoryIds = categoryIdsByName();
 		List<AdminGoodsImportRow> rows = new ArrayList<>();
+		List<String> errors = new ArrayList<>(previewErrors == null ? List.of() : previewErrors);
+		List<List<String>> rowsForPreview = rawRows;
+		if (isLocalImageSource(imageSource)) {
+			LocalFolderAssignment assignment = assignLocalImageFolders(rawRows, imageFolders);
+			rowsForPreview = assignment.rawRows();
+			errors.addAll(assignment.errors());
+		}
 
-		for (int index = 0; index < rawRows.size(); index++) {
-			List<String> rawRow = rawRows.get(index);
-			if (rawRow.stream().allMatch(value -> value == null || value.isBlank())) {
+		for (int index = 0; index < rowsForPreview.size(); index++) {
+			List<String> rawRow = rowsForPreview.get(index);
+			if (isBlankRow(rawRow)) {
 				continue;
 			}
 			rows.add(previewRow(index + 2, rawRow, artistIds, categoryIds, imageUrls));
 		}
-		return new AdminGoodsImportPreview(rows, previewErrors, imageSource, imageBatchId, imageFolders);
+		return new AdminGoodsImportPreview(rows, errors, imageSource, imageBatchId, imageFolders);
 	}
 
 	private AdminGoodsImportRow previewRow(
@@ -290,7 +355,7 @@ public class AdminGoodsImportService {
 		String normalizedSalesStatus = "HIDDEN";
 		ImageMatch imageMatch = matchImages(imageFolder, imageUrls);
 		if (imageMatch.mainImageUrl() == null) {
-			errors.add("이미지 폴더에서 main 이미지를 찾을 수 없습니다.");
+			errors.add("이미지 폴더에서 이미지를 찾을 수 없습니다.");
 		}
 
 		return new AdminGoodsImportRow(
@@ -312,32 +377,88 @@ public class AdminGoodsImportService {
 			categoryId,
 			imageMatch.mainImageUrl(),
 			imageMatch.extraImageUrls(),
+			imageMatch.detailImageUrls(),
 			errors
 		);
 	}
 
 	private ImageMatch matchImages(String imageFolder, Map<String, String> imageUrls) {
-		String folder = normalizeImageFolder(imageFolder);
-		if (folder == null) {
-			return new ImageMatch(null, List.of());
+		List<FolderImage> images = folderImages(imageFolder, imageUrls);
+		if (images.isEmpty()) {
+			return new ImageMatch(null, List.of(), List.of());
 		}
-		String mainImageUrl = findImageUrl(imageUrls, folder, "main").orElse(null);
-		List<String> extraImageUrls = new ArrayList<>();
-		for (int index = 1; index <= 4; index++) {
-			findImageUrl(imageUrls, folder, String.valueOf(index)).ifPresent(extraImageUrls::add);
-		}
-		return new ImageMatch(mainImageUrl, extraImageUrls);
+		String mainImageUrl = images.getFirst().url();
+		List<String> extraImageUrls = images.stream()
+			.skip(1)
+			.limit(4)
+			.map(FolderImage::url)
+			.toList();
+		List<String> detailImageUrls = images.stream()
+			.skip(5)
+			.map(FolderImage::url)
+			.toList();
+		return new ImageMatch(mainImageUrl, extraImageUrls, detailImageUrls);
 	}
 
-	private Optional<String> findImageUrl(Map<String, String> imageUrls, String folder, String name) {
-		for (String extension : IMAGE_EXTENSIONS) {
-			String path = AdminStoragePageController.GOODS_IMAGE_PATH + "/" + folder + "/" + name + "." + extension;
-			String imageUrl = imageUrls.get(path.toLowerCase(Locale.ROOT));
-			if (imageUrl != null) {
-				return Optional.of(imageUrl);
-			}
+	private List<FolderImage> folderImages(String imageFolder, Map<String, String> imageUrls) {
+		String folder = normalizeImageFolder(imageFolder);
+		if (folder == null || imageUrls == null || imageUrls.isEmpty()) {
+			return List.of();
 		}
-		return Optional.empty();
+		String prefix = (AdminStoragePageController.GOODS_IMAGE_PATH + "/" + folder + "/").toLowerCase(Locale.ROOT);
+		return imageUrls.entrySet().stream()
+			.map(entry -> folderImage(entry, prefix))
+			.filter(Optional::isPresent)
+			.map(Optional::get)
+			.sorted(this::compareFolderImages)
+			.toList();
+	}
+
+	private Optional<FolderImage> folderImage(Map.Entry<String, String> entry, String prefix) {
+		String objectPath = entry.getKey();
+		if (objectPath == null || !objectPath.startsWith(prefix)) {
+			return Optional.empty();
+		}
+		String fileName = objectPath.substring(prefix.length());
+		if (!StringUtils.hasText(fileName) || fileName.contains("/") || !isImportImageExtension(fileName)) {
+			return Optional.empty();
+		}
+		return Optional.of(new FolderImage(fileName, entry.getValue()));
+	}
+
+	private int compareFolderImages(FolderImage left, FolderImage right) {
+		int groupComparison = Integer.compare(imageSortGroup(left), imageSortGroup(right));
+		if (groupComparison != 0) {
+			return groupComparison;
+		}
+		int numberComparison = Integer.compare(imageSortNumber(left), imageSortNumber(right));
+		if (numberComparison != 0) {
+			return numberComparison;
+		}
+		return String.CASE_INSENSITIVE_ORDER.compare(left.fileName(), right.fileName());
+	}
+
+	private int imageSortGroup(FolderImage image) {
+		String baseName = objectBaseName(image.fileName());
+		if ("main".equals(baseName)) {
+			return 0;
+		}
+		return parseBaseNumber(baseName).isPresent() ? 1 : 2;
+	}
+
+	private int imageSortNumber(FolderImage image) {
+		return parseBaseNumber(objectBaseName(image.fileName())).orElse(Integer.MAX_VALUE);
+	}
+
+	private Optional<Integer> parseBaseNumber(String baseName) {
+		if (!StringUtils.hasText(baseName) || !baseName.chars().allMatch(Character::isDigit)) {
+			return Optional.empty();
+		}
+		try {
+			return Optional.of(Integer.parseInt(baseName));
+		} catch (NumberFormatException exception) {
+			return Optional.empty();
+		}
 	}
 
 	private String normalizeImageFolder(String imageFolder) {
@@ -361,6 +482,20 @@ public class AdminGoodsImportService {
 		List<MultipartFile> imageFiles,
 		List<String> imageRelativePaths
 	) throws IOException {
+		List<LocalUploadCandidate> candidates = localUploadCandidates(imageFiles, imageRelativePaths);
+		List<String> strippedPaths = stripCommonRoot(candidates.stream()
+			.map(LocalUploadCandidate::relativePath)
+			.toList());
+		String batchId = createLocalImageBatch();
+		Path batchDir = localBatchDir(batchId);
+		copyLocalImageCandidates(batchDir, candidates, strippedPaths);
+		return loadLocalImageBatch(batchId);
+	}
+
+	private List<LocalUploadCandidate> localUploadCandidates(
+		List<MultipartFile> imageFiles,
+		List<String> imageRelativePaths
+	) {
 		if (imageFiles == null || imageFiles.stream().noneMatch(file -> file != null && !file.isEmpty())) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 폴더를 선택해주세요.");
 		}
@@ -384,18 +519,18 @@ public class AdminGoodsImportService {
 		if (candidates.isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 폴더에서 이미지 파일을 찾을 수 없습니다.");
 		}
+		return candidates;
+	}
 
-		List<String> strippedPaths = stripCommonRoot(candidates.stream()
-			.map(LocalUploadCandidate::relativePath)
-			.toList());
-		String batchId = UUID.randomUUID().toString();
-		Path batchDir = localBatchDir(batchId);
-		Files.createDirectories(batchDir);
-
-		Set<String> seenPaths = new LinkedHashSet<>();
+	private void copyLocalImageCandidates(
+		Path batchDir,
+		List<LocalUploadCandidate> candidates,
+		List<String> relativePaths
+	) throws IOException {
+		Set<String> seenPaths = existingLocalImagePaths(batchDir);
 		for (int index = 0; index < candidates.size(); index++) {
 			MultipartFile file = candidates.get(index).file();
-			String relativePath = normalizeProductRelativeImagePath(strippedPaths.get(index));
+			String relativePath = normalizeProductRelativeImagePath(relativePaths.get(index));
 			if (relativePath == null) {
 				continue;
 			}
@@ -410,11 +545,18 @@ public class AdminGoodsImportService {
 			Files.createDirectories(target.getParent());
 			Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 		}
-		LocalImageBatch batch = loadLocalImageBatch(batchId);
-		if (batch.files().stream().noneMatch(file -> objectBaseName(file.relativePath()).equals("main"))) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 폴더에는 상품별 main.webp가 필요합니다.");
+	}
+
+	private Set<String> existingLocalImagePaths(Path batchDir) throws IOException {
+		if (!Files.isDirectory(batchDir)) {
+			return new LinkedHashSet<>();
 		}
-		return batch;
+		try (var paths = Files.walk(batchDir)) {
+			return paths
+				.filter(Files::isRegularFile)
+				.map(path -> batchDir.relativize(path).toString().replace('\\', '/').toLowerCase(Locale.ROOT))
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		}
 	}
 
 	private LocalImageBatch loadLocalImageBatch(String batchId) {
@@ -466,21 +608,19 @@ public class AdminGoodsImportService {
 		return uploadedUrls;
 	}
 
-	private List<String> validateLocalFolderAgreement(List<List<String>> rawRows, List<String> localImageFolders) {
-		Set<String> csvFolders = new LinkedHashSet<>();
-		Set<String> duplicateCsvFolders = new LinkedHashSet<>();
-		for (List<String> row : rawRows) {
-			String folder = normalizeImageFolder(valueAt(row, 7));
-			if (folder == null) {
-				continue;
-			}
-			String key = folder.toLowerCase(Locale.ROOT);
-			if (!csvFolders.add(key)) {
-				duplicateCsvFolders.add(folder);
+	private LocalFolderAssignment assignLocalImageFolders(List<List<String>> rawRows, List<String> localImageFolders) {
+		List<List<String>> assignedRows = new ArrayList<>();
+		if (rawRows != null) {
+			for (List<String> row : rawRows) {
+				assignedRows.add(row == null ? new ArrayList<>() : new ArrayList<>(row));
 			}
 		}
-
-		Map<String, String> localFoldersByKey = localImageFolders.stream()
+		List<String> sortedLocalFolders = localImageFolders == null ? List.of() : localImageFolders.stream()
+			.filter(StringUtils::hasText)
+			.distinct()
+			.sorted()
+			.toList();
+		Map<String, String> localFoldersByKey = sortedLocalFolders.stream()
 			.collect(Collectors.toMap(
 				folder -> folder.toLowerCase(Locale.ROOT),
 				folder -> folder,
@@ -488,25 +628,50 @@ public class AdminGoodsImportService {
 				LinkedHashMap::new
 			));
 		List<String> errors = new ArrayList<>();
+		Set<String> usedFolderKeys = new LinkedHashSet<>();
+		Set<String> duplicateCsvFolders = new LinkedHashSet<>();
+
+		for (int index = 0; index < assignedRows.size(); index++) {
+			List<String> row = assignedRows.get(index);
+			if (isBlankRow(row)) {
+				continue;
+			}
+			String explicitFolder = normalizeImageFolder(valueAt(row, 7));
+			if (explicitFolder != null) {
+				String key = explicitFolder.toLowerCase(Locale.ROOT);
+				if (!localFoldersByKey.containsKey(key)) {
+					errors.add((index + 2) + "행 이미지폴더가 로컬 폴더에 없습니다: " + explicitFolder);
+				}
+				if (!usedFolderKeys.add(key)) {
+					duplicateCsvFolders.add(explicitFolder);
+				}
+				setValueAt(row, 7, explicitFolder);
+				continue;
+			}
+			Optional<String> nextFolder = sortedLocalFolders.stream()
+				.filter(folder -> !usedFolderKeys.contains(folder.toLowerCase(Locale.ROOT)))
+				.findFirst();
+			if (nextFolder.isEmpty()) {
+				errors.add((index + 2) + "행에 배정할 로컬 이미지 폴더가 없습니다.");
+				continue;
+			}
+			String assignedFolder = nextFolder.get();
+			usedFolderKeys.add(assignedFolder.toLowerCase(Locale.ROOT));
+			setValueAt(row, 7, assignedFolder);
+		}
+
 		if (!duplicateCsvFolders.isEmpty()) {
 			errors.add("CSV 이미지폴더가 중복됩니다: " + compactFolderList(new ArrayList<>(duplicateCsvFolders)));
 		}
 
-		List<String> missingLocalFolders = csvFolders.stream()
-			.filter(folder -> !localFoldersByKey.containsKey(folder))
-			.toList();
-		if (!missingLocalFolders.isEmpty()) {
-			errors.add("로컬 이미지 폴더에 없는 CSV 이미지폴더: " + compactFolderList(missingLocalFolders));
-		}
-
 		List<String> extraLocalFolders = localFoldersByKey.entrySet().stream()
-			.filter(entry -> !csvFolders.contains(entry.getKey()))
+			.filter(entry -> !usedFolderKeys.contains(entry.getKey()))
 			.map(Map.Entry::getValue)
 			.toList();
 		if (!extraLocalFolders.isEmpty()) {
-			errors.add("CSV에 없는 로컬 이미지 폴더: " + compactFolderList(extraLocalFolders));
+			errors.add("CSV 행에 배정되지 않은 로컬 이미지 폴더: " + compactFolderList(extraLocalFolders));
 		}
-		return errors;
+		return new LocalFolderAssignment(assignedRows, errors);
 	}
 
 	private List<String> stripCommonRoot(List<String> paths) {
@@ -556,12 +721,9 @@ public class AdminGoodsImportService {
 		if (!"webp".equalsIgnoreCase(StringUtils.getFilenameExtension(objectName))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "일괄등록 이미지는 WebP로 변환된 파일만 처리합니다.");
 		}
-		if (!IMPORT_IMAGE_NAMES.contains(objectBaseName(objectName))) {
-			return null;
-		}
 		String parentPath = parentObjectPath(normalizedPath);
 		if (!StringUtils.hasText(parentPath)) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "상품별 하위 폴더 안에 main.webp를 배치해주세요.");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "상품별 하위 폴더 안에 이미지를 배치해주세요.");
 		}
 		return normalizedPath;
 	}
@@ -747,6 +909,17 @@ public class AdminGoodsImportService {
 		return values != null && index < values.size() && values.get(index) != null ? values.get(index).trim() : "";
 	}
 
+	private void setValueAt(List<String> values, int index, String value) {
+		while (values.size() <= index) {
+			values.add("");
+		}
+		values.set(index, value == null ? "" : value);
+	}
+
+	private boolean isBlankRow(List<String> row) {
+		return row == null || row.stream().allMatch(value -> value == null || value.isBlank());
+	}
+
 	private Optional<Integer> parseInteger(String value) {
 		if (value == null || value.isBlank()) {
 			return Optional.empty();
@@ -792,11 +965,47 @@ public class AdminGoodsImportService {
 		return value == null || value.isBlank() ? null : value.trim();
 	}
 
+	private String descriptionWithDetailImages(String description, List<String> detailImageUrls) {
+		List<String> imageUrls = detailImageUrls == null ? List.of() : detailImageUrls.stream()
+			.filter(StringUtils::hasText)
+			.toList();
+		if (imageUrls.isEmpty()) {
+			return description;
+		}
+		StringBuilder html = new StringBuilder();
+		if (StringUtils.hasText(description)) {
+			html.append(description.trim());
+		}
+		for (String imageUrl : imageUrls) {
+			if (html.length() > 0) {
+				html.append("\n");
+			}
+			html.append("<p><img src=\"")
+				.append(escapeHtmlAttribute(imageUrl))
+				.append("\" alt=\"\"></p>");
+		}
+		return html.toString();
+	}
+
+	private String escapeHtmlAttribute(String value) {
+		return value
+			.replace("&", "&amp;")
+			.replace("\"", "&quot;")
+			.replace("<", "&lt;")
+			.replace(">", "&gt;");
+	}
+
 	private boolean isLocalImageSource(String imageSource) {
 		return IMAGE_SOURCE_LOCAL.equalsIgnoreCase(imageSource);
 	}
 
-	private record ImageMatch(String mainImageUrl, List<String> extraImageUrls) {
+	private record ImageMatch(String mainImageUrl, List<String> extraImageUrls, List<String> detailImageUrls) {
+	}
+
+	private record FolderImage(String fileName, String url) {
+	}
+
+	private record LocalFolderAssignment(List<List<String>> rawRows, List<String> errors) {
 	}
 
 	private record LocalUploadCandidate(MultipartFile file, String relativePath) {

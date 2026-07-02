@@ -65,6 +65,10 @@ export type GoodsLikeResponse = {
   likeCount: number
 }
 
+export type GoodsLikeItemResponse = GoodsLikeResponse & {
+  goodsId: number
+}
+
 export type GoodsFilterOption = {
   label: string
   value: string
@@ -144,21 +148,6 @@ export async function recordGoodsView(goodsId: string | number): Promise<void> {
   await parseApiResponse(response, 'Failed to record goods view.')
 }
 
-export async function fetchFavoriteGoods(): Promise<GoodsSummary[]> {
-  const response = await apiFetch('/goods/favorites')
-  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load favorite goods.') ?? []
-}
-
-export async function addGoodsFavorite(goodsId: string | number): Promise<void> {
-  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'POST' })
-  await parseApiResponse(response, 'Failed to add favorite goods.')
-}
-
-export async function removeGoodsFavorite(goodsId: string | number): Promise<void> {
-  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'DELETE' })
-  await parseApiResponse(response, 'Failed to remove favorite goods.')
-}
-
 export async function fetchMyGoodsLike(goodsId: string | number | undefined): Promise<GoodsLikeResponse | null> {
   if (!(await hasSpringApiSession())) {
     return null
@@ -166,6 +155,17 @@ export async function fetchMyGoodsLike(goodsId: string | number | undefined): Pr
 
   const response = await apiFetch(`/goods/${goodsId}/likes/my`)
   return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to load goods like.')
+}
+
+export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promise<GoodsLikeItemResponse[]> {
+  if (!goodsIds.length || !(await hasSpringApiSession())) {
+    return []
+  }
+
+  const params = new URLSearchParams()
+  params.set('goodsIds', goodsIds.join(','))
+  const response = await apiFetch(`/goods/likes/my?${params.toString()}`)
+  return await parseApiResponse<GoodsLikeItemResponse[]>(response, 'Failed to load goods likes.') ?? []
 }
 
 export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {

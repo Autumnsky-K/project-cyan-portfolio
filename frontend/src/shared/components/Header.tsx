@@ -34,9 +34,9 @@ export default function Header({ tone = 'surface' }: HeaderProps) {
             <img src="/favicon.svg" alt="" />
             <span>PROJECT CYAN</span>
           </Link>
-          <p className="site-page-title">
+          {/* <p className="site-page-title">
             {currentItem?.label}
-          </p>
+          </p> */}
         </div>
         <button
           className="site-menu-button"

@@ -16,7 +16,7 @@
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">실시간 미리보기 관리</p>
+        <p class="admin-eyebrow">콘텐츠 관리</p>
         <h2>홈 화면 내용 편집</h2>
       </div>
       <div class="admin-header-actions">
@@ -27,7 +27,7 @@
 
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
 
-    <section class="cms-workbench">
+    <section class="cms-workbench cms-workbench-wide">
       <form id="homeContentForm"
             class="cms-sheet-panel"
             method="post"
@@ -49,6 +49,9 @@
           </tr>
           </thead>
           <tbody>
+          <tr class="cms-sheet-section-row">
+            <th colspan="2">히어로</th>
+          </tr>
           <tr>
             <th>상단 보조 문구</th>
             <td><input name="eyebrow" data-preview-input="eyebrow" data-confirm-group="문구" data-confirm-label="상단 보조 문구" th:value="${page.eyebrow()}" th:data-fallback-value="${page.eyebrow()}" th:placeholder="${page.eyebrow()}"></td>
@@ -72,17 +75,198 @@
               <input class="cms-file-input" type="file" accept="image/*" data-image-target="heroImageUrl">
             </td>
           </tr>
+          <tr class="cms-sheet-section-row">
+            <th colspan="2">상단 메뉴·상태</th>
+          </tr>
+          <tr>
+            <th>메뉴 Home</th>
+            <td><input name="copySettings[navHome]" th:value="${homeCopySettings['navHome']}"></td>
+          </tr>
+          <tr>
+            <th>메뉴 Artists</th>
+            <td><input name="copySettings[navArtists]" th:value="${homeCopySettings['navArtists']}"></td>
+          </tr>
+          <tr>
+            <th>메뉴 Goods</th>
+            <td><input name="copySettings[navGoods]" th:value="${homeCopySettings['navGoods']}"></td>
+          </tr>
+          <tr>
+            <th>메뉴 Cart</th>
+            <td><input name="copySettings[navCart]" th:value="${homeCopySettings['navCart']}"></td>
+          </tr>
+          <tr>
+            <th>상태 라벨</th>
+            <td><input name="copySettings[statusSignalLabel]" th:value="${homeCopySettings['statusSignalLabel']}"></td>
+          </tr>
+          <tr>
+            <th>상태 Live</th>
+            <td><input name="copySettings[statusReadyLabel]" th:value="${homeCopySettings['statusReadyLabel']}"></td>
+          </tr>
+          <tr>
+            <th>상태 Loading</th>
+            <td><input name="copySettings[statusLoadingLabel]" th:value="${homeCopySettings['statusLoadingLabel']}"></td>
+          </tr>
+          <tr>
+            <th>상태 Offline</th>
+            <td><input name="copySettings[statusErrorLabel]" th:value="${homeCopySettings['statusErrorLabel']}"></td>
+          </tr>
+          <tr>
+            <th>모드 라벨</th>
+            <td><input name="copySettings[statusModeLabel]" th:value="${homeCopySettings['statusModeLabel']}"></td>
+          </tr>
+          <tr class="cms-sheet-section-row">
+            <th colspan="2">섹션 문구</th>
+          </tr>
+          <tr>
+            <th>아티스트 보조 문구</th>
+            <td><input name="copySettings[artistsEyebrow]" th:value="${homeCopySettings['artistsEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>아티스트 제목</th>
+            <td><input name="copySettings[artistsTitle]" th:value="${homeCopySettings['artistsTitle']}"></td>
+          </tr>
+          <tr>
+            <th>실물 굿즈 보조 문구</th>
+            <td><input name="copySettings[physicalEyebrow]" th:value="${homeCopySettings['physicalEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>실물 굿즈 제목</th>
+            <td><input name="copySettings[physicalTitle]" th:value="${homeCopySettings['physicalTitle']}"></td>
+          </tr>
+          <tr>
+            <th>실물 굿즈 버튼</th>
+            <td><input name="copySettings[physicalCta]" th:value="${homeCopySettings['physicalCta']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 보조 문구</th>
+            <td><input name="copySettings[digitalEyebrow]" th:value="${homeCopySettings['digitalEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 제목</th>
+            <td><input name="copySettings[digitalTitle]" th:value="${homeCopySettings['digitalTitle']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 버튼</th>
+            <td><input name="copySettings[digitalCta]" th:value="${homeCopySettings['digitalCta']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 드롭 라벨</th>
+            <td><input name="copySettings[digitalFeatureEyebrow]" th:value="${homeCopySettings['digitalFeatureEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 드롭 설명</th>
+            <td><input name="copySettings[digitalFeatureDescription]" th:value="${homeCopySettings['digitalFeatureDescription']}"></td>
+          </tr>
+          <tr>
+            <th>디지털 드롭 버튼</th>
+            <td><input name="copySettings[digitalFeatureCta]" th:value="${homeCopySettings['digitalFeatureCta']}"></td>
+          </tr>
+          <tr>
+            <th>아티스트별 굿즈 보조 문구</th>
+            <td><input name="copySettings[byArtistEyebrow]" th:value="${homeCopySettings['byArtistEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>아티스트별 굿즈 제목</th>
+            <td><input name="copySettings[byArtistTitle]" th:value="${homeCopySettings['byArtistTitle']}"></td>
+          </tr>
+          <tr>
+            <th>아티스트별 굿즈 버튼</th>
+            <td><input name="copySettings[byArtistCta]" th:value="${homeCopySettings['byArtistCta']}"></td>
+          </tr>
+          <tr>
+            <th>카테고리 보조 문구</th>
+            <td><input name="copySettings[categoryEyebrow]" th:value="${homeCopySettings['categoryEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>카테고리 제목</th>
+            <td><input name="copySettings[categoryTitle]" th:value="${homeCopySettings['categoryTitle']}"></td>
+          </tr>
+          <tr>
+            <th>카테고리 버튼</th>
+            <td><input name="copySettings[categoryCta]" th:value="${homeCopySettings['categoryCta']}"></td>
+          </tr>
+          <tr class="cms-sheet-section-row">
+            <th colspan="2">하단 인덱스</th>
+          </tr>
+          <tr>
+            <th>하단 보조 문구</th>
+            <td><input name="copySettings[footerEyebrow]" th:value="${homeCopySettings['footerEyebrow']}"></td>
+          </tr>
+          <tr>
+            <th>하단 제목</th>
+            <td><input name="copySettings[footerTitle]" th:value="${homeCopySettings['footerTitle']}"></td>
+          </tr>
+          <tr>
+            <th>Shop 컬럼 제목</th>
+            <td><input name="copySettings[footerShopTitle]" th:value="${homeCopySettings['footerShopTitle']}"></td>
+          </tr>
+          <tr>
+            <th>Shop 전체 굿즈</th>
+            <td><input name="copySettings[footerShopAllGoods]" th:value="${homeCopySettings['footerShopAllGoods']}"></td>
+          </tr>
+          <tr>
+            <th>Shop 실물 굿즈</th>
+            <td><input name="copySettings[footerShopPhysicalGoods]" th:value="${homeCopySettings['footerShopPhysicalGoods']}"></td>
+          </tr>
+          <tr>
+            <th>Shop 디지털 굿즈</th>
+            <td><input name="copySettings[footerShopDigitalGoods]" th:value="${homeCopySettings['footerShopDigitalGoods']}"></td>
+          </tr>
+          <tr>
+            <th>Artist 컬럼 제목</th>
+            <td><input name="copySettings[footerArtistTitle]" th:value="${homeCopySettings['footerArtistTitle']}"></td>
+          </tr>
+          <tr>
+            <th>Artist 페이지</th>
+            <td><input name="copySettings[footerArtistArtistsPage]" th:value="${homeCopySettings['footerArtistArtistsPage']}"></td>
+          </tr>
+          <tr>
+            <th>Artist 그룹</th>
+            <td><input name="copySettings[footerArtistGroups]" th:value="${homeCopySettings['footerArtistGroups']}"></td>
+          </tr>
+          <tr>
+            <th>Artist별 굿즈</th>
+            <td><input name="copySettings[footerArtistGoodsByArtist]" th:value="${homeCopySettings['footerArtistGoodsByArtist']}"></td>
+          </tr>
+          <tr>
+            <th>Account 컬럼 제목</th>
+            <td><input name="copySettings[footerAccountTitle]" th:value="${homeCopySettings['footerAccountTitle']}"></td>
+          </tr>
+          <tr>
+            <th>Account 로그인</th>
+            <td><input name="copySettings[footerAccountSignIn]" th:value="${homeCopySettings['footerAccountSignIn']}"></td>
+          </tr>
+          <tr>
+            <th>Account 장바구니</th>
+            <td><input name="copySettings[footerAccountCart]" th:value="${homeCopySettings['footerAccountCart']}"></td>
+          </tr>
+          <tr>
+            <th>Account 좋아요</th>
+            <td><input name="copySettings[footerAccountLikes]" th:value="${homeCopySettings['footerAccountLikes']}"></td>
+          </tr>
+          <tr>
+            <th>Info 컬럼 제목</th>
+            <td><input name="copySettings[footerInfoTitle]" th:value="${homeCopySettings['footerInfoTitle']}"></td>
+          </tr>
+          <tr>
+            <th>Info 상단</th>
+            <td><input name="copySettings[footerInfoTop]" th:value="${homeCopySettings['footerInfoTop']}"></td>
+          </tr>
+          <tr>
+            <th>Info 카테고리</th>
+            <td><input name="copySettings[footerInfoCategories]" th:value="${homeCopySettings['footerInfoCategories']}"></td>
+          </tr>
+          <tr>
+            <th>하단 제작사</th>
+            <td><input name="copySettings[footerBottomLabel]" th:value="${homeCopySettings['footerBottomLabel']}"></td>
+          </tr>
+          <tr>
+            <th>첫 페이지 이동</th>
+            <td><input name="copySettings[footerBackToFirst]" th:value="${homeCopySettings['footerBackToFirst']}"></td>
+          </tr>
           </tbody>
         </table>
       </form>
-
-      <section class="cms-preview-panel" aria-label="홈 화면 미리보기">
-        <div class="cms-panel-heading">
-          <h3>실시간 미리보기</h3>
-          <span>적용 전</span>
-        </div>
-        <iframe id="cmsPreview" title="홈 화면 실시간 미리보기"></iframe>
-      </section>
     </section>
   </section>
 </main>

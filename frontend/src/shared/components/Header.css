@@ -28,7 +28,7 @@
 
 .site-header-inner {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
   box-sizing: border-box;

@@ -16,7 +16,7 @@
   <section class="admin-main">
     <header class="admin-header">
       <div>
-        <p class="admin-eyebrow">실시간 미리보기 관리</p>
+        <p class="admin-eyebrow">콘텐츠 관리</p>
         <h2>아티스트 화면 내용 편집</h2>
       </div>
       <div class="admin-header-actions">
@@ -28,7 +28,7 @@
 
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
 
-    <section class="cms-workbench">
+    <section class="cms-workbench cms-workbench-wide">
       <div class="cms-sheet-stack">
         <form id="artistsPageForm"
               class="cms-sheet-panel"
@@ -85,6 +85,7 @@
               data-confirm-form-title="아티스트 목록">
           <div class="cms-panel-heading">
             <h3>아티스트 목록</h3>
+            <button class="cms-secondary-button" type="button" data-add-artist-row>행 추가</button>
           </div>
           <div class="cms-table-scroll">
             <table class="cms-sheet cms-artist-sheet">
@@ -104,10 +105,12 @@
               <tbody id="artistRows">
               <tr th:each="artist : ${artists}">
                 <td>
+                  <input type="hidden"
+                         name="visible"
+                         data-artist-visible-value
+                         th:value="${artist.visible()}">
                   <input type="checkbox"
-                         name="visibleArtistId"
                          data-artist-visible
-                         th:value="${artist.artistId()}"
                          th:checked="${artist.visible()}">
                 </td>
                 <td><input type="number" name="sortOrder" data-artist-field="sortOrder" th:value="${artist.sortOrder()}" th:data-fallback-value="${artist.sortOrder()}" th:placeholder="${artist.sortOrder()}"></td>
@@ -128,13 +131,6 @@
         </form>
       </div>
 
-      <section class="cms-preview-panel" aria-label="아티스트 화면 미리보기">
-        <div class="cms-panel-heading">
-          <h3>실시간 미리보기</h3>
-          <span>적용 전</span>
-        </div>
-        <iframe id="cmsPreview" title="아티스트 화면 실시간 미리보기"></iframe>
-      </section>
     </section>
   </section>
 </main>

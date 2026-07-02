@@ -5,13 +5,14 @@ import './cart-nav.css'
 
 type CartNavLinkProps = {
   current?: boolean
+  label?: string
 }
 
 function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
 }
 
-function CartNavLink({ current = false }: CartNavLinkProps) {
+function CartNavLink({ current = false, label = 'Cart' }: CartNavLinkProps) {
   const { isAuthenticated, items } = useCart()
   const previewItems = items.slice(0, 3)
   const hiddenItemCount = Math.max(items.length - previewItems.length, 0)
@@ -24,7 +25,7 @@ function CartNavLink({ current = false }: CartNavLinkProps) {
         className="cart-nav-link"
         to="/cart"
       >
-        Cart{items.length > 0 ? ` ${items.length}` : ''}
+        {label}{items.length > 0 ? ` ${items.length}` : ''}
       </Link>
       <span className="cart-preview" role="status">
         <strong>{isAuthenticated ? 'Cart' : 'Guest cart'}</strong>

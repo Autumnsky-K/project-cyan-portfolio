@@ -1,11 +1,9 @@
 package com.projectcyan.cms;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,7 +46,9 @@ public class AdminCmsPageController {
 
 	@GetMapping("/admin/content/home")
 	public String editHome(Model model) {
-		model.addAttribute("page", cmsContentService.findPage("home"));
+		CmsPageResponse page = cmsContentService.findPage("home");
+		model.addAttribute("page", page);
+		model.addAttribute("homeCopySettings", homeCopySettings(page));
 		addCmsStorageModel(model);
 		return "admin/content/home";
 	}
@@ -56,9 +56,10 @@ public class AdminCmsPageController {
 	@PostMapping("/admin/content/home")
 	public String saveHome(
 		CmsPageRequest request,
+		@RequestParam Map<String, String> requestParameters,
 		RedirectAttributes redirectAttributes
 	) {
-		cmsContentService.savePage("home", request);
+		cmsContentService.savePage("home", pageRequestWithCopySettings(request, homeCopySettings(requestParameters)));
 		redirectAttributes.addFlashAttribute("notice", "홈 화면 내용이 적용되었습니다.");
 		return "redirect:/admin/content/home";
 	}
@@ -172,49 +173,58 @@ public class AdminCmsPageController {
 	@PostMapping("/admin/content/artists/page")
 	public String saveArtistsPage(
 		CmsPageRequest request,
+		@RequestParam Map<String, String> requestParameters,
 		RedirectAttributes redirectAttributes
 	) {
-		cmsContentService.savePage("artists", request);
+		cmsContentService.savePage("artists", pageRequestWithCopySettings(request, copySettings(requestParameters)));
 		redirectAttributes.addFlashAttribute("notice", "아티스트 화면 내용이 적용되었습니다.");
 		return "redirect:/admin/content/artists";
 	}
 
 	@PostMapping("/admin/content/artists")
 	public String saveArtists(
-		@RequestParam(required = false) List<Long> artistId,
+		@RequestParam(required = false) List<String> artistId,
 		@RequestParam(required = false) List<String> name,
 		@RequestParam(required = false) List<String> groupName,
 		@RequestParam(required = false) List<String> imageUrl,
 		@RequestParam(required = false) List<String> lore,
 		@RequestParam(required = false) List<String> debutDate,
 		@RequestParam(required = false) List<String> collections,
-		@RequestParam(required = false) List<Integer> sortOrder,
-		@RequestParam(required = false) List<Long> visibleArtistId,
+		@RequestParam(required = false) List<String> sortOrder,
+		@RequestParam(required = false) List<String> visible,
 		RedirectAttributes redirectAttributes
 	) {
-		if (artistId == null || artistId.isEmpty()) {
+		int rowCount = maxRowCount(artistId, name, groupName, imageUrl, lore, debutDate, collections, sortOrder, visible);
+		if (rowCount == 0) {
 			redirectAttributes.addFlashAttribute("notice", "적용할 아티스트 행이 없습니다.");
 			return "redirect:/admin/content/artists";
 		}
 
-		Set<Long> visibleIds = visibleArtistId == null ? Set.of() : new HashSet<>(visibleArtistId);
 		Map<Long, CmsArtistProfileResponse> currentArtists = cmsContentService.findArtists(true).stream()
 			.collect(Collectors.toMap(CmsArtistProfileResponse::artistId, Function.identity()));
 		List<CmsArtistProfileRequest> requests = new ArrayList<>();
-		for (int index = 0; index < artistId.size(); index++) {
-			Long currentArtistId = artistId.get(index);
+		for (int index = 0; index < rowCount; index++) {
+			Long currentArtistId = longStringAt(artistId, index);
 			CmsArtistProfileResponse currentArtist = currentArtists.get(currentArtistId);
+			String nextName = valueAt(name, index, currentArtist == null ? "" : currentArtist.name());
+			if (currentArtistId == null && nextName.isBlank()) {
+				continue;
+			}
 			requests.add(new CmsArtistProfileRequest(
 				currentArtistId,
-				valueAt(name, index, currentArtist == null ? "" : currentArtist.name()),
+				nextName,
 				valueAt(groupName, index, currentArtist == null ? "" : currentArtist.groupName()),
 				valueAt(imageUrl, index, currentArtist == null ? "" : currentArtist.imageUrl()),
 				valueAt(lore, index, currentArtist == null ? "" : currentArtist.lore()),
 				valueAt(debutDate, index, currentArtist == null ? "" : currentArtist.debutDate()),
 				valueAt(collections, index, currentArtist == null ? "" : currentArtist.collections()),
-				intAt(sortOrder, index, currentArtist == null ? index + 1 : currentArtist.sortOrder()),
-				visibleIds.contains(currentArtistId)
+				intStringAt(sortOrder, index, currentArtist == null ? index + 1 : currentArtist.sortOrder()),
+				booleanAt(visible, index, currentArtist == null || Boolean.TRUE.equals(currentArtist.visible()))
 			));
+		}
+		if (requests.isEmpty()) {
+			redirectAttributes.addFlashAttribute("notice", "이름이 입력된 신규 아티스트 행이 없습니다.");
+			return "redirect:/admin/content/artists";
 		}
 		cmsContentService.saveArtists(requests);
 		redirectAttributes.addFlashAttribute("notice", "아티스트 목록이 적용되었습니다.");
@@ -233,11 +243,23 @@ public class AdminCmsPageController {
 		return value == null || value.isBlank() ? fallback : value;
 	}
 
-	private Integer intAt(List<Integer> values, int index, int fallback) {
-		if (values == null || index >= values.size() || values.get(index) == null) {
+	@SafeVarargs
+	private final int maxRowCount(List<?>... valueLists) {
+		int rowCount = 0;
+		for (List<?> values : valueLists) {
+			if (values != null) {
+				rowCount = Math.max(rowCount, values.size());
+			}
+		}
+		return rowCount;
+	}
+
+	private boolean booleanAt(List<String> values, int index, boolean fallback) {
+		String value = valueAt(values, index);
+		if (value == null || value.isBlank()) {
 			return fallback;
 		}
-		return values.get(index);
+		return Boolean.parseBoolean(value.trim());
 	}
 
 	private Long longStringAt(List<String> values, int index) {
@@ -286,6 +308,107 @@ public class AdminCmsPageController {
 
 	private String valueOrDefault(String value, String fallback) {
 		return value == null || value.isBlank() ? fallback : value.trim();
+	}
+
+	private CmsPageRequest pageRequestWithCopySettings(
+		CmsPageRequest request,
+		Map<String, String> copySettings
+	) {
+		return new CmsPageRequest(
+			request.eyebrow(),
+			request.title(),
+			request.summaryTitle(),
+			request.summaryBody(),
+			request.primaryColor(),
+			request.accentColor(),
+			request.backgroundColor(),
+			request.heroImageUrl(),
+			copySettings
+		);
+	}
+
+	private Map<String, String> homeCopySettings(CmsPageResponse page) {
+		Map<String, String> settings = defaultHomeCopySettings();
+		if (page.copySettings() != null) {
+			settings.putAll(page.copySettings());
+		}
+		return settings;
+	}
+
+	private Map<String, String> homeCopySettings(Map<String, String> requestParameters) {
+		Map<String, String> settings = new LinkedHashMap<>();
+		for (String key : defaultHomeCopySettings().keySet()) {
+			String value = requestParameters.get("copySettings[" + key + "]");
+			if (value != null && !value.isBlank()) {
+				settings.put(key, value.trim());
+			}
+		}
+		return settings;
+	}
+
+	private Map<String, String> copySettings(Map<String, String> requestParameters) {
+		Map<String, String> settings = new LinkedHashMap<>();
+		for (Map.Entry<String, String> entry : requestParameters.entrySet()) {
+			String key = entry.getKey();
+			if (!key.startsWith("copySettings[") || !key.endsWith("]")) {
+				continue;
+			}
+			String settingName = key.substring("copySettings[".length(), key.length() - 1);
+			if (!settingName.isBlank() && entry.getValue() != null && !entry.getValue().isBlank()) {
+				settings.put(settingName, entry.getValue().trim());
+			}
+		}
+		return settings;
+	}
+
+	private Map<String, String> defaultHomeCopySettings() {
+		Map<String, String> settings = new LinkedHashMap<>();
+		settings.put("navHome", "Home");
+		settings.put("navArtists", "Artists");
+		settings.put("navGoods", "Goods");
+		settings.put("navCart", "Cart");
+		settings.put("statusSignalLabel", "SHOP SIGNAL");
+		settings.put("statusReadyLabel", "Live");
+		settings.put("statusLoadingLabel", "Loading");
+		settings.put("statusErrorLabel", "Offline");
+		settings.put("statusModeLabel", "FULLPAGE MODE");
+		settings.put("artistsEyebrow", "Cyan Idol Network");
+		settings.put("artistsTitle", "Artist Signals");
+		settings.put("physicalEyebrow", "Physical Goods");
+		settings.put("physicalTitle", "Goods you can hold");
+		settings.put("physicalCta", "View physical");
+		settings.put("digitalEyebrow", "Digital Goods");
+		settings.put("digitalTitle", "Voice, message, and download drops");
+		settings.put("digitalCta", "Open digital");
+		settings.put("digitalFeatureEyebrow", "DATA DROP");
+		settings.put("digitalFeatureDescription", "{artistName} channel goods for voice, message, download, or AI-assisted shopping flows.");
+		settings.put("digitalFeatureCta", "Open drop");
+		settings.put("byArtistEyebrow", "Goods By Artist");
+		settings.put("byArtistTitle", "Shop from each artist channel");
+		settings.put("byArtistCta", "Browse artist goods");
+		settings.put("categoryEyebrow", "Goods Categories");
+		settings.put("categoryTitle", "Browse by type");
+		settings.put("categoryCta", "Open categories");
+		settings.put("footerEyebrow", "Project Cyan SHOP");
+		settings.put("footerTitle", "Official Shop Index");
+		settings.put("footerShopTitle", "Shop");
+		settings.put("footerShopAllGoods", "All goods");
+		settings.put("footerShopPhysicalGoods", "Physical goods");
+		settings.put("footerShopDigitalGoods", "Digital goods");
+		settings.put("footerArtistTitle", "Artist");
+		settings.put("footerArtistArtistsPage", "Artists page");
+		settings.put("footerArtistGroups", "Artist groups");
+		settings.put("footerArtistGoodsByArtist", "Goods by artist");
+		settings.put("footerAccountTitle", "Account");
+		settings.put("footerAccountSignIn", "Sign in");
+		settings.put("footerAccountCart", "Cart");
+		settings.put("footerAccountLikes", "Likes");
+		settings.put("footerInfoTitle", "Info");
+		settings.put("footerInfoTop", "Top");
+		settings.put("footerInfoCategories", "Categories");
+		settings.put("footerBottomLabel", "CYAN PRODUCTION");
+		settings.put("footerBackToFirst", "Back to first page");
+		return settings;
 	}
 
 	public record CmsGroupPageDraft(

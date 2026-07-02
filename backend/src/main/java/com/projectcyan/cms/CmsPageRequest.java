@@ -1,5 +1,7 @@
 package com.projectcyan.cms;
 
+import java.util.Map;
+
 public record CmsPageRequest(
 	String eyebrow,
 	String title,
@@ -8,6 +10,7 @@ public record CmsPageRequest(
 	String primaryColor,
 	String accentColor,
 	String backgroundColor,
-	String heroImageUrl
+	String heroImageUrl,
+	Map<String, String> copySettings
 ) {
 }

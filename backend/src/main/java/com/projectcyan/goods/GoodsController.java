@@ -129,6 +129,14 @@ public class GoodsController {
 		return goodsLikeService.findMyLike(currentMember.memberId(), goodsId);
 	}
 
+	@GetMapping("/likes/my")
+	public List<GoodsLikeItemResponse> findMyLikes(
+		@RequestParam(required = false) String goodsIds,
+		AuthenticatedMember currentMember
+	) {
+		return goodsLikeService.findMyLikes(currentMember.memberId(), goodsIds);
+	}
+
 	@PostMapping("/{goodsId}/likes")
 	public GoodsLikeResponse addLike(
 		@PathVariable Long goodsId,

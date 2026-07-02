@@ -10,6 +10,7 @@ export type CmsPage = {
   accentColor: string
   backgroundColor: string
   heroImageUrl?: string | null
+  copySettings?: Record<string, string>
 }
 
 export type CmsArtistProfile = {

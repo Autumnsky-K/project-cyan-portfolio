@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
 import type { GoodsDetail } from '../../api/goods'
-import { useCart } from '../cart/useCart'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsStatusBadge from './GoodsStatusBadge'
+import { useGoodsPurchaseCart } from './useGoodsPurchaseCart'
 
 type GoodsPurchasePanelProps = {
   goods: GoodsDetail
@@ -26,52 +25,16 @@ function GoodsPurchasePanel({
   shareFeedback = '',
   onShare,
 }: GoodsPurchasePanelProps) {
-  const { addCartItem } = useCart()
-  const [quantity, setQuantity] = useState(1)
-  const [feedback, setFeedback] = useState('')
-  const [isAddingCart, setIsAddingCart] = useState(false)
-  const feedbackTimerRef = useRef<number | null>(null)
-
-  useEffect(
-    () => () => {
-      if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current)
-    },
-    [],
-  )
-
-  const maxQuantity = goods.stockCount ?? 0
-  const selectedQuantity = Math.max(1, Math.min(quantity, maxQuantity || 1))
-  const purchasingAvailable = goods.purchaseState === 'AVAILABLE'
-  const canAdd = purchasingAvailable && maxQuantity > 0
-  const unitPrice = Number(goods.price ?? 0)
-
-  function showFeedback(message: string) {
-    setFeedback(message)
-    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current)
-    feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
-  }
-
-  async function handleAddCartItem() {
-    if (!canAdd) return
-
-    setIsAddingCart(true)
-    try {
-      await addCartItem(
-        {
-          ...goods,
-          variantPrice: unitPrice,
-          maxQuantity,
-          shippingFee: 0,
-        },
-        selectedQuantity,
-      )
-      showFeedback('장바구니에 담았습니다.')
-    } catch (cartError) {
-      showFeedback(cartError instanceof Error ? cartError.message : '장바구니에 담지 못했습니다.')
-    } finally {
-      setIsAddingCart(false)
-    }
-  }
+  const {
+    addSelectedQuantityToCart,
+    canAdd,
+    feedback,
+    isAddingCart,
+    maxQuantity,
+    selectedQuantity,
+    unitPrice,
+    updateQuantity,
+  } = useGoodsPurchaseCart(goods)
 
   return (
     <aside className="purchase-panel">
@@ -97,15 +60,24 @@ function GoodsPurchasePanel({
           <button
             disabled={selectedQuantity <= 1}
             type="button"
-            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+            onClick={() => updateQuantity(selectedQuantity - 1)}
           >
-            −
+            -
           </button>
-          <span>{selectedQuantity}</span>
+          <input
+            aria-label="수량 직접 입력"
+            disabled={!canAdd}
+            inputMode="numeric"
+            max={maxQuantity || 1}
+            min={1}
+            type="number"
+            value={selectedQuantity}
+            onChange={(event) => updateQuantity(event.currentTarget.valueAsNumber)}
+          />
           <button
             disabled={!maxQuantity || selectedQuantity >= maxQuantity}
             type="button"
-            onClick={() => setQuantity((value) => value + 1)}
+            onClick={() => updateQuantity(selectedQuantity + 1)}
           >
             +
           </button>
@@ -128,7 +100,7 @@ function GoodsPurchasePanel({
         data-add-to-cart={goods.goodsId}
         disabled={!canAdd || isAddingCart}
         type="button"
-        onClick={() => void handleAddCartItem()}
+        onClick={() => void addSelectedQuantityToCart()}
       >
         {isAddingCart ? '담는 중...' : '장바구니 담기'}
       </button>
@@ -141,8 +113,12 @@ function GoodsPurchasePanel({
           disabled={isLikePending}
           onClick={onLikeToggle}
         >
-          <span aria-hidden="true">♡</span>
-          <span>위시리스트</span>
+          <span
+            className="favorite-heart-icon"
+            data-filled={isLiked}
+            aria-hidden="true"
+          />
+          <span>좋아요</span>
           <span>{Number(goods.likeCount ?? 0).toLocaleString()}</span>
         </button>
         <button className="purchase-share-button" type="button" onClick={onShare}>

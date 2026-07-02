@@ -148,6 +148,10 @@ body {
   align-items: start;
 }
 
+.cms-workbench-wide {
+  grid-template-columns: 1fr;
+}
+
 .cms-sheet-stack {
   display: grid;
   gap: 16px;
@@ -204,6 +208,13 @@ body {
   font-weight: 700;
   text-align: left;
   white-space: nowrap;
+}
+
+.cms-sheet .cms-sheet-section-row th {
+  padding: 12px 10px;
+  background: color-mix(in srgb, var(--admin-accent, #2f6f64) 9%, #ffffff);
+  color: var(--admin-ink, #111111);
+  font-size: 14px;
 }
 
 .cms-sheet td:last-child,
