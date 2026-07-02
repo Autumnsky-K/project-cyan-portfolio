@@ -5,6 +5,7 @@ import {
   type AddToCartAction,
   type HighlightAction,
   type NavigateAction,
+  type ShowRecommendationsAction,
   type VtuberAction,
 } from '../types'
 
@@ -56,6 +57,21 @@ function isAddToCartAction(action: VtuberAction): action is AddToCartAction {
     action.type === 'addToCart' &&
     typeof action.goodsId === 'string' &&
     GOODS_ID_PATTERN.test(action.goodsId.trim())
+  )
+}
+
+function isShowRecommendationsAction(
+  action: VtuberAction,
+): action is ShowRecommendationsAction {
+  return (
+    action.type === 'showRecommendations' &&
+    Array.isArray(action.goodsIds) &&
+    action.goodsIds.length >= 2 &&
+    action.goodsIds.length <= 20 &&
+    new Set(action.goodsIds).size === action.goodsIds.length &&
+    action.goodsIds.every((goodsId) => (
+      typeof goodsId === 'string' && GOODS_ID_PATTERN.test(goodsId)
+    ))
   )
 }
 
@@ -124,6 +140,17 @@ export async function executeVtuberActions({
   navigate,
 }: ExecuteVtuberActionsOptions): Promise<void> {
   for (const action of actions) {
+    if (isShowRecommendationsAction(action)) {
+      const params = new URLSearchParams()
+      params.set('recommendations', action.goodsIds.join(','))
+      navigate(`/goods?${params.toString()}`)
+      window.dispatchEvent(new CustomEvent('project-cyan:show-recommendations', {
+        detail: { goodsIds: action.goodsIds },
+      }))
+      await delay(ROUTE_SETTLE_DELAY_MS)
+      continue
+    }
+
     if (isNavigateAction(action)) {
       navigate(action.path)
       await delay(ROUTE_SETTLE_DELAY_MS)

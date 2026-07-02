@@ -38,4 +38,35 @@ describe('executeVtuberActions navigation allow-list', () => {
       expect(navigate).not.toHaveBeenCalled()
     },
   )
+
+  it('opens an exact recommendation result for multiple goods', async () => {
+    vi.useFakeTimers()
+    const navigate = vi.fn()
+    const execution = executeVtuberActions({
+      actions: [{ type: 'showRecommendations', goodsIds: ['42', '84'] }],
+      addCartItem: vi.fn(),
+      navigate,
+    })
+
+    await vi.runAllTimersAsync()
+    await execution
+
+    expect(navigate).toHaveBeenCalledWith('/goods?recommendations=42%2C84')
+  })
+
+  it.each([
+    ['42'],
+    ['42', '42'],
+    ['42', '../admin'],
+  ])('ignores invalid recommendation goods IDs %j', async (goodsIds) => {
+    const navigate = vi.fn()
+
+    await executeVtuberActions({
+      actions: [{ type: 'showRecommendations', goodsIds }],
+      addCartItem: vi.fn(),
+      navigate,
+    })
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
 })
