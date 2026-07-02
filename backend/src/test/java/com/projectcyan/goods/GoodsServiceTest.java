@@ -35,7 +35,8 @@ class GoodsServiceTest {
 			goodsStockRepository,
 			goodsReviewRepository,
 			mock(GoodsLikeRepository.class),
-			goodsExtraImageRepository
+			goodsExtraImageRepository,
+			mock(GoodsViewHistoryRepository.class)
 		);
 	}
 

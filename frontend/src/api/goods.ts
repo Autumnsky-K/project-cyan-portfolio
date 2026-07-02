@@ -88,6 +88,7 @@ export type PageResponse<T> = {
 export type GoodsQueryParams = {
   q?: string
   sort?: string
+  viewPeriod?: string
   page?: number
   size?: number
   categoryIds?: string
