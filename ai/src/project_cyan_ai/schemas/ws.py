@@ -19,7 +19,7 @@ class NavigateAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["navigate"] = ACTION_NAVIGATE_TYPE
-    path: str = Field(pattern=r"^/goods/\d+$")
+    path: str = Field(pattern=r"^/(?:goods(?:/\d+)?|cart)$")
 
 
 class HighlightAction(BaseModel):
@@ -108,6 +108,10 @@ class ClientContext(BaseModel):
     recentRecommendations: list[RecentRecommendationContextItem] = Field(
         default_factory=list,
         max_length=CLIENT_RECENT_RECOMMENDATIONS_MAX_LENGTH,
+    )
+    currentPath: str | None = Field(
+        default=None,
+        pattern=r"^/(?:goods(?:/\d+)?|cart)$",
     )
 
 

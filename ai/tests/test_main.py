@@ -940,6 +940,130 @@ def test_catalog_grounding_restores_recent_candidates_from_client_context():
     }
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["굿즈 리스트로 돌아가줘", "상품 목록 보여줘", "굿즈 페이지로 가줘"],
+)
+def test_catalog_grounding_routes_explicit_goods_list_navigation(text):
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response(text, context={"currentPath": "/goods/42"})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "굿즈 목록으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods"}],
+    }
+    assert catalog.received_texts == []
+
+
+@pytest.mark.parametrize("text", ["카트 보여줘", "장바구니로 가줘"])
+def test_catalog_grounding_routes_explicit_cart_navigation(text):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(text, context={"currentPath": "/goods"})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "장바구니로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/cart"}],
+    }
+
+
+def test_catalog_grounding_routes_back_from_goods_detail_to_goods_list():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "뒤로 가줘",
+        context={"currentPath": "/goods/42"},
+    )
+
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods"}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "current_path", "expected_text"),
+    [
+        ("상품 목록 보여줘", "/goods", "이미 굿즈 목록에 있어요."),
+        ("뒤로 가줘", "/goods", "이미 굿즈 목록에 있어요."),
+        ("카트 보여줘", "/cart", "이미 장바구니에 있어요."),
+        ("뒤로 가줘", "/cart", "이미 장바구니에 있어요."),
+    ],
+)
+def test_catalog_grounding_does_not_navigate_to_current_page(
+    text,
+    current_path,
+    expected_text,
+):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(text, context={"currentPath": current_path})
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": expected_text,
+        "actions": [],
+    }
+
+
+def test_catalog_grounding_uses_llm_only_for_ambiguous_navigation():
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient('{"intent":"cart","confidence":0.91}')
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=delegate,
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "쇼핑하던 곳으로 이동해줘",
+        context={"currentPath": "/goods"},
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "장바구니로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/cart"}],
+    }
+    assert "goodsList, cart, uncertain" in delegate.client.received_texts[0]
+
+
+def test_catalog_grounding_asks_when_navigation_classification_is_uncertain():
+    delegate = ClaudeChatResponseProvider(
+        client=FakeClaudeClient('{"intent":"goodsList","confidence":0.4}')
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=delegate,
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "저쪽으로 이동해줘",
+        context={"currentPath": "/cart"},
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "상품 목록과 장바구니 중 어디로 이동할까요?",
+        "actions": [],
+    }
+
+
 def test_catalog_grounding_adds_multiple_numbered_candidates_to_cart_on_follow_up():
     catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
     provider = CatalogGroundedChatResponseProvider(
@@ -1102,6 +1226,7 @@ def test_client_text_input_accepts_optional_cart_context():
             }
         ],
         "recentRecommendations": [],
+        "currentPath": None,
     }
 
 
@@ -1127,6 +1252,27 @@ def test_client_text_input_accepts_recent_recommendation_context():
         {"goodsId": 42, "rankOrder": 0},
         {"goodsId": 84, "rankOrder": 1},
     ]
+
+
+def test_client_text_input_accepts_current_shopping_path():
+    for current_path in ("/goods", "/goods/42", "/cart"):
+        message = ClientTextInput.model_validate(
+            {
+                "type": "text-input",
+                "text": "이동해줘",
+                "context": {"currentPath": current_path},
+            }
+        )
+        assert message.context.currentPath == current_path
+
+    with pytest.raises(ValidationError):
+        ClientTextInput.model_validate(
+            {
+                "type": "text-input",
+                "text": "이동해줘",
+                "context": {"currentPath": "https://evil.example"},
+            }
+        )
 
 
 def test_client_text_input_accepts_optional_session_id():
@@ -1242,6 +1388,18 @@ def test_full_text_message_rejects_unsafe_action_targets():
                     "actions": [action],
                 }
             )
+
+
+def test_full_text_message_accepts_shopping_navigation_targets():
+    for path in ("/goods", "/goods/42", "/cart"):
+        message = FullTextMessage.model_validate(
+            {
+                "type": "full-text",
+                "text": "이동할게요.",
+                "actions": [{"type": "navigate", "path": path}],
+            }
+        )
+        assert message.actions[0].path == path
 
 
 def test_chat_history_client_posts_authenticated_message(monkeypatch):
@@ -2624,6 +2782,31 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
             {"type": "addToCart", "goodsId": "1005"},
             {"type": "addToCart", "goodsId": "1006"},
         ],
+    }
+
+
+def test_client_ws_routes_navigation_with_current_path_context(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_runtime_goods_catalog_client",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json(
+            {
+                "type": "text-input",
+                "text": "뒤로 가줘",
+                "context": {"currentPath": "/goods/42"},
+            }
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "굿즈 목록으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods"}],
     }
 
 

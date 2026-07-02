@@ -76,6 +76,36 @@ def test_optimized_engine_skips_search_llm_and_uses_one_provider_call():
     assert len(provider.calls) == 1
 
 
+def test_faithful_engine_skips_all_llm_calls_for_explicit_navigation():
+    provider = FakeProvider()
+    grounded = CatalogGroundedChatResponseProvider(provider, FakeCatalogClient())
+
+    execution = BehaviorEngine(provider, grounded, hook_filter()).run(
+        "굿즈 목록으로 돌아가줘",
+        config(),
+        context={"currentPath": "/goods/42"},
+    )
+
+    assert execution.response.actions[0].path == "/goods"
+    assert execution.run["steps"][9]["status"] == "SKIPPED"
+    assert provider.calls == []
+
+
+def test_faithful_engine_uses_only_classifier_llm_for_ambiguous_navigation():
+    provider = FakeProvider()
+    grounded = CatalogGroundedChatResponseProvider(provider, FakeCatalogClient())
+
+    execution = BehaviorEngine(provider, grounded, hook_filter()).run(
+        "저쪽으로 이동해줘",
+        config(),
+        context={"currentPath": "/goods"},
+    )
+
+    assert execution.response.text == "상품 목록과 장바구니 중 어디로 이동할까요?"
+    assert execution.run["steps"][9]["status"] == "SKIPPED"
+    assert len(provider.calls) == 1
+
+
 def test_hook_transformations_are_applied_in_priority_order():
     filter_ = hook_filter(
         [

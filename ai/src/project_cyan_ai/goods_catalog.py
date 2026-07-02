@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from project_cyan_ai.favorite_artists import favorite_artist_ids
+from project_cyan_ai.navigation_intent import build_navigation_response
 from project_cyan_ai.personalization_context import build_personalized_prompt
 from project_cyan_ai.providers.chat_response import (
     ChatResponseProvider,
@@ -308,6 +309,9 @@ class CatalogGroundedChatResponseProvider:
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
     ) -> FullTextMessage:
+        navigation_response = build_navigation_response(text, context, self.delegate)
+        if navigation_response is not None:
+            return navigation_response
         if not self.recent_recommendation_candidates:
             self.recent_recommendation_candidates = recent_candidates_from_context(context)
         follow_up_response = build_follow_up_cart_response(
