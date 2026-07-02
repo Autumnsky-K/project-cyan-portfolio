@@ -122,6 +122,9 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (path.startsWith("/api/admin/")) {
 			return false;
 		}
+		if (HttpMethod.GET.matches(method) && "/api/ai/personalization-context".equals(path)) {
+			return true;
+		}
 
 		return path.startsWith("/api/cart")
 			|| path.startsWith("/api/checkout")
