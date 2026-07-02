@@ -13,10 +13,17 @@ import {
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
-import GoodsFilterUi, { type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
+import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
+import {
+  clearGoodsLikeSyncUpdates,
+  publishGoodsLikeSyncUpdate,
+  readGoodsLikeSyncUpdates,
+  subscribeGoodsLikeSyncUpdates,
+  type GoodsLikeSyncUpdate,
+} from './goodsLikeSync'
 import { useGoodsFavorites } from './useGoodsFavorites'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
@@ -57,6 +64,8 @@ function GoodsPage() {
     setViewMode,
     selectedFilters,
     setSelectedFilters,
+    recommendedGoodsIds,
+    clearRecommendations,
     requestParams,
     pendingHistoryScrollY,
     clearPendingHistoryScroll,
@@ -103,6 +112,19 @@ function GoodsPage() {
     ))
   }, [])
 
+  const applyGoodsLikeUpdate = useCallback((update: GoodsLikeSyncUpdate) => {
+    setLikedGoodsIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      if (update.liked) {
+        nextIds.add(update.goodsId)
+      } else {
+        nextIds.delete(update.goodsId)
+      }
+      return nextIds
+    })
+    updateGoodsLikeCount(update.goodsId, update.likeCount)
+  }, [updateGoodsLikeCount])
+
   const handleLikeToggle = useCallback(async (item: GoodsSummary) => {
     if (!(await hasSpringApiSession())) {
       navigateToLogin()
@@ -129,6 +151,11 @@ function GoodsPage() {
         return nextIds
       })
       updateGoodsLikeCount(goodsId, result.likeCount)
+      publishGoodsLikeSyncUpdate({
+        goodsId,
+        liked: result.liked,
+        likeCount: result.likeCount,
+      })
     } finally {
       setPendingLikeIds((currentIds) => {
         const nextIds = new Set(currentIds)
@@ -137,6 +164,11 @@ function GoodsPage() {
       })
     }
   }, [likedGoodsIds, navigateToLogin, updateGoodsLikeCount])
+
+  useEffect(() => {
+    readGoodsLikeSyncUpdates().forEach(applyGoodsLikeUpdate)
+    return subscribeGoodsLikeSyncUpdates(applyGoodsLikeUpdate)
+  }, [applyGoodsLikeUpdate])
 
   useEffect(() => {
     if (activeSection !== 'favorites') return
@@ -281,11 +313,98 @@ function GoodsPage() {
     )),
     [favoriteGoods, likeCountOverrides],
   )
+  const goodsIdsKey = useMemo(() => goods.map((item) => item.goodsId).join(','), [goods])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadVisibleGoodsLikes() {
+      try {
+        if (goods.length === 0) return
+        if (!(await hasSpringApiSession())) {
+          if (!ignore) {
+            setLikedGoodsIds(new Set())
+            clearGoodsLikeSyncUpdates()
+          }
+          return
+        }
+
+        const likeResults = await Promise.all(
+          goods.map((item) => fetchMyGoodsLike(item.goodsId).catch(() => null)),
+        )
+        if (ignore) return
+
+        setLikedGoodsIds((currentIds) => {
+          const nextIds = new Set(currentIds)
+          likeResults.forEach((like, index) => {
+            const goodsId = goods[index]?.goodsId
+            if (!goodsId) return
+            if (like?.liked) {
+              nextIds.add(goodsId)
+            } else {
+              nextIds.delete(goodsId)
+            }
+          })
+          return nextIds
+        })
+        setLikeCountOverrides((currentCounts) => {
+          const nextCounts = { ...currentCounts }
+          likeResults.forEach((like, index) => {
+            const goodsId = goods[index]?.goodsId
+            if (!goodsId || like?.likeCount === undefined) return
+            nextCounts[goodsId] = like.likeCount
+          })
+          return nextCounts
+        })
+      } catch {
+        // 좋아요 상태 조회 실패는 목록 렌더링을 막지 않는다.
+      }
+    }
+
+    void loadVisibleGoodsLikes()
+
+    return () => {
+      ignore = true
+    }
+  }, [goods, goodsIdsKey])
+
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
   const hasGoods = goods.length > 0
   const isViewCountSort = sort === 'viewCount,desc'
+
+  useEffect(() => {
+    if (status !== 'data' || recommendedGoodsIds.length < 2) return undefined
+
+    const highlightedElements: HTMLElement[] = []
+    const frameId = window.requestAnimationFrame(() => {
+      recommendedGoodsIds.forEach((goodsId) => {
+        const element = document.querySelector<HTMLElement>(`[data-goods-id="${goodsId}"]`)
+        if (!element) return
+        element.classList.add('vtuber-action-highlight')
+        highlightedElements.push(element)
+      })
+      highlightedElements[0]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
+    })
+    const timerId = window.setTimeout(() => {
+      highlightedElements.forEach((element) => {
+        element.classList.remove('vtuber-action-highlight')
+      })
+    }, 2200)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.clearTimeout(timerId)
+      highlightedElements.forEach((element) => {
+        element.classList.remove('vtuber-action-highlight')
+      })
+    }
+  }, [recommendedGoodsIds, status])
 
   function handleQueryChange(value: string) {
     searchScrollPositionRef.current = window.scrollY
@@ -364,6 +483,19 @@ function GoodsPage() {
         />
 
         <div className="goods-content">
+          {recommendedGoodsIds.length >= 2 && (
+            <div className="active-filter-bar" role="status">
+              <span className="active-filter-label">
+                AI 추천 상품 {recommendedGoodsIds.length}개
+              </span>
+              <button type="button" onClick={clearRecommendations}>전체 상품 보기</button>
+            </div>
+          )}
+          <GoodsActiveFilterChips
+            groups={filters}
+            selectedFilters={selectedFilters}
+            onRemoveFilter={toggleFilter}
+          />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
               <p>

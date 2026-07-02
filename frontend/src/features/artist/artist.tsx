@@ -418,6 +418,7 @@ function ArtistPage() {
   } as CSSProperties
 
   const statusLabel = status === 'loading' ? 'Loading' : hasManagedContent ? 'Live' : 'Preview'
+  const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
 
   return (
     <main className={`artist-page artist-shell-breakout${isReturningHome ? ' artist-returning-home' : ''}`} style={pageStyle}>
@@ -434,6 +435,25 @@ function ArtistPage() {
         <Link to="/goods">Goods</Link>
         <CartNavLink />
       </nav>
+
+      <div className="artist-menu-wrap">
+        <button
+          className="artist-menu-button"
+          type="button"
+          aria-label={isArtistMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+          aria-expanded={isArtistMenuOpen}
+          aria-controls="artist-menu"
+          onClick={() => setIsArtistMenuOpen((value) => !value)}
+        >
+          <span aria-hidden="true" />
+        </button>
+        <nav className="artist-menu" id="artist-menu" data-open={isArtistMenuOpen} aria-label="Artist navigation">
+          <Link to="/" onClick={() => setIsArtistMenuOpen(false)}>Home</Link>
+          <Link to="/artists" aria-current="page" onClick={() => setIsArtistMenuOpen(false)}>Artists</Link>
+          <Link to="/goods" onClick={() => setIsArtistMenuOpen(false)}>Goods</Link>
+          <CartNavLink />
+        </nav>
+      </div>
 
       <nav className="artist-pager" aria-label="Artist pages">
         <a href="#artist-landing">00</a>

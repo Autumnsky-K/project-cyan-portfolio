@@ -3,8 +3,10 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
+  position: relative;
   padding: 32px;
   border-bottom: 1px solid #d8dadd;
+  background: #ffffff;
 }
 
 .site-eyebrow {
@@ -33,6 +35,54 @@
   gap: 8px;
 }
 
+.site-header .site-menu-button {
+  appearance: none;
+  box-sizing: border-box;
+  display: none;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid #d8dadd;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111111;
+  cursor: pointer;
+  font-size: 0;
+  line-height: 0;
+}
+
+.site-header .site-menu-button span,
+.site-header .site-menu-button span::before,
+.site-header .site-menu-button span::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 999px;
+  content: '';
+}
+
+.site-header .site-menu-button span {
+  position: relative;
+}
+
+.site-header .site-menu-button span::before,
+.site-header .site-menu-button span::after {
+  position: absolute;
+  left: 0;
+}
+
+.site-header .site-menu-button span::before {
+  top: -6px;
+}
+
+.site-header .site-menu-button span::after {
+  top: 6px;
+}
+
 .site-nav a {
   border: 1px solid #d8dadd;
   border-radius: 4px;
@@ -52,23 +102,41 @@
 @media (max-width: 900px) {
   .site-header {
     align-items: flex-start;
-    flex-direction: column;
-    padding-inline: 20px;
+    flex-direction: row;
+    padding: 15px 15px 28px 20px;
+  }
+
+  .site-header .site-menu-button {
+    display: grid;
+    flex: 0 0 auto;
+  }
+
+  .site-nav {
+    position: absolute;
+    top: 58px;
+    right: 11px;
+    z-index: 60;
+    display: none;
+    width: min(180px, calc(100vw - 32px));
+    padding: 6px;
+    border: 1px solid #d8dadd;
+    border-radius: 6px;
+    background: #ffffff;
+    box-shadow: 0 16px 32px rgb(0 0 0 / 14%);
+  }
+
+  .site-nav[data-open='true'] {
+    display: grid;
+  }
+
+  .site-nav a {
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
 @media (max-width: 620px) {
   .site-header h1 {
     font-size: 36px;
-  }
-
-  .site-nav {
-    align-items: stretch;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .site-nav a {
-    width: 100%;
   }
 }

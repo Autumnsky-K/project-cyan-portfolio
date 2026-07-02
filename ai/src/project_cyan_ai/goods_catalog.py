@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from project_cyan_ai.favorite_artists import favorite_artist_ids
+from project_cyan_ai.navigation_intent import build_navigation_response
 from project_cyan_ai.personalization_context import build_personalized_prompt
 from project_cyan_ai.providers.chat_response import (
     ChatResponseProvider,
@@ -19,6 +20,7 @@ from project_cyan_ai.schemas.ws import (
     FullTextMessage,
     HighlightAction,
     NavigateAction,
+    ShowRecommendationsAction,
 )
 
 GOODS_SEARCH_TIMEOUT_SECONDS = 2.0
@@ -90,6 +92,7 @@ GOODS_SELECTOR_PATTERN = re.compile(r"data-goods-id=['\"](\d+)['\"]")
 UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
 FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
 FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
+FOLLOW_UP_NAVIGATION_EMPTY_TEXT = "먼저 추천받을 상품을 알려주세요."
 KOREAN_NUMBER_WORDS = {
     "첫": 1,
     "한": 1,
@@ -308,6 +311,17 @@ class CatalogGroundedChatResponseProvider:
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
     ) -> FullTextMessage:
+        if not self.recent_recommendation_candidates:
+            self.recent_recommendation_candidates = recent_candidates_from_context(context)
+        numbered_follow_up_response = build_numbered_follow_up_response(
+            text,
+            self.recent_recommendation_candidates,
+        )
+        if numbered_follow_up_response is not None:
+            return numbered_follow_up_response
+        navigation_response = build_navigation_response(text, context, self.delegate)
+        if navigation_response is not None:
+            return navigation_response
         follow_up_response = build_follow_up_cart_response(
             text,
             self.recent_recommendation_candidates,
@@ -333,25 +347,28 @@ class CatalogGroundedChatResponseProvider:
                 ),
                 context,
             )
-        self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
         if not candidates:
             return FullTextMessage(
                 text="조건에 맞는 판매 가능한 상품을 찾지 못했어요.",
                 actions=[],
             )
+        recommended_candidates = candidates[:3]
+        self.recent_recommendation_candidates = normalize_recent_candidates(
+            recommended_candidates
+        )
 
         if isinstance(self.delegate, MockChatResponseProvider):
-            return build_mock_catalog_response(text, candidates)
+            return build_mock_catalog_response(text, recommended_candidates)
 
         prompt = build_personalized_prompt(
-            build_catalog_prompt(text, candidates, favorite_artists),
+            build_catalog_prompt(text, recommended_candidates, favorite_artists),
             personalization_context,
         )
         prompt = self._with_instruction(prompt, response_instruction)
         response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
-            for candidate in candidates
+            for candidate in recommended_candidates
             if candidate.get("goodsId") is not None
         }
         return FullTextMessage(
@@ -362,9 +379,12 @@ class CatalogGroundedChatResponseProvider:
                     for action in response.actions
                     if action_goods_id(action) in allowed_goods_ids
                 ],
-                candidates,
+                recommended_candidates,
             ),
-            metadata={**response.metadata, **recommendation_metadata(candidates)},
+            metadata={
+                **response.metadata,
+                **recommendation_metadata(recommended_candidates),
+            },
         )
 
     def _with_instruction(self, text: str, instruction: str) -> str:
@@ -380,6 +400,42 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return text
         return build_personalized_prompt(text, personalization_context)
+
+
+def recent_candidates_from_context(
+    context: dict[str, Any] | Any | None,
+) -> list[dict[str, Any]]:
+    if context is None:
+        return []
+    recommendations = (
+        context.get("recentRecommendations")
+        if isinstance(context, dict)
+        else getattr(context, "recentRecommendations", None)
+    )
+    if not isinstance(recommendations, list):
+        return []
+    normalized = []
+    for recommendation in recommendations:
+        goods_id = (
+            recommendation.get("goodsId")
+            if isinstance(recommendation, dict)
+            else getattr(recommendation, "goodsId", None)
+        )
+        if goods_id is None or not str(goods_id).isdigit():
+            continue
+        rank_order = (
+            recommendation.get("rankOrder")
+            if isinstance(recommendation, dict)
+            else getattr(recommendation, "rankOrder", None)
+        )
+        normalized.append({"goodsId": goods_id, "rankOrder": rank_order})
+    return sorted(
+        normalized,
+        key=lambda candidate: (
+            candidate["rankOrder"] is None,
+            candidate["rankOrder"] if candidate["rankOrder"] is not None else 0,
+        ),
+    )
 
 
 def has_product_intent(text: str) -> bool:
@@ -841,6 +897,58 @@ def build_follow_up_cart_response(
     )
 
 
+def build_numbered_follow_up_response(
+    text: str,
+    recent_candidates: list[dict[str, Any]],
+) -> FullTextMessage | None:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    selected_indexes = extract_selected_indexes(normalized_text)
+    if not selected_indexes:
+        return None
+
+    is_cart_action = is_cart_add_text(normalized_text)
+    is_navigation_action = is_recommendation_navigation_text(normalized_text)
+    if not is_cart_action and not is_navigation_action:
+        return None
+
+    if not recent_candidates:
+        return FullTextMessage(
+            text=FOLLOW_UP_EMPTY_TEXT if is_cart_action else FOLLOW_UP_NAVIGATION_EMPTY_TEXT,
+            actions=[],
+        )
+    if any(index >= len(recent_candidates) for index in selected_indexes):
+        return FullTextMessage(
+            text=f"추천 상품은 {len(recent_candidates)}개예요.",
+            actions=[],
+        )
+
+    selection = [recent_candidates[index] for index in selected_indexes]
+    if is_cart_action:
+        count = len(selection)
+        return FullTextMessage(
+            text=(
+                "방금 추천한 상품을 장바구니에 담을게요."
+                if count == 1
+                else f"방금 추천한 {count}개 상품을 장바구니에 담을게요."
+            ),
+            actions=[
+                AddToCartAction(goodsId=str(candidate["goodsId"]))
+                for candidate in selection
+            ],
+        )
+
+    goods_ids = [str(candidate["goodsId"]) for candidate in selection]
+    if len(goods_ids) == 1:
+        return FullTextMessage(
+            text="선택한 추천 상품으로 이동할게요.",
+            actions=[NavigateAction(path=f"/goods/{goods_ids[0]}")],
+        )
+    return FullTextMessage(
+        text=f"선택한 {len(goods_ids)}개 추천 상품을 보여드릴게요.",
+        actions=[ShowRecommendationsAction(goodsIds=goods_ids)],
+    )
+
+
 def select_follow_up_candidates(
     text: str,
     recent_candidates: list[dict[str, Any]],
@@ -909,6 +1017,25 @@ def to_zero_based_unique_indexes(numbers: list[int]) -> list[int]:
 
 def is_cart_follow_up_text(normalized_text: str) -> bool:
     return "담" in normalized_text or "장바구니" in normalized_text
+
+
+def is_cart_add_text(normalized_text: str) -> bool:
+    return any(keyword in normalized_text for keyword in ("담", "넣어", "추가"))
+
+
+def is_recommendation_navigation_text(normalized_text: str) -> bool:
+    return any(
+        keyword in normalized_text
+        for keyword in ("이동", "보여", "열어", "가줘", "가 주세요")
+    )
+
+
+def is_numbered_recommendation_follow_up(text: str) -> bool:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    return bool(extract_selected_indexes(normalized_text)) and (
+        is_cart_add_text(normalized_text)
+        or is_recommendation_navigation_text(normalized_text)
+    )
 
 
 def normalize_recent_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -995,9 +1122,19 @@ def build_catalog_prompt(
     )
 
 
-def default_candidate_actions(candidates: list[dict[str, Any]]) -> list[NavigateAction | HighlightAction]:
+def default_candidate_actions(
+    candidates: list[dict[str, Any]],
+) -> list[NavigateAction | HighlightAction | ShowRecommendationsAction]:
+    goods_ids = [
+        str(candidate["goodsId"])
+        for candidate in candidates
+        if candidate.get("goodsId") is not None and str(candidate["goodsId"]).isdigit()
+    ]
+    if len(goods_ids) >= 2:
+        return [ShowRecommendationsAction(goodsIds=goods_ids)]
+
     actions: list[NavigateAction | HighlightAction] = []
-    for index, candidate in enumerate(candidates[:3]):
+    for index, candidate in enumerate(candidates):
         goods_id = candidate.get("goodsId")
         if goods_id is None:
             continue
@@ -1030,6 +1167,12 @@ def merge_candidate_actions(
     actions: list[Any],
     candidates: list[dict[str, Any]],
 ) -> list[Any]:
+    if len(candidates) >= 2:
+        return [
+            *default_candidate_actions(candidates),
+            *[action for action in actions if isinstance(action, AddToCartAction)],
+        ]
+
     merged_actions = limit_navigate_actions(actions)
     existing_keys = {
         (action.__class__.__name__, action_goods_id(action))
@@ -1060,15 +1203,16 @@ def build_mock_catalog_response(
     candidates: list[dict[str, Any]],
 ) -> FullTextMessage:
     first = candidates[0]
-    goods_id = str(first["goodsId"])
-    actions = [
-        NavigateAction(path=f"/goods/{goods_id}"),
-        HighlightAction(selector=f"[data-goods-id='{goods_id}']"),
-    ]
+    actions: list[Any] = default_candidate_actions(candidates)
     if "장바구니" in text or "담아" in text:
-        actions.append(AddToCartAction(goodsId=goods_id))
+        actions.append(AddToCartAction(goodsId=str(first["goodsId"])))
+    response_text = (
+        f"{first.get('name', '추천 상품')}을 추천해요."
+        if len(candidates) == 1
+        else f"조건에 맞는 {len(candidates)}개 상품을 추천해요."
+    )
     return FullTextMessage(
-        text=f"{first.get('name', '추천 상품')}을 추천해요.",
+        text=response_text,
         actions=actions,
         metadata=recommendation_metadata(candidates),
     )

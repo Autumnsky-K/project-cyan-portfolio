@@ -115,16 +115,20 @@ async def client_ws(websocket: WebSocket):
         hook_filter=hook_filter,
     )
 
-    await websocket.send_json(
-        FullTextMessage(text="안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카드 담기까지 모두 해드릴게요!").model_dump()
-    )
-    await websocket.send_json(
+    if not await send_websocket_json(
+        websocket,
+        FullTextMessage(text="안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카트 담기까지 모두 해드릴게요!").model_dump(),
+    ):
+        return
+    if not await send_websocket_json(
+        websocket,
         ModelConfigMessage(
             conf_name="project-cyan-ai",
             conf_uid="default",
             client_uid=client_uid,
-        ).model_dump()
-    )
+        ).model_dump(),
+    ):
+        return
 
     try:
         while True:
@@ -143,63 +147,72 @@ async def client_ws(websocket: WebSocket):
                     guest_state.reset()
                     response_provider.clear_connection_context()
                 except ValidationError:
-                    await websocket.send_json(
+                    if not await send_websocket_json(websocket,
                         FullTextMessage(
                             text="인증 정보를 확인해주세요.",
                             actions=[],
-                        ).model_dump()
-                    )
+                        ).model_dump(),
+                    ):
+                        return
                 continue
 
             if data.get("type") != CLIENT_TEXT_INPUT_TYPE:
-                await websocket.send_json(
+                if not await send_websocket_json(websocket,
                     FullTextMessage(
                         text="지원하지 않는 메시지 형식이에요.",
                         actions=[],
-                    ).model_dump()
-                )
+                    ).model_dump(),
+                ):
+                    return
                 continue
 
             raw_text = data.get("text")
             if isinstance(raw_text, str):
                 blocked_response = hook_filter.filter_input(raw_text.strip())
                 if blocked_response is not None:
-                    await websocket.send_json(
+                    if not await send_websocket_json(websocket,
                         apply_behavior_metadata(
                             blocked_response,
                             runtime_config_provider.get(),
                             blocked=True,
-                        ).model_dump()
-                    )
+                        ).model_dump(),
+                    ):
+                        return
                     continue
 
             try:
                 message = ClientTextInput.model_validate(data)
             except ValidationError:
-                await websocket.send_json(
+                if not await send_websocket_json(websocket,
                     FullTextMessage(
                         text="입력 내용을 확인해주세요.",
                         actions=[],
-                    ).model_dump()
-                )
+                    ).model_dump(),
+                ):
+                    return
                 continue
 
             blocked_response = hook_filter.filter_input(message.text)
             if blocked_response is not None:
-                await websocket.send_json(blocked_response.model_dump())
+                if not await send_websocket_json(websocket, blocked_response.model_dump()):
+                    return
                 continue
 
             if not access_token:
                 auth_reason = classify_auth_required(message.text)
                 if auth_reason is not None:
-                    await websocket.send_json(
-                        build_auth_required_response(auth_reason).model_dump()
-                    )
+                    if not await send_websocket_json(
+                        websocket,
+                        build_auth_required_response(auth_reason).model_dump(),
+                    ):
+                        return
                     continue
                 if guest_state.limit_reached:
-                    await websocket.send_json(
-                        build_auth_required_response("guestLimit").model_dump()
-                    )
+                    if not await send_websocket_json(
+                        websocket,
+                        build_auth_required_response("guestLimit").model_dump(),
+                    ):
+                        return
                     continue
                 guest_state.record_request()
 
@@ -297,7 +310,8 @@ async def client_ws(websocket: WebSocket):
             elif not access_token:
                 guest_state.append_exchange(message.text, response.text)
 
-            await websocket.send_json(response.model_dump())
+            if not await send_websocket_json(websocket, response.model_dump()):
+                return
 
     except WebSocketDisconnect:
         pass
@@ -309,6 +323,14 @@ async def client_ws(websocket: WebSocket):
                 chat_history_client,
                 summary_provider,
             )
+
+
+async def send_websocket_json(websocket: WebSocket, payload: dict) -> bool:
+    try:
+        await websocket.send_json(payload)
+        return True
+    except (WebSocketDisconnect, OSError):
+        return False
 
 
 def finalize_session(

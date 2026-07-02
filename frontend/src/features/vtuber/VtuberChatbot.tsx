@@ -60,7 +60,13 @@ function VtuberChatbot(): ReactElement {
   const [chatAuthStatus, setChatAuthStatus] = useState<ChatAuthStatus>('anonymous')
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
   const { actionBatchId, actions, connectionStatus, latestText, metadata, sendText } =
-    useVtuberWebSocket(INITIAL_BUBBLE_TEXT, items, chatSessionId, chatAccessToken)
+    useVtuberWebSocket(
+      INITIAL_BUBBLE_TEXT,
+      items,
+      chatSessionId,
+      chatAccessToken,
+      location.pathname,
+    )
 
   useEffect(() => {
     let active = true

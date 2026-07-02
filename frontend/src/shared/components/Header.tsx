@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import CartNavLink from '../../features/cart/CartNavLink'
 import './Header.css'
@@ -16,6 +17,11 @@ function isCurrentPath(pathname: string, to: string) {
 export default function Header() {
   const { pathname } = useLocation()
   const currentItem = NAV_ITEMS.find((item) => isCurrentPath(pathname, item.to))
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setIsMenuOpen(false)
+  }, [pathname])
 
   return (
     <header className="site-header">
@@ -29,7 +35,17 @@ export default function Header() {
           )}
         </h1>
       </div>
-      <nav className="site-nav" aria-label="Store navigation">
+      <button
+        className="site-menu-button"
+        type="button"
+        aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+        aria-expanded={isMenuOpen}
+        aria-controls="site-navigation"
+        onClick={() => setIsMenuOpen((value) => !value)}
+      >
+        <span aria-hidden="true" />
+      </button>
+      <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="Store navigation">
         {NAV_ITEMS.map((item) => {
           const isCurrent = isCurrentPath(pathname, item.to)
 

@@ -23,7 +23,14 @@ export type VtuberClientTextInputMessage = {
   sessionId?: number
   context?: {
     cartItems?: VtuberClientCartItem[]
+    recentRecommendations?: VtuberClientRecentRecommendation[]
+    currentPath?: string
   }
+}
+
+export type VtuberClientRecentRecommendation = {
+  goodsId: string | number
+  rankOrder?: number
 }
 
 export type VtuberClientAuthMessage = {
@@ -55,6 +62,11 @@ export type AddToCartAction = {
   goodsId: string
 }
 
+export type ShowRecommendationsAction = {
+  type: 'showRecommendations'
+  goodsIds: string[]
+}
+
 export type UnknownVtuberAction = {
   type: string
   [key: string]: unknown
@@ -64,6 +76,7 @@ export type VtuberAction =
   | NavigateAction
   | HighlightAction
   | AddToCartAction
+  | ShowRecommendationsAction
   | UnknownVtuberAction
 
 export type VtuberRecommendationMetadata = {

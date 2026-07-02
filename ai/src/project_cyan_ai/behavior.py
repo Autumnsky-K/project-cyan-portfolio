@@ -6,8 +6,12 @@ from threading import Lock
 from typing import Any
 from uuid import uuid4
 
-from project_cyan_ai.goods_catalog import CatalogGroundedChatResponseProvider
+from project_cyan_ai.goods_catalog import (
+    CatalogGroundedChatResponseProvider,
+    is_numbered_recommendation_follow_up,
+)
 from project_cyan_ai.hook_policy import HookFilter
+from project_cyan_ai.navigation_intent import is_navigation_intent_candidate
 from project_cyan_ai.providers import ChatResponseProvider
 from project_cyan_ai.runtime_config import RuntimeConfig
 from project_cyan_ai.schemas.ws import FullTextMessage
@@ -74,7 +78,7 @@ def _fallback_motion(response: FullTextMessage, *, blocked: bool = False) -> str
     action_types = {action.type for action in response.actions}
     if "addToCart" in action_types:
         return "nod"
-    if action_types.intersection({"navigate", "highlight"}):
+    if action_types.intersection({"navigate", "highlight", "showRecommendations"}):
         return "point"
     return "idle"
 
@@ -220,7 +224,15 @@ class BehaviorEngine:
         )
 
         search_output = ""
-        if blocked_response is None and config.pipeline_mode == "faithful18":
+        navigation_candidate = (
+            is_navigation_intent_candidate(normalized_text)
+            or is_numbered_recommendation_follow_up(normalized_text)
+        )
+        if (
+            blocked_response is None
+            and config.pipeline_mode == "faithful18"
+            and not navigation_candidate
+        ):
             started = time.perf_counter()
             search_output = self.base_provider.build_response(search_input).text
             highlight_terms = re.findall(r"《([^》]+)》", search_output)
@@ -242,7 +254,7 @@ class BehaviorEngine:
             started = time.perf_counter()
             add_step(
                 10,
-                [_line("function-report", "optimized 또는 Hook 차단으로 검색 LLM 생략")],
+                [_line("function-report", "optimized, 이동 의도 또는 Hook 차단으로 검색 LLM 생략")],
                 started,
                 "SKIPPED",
             )

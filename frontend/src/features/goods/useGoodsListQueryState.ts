@@ -13,6 +13,8 @@ const ALLOWED_SORTS = new Set(['createdAt,desc', VIEW_COUNT_SORT, LIKE_COUNT_SOR
 const ALLOWED_VIEW_PERIODS = new Set([DEFAULT_VIEW_PERIOD, 'day', '7d', '30d'])
 const EMPTY_FILTERS: GoodsSelectedFilters = { categoryIds: [], artistIds: [], tags: [] }
 const GOODS_LIST_SCROLL_STATE_KEY = 'goodsListScrollY'
+const MAX_RECOMMENDED_GOODS = 20
+const SHOW_RECOMMENDATIONS_EVENT = 'project-cyan:show-recommendations'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -54,6 +56,9 @@ function readState() {
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
     section: params.get('section') === 'favorites' ? 'favorites' as const : 'all' as const,
     viewMode: params.get('view') === 'list' ? 'list' as const : 'grid' as const,
+    recommendedGoodsIds: [...new Set(
+      readFilterParam(params, 'recommendations').filter((value) => /^\d+$/.test(value)),
+    )].slice(0, MAX_RECOMMENDED_GOODS),
     selectedFilters: {
       categoryIds: readFilterParam(params, 'categories'),
       artistIds: readFilterParam(params, 'artists'),
@@ -70,6 +75,7 @@ function createUrl(
   filters: GoodsSelectedFilters,
   section: GoodsSection,
   viewMode: GoodsViewMode,
+  recommendedGoodsIds: string[],
 ) {
   const params = new URLSearchParams()
   if (query.trim()) params.set('q', query.trim())
@@ -81,18 +87,24 @@ function createUrl(
   if (filters.tags.length) params.set('tags', filters.tags.join(';'))
   if (section === 'favorites') params.set('section', 'favorites')
   if (viewMode === 'list') params.set('view', 'list')
+  if (recommendedGoodsIds.length >= 2) {
+    params.set('recommendations', recommendedGoodsIds.join(','))
+  }
   return `${window.location.pathname}${params.size ? `?${params.toString()}` : ''}`
 }
 
 export function useGoodsListQueryState() {
   const [initialState] = useState(readState)
-  const [query, setQuery] = useState(initialState.query)
+  const [query, setQueryState] = useState(initialState.query)
   const [sort, setSort] = useState(initialState.sort)
   const [viewPeriod, setViewPeriod] = useState(initialState.viewPeriod)
   const [page, setPage] = useState(initialState.page)
   const [section, setSection] = useState<GoodsSection>(initialState.section)
   const [viewMode, setViewMode] = useState<GoodsViewMode>(initialState.viewMode)
   const [selectedFilters, setSelectedFilters] = useState(initialState.selectedFilters)
+  const [recommendedGoodsIds, setRecommendedGoodsIds] = useState(
+    initialState.recommendedGoodsIds,
+  )
   const [pendingHistoryScrollY, setPendingHistoryScrollY] = useState<number | null>(null)
   const committedQueryRef = useRef(initialState.query.trim())
   const pageHistoryActionRef = useRef<'push' | 'replace'>('replace')
@@ -108,7 +120,8 @@ export function useGoodsListQueryState() {
     categoryIds: expandFilterValues(selectedFilters.categoryIds).join(','),
     artistIds: expandFilterValues(selectedFilters.artistIds).join(','),
     tags: expandFilterValues(selectedFilters.tags).join(','),
-  }), [debouncedQuery, page, selectedFilters, sort, viewPeriod])
+    goodsIds: recommendedGoodsIds.join(','),
+  }), [debouncedQuery, page, recommendedGoodsIds, selectedFilters, sort, viewPeriod])
 
   useEffect(() => {
     const nextUrl = createUrl(
@@ -119,6 +132,7 @@ export function useGoodsListQueryState() {
       selectedFilters,
       section,
       viewMode,
+      recommendedGoodsIds,
     )
     if (pageHistoryActionRef.current === 'push') {
       window.history.pushState(null, '', nextUrl)
@@ -126,28 +140,54 @@ export function useGoodsListQueryState() {
       return
     }
     window.history.replaceState(window.history.state, '', nextUrl)
-  }, [page, section, selectedFilters, sort, viewMode, viewPeriod])
+  }, [page, recommendedGoodsIds, section, selectedFilters, sort, viewMode, viewPeriod])
 
   useEffect(() => {
     function restoreHistoryState(event: PopStateEvent) {
       const restored = readState()
       committedQueryRef.current = restored.query.trim()
       setPendingHistoryScrollY(readHistoryScrollY(event.state))
-      setQuery(restored.query)
+      setQueryState(restored.query)
       setSort(restored.sort)
       setViewPeriod(restored.viewPeriod)
       setPage(restored.page)
       setSection(restored.section)
       setViewMode(restored.viewMode)
       setSelectedFilters(restored.selectedFilters)
+      setRecommendedGoodsIds(restored.recommendedGoodsIds)
     }
 
     window.addEventListener('popstate', restoreHistoryState)
     return () => window.removeEventListener('popstate', restoreHistoryState)
   }, [])
 
+  useEffect(() => {
+    function showRecommendations(event: Event) {
+      if (!(event instanceof CustomEvent) || !Array.isArray(event.detail?.goodsIds)) {
+        return
+      }
+      const goodsIds: string[] = [...new Set<string>(
+        event.detail.goodsIds.filter((value: unknown): value is string => (
+          typeof value === 'string' && /^\d+$/.test(value)
+        )),
+      )].slice(0, MAX_RECOMMENDED_GOODS)
+      if (goodsIds.length < 2) return
+
+      committedQueryRef.current = ''
+      setQueryState('')
+      setPage(0)
+      setSection('all')
+      setSelectedFilters(EMPTY_FILTERS)
+      setRecommendedGoodsIds(goodsIds)
+    }
+
+    window.addEventListener(SHOW_RECOMMENDATIONS_EVENT, showRecommendations)
+    return () => window.removeEventListener(SHOW_RECOMMENDATIONS_EVENT, showRecommendations)
+  }, [])
+
   function toggleFilter(param: GoodsFilterParam, value: string) {
     setPage(0)
+    setRecommendedGoodsIds([])
     setSelectedFilters((current) => ({
       ...current,
       [param]: current[param].includes(value)
@@ -158,17 +198,34 @@ export function useGoodsListQueryState() {
 
   function reset() {
     committedQueryRef.current = ''
-    setQuery('')
+    setQueryState('')
     setSort('createdAt,desc')
     setViewPeriod(DEFAULT_VIEW_PERIOD)
     setPage(0)
     setSelectedFilters(EMPTY_FILTERS)
+    setRecommendedGoodsIds([])
+  }
+
+  function setQuery(value: string) {
+    setRecommendedGoodsIds([])
+    setQueryState(value)
+  }
+
+  function updateSelectedFilters(filters: GoodsSelectedFilters) {
+    setRecommendedGoodsIds([])
+    setSelectedFilters(filters)
+  }
+
+  function clearRecommendations() {
+    setRecommendedGoodsIds([])
+    setPage(0)
   }
 
   function commitSearch(value: string) {
     const normalizedValue = value.trim()
     if (normalizedValue === committedQueryRef.current) return
     committedQueryRef.current = normalizedValue
+    setRecommendedGoodsIds([])
     window.history.pushState(null, '', createUrl(
       normalizedValue,
       sort,
@@ -177,6 +234,7 @@ export function useGoodsListQueryState() {
       selectedFilters,
       section,
       viewMode,
+      [],
     ))
   }
 
@@ -206,7 +264,9 @@ export function useGoodsListQueryState() {
     viewMode,
     setViewMode,
     selectedFilters,
-    setSelectedFilters,
+    setSelectedFilters: updateSelectedFilters,
+    recommendedGoodsIds,
+    clearRecommendations,
     requestParams,
     pendingHistoryScrollY,
     clearPendingHistoryScroll,

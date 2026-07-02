@@ -1,8 +1,10 @@
 package com.projectcyan.member.auth;
 
+import com.projectcyan.common.ApiErrorException;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
@@ -25,9 +27,18 @@ public class CurrentMemberArgumentResolver implements HandlerMethodArgumentResol
 		WebDataBinderFactory binderFactory
 	) {
 		HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
-		if (request == null) {
-			return null;
+		if (request != null) {
+			Object currentMember = request.getAttribute(
+				SupabaseJwtAuthenticationFilter.AUTHENTICATED_MEMBER_ATTRIBUTE
+			);
+			if (currentMember instanceof AuthenticatedMember authenticatedMember) {
+				return authenticatedMember;
+			}
 		}
-		return request.getAttribute(SupabaseJwtAuthenticationFilter.AUTHENTICATED_MEMBER_ATTRIBUTE);
+		throw new ApiErrorException(
+			"AUTH_UNAUTHORIZED",
+			"로그인이 필요합니다.",
+			HttpStatus.UNAUTHORIZED
+		);
 	}
 }
