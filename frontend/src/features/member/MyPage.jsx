@@ -716,6 +716,16 @@ function MyPage() {
 
   const dashboardSections = [
     {
+      id: 'likedGoods',
+      title: '찜한상품',
+      items: summary.likedGoods,
+    },
+    {
+      id: 'recentlyViewedGoods',
+      title: '최근본상품',
+      items: summary.recentlyViewedGoods,
+    },
+    {
       id: 'orders',
       title: '구매내역',
       items: summary.orders,
@@ -741,19 +751,9 @@ function MyPage() {
       items: summary.supportInquiries,
     },
     {
-      id: 'recentlyViewedGoods',
-      title: '최근본상품',
-      items: summary.recentlyViewedGoods,
-    },
-    {
       id: 'favoriteArtists',
       title: '관심 아티스트',
       items: summary.favoriteArtists,
-    },
-    {
-      id: 'likedGoods',
-      title: '찜한상품',
-      items: summary.likedGoods,
     },
   ]
 
