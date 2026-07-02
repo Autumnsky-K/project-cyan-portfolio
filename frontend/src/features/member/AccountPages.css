@@ -1599,6 +1599,35 @@
 
   .account-page .site-header {
     margin: -24px -16px 32px;
+    padding: 15px 15px 28px 20px;
+  }
+
+  .account-page .site-menu-button {
+    box-sizing: border-box;
+    width: 40px;
+    min-width: 40px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  .account-page .site-menu-button span,
+  .account-page .site-menu-button span::before,
+  .account-page .site-menu-button span::after {
+    width: 18px;
+    height: 2px;
+  }
+
+  .account-page .site-menu-button span::before {
+    top: -6px;
+  }
+
+  .account-page .site-menu-button span::after {
+    top: 6px;
+  }
+
+  .account-page .site-nav {
+    top: 58px;
+    right: 11px;
   }
 
 }
