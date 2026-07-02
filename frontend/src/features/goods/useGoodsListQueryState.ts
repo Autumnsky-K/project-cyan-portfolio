@@ -166,7 +166,7 @@ export function useGoodsListQueryState() {
       if (!(event instanceof CustomEvent) || !Array.isArray(event.detail?.goodsIds)) {
         return
       }
-      const goodsIds = [...new Set(
+      const goodsIds: string[] = [...new Set<string>(
         event.detail.goodsIds.filter((value: unknown): value is string => (
           typeof value === 'string' && /^\d+$/.test(value)
         )),
