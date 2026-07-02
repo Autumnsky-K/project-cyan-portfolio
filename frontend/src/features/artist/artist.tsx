@@ -425,6 +425,17 @@ function ArtistPage() {
       <div className="artist-grid-overlay" aria-hidden="true" />
       <div className="artist-signal-ring" aria-hidden="true" />
       <div className="cyan-led-frame" aria-hidden="true" />
+      <nav className="artist-floating-nav" aria-label="Artist navigation">
+        <Link to="/" aria-label="Home">
+          Home
+        </Link>
+        <Link to="/artists" aria-current="page">
+          Artists
+        </Link>
+        <Link to="/goods">Goods</Link>
+        <CartNavLink />
+      </nav>
+
       <div className="artist-menu-wrap">
         <button
           className="artist-menu-button"
