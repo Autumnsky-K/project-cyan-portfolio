@@ -201,6 +201,7 @@ function HomePage() {
   const [artists, setArtists] = useState<CmsArtistProfile[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [routingArtistId, setRoutingArtistId] = useState<string | null>(null)
+  const [isHomeMenuOpen, setIsHomeMenuOpen] = useState(false)
   const [artistDeckActiveIndex, setArtistDeckActiveIndex] = useState(0)
   const [artistDeckPaused, setArtistDeckPaused] = useState(false)
   const [artistDeckViewportWidth, setArtistDeckViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth))
@@ -475,14 +476,26 @@ function HomePage() {
       <div className="home-scanline" aria-hidden="true" />
       <div className="cyan-led-frame" aria-hidden="true" />
 
-      <nav className="home-floating-nav" aria-label="Home navigation">
-        <Link to="/" aria-current="page">
-          Home
-        </Link>
-        <Link to="/artists">Artists</Link>
-        <Link to="/goods">Goods</Link>
-        <CartNavLink />
-      </nav>
+      <div className="home-menu-wrap">
+        <button
+          className="home-menu-button"
+          type="button"
+          aria-label={isHomeMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+          aria-expanded={isHomeMenuOpen}
+          aria-controls="home-menu"
+          onClick={() => setIsHomeMenuOpen((value) => !value)}
+        >
+          <span aria-hidden="true" />
+        </button>
+        <nav className="home-menu" id="home-menu" data-open={isHomeMenuOpen} aria-label="Home navigation">
+          <Link to="/" aria-current="page" onClick={() => setIsHomeMenuOpen(false)}>
+            Home
+          </Link>
+          <Link to="/artists" onClick={() => setIsHomeMenuOpen(false)}>Artists</Link>
+          <Link to="/goods" onClick={() => setIsHomeMenuOpen(false)}>Goods</Link>
+          <CartNavLink />
+        </nav>
+      </div>
 
       <nav className="home-pager" aria-label="Home sections">
         {['01', '02', '03', '04', '05', '06', '07'].map((label, index) => (
