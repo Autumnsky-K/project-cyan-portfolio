@@ -264,14 +264,6 @@ button.goods-rating-summary {
   padding: 24px 32px 40px;
 }
 
-.favorites-content {
-  padding: 24px 32px 40px;
-}
-
-.favorites-empty {
-  margin-top: 8px;
-}
-
 .result-summary {
   margin-bottom: 18px;
   scroll-margin-top: 16px;
@@ -918,10 +910,6 @@ button.goods-rating-summary {
 
 @media (max-width: 620px) {
   .goods-section-tabs {
-    padding-inline: 20px;
-  }
-
-  .favorites-content {
     padding-inline: 20px;
   }
 
