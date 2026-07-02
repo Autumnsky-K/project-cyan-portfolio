@@ -75,6 +75,41 @@ public class GoodsService {
 		int size,
 		String sort
 	) {
+		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, false);
+	}
+
+	public PageResponse<GoodsSummaryResponse> findPublicGoods(
+		String q,
+		Long artistId,
+		String artistIds,
+		Long categoryId,
+		String categoryIds,
+		String salesStatus,
+		String tag,
+		String tags,
+		String goodsIds,
+		int page,
+		int size,
+		String sort
+	) {
+		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, true);
+	}
+
+	private PageResponse<GoodsSummaryResponse> findGoods(
+		String q,
+		Long artistId,
+		String artistIds,
+		Long categoryId,
+		String categoryIds,
+		String salesStatus,
+		String tag,
+		String tags,
+		String goodsIds,
+		int page,
+		int size,
+		String sort,
+		boolean publicOnly
+	) {
 		List<Long> selectedGoodsIds = parseIds(goodsIds);
 		List<Long> selectedArtistIds = parseIds(artistIds);
 		if (artistId != null) {
@@ -98,6 +133,9 @@ public class GoodsService {
 			.and(GoodsSpecifications.hasCategories(selectedCategoryIds))
 			.and(GoodsSpecifications.hasSalesStatus(salesStatus))
 			.and(GoodsSpecifications.hasTags(selectedTags));
+		if (publicOnly) {
+			specification = specification.and(GoodsSpecifications.isPubliclyVisible());
+		}
 
 		Pageable pageable = PageRequest.of(
 			Math.max(page, 0),
@@ -127,8 +165,19 @@ public class GoodsService {
 	}
 
 	public GoodsDetailResponse findGoodsDetail(Long goodsId) {
-		Goods goods = goodsRepository.findById(goodsId)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+		return detailResponse(findGoods(goodsId));
+	}
+
+	public GoodsDetailResponse findPublicGoodsDetail(Long goodsId) {
+		Goods goods = findGoods(goodsId);
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return detailResponse(goods);
+	}
+
+	private GoodsDetailResponse detailResponse(Goods goods) {
+		Long goodsId = goods.getGoodsId();
 		goods.setStockCount(goodsStockRepository.findById(goodsId)
 			.map(GoodsStock::getCurrentStock)
 			.orElse(0));
@@ -146,8 +195,10 @@ public class GoodsService {
 	}
 
 	public List<GoodsSummaryResponse> findRelatedGoods(Long goodsId, int size) {
-		Goods goods = goodsRepository.findById(goodsId)
-			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+		Goods goods = findGoods(goodsId);
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
 		int limit = Math.max(1, Math.min(size, 20));
 		LinkedHashMap<Long, Goods> related = new LinkedHashMap<>();
 
@@ -156,14 +207,18 @@ public class GoodsService {
 				goods.getArtist().getArtistId(),
 				goodsId,
 				PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"))
-			).forEach(item -> related.put(item.getGoodsId(), item));
+			).stream()
+				.filter(GoodsVisibility::isPubliclyVisible)
+				.forEach(item -> related.put(item.getGoodsId(), item));
 		}
 		if (related.size() < limit && goods.getCategory() != null) {
 			goodsRepository.findByCategoryCategoryIdAndGoodsIdNot(
 				goods.getCategory().getCategoryId(),
 				goodsId,
 				PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"))
-			).forEach(item -> related.putIfAbsent(item.getGoodsId(), item));
+			).stream()
+				.filter(GoodsVisibility::isPubliclyVisible)
+				.forEach(item -> related.putIfAbsent(item.getGoodsId(), item));
 		}
 		List<Goods> relatedGoods = related.values().stream()
 			.limit(limit)
@@ -196,9 +251,7 @@ public class GoodsService {
 	}
 
 	public PageResponse<GoodsReviewResponse> findGoodsReviews(Long goodsId, int page, int size, String sort) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		return goodsReviewRepository.findReviews(
 			goodsId,
 			Math.max(page, 0),
@@ -208,16 +261,12 @@ public class GoodsService {
 	}
 
 	public GoodsReviewSummary findGoodsReviewSummary(Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		return goodsReviewRepository.findSummary(goodsId);
 	}
 
 	public GoodsReviewResponse findMyGoodsReview(Long goodsId, Long memberId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		return goodsReviewRepository.findMemberReview(goodsId, memberId).orElse(null);
 	}
 
@@ -228,9 +277,7 @@ public class GoodsService {
 		String authorName,
 		GoodsReviewRequest request
 	) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		validateReviewRequest(request);
 		try {
 			return goodsReviewRepository.createReview(
@@ -253,9 +300,7 @@ public class GoodsService {
 		Long memberId,
 		GoodsReviewRequest request
 	) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		validateReviewRequest(request);
 		return goodsReviewRepository.updateReview(
 				goodsId,
@@ -270,12 +315,23 @@ public class GoodsService {
 
 	@Transactional
 	public void deleteGoodsReview(Long goodsId, Long reviewId, Long memberId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		if (!goodsReviewRepository.deleteReview(goodsId, reviewId, memberId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found.");
 		}
+	}
+
+	private Goods findGoods(Long goodsId) {
+		return goodsRepository.findById(goodsId)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+	}
+
+	private Goods findPublicGoods(Long goodsId) {
+		Goods goods = findGoods(goodsId);
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return goods;
 	}
 
 	public GoodsFiltersResponse findGoodsFilters() {
