@@ -324,25 +324,47 @@ function getFirstOrderItem(items) {
   return Array.isArray(items) && items.length > 0 ? items[0] : null
 }
 
+function stripHtml(value) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 function normalizeGoodsSummary(goods, fallback = {}) {
+  const goodsId = goods?.goods_id ?? goods?.goodsId ?? fallback.goodsId
+  const goodsName =
+    goods?.goods_name ??
+    goods?.goodsName ??
+    goods?.name ??
+    fallback.name ??
+    '상품명 확인 중'
+  const description = stripHtml(
+    fallback.description ??
+    goods?.description ??
+    goods?.category_name ??
+    goods?.categoryName ??
+    '',
+  )
+
   return {
-    goodsId: goods?.goods_id ?? goods?.goodsId ?? fallback.goodsId,
-    name:
-      goods?.goods_name ??
-      goods?.goodsName ??
-      fallback.name ??
-      '상품명 확인 중',
+    goodsId,
+    name: goodsName,
     price: Number(goods?.price ?? fallback.price ?? 0),
-    imageUrl: goods?.main_image_url ?? goods?.imageUrl ?? fallback.imageUrl ?? '',
-    description:
-      fallback.description ??
-      goods?.description ??
-      '상품 정보를 확인해 주세요.',
+    imageUrl:
+      goods?.main_image_url ??
+      goods?.image_url ??
+      goods?.imageUrl ??
+      goods?.image ??
+      fallback.imageUrl ??
+      '',
+    description: description || '상품 정보를 확인해 주세요.',
   }
 }
 
 async function getGoodsByIds(goodsIds) {
-  const uniqueGoodsIds = [...new Set(goodsIds.filter(Boolean))]
+  const uniqueGoodsIds = [...new Set(goodsIds.filter(Boolean).map((goodsId) => Number(goodsId)))]
 
   if (uniqueGoodsIds.length === 0) {
     return new Map()
@@ -350,7 +372,7 @@ async function getGoodsByIds(goodsIds) {
 
   const { data, error } = await supabase
     .from('goods')
-    .select('goods_id, goods_name, price, description, main_image_url')
+    .select('*')
     .in('goods_id', uniqueGoodsIds)
 
   if (error) {
@@ -358,7 +380,7 @@ async function getGoodsByIds(goodsIds) {
     return new Map()
   }
 
-  return new Map(data.map((goods) => [goods.goods_id, goods]))
+  return new Map((data ?? []).map((goods) => [String(goods.goods_id ?? goods.goodsId), goods]))
 }
 
 async function getMyPageOrders(memberId) {
@@ -442,7 +464,7 @@ async function getMyPageRecentlyViewedGoods(memberId) {
   return (data ?? []).map((row) => {
     const viewedAt = formatDateLabel(row.viewed_at)
 
-    return normalizeGoodsSummary(goodsById.get(row.goods_id), {
+    return normalizeGoodsSummary(goodsById.get(String(row.goods_id)), {
       goodsId: row.goods_id,
       description: viewedAt ? `${viewedAt}에 본 상품` : '최근 본 상품',
     })
@@ -503,11 +525,51 @@ async function getMyPageLikedGoods(memberId) {
   return rows.map((row) => {
     const likedAt = formatDateLabel(row.created_at)
 
-    return normalizeGoodsSummary(goodsById.get(row.goods_id), {
+    return normalizeGoodsSummary(goodsById.get(String(row.goods_id)), {
       goodsId: row.goods_id,
       description: likedAt ? `${likedAt}에 찜한 상품` : '찜한 상품',
     })
   })
+}
+
+async function getMyPageGoodsActivity(memberId) {
+  try {
+    const activity = await parseApiResponse(
+      await apiFetch('/members/me/goods-activity'),
+      '상품 활동 내역을 불러오지 못했습니다.',
+    )
+
+    return {
+      recentlyViewedGoods: (activity?.recentlyViewedGoods ?? []).map((goods) =>
+        normalizeGoodsSummary(goods, {
+          goodsId: goods.goodsId,
+          description: goods.activityAt
+            ? `${formatDateLabel(goods.activityAt)}에 본 상품`
+            : '최근 본 상품',
+        }),
+      ),
+      likedGoods: (activity?.likedGoods ?? []).map((goods) =>
+        normalizeGoodsSummary(goods, {
+          goodsId: goods.goodsId,
+          description: goods.activityAt
+            ? `${formatDateLabel(goods.activityAt)}에 찜한 상품`
+            : '찜한 상품',
+        }),
+      ),
+    }
+  } catch (error) {
+    console.warn(error)
+  }
+
+  const [recentlyViewedGoods, likedGoods] = await Promise.all([
+    getMyPageRecentlyViewedGoods(memberId),
+    getMyPageLikedGoods(memberId),
+  ])
+
+  return {
+    recentlyViewedGoods,
+    likedGoods,
+  }
 }
 
 async function getMemberGradeFromTable(userId) {
@@ -887,10 +949,9 @@ export async function getMyPageSummary() {
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
   const memberId = await getMemberId(member.memberId ?? member.userId)
-  const [orders, recentlyViewedGoods, likedGoods] = await Promise.all([
+  const [orders, goodsActivity] = await Promise.all([
     getMyPageOrders(memberId),
-    getMyPageRecentlyViewedGoods(memberId),
-    getMyPageLikedGoods(memberId),
+    getMyPageGoodsActivity(memberId),
   ])
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
@@ -908,13 +969,13 @@ export async function getMyPageSummary() {
     refunds: MY_PAGE_DUMMY_DATA.refunds,
     productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,
     supportInquiries: MY_PAGE_DUMMY_DATA.supportInquiries,
-    recentlyViewedGoods,
+    recentlyViewedGoods: goodsActivity.recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
       status: '선택됨',
       description: `${artist.name} 공식 굿즈와 새 소식을 모아볼 수 있습니다.`,
     })),
-    likedGoods,
+    likedGoods: goodsActivity.likedGoods,
   }
 }
 
