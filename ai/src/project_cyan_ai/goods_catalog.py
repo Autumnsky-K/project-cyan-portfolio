@@ -308,6 +308,8 @@ class CatalogGroundedChatResponseProvider:
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
     ) -> FullTextMessage:
+        if not self.recent_recommendation_candidates:
+            self.recent_recommendation_candidates = recent_candidates_from_context(context)
         follow_up_response = build_follow_up_cart_response(
             text,
             self.recent_recommendation_candidates,
@@ -380,6 +382,42 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return text
         return build_personalized_prompt(text, personalization_context)
+
+
+def recent_candidates_from_context(
+    context: dict[str, Any] | Any | None,
+) -> list[dict[str, Any]]:
+    if context is None:
+        return []
+    recommendations = (
+        context.get("recentRecommendations")
+        if isinstance(context, dict)
+        else getattr(context, "recentRecommendations", None)
+    )
+    if not isinstance(recommendations, list):
+        return []
+    normalized = []
+    for recommendation in recommendations:
+        goods_id = (
+            recommendation.get("goodsId")
+            if isinstance(recommendation, dict)
+            else getattr(recommendation, "goodsId", None)
+        )
+        if goods_id is None or not str(goods_id).isdigit():
+            continue
+        rank_order = (
+            recommendation.get("rankOrder")
+            if isinstance(recommendation, dict)
+            else getattr(recommendation, "rankOrder", None)
+        )
+        normalized.append({"goodsId": goods_id, "rankOrder": rank_order})
+    return sorted(
+        normalized,
+        key=lambda candidate: (
+            candidate["rankOrder"] is None,
+            candidate["rankOrder"] if candidate["rankOrder"] is not None else 0,
+        ),
+    )
 
 
 def has_product_intent(text: str) -> bool:

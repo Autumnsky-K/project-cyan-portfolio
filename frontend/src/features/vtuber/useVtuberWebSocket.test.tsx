@@ -89,4 +89,32 @@ describe('useVtuberWebSocket', () => {
       'text-input',
     ])
   })
+
+  it('sends the last recommendations as follow-up selection context', () => {
+    const { result } = renderHook(() => useVtuberWebSocket('처음'))
+    const socket = FakeWebSocket.instances[0]
+
+    act(() => {
+      socket.emit('open')
+      socket.emit('message', new MessageEvent('message', {
+        data: JSON.stringify({
+          type: 'full-text',
+          text: '추천 결과',
+          actions: [],
+          metadata: {
+            recommendations: [
+              { goodsId: 42, rankOrder: 0 },
+              { goodsId: 84, rankOrder: 1 },
+            ],
+          },
+        }),
+      }))
+    })
+    act(() => expect(result.current.sendText('첫번째 걸 담아줘')).toBe(true))
+
+    expect(JSON.parse(socket.sent[0]).context.recentRecommendations).toEqual([
+      { goodsId: 42, rankOrder: 0 },
+      { goodsId: 84, rankOrder: 1 },
+    ])
+  })
 })

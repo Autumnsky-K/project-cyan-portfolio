@@ -23,7 +23,13 @@ export type VtuberClientTextInputMessage = {
   sessionId?: number
   context?: {
     cartItems?: VtuberClientCartItem[]
+    recentRecommendations?: VtuberClientRecentRecommendation[]
   }
+}
+
+export type VtuberClientRecentRecommendation = {
+  goodsId: string | number
+  rankOrder?: number
 }
 
 export type VtuberClientAuthMessage = {

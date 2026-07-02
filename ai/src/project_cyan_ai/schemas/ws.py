@@ -12,6 +12,7 @@ ACTION_HIGHLIGHT_TYPE = "highlight"
 ACTION_ADD_TO_CART_TYPE = "addToCart"
 CLIENT_TEXT_MAX_LENGTH = 1000
 CLIENT_CART_ITEMS_MAX_LENGTH = 50
+CLIENT_RECENT_RECOMMENDATIONS_MAX_LENGTH = 20
 
 
 class NavigateAction(BaseModel):
@@ -90,12 +91,23 @@ class CartContextItem(BaseModel):
     categoryName: str | None = None
 
 
+class RecentRecommendationContextItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    goodsId: str | int
+    rankOrder: int | None = Field(default=None, ge=0)
+
+
 class ClientContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     cartItems: list[CartContextItem] = Field(
         default_factory=list,
         max_length=CLIENT_CART_ITEMS_MAX_LENGTH,
+    )
+    recentRecommendations: list[RecentRecommendationContextItem] = Field(
+        default_factory=list,
+        max_length=CLIENT_RECENT_RECOMMENDATIONS_MAX_LENGTH,
     )
 
 

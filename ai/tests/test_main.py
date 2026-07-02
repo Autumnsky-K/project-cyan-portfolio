@@ -917,6 +917,29 @@ def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up()
     }
 
 
+def test_catalog_grounding_restores_recent_candidates_from_client_context():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient([]),
+    )
+
+    response = provider.build_response(
+        "첫번째 걸 장바구니에 담아줘",
+        context={
+            "recentRecommendations": [
+                {"goodsId": 1006, "rankOrder": 1},
+                {"goodsId": 1005, "rankOrder": 0},
+            ]
+        },
+    )
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [{"type": "addToCart", "goodsId": "1005"}],
+    }
+
+
 def test_catalog_grounding_adds_multiple_numbered_candidates_to_cart_on_follow_up():
     catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
     provider = CatalogGroundedChatResponseProvider(
@@ -1077,8 +1100,33 @@ def test_client_text_input_accepts_optional_cart_context():
                 "artistName": "Artist A",
                 "categoryName": "Photocard",
             }
-        ]
+        ],
+        "recentRecommendations": [],
     }
+
+
+def test_client_text_input_accepts_recent_recommendation_context():
+    message = ClientTextInput.model_validate(
+        {
+            "type": "text-input",
+            "text": "첫번째 걸 카트에 담아줘",
+            "context": {
+                "cartItems": [],
+                "recentRecommendations": [
+                    {"goodsId": 42, "rankOrder": 0},
+                    {"goodsId": 84, "rankOrder": 1},
+                ],
+            },
+        }
+    )
+
+    assert [
+        recommendation.model_dump()
+        for recommendation in message.context.recentRecommendations
+    ] == [
+        {"goodsId": 42, "rankOrder": 0},
+        {"goodsId": 84, "rankOrder": 1},
+    ]
 
 
 def test_client_text_input_accepts_optional_session_id():
@@ -2141,7 +2189,7 @@ def test_client_ws_sends_initial_messages():
 
     assert greeting == {
         "type": "full-text",
-        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카드 담기까지 모두 해드릴게요!",
+        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카트 담기까지 모두 해드릴게요!",
         "actions": [],
     }
 

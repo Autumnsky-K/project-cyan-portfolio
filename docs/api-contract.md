@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.12` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.13` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -529,7 +529,7 @@
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
 - 클라이언트 → 서버 인증 메시지: `{ "type": "auth", "accessToken": "<Supabase access_token>" }`
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
-- 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
+- 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional), `context.recentRecommendations` (직전 추천 선택 복구용 상품 ID·순위, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional), `metadata.authRequired`, `metadata.authReason`, `metadata.loginPath` (로그인 CTA, optional), `metadata.configVersion`, `metadata.pipelineMode`, `metadata.behavior` (optional)
 - `actions` 배열 형식은 §4 따름
@@ -558,6 +558,7 @@
 - `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
 - `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID다. 인증되지 않은 요청의 `sessionId`는 저장에 사용하지 않는다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
+- `context.recentRecommendations`는 optional이며, 최대 20개의 `{ goodsId, rankOrder? }`를 허용한다. AI 서버는 연결 내 최근 추천 메모리가 없을 때만 이 값을 후속 번호 선택 복구에 사용한다.
 - 로그인 사용자는 WebSocket 연결 후 auth 메시지를 먼저 보낸 뒤 `text-input`에는 access token을 반복 전송하지 않는다.
 - AI 서버는 같은 `sessionId`의 이전 USER/ASSISTANT 메시지를 최근 20개까지 유지해 후속 LLM 요청에 주입한다.
 - WebSocket 재연결 시 현재 세션 메시지를 Spring에서 한 번 복원하며, 다른 세션의 원문은 직접 주입하지 않고 세션 요약만 사용한다.
@@ -668,6 +669,9 @@
 ```json
 {
   "context": {
+    "recentRecommendations": [
+      { "goodsId": 42, "rankOrder": 0 }
+    ],
     "cartItems": [
       {
         "goodsId": 42,
@@ -865,5 +869,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-30 | v0.2.10 | ai | additive | 발행된 Behavior runtime config, 공통 FastAPI 18단계 trace, Hook 문자열 변환, `metadata.behavior` 모션 계약 추가 | Codex |
 | 2026-06-30 | v0.2.11 | ai/admin | additive | AES-GCM LLM 연결 프로필 금고, 관리자 재인증·CSRF, FastAPI 내부 credential resolve, 새 WebSocket 연결 단위 provider 발행·롤백 추가 | Codex |
 | 2026-07-01 | v0.2.12 | 전체 | correction | additive 변경도 PATCH 버전을 반드시 1 올리도록 문서 버전 규칙 통일 | 강승민 |
+| 2026-07-01 | v0.2.13 | ai/cart | additive | WebSocket `context.recentRecommendations`를 추가해 재연결·인증 경계에서도 직전 추천 번호 선택을 복구 | 강승민 |
 |  |  |  |  |  |  |
-
