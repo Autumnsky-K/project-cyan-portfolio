@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Header from '../../shared/components/Header'
 import {
   getArtistOptions,
   getMyPageSummary,
@@ -687,19 +686,17 @@ function MyPage() {
 
   if (isLoading) {
     return (
-      <main className="account-page mypage-page">
-        <Header />
+      <>
         <section className="account-shell account-card account-panel">
           <p className="mypage-empty">마이페이지 정보를 불러오는 중입니다.</p>
         </section>
-      </main>
+      </>
     )
   }
 
   if (!summary) {
     return (
-      <main className="account-page mypage-page">
-        <Header />
+      <>
         <section className="account-shell account-card account-panel">
           <p className="account-feedback account-feedback-error" role="alert">
             {error || '마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'}
@@ -710,7 +707,7 @@ function MyPage() {
             </button>
           </div>
         </section>
-      </main>
+      </>
     )
   }
 
@@ -758,14 +755,13 @@ function MyPage() {
   ]
 
   return (
-    <main className="account-page mypage-page">
+    <>
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}
         type="success"
         onDone={() => setMessage('')}
       />
-      <Header />
       <div className="account-shell">
         <div className="mypage-layout">
           <section className="account-card">
@@ -856,7 +852,7 @@ function MyPage() {
         onSubmit={handleSaveProfile}
         onShowWithdraw={showWithdrawConfirmation}
       />
-    </main>
+    </>
   )
 }
 

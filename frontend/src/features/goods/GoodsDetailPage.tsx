@@ -19,7 +19,6 @@ import RelatedGoodsSection from './RelatedGoodsSection'
 import { formatGoodsPrice } from './goodsFormatters'
 import './goods.css'
 import './goods-detail.css'
-import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
 type DetailTab = 'intro' | 'reviews'
@@ -288,9 +287,7 @@ function GoodsDetailPage() {
   }
 
   return (
-    <main className="goods-page goods-detail-page">
-      <Header />
-
+    <>
       <section className="detail-toolbar">
         <Link className="detail-action" to="/goods">← 상품 목록</Link>
       </section>
@@ -425,7 +422,7 @@ function GoodsDetailPage() {
           <GoodsCartSidePanel />
         </>
       )}
-    </main>
+    </>
   )
 }
 

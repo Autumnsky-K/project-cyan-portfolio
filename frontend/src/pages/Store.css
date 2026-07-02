@@ -12,17 +12,8 @@ body:has(.store-page) {
   --store-ink: #101010;
   --store-shadow: 0 18px 45px rgb(0 0 0 / 0.06);
 
-  min-height: 100svh;
   color: var(--store-text);
-  background:
-    linear-gradient(180deg, #efefec 0, #f7f7f5 360px, #ffffff 100%);
-  text-align: left;
-}
-
-.store-page *,
-.store-page *::before,
-.store-page *::after {
-  box-sizing: border-box;
+  background: transparent;
 }
 
 .store-page .cart-step-list a,
@@ -54,6 +45,11 @@ body:has(.store-page) {
   padding: 0px 0 34px;
   border-bottom: 1px solid var(--store-line);
   background: transparent;
+}
+
+.cart-page .store-page .store-toolbar,
+.cart-page .store-page .store-layout {
+  width: 100%;
 }
 
 .store-page .store-toolbar::before {

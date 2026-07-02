@@ -22,7 +22,6 @@ import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
-import Header from '../../shared/components/Header'
 
 type LoadStatus = 'loading' | 'refreshing' | 'data' | 'empty' | 'error'
 type FilterStatus = 'loading' | 'data' | 'error'
@@ -359,9 +358,7 @@ function GoodsPage() {
   const closeMobileFilters = useCallback(() => setIsMobileFilterOpen(false), [])
 
   return (
-    <main className="goods-page">
-      <Header />
-
+    <>
       {activeSection === 'all' && (
         <>
       <section className="store-toolbar" ref={searchToolbarRef} aria-label="굿즈 검색 및 정렬">
@@ -533,7 +530,7 @@ function GoodsPage() {
         </section>
       )}
       <GoodsCartSidePanel />
-    </main>
+    </>
   )
 }
 

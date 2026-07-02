@@ -1,0 +1,43 @@
+.store-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100svh;
+  background: #ffffff;
+}
+
+.store-shell > .site-header {
+  margin: 0;
+}
+
+.store-main {
+  flex: 1 1 auto;
+  width: min(1320px, calc(100% - 48px));
+  min-width: 0;
+  min-height: 0;
+  margin-inline: auto;
+  background: #ffffff;
+  text-align: left;
+}
+
+.store-main,
+.store-main *,
+.store-main *::before,
+.store-main *::after {
+  box-sizing: border-box;
+}
+
+/* Mypage previously received this spacing from its page-level header. */
+.store-main.mypage-page {
+  padding-top: 32px;
+}
+
+@media (max-width: 520px) {
+  .store-main {
+    width: calc(100% - 32px);
+  }
+
+  .store-main.mypage-page {
+    padding-top: 24px;
+  }
+}

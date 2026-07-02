@@ -6,10 +6,7 @@
   --goods-panel: #ffffff;
   --goods-ink: #111111;
 
-  min-height: 100svh;
   color: var(--goods-text);
-  background: #ffffff;
-  text-align: left;
 }
 
 .store-toolbar input,

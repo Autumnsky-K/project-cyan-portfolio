@@ -20,6 +20,7 @@ import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot'
 import { isVtuberVisiblePath } from './features/vtuber/visibility'
+import StoreLayout from './shared/layouts/StoreLayout'
 
 function AppShell() {
   const { pathname } = useLocation()
@@ -47,12 +48,15 @@ function AppShell() {
       <div id="content">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/goods" element={<GoodsPage />} />
-          <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
-          <Route
-            path="/cart"
-            element={<Store mode="cart" />}
-          />
+          <Route element={<StoreLayout />}>
+            <Route path="/goods" element={<GoodsPage />} />
+            <Route path="/goods/:goodsId" element={<GoodsDetailPage />} />
+            <Route
+              path="/cart"
+              element={<Store mode="cart" />}
+            />
+            <Route path="/mypage" element={<MyPage />} />
+          </Route>
           <Route path="/artists" element={<ArtistPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
@@ -80,7 +84,6 @@ function AppShell() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/like" element={<LikePage />} />
           <Route path="/likes/artists" element={<LikePage />} />
-          <Route path="/mypage" element={<MyPage />} />
         </Routes>
       </div>
       {showVtuber && <VtuberChatbot />}
