@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsAllSection from './GoodsAllSection'
 import type { GoodsSelectedFilters } from './GoodsFilterUi'
 import { useGoodsFilters } from './useGoodsFilters'
 import { useGoodsLikeState } from './useGoodsLikeState'
+import { useGoodsListEffects } from './useGoodsListEffects'
 import { useGoodsListData } from './useGoodsListData'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
@@ -68,45 +69,6 @@ function GoodsPage() {
     handleLikeToggle,
   } = useGoodsLikeState(goods, navigateToLogin)
 
-  useLayoutEffect(() => {
-    if (status !== 'empty' || searchScrollPositionRef.current === null) {
-      return
-    }
-
-    window.scrollTo({ top: searchScrollPositionRef.current })
-    searchScrollPositionRef.current = null
-  }, [status])
-
-  useLayoutEffect(() => {
-    if (pendingHistoryScrollY === null || status === 'loading' || status === 'refreshing') {
-      return
-    }
-
-    const animationFrameId = window.requestAnimationFrame(() => {
-      window.scrollTo({ top: pendingHistoryScrollY, left: 0, behavior: 'auto' })
-      clearPendingHistoryScroll()
-    })
-
-    return () => window.cancelAnimationFrame(animationFrameId)
-  }, [clearPendingHistoryScroll, pendingHistoryScrollY, status])
-
-  useEffect(() => {
-    const resetToken = (location.state as { resetGoodsList?: number } | null)?.resetGoodsList
-    if (!resetToken) return
-
-    reset()
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    })
-    navigate('/goods', { replace: true, state: null })
-  }, [location.state, navigate, reset])
-
-  const scrollToResults = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    window.requestAnimationFrame(() => {
-      resultsStartRef.current?.scrollIntoView({ behavior, block: 'start' })
-    })
-  }, [])
-
   function resetFilters() {
     reset()
   }
@@ -119,44 +81,30 @@ function GoodsPage() {
 
   const hasGoods = goods.length > 0
   const isViewCountSort = sort === 'viewCount,desc'
-
-  useEffect(() => {
-    if (status !== 'data' || recommendedGoodsIds.length < 2) return undefined
-
-    const highlightedElements: HTMLElement[] = []
-    const frameId = window.requestAnimationFrame(() => {
-      recommendedGoodsIds.forEach((goodsId) => {
-        const element = document.querySelector<HTMLElement>(`[data-goods-id="${goodsId}"]`)
-        if (!element) return
-        element.classList.add('vtuber-action-highlight')
-        highlightedElements.push(element)
-      })
-      highlightedElements[0]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest',
-      })
-    })
-    const timerId = window.setTimeout(() => {
-      highlightedElements.forEach((element) => {
-        element.classList.remove('vtuber-action-highlight')
-      })
-    }, 2200)
-
-    return () => {
-      window.cancelAnimationFrame(frameId)
-      window.clearTimeout(timerId)
-      highlightedElements.forEach((element) => {
-        element.classList.remove('vtuber-action-highlight')
-      })
-    }
-  }, [recommendedGoodsIds, status])
+  const navigateToCleanGoodsList = useCallback(() => {
+    navigate('/goods', { replace: true, state: null })
+  }, [navigate])
+  const {
+    rememberSearchScrollPosition,
+    scrollToPageTop,
+    scrollToResults,
+  } = useGoodsListEffects({
+    clearPendingHistoryScroll,
+    goodsIdCount: goods.length,
+    goodsResultsRef,
+    locationState: location.state,
+    navigateToCleanGoodsList,
+    pendingHistoryScrollY,
+    recommendedGoodsIds,
+    resetGoodsList: reset,
+    resultsStartRef,
+    searchScrollPositionRef,
+    setEmptyResultsMinHeight,
+    status,
+  })
 
   function handleQueryChange(value: string) {
-    searchScrollPositionRef.current = window.scrollY
-    if (goods.length > 0 && goodsResultsRef.current) {
-      setEmptyResultsMinHeight(goodsResultsRef.current.offsetHeight)
-    }
+    rememberSearchScrollPosition()
     setPage(0)
     setQuery(value)
   }
@@ -173,9 +121,7 @@ function GoodsPage() {
 
   function handlePageChange(nextPage: number) {
     goToPage(nextPage)
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    })
+    scrollToPageTop()
   }
 
   const searchSuggestions = useMemo(() => {
