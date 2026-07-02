@@ -51,6 +51,11 @@ function GoodsPurchasePanel({
     feedbackTimerRef.current = window.setTimeout(() => setFeedback(''), 1800)
   }
 
+  function updateQuantity(nextQuantity: number) {
+    if (!Number.isFinite(nextQuantity)) return
+    setQuantity(Math.max(1, Math.min(Math.trunc(nextQuantity), maxQuantity || 1)))
+  }
+
   async function handleAddCartItem() {
     if (!canAdd) return
 
@@ -97,15 +102,24 @@ function GoodsPurchasePanel({
           <button
             disabled={selectedQuantity <= 1}
             type="button"
-            onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+            onClick={() => updateQuantity(selectedQuantity - 1)}
           >
             −
           </button>
-          <span>{selectedQuantity}</span>
+          <input
+            aria-label="수량 직접 입력"
+            disabled={!canAdd}
+            inputMode="numeric"
+            max={maxQuantity || 1}
+            min={1}
+            type="number"
+            value={selectedQuantity}
+            onChange={(event) => updateQuantity(event.currentTarget.valueAsNumber)}
+          />
           <button
             disabled={!maxQuantity || selectedQuantity >= maxQuantity}
             type="button"
-            onClick={() => setQuantity((value) => value + 1)}
+            onClick={() => updateQuantity(selectedQuantity + 1)}
           >
             +
           </button>
@@ -141,8 +155,12 @@ function GoodsPurchasePanel({
           disabled={isLikePending}
           onClick={onLikeToggle}
         >
-          <span aria-hidden="true">♡</span>
-          <span>위시리스트</span>
+          <span
+            className="favorite-heart-icon"
+            data-filled={isLiked}
+            aria-hidden="true"
+          />
+          <span>좋아요</span>
           <span>{Number(goods.likeCount ?? 0).toLocaleString()}</span>
         </button>
         <button className="purchase-share-button" type="button" onClick={onShare}>

@@ -22,7 +22,7 @@
 .purchase-rating-row .goods-rating-summary { min-height: 0; padding: 0; border: 0; background: transparent; font-size: 12px; }
 .purchase-review-link { padding: 0; border: 0; background: transparent; color: var(--goods-muted); cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
 .detail-like-button, .purchase-share-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 7px 10px; border: 1px solid var(--goods-line); border-radius: 3px; background: #fff; color: var(--goods-muted); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
-.detail-like-button span:first-child { color: #d6405f; font-size: 15px; line-height: 1; }
+.detail-like-button .favorite-heart-icon { width: 17px; height: 16px; filter: none; }
 .detail-like-button[aria-pressed="true"] { border-color: #f1b7c4; background: #fff5f7; color: #b73252; }
 .detail-like-button:disabled { cursor: wait; opacity: .65; }
 .detail-like-feedback { color: #b73252; font-size: 12px; font-weight: 700; }
@@ -36,6 +36,9 @@
 .detail-quantity { display: grid; grid-template-columns: 32px 38px 32px; align-items: center; text-align: center; border: 1px solid var(--goods-line); }
 .detail-quantity button { height: 30px; border: 0; background: #fff; cursor: pointer; }
 .detail-quantity button:disabled { cursor: not-allowed; opacity: .4; }
+.detail-quantity input { width: 38px; height: 30px; padding: 0; border: 0; background: #fff; color: var(--goods-ink); font: inherit; font-size: 12px; font-weight: 800; text-align: center; appearance: textfield; }
+.detail-quantity input:disabled { color: var(--goods-muted); opacity: .6; }
+.detail-quantity input::-webkit-inner-spin-button, .detail-quantity input::-webkit-outer-spin-button { margin: 0; appearance: none; }
 .purchase-total { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; }
 .purchase-total span { color: var(--goods-muted); font-size: 12px; font-weight: 700; }
 .purchase-total strong { font-size: 18px; }

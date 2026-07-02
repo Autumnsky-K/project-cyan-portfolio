@@ -17,6 +17,12 @@ import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsFilterGroup, type Good
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
+import {
+  publishGoodsLikeSyncUpdate,
+  readGoodsLikeSyncUpdates,
+  subscribeGoodsLikeSyncUpdates,
+  type GoodsLikeSyncUpdate,
+} from './goodsLikeSync'
 import { useGoodsFavorites } from './useGoodsFavorites'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
@@ -105,6 +111,19 @@ function GoodsPage() {
     ))
   }, [])
 
+  const applyGoodsLikeUpdate = useCallback((update: GoodsLikeSyncUpdate) => {
+    setLikedGoodsIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      if (update.liked) {
+        nextIds.add(update.goodsId)
+      } else {
+        nextIds.delete(update.goodsId)
+      }
+      return nextIds
+    })
+    updateGoodsLikeCount(update.goodsId, update.likeCount)
+  }, [updateGoodsLikeCount])
+
   const handleLikeToggle = useCallback(async (item: GoodsSummary) => {
     if (!(await hasSpringApiSession())) {
       navigateToLogin()
@@ -131,6 +150,11 @@ function GoodsPage() {
         return nextIds
       })
       updateGoodsLikeCount(goodsId, result.likeCount)
+      publishGoodsLikeSyncUpdate({
+        goodsId,
+        liked: result.liked,
+        likeCount: result.likeCount,
+      })
     } finally {
       setPendingLikeIds((currentIds) => {
         const nextIds = new Set(currentIds)
@@ -139,6 +163,11 @@ function GoodsPage() {
       })
     }
   }, [likedGoodsIds, navigateToLogin, updateGoodsLikeCount])
+
+  useEffect(() => {
+    readGoodsLikeSyncUpdates().forEach(applyGoodsLikeUpdate)
+    return subscribeGoodsLikeSyncUpdates(applyGoodsLikeUpdate)
+  }, [applyGoodsLikeUpdate])
 
   useEffect(() => {
     if (activeSection !== 'favorites') return
