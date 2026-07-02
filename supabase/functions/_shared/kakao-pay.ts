@@ -199,6 +199,35 @@ async function patchSupabaseRows(
   return Array.isArray(data) ? data as Record<string, unknown>[] : []
 }
 
+async function postSupabaseRpc(
+  functionName: string,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { restUrl, serviceRoleKey } = getSupabaseRestConfig()
+  const response = await fetch(`${restUrl}/rpc/${functionName}`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    const message =
+      data && typeof data === 'object' && ('message' in data || 'code' in data)
+        ? `${String((data as { code?: unknown }).code ?? 'SUPABASE_RPC_FAILED')}: ${String((data as { message?: unknown }).message ?? 'Supabase RPC failed.')}`
+        : 'Supabase RPC failed.'
+    throw new Error(message)
+  }
+
+  return data && typeof data === 'object' && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {}
+}
+
 async function updateFirstMatchingCandidate(
   candidate: SupabaseUpdateCandidate,
   orderId: string,
@@ -227,6 +256,28 @@ async function updateFirstMatchingCandidate(
 }
 
 export async function updateSupabasePaymentResult(result: PaymentResultUpdate) {
+  if (result.orderStatus === 'PAID' && result.paymentStatus === 'APPROVED') {
+    const rpcResult = await postSupabaseRpc('approve_checkout_payment', {
+      p_order_key: result.orderId,
+      p_payment_status: result.paymentStatus,
+      p_order_status: result.orderStatus,
+      p_provider_payment_key: result.providerPaymentKey ?? '',
+      p_payment_method: result.paymentMethod ?? '',
+      p_provider: result.provider ?? '',
+    })
+    const orderRows = numberValue(rpcResult.orderRows) > 0 ? [rpcResult] : []
+    const paymentRows = numberValue(rpcResult.paymentRows) > 0 ? [rpcResult] : []
+
+    return {
+      status: stringValue(rpcResult.status) || (orderRows.length > 0 || paymentRows.length > 0 ? 'SYNCED' : 'NOT_SYNCED'),
+      message: stringValue(rpcResult.message) || 'Supabase payment result was updated.',
+      failures: [],
+      orderRows,
+      paymentRows,
+      stockResult: rpcResult,
+    }
+  }
+
   const failures: string[] = []
   const orderRows = await updateFirstMatchingCandidate(
     {
