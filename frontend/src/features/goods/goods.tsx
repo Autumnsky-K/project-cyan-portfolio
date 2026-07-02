@@ -177,6 +177,17 @@ function GoodsPage() {
     return () => window.cancelAnimationFrame(animationFrameId)
   }, [clearPendingHistoryScroll, pendingHistoryScrollY, status])
 
+  useEffect(() => {
+    const resetToken = (location.state as { resetGoodsList?: number } | null)?.resetGoodsList
+    if (!resetToken) return
+
+    reset()
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    })
+    navigate('/goods', { replace: true, state: null })
+  }, [location.state, navigate, reset])
+
   const scrollToResults = useCallback((behavior: ScrollBehavior = 'smooth') => {
     window.requestAnimationFrame(() => {
       resultsStartRef.current?.scrollIntoView({ behavior, block: 'start' })
