@@ -91,13 +91,13 @@ function LoginPage() {
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
 
       <section className="login-card" aria-label="로그인">
+        <Link className="site-brand-home" to="/" aria-label="Project Cyan 홈으로 이동">
+          <img src="/favicon.svg" alt="" />
+          <span>PROJECT CYAN</span>
+        </Link>
         <h1 className="login-title">LOGIN</h1>
 
         <div className="login-content">
-          <div className="login-header">
-            <div className="login-logo" aria-hidden="true"></div>
-          </div>
-
           <form className="login-form" onSubmit={handleSubmit}>
             {/* 일반 로그인도 Supabase Auth로 처리해 회원 UUID 기준을 통일합니다. */}
             <label className="login-field">
