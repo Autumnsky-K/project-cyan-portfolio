@@ -144,21 +144,6 @@ export async function recordGoodsView(goodsId: string | number): Promise<void> {
   await parseApiResponse(response, 'Failed to record goods view.')
 }
 
-export async function fetchFavoriteGoods(): Promise<GoodsSummary[]> {
-  const response = await apiFetch('/goods/favorites')
-  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load favorite goods.') ?? []
-}
-
-export async function addGoodsFavorite(goodsId: string | number): Promise<void> {
-  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'POST' })
-  await parseApiResponse(response, 'Failed to add favorite goods.')
-}
-
-export async function removeGoodsFavorite(goodsId: string | number): Promise<void> {
-  const response = await apiFetch(`/goods/${goodsId}/favorites`, { method: 'DELETE' })
-  await parseApiResponse(response, 'Failed to remove favorite goods.')
-}
-
 export async function fetchMyGoodsLike(goodsId: string | number | undefined): Promise<GoodsLikeResponse | null> {
   if (!(await hasSpringApiSession())) {
     return null

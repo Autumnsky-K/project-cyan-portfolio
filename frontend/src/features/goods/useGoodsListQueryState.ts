@@ -3,7 +3,6 @@ import type { GoodsQueryParams } from '../../api/goods'
 import type { GoodsFilterParam, GoodsSelectedFilters } from './GoodsFilterUi'
 import { useDebouncedValue } from './useDebouncedValue'
 
-export type GoodsSection = 'all' | 'favorites'
 export type GoodsViewMode = 'grid' | 'list'
 
 const VIEW_COUNT_SORT = 'viewCount,desc'
@@ -54,7 +53,6 @@ function readState() {
     sort: ALLOWED_SORTS.has(requestedSort) ? requestedSort : 'createdAt,desc',
     viewPeriod: ALLOWED_VIEW_PERIODS.has(requestedViewPeriod) ? requestedViewPeriod : DEFAULT_VIEW_PERIOD,
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
-    section: params.get('section') === 'favorites' ? 'favorites' as const : 'all' as const,
     viewMode: params.get('view') === 'list' ? 'list' as const : 'grid' as const,
     recommendedGoodsIds: [...new Set(
       readFilterParam(params, 'recommendations').filter((value) => /^\d+$/.test(value)),
@@ -73,7 +71,6 @@ function createUrl(
   viewPeriod: string,
   page: number,
   filters: GoodsSelectedFilters,
-  section: GoodsSection,
   viewMode: GoodsViewMode,
   recommendedGoodsIds: string[],
 ) {
@@ -85,7 +82,6 @@ function createUrl(
   if (filters.categoryIds.length) params.set('categories', filters.categoryIds.join(';'))
   if (filters.artistIds.length) params.set('artists', filters.artistIds.join(';'))
   if (filters.tags.length) params.set('tags', filters.tags.join(';'))
-  if (section === 'favorites') params.set('section', 'favorites')
   if (viewMode === 'list') params.set('view', 'list')
   if (recommendedGoodsIds.length >= 2) {
     params.set('recommendations', recommendedGoodsIds.join(','))
@@ -99,7 +95,6 @@ export function useGoodsListQueryState() {
   const [sort, setSort] = useState(initialState.sort)
   const [viewPeriod, setViewPeriod] = useState(initialState.viewPeriod)
   const [page, setPage] = useState(initialState.page)
-  const [section, setSection] = useState<GoodsSection>(initialState.section)
   const [viewMode, setViewMode] = useState<GoodsViewMode>(initialState.viewMode)
   const [selectedFilters, setSelectedFilters] = useState(initialState.selectedFilters)
   const [recommendedGoodsIds, setRecommendedGoodsIds] = useState(
@@ -130,7 +125,6 @@ export function useGoodsListQueryState() {
       viewPeriod,
       page,
       selectedFilters,
-      section,
       viewMode,
       recommendedGoodsIds,
     )
@@ -140,7 +134,7 @@ export function useGoodsListQueryState() {
       return
     }
     window.history.replaceState(window.history.state, '', nextUrl)
-  }, [page, recommendedGoodsIds, section, selectedFilters, sort, viewMode, viewPeriod])
+  }, [page, recommendedGoodsIds, selectedFilters, sort, viewMode, viewPeriod])
 
   useEffect(() => {
     function restoreHistoryState(event: PopStateEvent) {
@@ -151,7 +145,6 @@ export function useGoodsListQueryState() {
       setSort(restored.sort)
       setViewPeriod(restored.viewPeriod)
       setPage(restored.page)
-      setSection(restored.section)
       setViewMode(restored.viewMode)
       setSelectedFilters(restored.selectedFilters)
       setRecommendedGoodsIds(restored.recommendedGoodsIds)
@@ -176,7 +169,6 @@ export function useGoodsListQueryState() {
       committedQueryRef.current = ''
       setQueryState('')
       setPage(0)
-      setSection('all')
       setSelectedFilters(EMPTY_FILTERS)
       setRecommendedGoodsIds(goodsIds)
     }
@@ -232,7 +224,6 @@ export function useGoodsListQueryState() {
       viewPeriod,
       0,
       selectedFilters,
-      section,
       viewMode,
       [],
     ))
@@ -259,8 +250,6 @@ export function useGoodsListQueryState() {
     setViewPeriod,
     page,
     setPage,
-    section,
-    setSection,
     viewMode,
     setViewMode,
     selectedFilters,

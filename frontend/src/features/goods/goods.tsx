@@ -1,14 +1,13 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
 import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
+import GoodsViewToggle from './GoodsViewToggle'
 import { useGoodsFilters } from './useGoodsFilters'
-import { useGoodsFavorites } from './useGoodsFavorites'
 import { useGoodsLikeState } from './useGoodsLikeState'
 import { useGoodsListData } from './useGoodsListData'
 import { useGoodsListQueryState } from './useGoodsListQueryState'
@@ -21,13 +20,6 @@ function GoodsPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const {
-    favoriteIds,
-    favoriteGoods,
-    favoritesStatus,
-    favoritesError,
-    refreshFavorites,
-  } = useGoodsFavorites()
-  const {
     query,
     setQuery,
     sort,
@@ -36,8 +28,6 @@ function GoodsPage() {
     setViewPeriod,
     page,
     setPage,
-    section: activeSection,
-    setSection: setActiveSection,
     viewMode,
     setViewMode,
     selectedFilters,
@@ -77,28 +67,10 @@ function GoodsPage() {
   }, [loginReturnTo, navigate])
   const {
     visibleGoods,
-    visibleFavoriteGoods,
     isLiked,
     isLikePending,
     handleLikeToggle,
-  } = useGoodsLikeState(goods, favoriteGoods, navigateToLogin)
-
-  useEffect(() => {
-    if (activeSection !== 'favorites') return
-
-    let ignore = false
-    async function redirectSignedOutFavoriteSection() {
-      if (!(await hasSpringApiSession()) && !ignore) {
-        navigateToLogin()
-      }
-    }
-
-    void redirectSignedOutFavoriteSection()
-
-    return () => {
-      ignore = true
-    }
-  }, [activeSection, navigateToLogin])
+  } = useGoodsLikeState(goods, navigateToLogin)
 
   useLayoutEffect(() => {
     if (status !== 'empty' || searchScrollPositionRef.current === null) {
@@ -225,8 +197,6 @@ function GoodsPage() {
     <main className="goods-page">
       <Header />
 
-      {activeSection === 'all' && (
-        <>
       <section className="store-toolbar" ref={searchToolbarRef} aria-label="굿즈 검색 및 정렬">
         <GoodsSearchAutocomplete
           query={query}
@@ -298,14 +268,11 @@ function GoodsPage() {
                   <option value="30d">최근 30일</option>
                 </select>
               </label>
-              <div className="view-toggle" aria-label="보기 방식">
-                <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
-                  <span className="view-icon view-icon-grid" aria-hidden="true" />
-                </button>
-                <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                  <span className="view-icon view-icon-list" aria-hidden="true" />
-                </button>
-              </div>
+              <GoodsViewToggle
+                label="보기 방식"
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
             </div>
           </div>
 
@@ -343,58 +310,6 @@ function GoodsPage() {
           />
         </div>
       </section>
-        </>
-      )}
-
-      {activeSection === 'favorites' && (
-        <section className="favorites-content" aria-labelledby="favorites-heading">
-          <div className="result-summary">
-            <div>
-              <h2 id="favorites-heading">관심 굿즈</h2>
-              <p>{favoriteIds.length}개 저장됨</p>
-            </div>
-            <div className="view-toggle" aria-label="관심 굿즈 보기 방식">
-              <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
-                <span className="view-icon view-icon-grid" aria-hidden="true" />
-              </button>
-              <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                <span className="view-icon view-icon-list" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          {favoritesStatus === 'loading' && <GoodsCardSkeleton count={Math.max(3, Math.min(favoriteIds.length, 6))} />}
-          {favoritesStatus === 'error' && (
-            <GoodsListState kind="error" message={favoritesError} onAction={() => void refreshFavorites()} />
-          )}
-          {favoritesStatus === 'signedOut' && (
-            <div className="goods-state favorites-empty" role="status">
-              <span className="goods-state-mark" aria-hidden="true">♡</span>
-              <strong>Login required</strong>
-              <span>로그인 후 계정별 즐겨찾기를 사용할 수 있습니다.</span>
-              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
-            </div>
-          )}
-          {favoritesStatus === 'data' && favoriteIds.length === 0 && (
-            <div className="goods-state favorites-empty" role="status">
-              <span className="goods-state-mark" aria-hidden="true">♡</span>
-              <strong>No favorite goods yet</strong>
-              <span>Tap the heart on a goods card to save it here.</span>
-              <button type="button" onClick={() => setActiveSection('all')}>Browse goods</button>
-            </div>
-          )}
-          {favoritesStatus === 'data' && favoriteGoods.length > 0 && (
-            <GoodsCards
-              items={visibleFavoriteGoods}
-              viewMode={viewMode}
-              isLiked={isLiked}
-              isLikePending={isLikePending}
-              toggleLike={handleLikeToggle}
-              onOpenDetail={openGoodsDetail}
-            />
-          )}
-        </section>
-      )}
       <GoodsCartSidePanel />
     </main>
   )

@@ -16,7 +16,6 @@ import {
 
 export function useGoodsLikeState(
   goods: GoodsSummary[],
-  favoriteGoods: GoodsSummary[],
   navigateToLogin: () => void,
 ) {
   const [likedGoodsIds, setLikedGoodsIds] = useState<Set<number>>(() => new Set())
@@ -148,18 +147,8 @@ export function useGoodsLikeState(
     )),
     [goods, likeCountOverrides],
   )
-  const visibleFavoriteGoods = useMemo(
-    () => favoriteGoods.map((item) => (
-      likeCountOverrides[item.goodsId] === undefined
-        ? item
-        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
-    )),
-    [favoriteGoods, likeCountOverrides],
-  )
-
   return {
     visibleGoods,
-    visibleFavoriteGoods,
     isLiked: (goodsId: number) => likedGoodsIds.has(goodsId),
     isLikePending: (goodsId: number) => pendingLikeIds.has(goodsId),
     handleLikeToggle,
