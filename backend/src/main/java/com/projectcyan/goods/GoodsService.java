@@ -1,6 +1,9 @@
 package com.projectcyan.goods;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +43,7 @@ public class GoodsService {
 	private final GoodsReviewRepository goodsReviewRepository;
 	private final GoodsLikeRepository goodsLikeRepository;
 	private final GoodsExtraImageRepository goodsExtraImageRepository;
+	private final GoodsViewHistoryRepository goodsViewHistoryRepository;
 
 	public GoodsService(
 		GoodsRepository goodsRepository,
@@ -49,7 +53,8 @@ public class GoodsService {
 		GoodsStockRepository goodsStockRepository,
 		GoodsReviewRepository goodsReviewRepository,
 		GoodsLikeRepository goodsLikeRepository,
-		GoodsExtraImageRepository goodsExtraImageRepository
+		GoodsExtraImageRepository goodsExtraImageRepository,
+		GoodsViewHistoryRepository goodsViewHistoryRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.artistRepository = artistRepository;
@@ -59,6 +64,7 @@ public class GoodsService {
 		this.goodsReviewRepository = goodsReviewRepository;
 		this.goodsLikeRepository = goodsLikeRepository;
 		this.goodsExtraImageRepository = goodsExtraImageRepository;
+		this.goodsViewHistoryRepository = goodsViewHistoryRepository;
 	}
 
 	public PageResponse<GoodsSummaryResponse> findGoods(
@@ -75,7 +81,7 @@ public class GoodsService {
 		int size,
 		String sort
 	) {
-		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, false);
+		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, null, false);
 	}
 
 	public PageResponse<GoodsSummaryResponse> findPublicGoods(
@@ -92,7 +98,25 @@ public class GoodsService {
 		int size,
 		String sort
 	) {
-		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, true);
+		return findPublicGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, null);
+	}
+
+	public PageResponse<GoodsSummaryResponse> findPublicGoods(
+		String q,
+		Long artistId,
+		String artistIds,
+		Long categoryId,
+		String categoryIds,
+		String salesStatus,
+		String tag,
+		String tags,
+		String goodsIds,
+		int page,
+		int size,
+		String sort,
+		String viewPeriod
+	) {
+		return findGoods(q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort, viewPeriod, true);
 	}
 
 	private PageResponse<GoodsSummaryResponse> findGoods(
@@ -108,6 +132,7 @@ public class GoodsService {
 		int page,
 		int size,
 		String sort,
+		String viewPeriod,
 		boolean publicOnly
 	) {
 		List<Long> selectedGoodsIds = parseIds(goodsIds);
@@ -137,11 +162,17 @@ public class GoodsService {
 			specification = specification.and(GoodsSpecifications.isPubliclyVisible());
 		}
 
-		Pageable pageable = PageRequest.of(
-			Math.max(page, 0),
-			clampPageSize(size),
-			parseSort(sort)
-		);
+		int normalizedPage = Math.max(page, 0);
+		int normalizedSize = clampPageSize(size);
+
+		if (isViewCountSort(sort)) {
+			return findGoodsByViewCount(specification, normalizedPage, normalizedSize, viewPeriod);
+		}
+		if (isLikeCountSort(sort)) {
+			return findGoodsByLikeCount(specification, normalizedPage, normalizedSize);
+		}
+
+		Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, parseSort(sort));
 
 		var goodsPage = goodsRepository.findAll(specification, pageable);
 		List<Goods> pageGoods = goodsPage.getContent();
@@ -161,6 +192,81 @@ public class GoodsService {
 			goodsPage.getSize(),
 			goodsPage.getTotalElements(),
 			goodsPage.getTotalPages()
+		);
+	}
+
+	private PageResponse<GoodsSummaryResponse> findGoodsByViewCount(
+		Specification<Goods> specification,
+		int page,
+		int size,
+		String viewPeriod
+	) {
+		List<Goods> sortedGoods = new ArrayList<>(
+			goodsRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "createdAt"))
+		);
+		Map<Long, Long> viewCounts = viewCounts(sortedGoods, viewPeriod);
+		sortedGoods.sort(Comparator
+			.comparing((Goods goods) -> viewCounts.getOrDefault(goods.getGoodsId(), 0L)).reversed()
+			.thenComparing(Goods::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+			.thenComparing(Goods::getGoodsId, Comparator.reverseOrder()));
+
+		int totalElements = sortedGoods.size();
+		int fromIndex = Math.min(page * size, totalElements);
+		int toIndex = Math.min(fromIndex + size, totalElements);
+		List<Goods> pageGoods = sortedGoods.subList(fromIndex, toIndex);
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			pageGoods.stream().map(Goods::getGoodsId).toList()
+		);
+		Map<Long, Long> likeCounts = likeCounts(pageGoods);
+		return new PageResponse<>(
+			pageGoods.stream()
+				.map(goods -> GoodsSummaryResponse.from(
+					goods,
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+					likeCounts.getOrDefault(goods.getGoodsId(), 0L)
+				))
+				.toList(),
+			page,
+			size,
+			totalElements,
+			(int) Math.ceil((double) totalElements / size)
+		);
+	}
+
+	private PageResponse<GoodsSummaryResponse> findGoodsByLikeCount(
+		Specification<Goods> specification,
+		int page,
+		int size
+	) {
+		List<Goods> sortedGoods = new ArrayList<>(
+			goodsRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "createdAt"))
+		);
+		Map<Long, Long> likeCounts = likeCounts(sortedGoods);
+		sortedGoods.sort(Comparator
+			.comparing((Goods goods) -> likeCounts.getOrDefault(goods.getGoodsId(), 0L)).reversed()
+			.thenComparing(Goods::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+			.thenComparing(Goods::getGoodsId, Comparator.reverseOrder()));
+
+		int totalElements = sortedGoods.size();
+		int fromIndex = Math.min(page * size, totalElements);
+		int toIndex = Math.min(fromIndex + size, totalElements);
+		List<Goods> pageGoods = sortedGoods.subList(fromIndex, toIndex);
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			pageGoods.stream().map(Goods::getGoodsId).toList()
+		);
+		Map<Long, Long> pageLikeCounts = likeCounts(pageGoods);
+		return new PageResponse<>(
+			pageGoods.stream()
+				.map(goods -> GoodsSummaryResponse.from(
+					goods,
+					reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+					pageLikeCounts.getOrDefault(goods.getGoodsId(), 0L)
+				))
+				.toList(),
+			page,
+			size,
+			totalElements,
+			(int) Math.ceil((double) totalElements / size)
 		);
 	}
 
@@ -248,6 +354,36 @@ public class GoodsService {
 				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
 				GoodsLikeRepository.GoodsLikeCount::getLikeCount
 			));
+	}
+
+	private Map<Long, Long> viewCounts(List<Goods> goods, String viewPeriod) {
+		List<Long> goodsIds = goods.stream()
+			.map(Goods::getGoodsId)
+			.toList();
+		if (goodsIds.isEmpty()) {
+			return Map.of();
+		}
+		Instant viewedAt = viewPeriodStart(viewPeriod);
+		List<GoodsViewHistoryRepository.GoodsViewCount> counts = viewedAt == null
+			? goodsViewHistoryRepository.countByGoodsIdIn(goodsIds)
+			: goodsViewHistoryRepository.countByGoodsIdInSince(goodsIds, viewedAt);
+		return counts.stream()
+			.collect(java.util.stream.Collectors.toMap(
+				GoodsViewHistoryRepository.GoodsViewCount::getGoodsId,
+				GoodsViewHistoryRepository.GoodsViewCount::getViewCount
+			));
+	}
+
+	private Instant viewPeriodStart(String viewPeriod) {
+		if (viewPeriod == null || viewPeriod.isBlank()) {
+			return null;
+		}
+		return switch (viewPeriod.trim().toLowerCase(Locale.ROOT)) {
+			case "day" -> Instant.now().minus(Duration.ofDays(1));
+			case "7d" -> Instant.now().minus(Duration.ofDays(7));
+			case "30d" -> Instant.now().minus(Duration.ofDays(30));
+			default -> null;
+		};
 	}
 
 	public PageResponse<GoodsReviewResponse> findGoodsReviews(Long goodsId, int page, int size, String sort) {
@@ -423,6 +559,20 @@ public class GoodsService {
 			: Sort.Direction.DESC;
 
 		return Sort.by(direction, property);
+	}
+
+	private boolean isViewCountSort(String rawSort) {
+		if (rawSort == null || rawSort.isBlank()) {
+			return false;
+		}
+		return "viewCount".equalsIgnoreCase(rawSort.split(",", 2)[0].trim());
+	}
+
+	private boolean isLikeCountSort(String rawSort) {
+		if (rawSort == null || rawSort.isBlank()) {
+			return false;
+		}
+		return "likeCount".equalsIgnoreCase(rawSort.split(",", 2)[0].trim());
 	}
 
 	private PurchaseAvailability purchaseAvailability(Goods goods) {

@@ -22,6 +22,11 @@
   letter-spacing: 0;
 }
 
+.site-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
 .site-nav {
   display: flex;
   flex-wrap: wrap;

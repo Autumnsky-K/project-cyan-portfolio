@@ -283,6 +283,41 @@ button.goods-rating-summary {
   font-size: 15px;
 }
 
+.result-controls {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.view-period-field {
+  display: grid;
+  gap: 5px;
+  color: var(--goods-muted);
+  font-size: 12px;
+}
+
+.view-period-field[data-visible='false'] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.view-period-field span {
+  text-align: right;
+}
+
+.view-period-field select {
+  min-height: 34px;
+  width: 82px;
+  box-sizing: border-box;
+  padding: 6px 22px 6px 7px;
+  border: 1px solid var(--goods-line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--goods-text);
+  font: inherit;
+  font-size: 12px;
+}
+
 .view-toggle {
   display: inline-flex;
   gap: 6px;
