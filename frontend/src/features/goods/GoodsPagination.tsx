@@ -1,4 +1,5 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useCallback, useMemo, useRef, useState } from 'react'
+import { useDismissiblePopover } from './useDismissiblePopover'
 
 type GoodsPaginationProps = {
   currentPage: number
@@ -10,6 +11,7 @@ function GoodsPagination({ currentPage, totalPages, onPageChange }: GoodsPaginat
   const [isJumpOpen, setIsJumpOpen] = useState(false)
   const [jumpValue, setJumpValue] = useState('')
   const jumpRef = useRef<HTMLDivElement | null>(null)
+  const closeJumpPopover = useCallback(() => setIsJumpOpen(false), [])
 
   const pageNumbers = useMemo(() => {
     const maxVisiblePages = 5
@@ -19,24 +21,11 @@ function GoodsPagination({ currentPage, totalPages, onPageChange }: GoodsPaginat
     return Array.from({ length: endPage - startPage }, (_, index) => startPage + index)
   }, [currentPage, totalPages])
 
-  useEffect(() => {
-    if (!isJumpOpen) return undefined
-
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!jumpRef.current?.contains(event.target as Node)) setIsJumpOpen(false)
-    }
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsJumpOpen(false)
-    }
-
-    document.addEventListener('mousedown', closeOnOutsideClick)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [isJumpOpen])
+  useDismissiblePopover({
+    containerRef: jumpRef,
+    enabled: isJumpOpen,
+    onDismiss: closeJumpPopover,
+  })
 
   if (totalPages < 1) return null
 

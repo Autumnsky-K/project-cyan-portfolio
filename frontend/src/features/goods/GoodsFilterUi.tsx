@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import type { GoodsFilterOption } from '../../api/goods'
+import { useDismissiblePopover } from './useDismissiblePopover'
 
 export type GoodsFilterParam = 'categoryIds' | 'artistIds' | 'tags'
 export type GoodsSelectedFilters = Record<GoodsFilterParam, string[]>
@@ -91,6 +92,7 @@ export function GoodsActiveFilterChips({
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement | null>(null)
   const closeTimerRef = useRef<number | null>(null)
+  const closeMorePopover = useCallback(() => setIsMoreOpen(false), [])
 
   function openMoreFilters() {
     if (closeTimerRef.current !== null) {
@@ -110,24 +112,11 @@ export function GoodsActiveFilterChips({
     }, 220)
   }
 
-  useEffect(() => {
-    if (!isMoreOpen) return undefined
-
-    function closeOnOutsideClick(event: MouseEvent) {
-      if (!moreRef.current?.contains(event.target as Node)) setIsMoreOpen(false)
-    }
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setIsMoreOpen(false)
-    }
-
-    document.addEventListener('mousedown', closeOnOutsideClick)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [isMoreOpen])
+  useDismissiblePopover({
+    containerRef: moreRef,
+    enabled: isMoreOpen,
+    onDismiss: closeMorePopover,
+  })
 
   useEffect(
     () => () => {
