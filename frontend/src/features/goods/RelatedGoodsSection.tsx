@@ -40,7 +40,7 @@ function RelatedGoodsSection({ goods }: { goods: GoodsSummary[] }) {
             to={`/goods/${item.goodsId}`}
             onClick={(event) => openRelatedGoods(event, item.goodsId)}
           >
-            <div>
+            <div className="related-card-image">
               <GoodsImage
                 src={item.imageUrl}
                 alt={item.name}
