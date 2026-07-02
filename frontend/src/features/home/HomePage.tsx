@@ -476,6 +476,15 @@ function HomePage() {
       <div className="home-scanline" aria-hidden="true" />
       <div className="cyan-led-frame" aria-hidden="true" />
 
+      <nav className="home-floating-nav" aria-label="Home navigation">
+        <Link to="/" aria-current="page">
+          Home
+        </Link>
+        <Link to="/artists">Artists</Link>
+        <Link to="/goods">Goods</Link>
+        <CartNavLink />
+      </nav>
+
       <div className="home-menu-wrap">
         <button
           className="home-menu-button"
