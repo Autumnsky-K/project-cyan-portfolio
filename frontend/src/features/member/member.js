@@ -450,21 +450,57 @@ async function getMyPageRecentlyViewedGoods(memberId) {
 }
 
 async function getMyPageLikedGoods(memberId) {
-  const { data, error } = await supabase
+  const { data: likedRows, error: likeError } = await supabase
     .from('goods_like')
     .select('like_id, goods_id, created_at')
     .eq('member_id', memberId)
     .order('created_at', { ascending: false })
     .limit(MY_PAGE_SECTION_LIMIT)
 
-  if (error) {
-    console.warn(error)
-    return []
+  if (likeError) {
+    console.warn(likeError)
   }
 
-  const goodsById = await getGoodsByIds((data ?? []).map((row) => row.goods_id))
+  const { data: favoriteRows, error: favoriteError } = await supabase
+    .from('goods_favorite')
+    .select('favorite_id, goods_id, created_at')
+    .eq('member_id', memberId)
+    .order('created_at', { ascending: false })
+    .limit(MY_PAGE_SECTION_LIMIT)
 
-  return (data ?? []).map((row) => {
+  if (favoriteError) {
+    console.warn(favoriteError)
+  }
+
+  const rowsByGoodsId = new Map()
+
+  for (const row of likedRows ?? []) {
+    rowsByGoodsId.set(row.goods_id, {
+      ...row,
+      source: 'like',
+    })
+  }
+
+  for (const row of favoriteRows ?? []) {
+    const currentRow = rowsByGoodsId.get(row.goods_id)
+
+    if (!currentRow || new Date(row.created_at) > new Date(currentRow.created_at)) {
+      rowsByGoodsId.set(row.goods_id, {
+        ...row,
+        source: 'favorite',
+      })
+    }
+  }
+
+  const rows = [...rowsByGoodsId.values()]
+    .sort((firstRow, secondRow) =>
+      new Date(secondRow.created_at).getTime() - new Date(firstRow.created_at).getTime(),
+    )
+    .slice(0, MY_PAGE_SECTION_LIMIT)
+
+  const goodsById = await getGoodsByIds(rows.map((row) => row.goods_id))
+
+  return rows.map((row) => {
     const likedAt = formatDateLabel(row.created_at)
 
     return normalizeGoodsSummary(goodsById.get(row.goods_id), {
