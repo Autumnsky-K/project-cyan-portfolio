@@ -6,7 +6,10 @@ from threading import Lock
 from typing import Any
 from uuid import uuid4
 
-from project_cyan_ai.goods_catalog import CatalogGroundedChatResponseProvider
+from project_cyan_ai.goods_catalog import (
+    CatalogGroundedChatResponseProvider,
+    is_numbered_recommendation_follow_up,
+)
 from project_cyan_ai.hook_policy import HookFilter
 from project_cyan_ai.navigation_intent import is_navigation_intent_candidate
 from project_cyan_ai.providers import ChatResponseProvider
@@ -221,7 +224,10 @@ class BehaviorEngine:
         )
 
         search_output = ""
-        navigation_candidate = is_navigation_intent_candidate(normalized_text)
+        navigation_candidate = (
+            is_navigation_intent_candidate(normalized_text)
+            or is_numbered_recommendation_follow_up(normalized_text)
+        )
         if (
             blocked_response is None
             and config.pipeline_mode == "faithful18"

@@ -106,6 +106,25 @@ def test_faithful_engine_uses_only_classifier_llm_for_ambiguous_navigation():
     assert len(provider.calls) == 1
 
 
+def test_faithful_engine_skips_search_llm_for_numbered_recommendation_follow_up():
+    provider = FakeProvider()
+    grounded = CatalogGroundedChatResponseProvider(provider, FakeCatalogClient())
+    grounded.recent_recommendation_candidates = [
+        {"goodsId": 42, "name": "첫 번째"},
+        {"goodsId": 84, "name": "두 번째"},
+    ]
+
+    execution = BehaviorEngine(provider, grounded, hook_filter()).run(
+        "두 번째로 이동해줘",
+        config(),
+        context={"currentPath": "/goods"},
+    )
+
+    assert execution.response.actions[0].path == "/goods/84"
+    assert execution.run["steps"][9]["status"] == "SKIPPED"
+    assert provider.calls == []
+
+
 def test_hook_transformations_are_applied_in_priority_order():
     filter_ = hook_filter(
         [

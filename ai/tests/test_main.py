@@ -918,6 +918,77 @@ def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up()
     }
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["두 번째로 이동해줘", "두번째 상품으로 이동해줘"],
+)
+def test_catalog_grounding_navigates_to_numbered_recommendation(text):
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response(text)
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 추천 상품으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods/1006"}],
+    }
+
+
+def test_catalog_grounding_shows_first_numbered_recommendation():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("첫 번째 보여줘")
+
+    assert response.model_dump()["actions"] == [
+        {"type": "navigate", "path": "/goods/1005"}
+    ]
+
+
+def test_catalog_grounding_shows_multiple_numbered_recommendations():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("1번과 3번 보여줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 2개 추천 상품을 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1007"],
+            }
+        ],
+    }
+
+
+def test_catalog_grounding_reports_recommendation_count_for_out_of_range_number():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+    provider.build_response("Artist C 굿즈 추천해줘")
+
+    response = provider.build_response("네 번째로 이동해줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "추천 상품은 3개예요.",
+        "actions": [],
+    }
+
+
 def test_catalog_grounding_restores_recent_candidates_from_client_context():
     provider = CatalogGroundedChatResponseProvider(
         delegate=MockChatResponseProvider(),

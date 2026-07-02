@@ -92,6 +92,7 @@ GOODS_SELECTOR_PATTERN = re.compile(r"data-goods-id=['\"](\d+)['\"]")
 UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
 FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
 FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
+FOLLOW_UP_NAVIGATION_EMPTY_TEXT = "먼저 추천받을 상품을 알려주세요."
 KOREAN_NUMBER_WORDS = {
     "첫": 1,
     "한": 1,
@@ -310,11 +311,17 @@ class CatalogGroundedChatResponseProvider:
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
     ) -> FullTextMessage:
+        if not self.recent_recommendation_candidates:
+            self.recent_recommendation_candidates = recent_candidates_from_context(context)
+        numbered_follow_up_response = build_numbered_follow_up_response(
+            text,
+            self.recent_recommendation_candidates,
+        )
+        if numbered_follow_up_response is not None:
+            return numbered_follow_up_response
         navigation_response = build_navigation_response(text, context, self.delegate)
         if navigation_response is not None:
             return navigation_response
-        if not self.recent_recommendation_candidates:
-            self.recent_recommendation_candidates = recent_candidates_from_context(context)
         follow_up_response = build_follow_up_cart_response(
             text,
             self.recent_recommendation_candidates,
@@ -890,6 +897,58 @@ def build_follow_up_cart_response(
     )
 
 
+def build_numbered_follow_up_response(
+    text: str,
+    recent_candidates: list[dict[str, Any]],
+) -> FullTextMessage | None:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    selected_indexes = extract_selected_indexes(normalized_text)
+    if not selected_indexes:
+        return None
+
+    is_cart_action = is_cart_add_text(normalized_text)
+    is_navigation_action = is_recommendation_navigation_text(normalized_text)
+    if not is_cart_action and not is_navigation_action:
+        return None
+
+    if not recent_candidates:
+        return FullTextMessage(
+            text=FOLLOW_UP_EMPTY_TEXT if is_cart_action else FOLLOW_UP_NAVIGATION_EMPTY_TEXT,
+            actions=[],
+        )
+    if any(index >= len(recent_candidates) for index in selected_indexes):
+        return FullTextMessage(
+            text=f"추천 상품은 {len(recent_candidates)}개예요.",
+            actions=[],
+        )
+
+    selection = [recent_candidates[index] for index in selected_indexes]
+    if is_cart_action:
+        count = len(selection)
+        return FullTextMessage(
+            text=(
+                "방금 추천한 상품을 장바구니에 담을게요."
+                if count == 1
+                else f"방금 추천한 {count}개 상품을 장바구니에 담을게요."
+            ),
+            actions=[
+                AddToCartAction(goodsId=str(candidate["goodsId"]))
+                for candidate in selection
+            ],
+        )
+
+    goods_ids = [str(candidate["goodsId"]) for candidate in selection]
+    if len(goods_ids) == 1:
+        return FullTextMessage(
+            text="선택한 추천 상품으로 이동할게요.",
+            actions=[NavigateAction(path=f"/goods/{goods_ids[0]}")],
+        )
+    return FullTextMessage(
+        text=f"선택한 {len(goods_ids)}개 추천 상품을 보여드릴게요.",
+        actions=[ShowRecommendationsAction(goodsIds=goods_ids)],
+    )
+
+
 def select_follow_up_candidates(
     text: str,
     recent_candidates: list[dict[str, Any]],
@@ -958,6 +1017,25 @@ def to_zero_based_unique_indexes(numbers: list[int]) -> list[int]:
 
 def is_cart_follow_up_text(normalized_text: str) -> bool:
     return "담" in normalized_text or "장바구니" in normalized_text
+
+
+def is_cart_add_text(normalized_text: str) -> bool:
+    return any(keyword in normalized_text for keyword in ("담", "넣어", "추가"))
+
+
+def is_recommendation_navigation_text(normalized_text: str) -> bool:
+    return any(
+        keyword in normalized_text
+        for keyword in ("이동", "보여", "열어", "가줘", "가 주세요")
+    )
+
+
+def is_numbered_recommendation_follow_up(text: str) -> bool:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    return bool(extract_selected_indexes(normalized_text)) and (
+        is_cart_add_text(normalized_text)
+        or is_recommendation_navigation_text(normalized_text)
+    )
 
 
 def normalize_recent_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
