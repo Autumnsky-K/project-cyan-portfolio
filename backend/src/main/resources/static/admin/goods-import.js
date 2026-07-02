@@ -4,6 +4,11 @@
     return
   }
 
+  const MAX_PREVIEW_REQUEST_BYTES = 50 * 1024 * 1024
+  const PREVIEW_REQUEST_SAFETY_BYTES = 2 * 1024 * 1024
+  const LOCAL_IMAGE_UPLOAD_CHUNK_SIZE = 20
+  const LOCAL_IMAGE_UPLOAD_CHUNK_BYTES = 40 * 1024 * 1024
+
   const csvFields = [
     { key: 'goodsId', label: '상품ID', index: 0 },
     { key: 'name', label: '상품명', index: 1 },
@@ -40,6 +45,7 @@
   let imageItems = []
   let folderEntries = []
   let queueRows = []
+  let compressionStats = new Map()
   let selectedCells = new Set()
   let dragAnchor = null
   let dragging = false
@@ -81,6 +87,7 @@
     }
     selectedCells = new Set()
     queueRows = []
+    compressionStats = new Map()
   }
 
   function relativePathForFile(file) {
@@ -421,11 +428,145 @@
     return `이미지 ${imageCount}장 · 메인 1 · 추가 ${extraCount} · 상세 ${detailCount}`
   }
 
+  function compressionKey(path) {
+    return String(path || '').toLowerCase()
+  }
+
+  function imageCompressionStat(item) {
+    return compressionStats.get(compressionKey(item.relativePath)) || null
+  }
+
+  function formatBytes(bytes) {
+    const size = Number(bytes)
+    if (!Number.isFinite(size) || size <= 0) {
+      return '0 B'
+    }
+    const units = ['B', 'KB', 'MB', 'GB']
+    let value = size
+    let unitIndex = 0
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024
+      unitIndex += 1
+    }
+    const decimals = unitIndex === 0 ? 0 : value >= 10 ? 1 : 2
+    return `${value.toFixed(decimals)} ${units[unitIndex]}`
+  }
+
+  function formatDeltaBytes(delta) {
+    const sign = delta > 0 ? '-' : '+'
+    return `${sign}${formatBytes(Math.abs(delta))}`
+  }
+
+  function formatCompressionRatio(originalSize, compressedSize) {
+    if (!Number.isFinite(originalSize) || originalSize <= 0 || !Number.isFinite(compressedSize)) {
+      return ''
+    }
+    const ratio = Math.round((1 - compressedSize / originalSize) * 100)
+    if (ratio > 0) {
+      return `${ratio}% 절감`
+    }
+    if (ratio < 0) {
+      return `${Math.abs(ratio)}% 증가`
+    }
+    return '동일'
+  }
+
+  function compressionTotalsForItems(items) {
+    const totals = {
+      count: items.length,
+      compressedCount: 0,
+      originalSize: 0,
+      compressedSize: 0,
+      increasedCount: 0,
+    }
+    for (const item of items) {
+      totals.originalSize += item.file?.size || 0
+      const stat = imageCompressionStat(item)
+      if (!stat) {
+        continue
+      }
+      totals.compressedCount += 1
+      totals.compressedSize += stat.compressedSize || 0
+      if ((stat.compressedSize || 0) > (stat.originalSize || 0)) {
+        totals.increasedCount += 1
+      }
+    }
+    return totals
+  }
+
+  function compressionSummaryText(readyCount) {
+    const totals = compressionTotalsForItems(imageItems)
+    const parts = [
+      `인식한 상품 폴더 ${folderEntries.length}개`,
+      `이미지 ${imageItems.length}개`,
+      `등록 가능 ${readyCount}개`,
+      `원본 ${formatBytes(totals.originalSize)}`,
+    ]
+    if (totals.compressedCount > 0) {
+      const delta = totals.originalSize - totals.compressedSize
+      parts.push(`WebP ${formatBytes(totals.compressedSize)} (${totals.compressedCount}/${totals.count})`)
+      parts.push(`증감 ${formatDeltaBytes(delta)} · ${formatCompressionRatio(totals.originalSize, totals.compressedSize)}`)
+      if (totals.increasedCount > 0) {
+        parts.push(`증가 ${totals.increasedCount}장`)
+      }
+    }
+    return parts.join(' · ')
+  }
+
+  function estimatedPreviewRequestBytes(csvBlob) {
+    const totals = compressionTotalsForItems(imageItems)
+    const imageBytes = totals.compressedCount === imageItems.length ? totals.compressedSize : totals.originalSize
+    return imageBytes + (csvBlob?.size || 0) + PREVIEW_REQUEST_SAFETY_BYTES
+  }
+
+  function importActionUrl(replacementPath) {
+    const url = new URL(form.action, window.location.href)
+    url.pathname = url.pathname.replace(/\/preview$/, replacementPath)
+    return url.toString()
+  }
+
+  async function jsonResponseOrThrow(response, fallbackMessage) {
+    if (!response.ok) {
+      throw new Error(`${fallbackMessage} (${response.status})`)
+    }
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      throw new Error('관리자 세션이 만료되었거나 JSON 응답이 아닙니다. 다시 로그인 후 시도해주세요.')
+    }
+    const payload = await response.json()
+    if (payload?.error) {
+      throw new Error(payload.error)
+    }
+    return payload
+  }
+
+  async function createLocalImageBatch() {
+    const response = await fetch(importActionUrl('/local-images/batch'), {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+    const payload = await jsonResponseOrThrow(response, '로컬 이미지 배치를 만들 수 없습니다.')
+    if (!payload.batchId) {
+      throw new Error('로컬 이미지 배치 ID를 받지 못했습니다.')
+    }
+    return payload.batchId
+  }
+
+  async function uploadLocalImageChunk(batchId, chunkFormData, uploadedCount, totalCount) {
+    const response = await fetch(importActionUrl(`/local-images/batch/${encodeURIComponent(batchId)}/images`), {
+      method: 'POST',
+      body: chunkFormData,
+      credentials: 'same-origin',
+    })
+    await jsonResponseOrThrow(response, `이미지 chunk 업로드 실패 ${uploadedCount}/${totalCount}`)
+  }
+
   async function buildQueuePreview() {
     if (!isLocalMode()) {
       return
     }
     const csvFile = csvInput?.files?.[0]
+    compressionStats = new Map()
     imageItems = selectedImageFiles()
     folderEntries = buildFolderEntries(imageItems)
     updateImageFolderSummary()
@@ -452,7 +593,7 @@
       queueTitle.textContent = `업로드 대기열 ${queueRows.length}행`
     }
     if (queueSummary) {
-      queueSummary.textContent = `인식한 상품 폴더 ${folderEntries.length}개 · 이미지 ${imageItems.length}개 · 등록 가능 ${readyCount}개`
+      queueSummary.textContent = compressionSummaryText(readyCount)
     }
     if (queueWarning) {
       queueWarning.textContent = warningCount > 0 ? `불일치 ${warningCount}개가 있습니다. 표에서 수정하거나 CSV/폴더를 다시 선택하세요.` : '모든 CSV 행과 이미지 폴더가 일치합니다.'
@@ -659,9 +800,7 @@
       return
     }
 
-    const formData = new FormData()
-    formData.append('useLocalImages', 'true')
-    formData.append('file', queueCsvBlob(), 'goods-import-queue.csv')
+    const csvBlob = queueCsvBlob()
 
     const originalButtonText = submitButton?.textContent || '대기열 승인'
     if (submitButton) {
@@ -669,20 +808,66 @@
     }
 
     try {
+      compressionStats = new Map()
+      renderQueue()
+      const batchId = await createLocalImageBatch()
+      let chunkFormData = new FormData()
+      let chunkImageCount = 0
+      let chunkBytes = 0
       for (let index = 0; index < imageItems.length; index += 1) {
         const item = imageItems[index]
         setStatus(`WebP 압축 중 ${index + 1}/${imageItems.length}: ${item.sourceRelativePath}`)
         const compressed = await window.ProjectCyanImageCompression.compressToWebp(item.file)
-        formData.append('imageFiles', compressed.file, compressed.file.name)
-        formData.append('imageRelativePath', item.relativePath)
+        compressionStats.set(compressionKey(item.relativePath), compressed)
+        if (
+          chunkImageCount > 0
+          && (
+            chunkImageCount >= LOCAL_IMAGE_UPLOAD_CHUNK_SIZE
+            || chunkBytes + compressed.file.size > LOCAL_IMAGE_UPLOAD_CHUNK_BYTES
+          )
+        ) {
+          setStatus(`이미지 서버 저장 중 ${index}/${imageItems.length} · chunk ${chunkImageCount}장`)
+          await uploadLocalImageChunk(batchId, chunkFormData, index, imageItems.length)
+          chunkFormData = new FormData()
+          chunkImageCount = 0
+          chunkBytes = 0
+        }
+        chunkFormData.append('imageFiles', compressed.file, compressed.file.name)
+        chunkFormData.append('imageRelativePath', item.relativePath)
+        chunkImageCount += 1
+        chunkBytes += compressed.file.size
+        const ratio = formatCompressionRatio(compressed.originalSize, compressed.compressedSize)
+        setStatus(`WebP 압축 ${index + 1}/${imageItems.length}: ${formatBytes(compressed.originalSize)} → ${formatBytes(compressed.compressedSize)} · ${ratio}`)
+        if ((index + 1) % 10 === 0 || index === imageItems.length - 1) {
+          renderQueue()
+        }
+        if (index === imageItems.length - 1) {
+          setStatus(`이미지 서버 저장 중 ${index + 1}/${imageItems.length} · chunk ${chunkImageCount}장`)
+          await uploadLocalImageChunk(batchId, chunkFormData, index + 1, imageItems.length)
+          chunkFormData = new FormData()
+          chunkImageCount = 0
+          chunkBytes = 0
+        }
       }
 
+      const estimatedBytes = csvBlob.size + PREVIEW_REQUEST_SAFETY_BYTES
+      if (estimatedBytes > MAX_PREVIEW_REQUEST_BYTES) {
+        throw new Error(`CSV 전송 예상 ${formatBytes(estimatedBytes)}로 서버 제한 50 MB를 넘습니다. CSV를 나누어 등록해야 합니다.`)
+      }
+
+      const formData = new FormData()
+      formData.append('useLocalImages', 'true')
+      formData.append('imageBatchId', batchId)
+      formData.append('file', csvBlob, 'goods-import-queue.csv')
       setStatus('CSV와 이미지 폴더를 서버에서 재검증하고 있습니다.')
       const response = await fetch(form.action, {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
       })
+      if (!response.ok) {
+        throw new Error(`미리보기 요청에 실패했습니다. (${response.status})`)
+      }
       const html = await response.text()
       document.open()
       document.write(html)

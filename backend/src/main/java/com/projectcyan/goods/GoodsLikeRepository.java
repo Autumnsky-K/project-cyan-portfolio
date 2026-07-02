@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface GoodsLikeRepository extends JpaRepository<GoodsLike, Long> {
 
@@ -27,4 +28,15 @@ public interface GoodsLikeRepository extends JpaRepository<GoodsLike, Long> {
 		group by goodsLike.goodsId
 		""")
 	List<GoodsLikeCount> countByGoodsIdIn(Collection<Long> goodsIds);
+
+	@Query("""
+		select goodsLike.goodsId
+		from GoodsLike goodsLike
+		where goodsLike.memberId = :memberId
+			and goodsLike.goodsId in :goodsIds
+		""")
+	List<Long> findLikedGoodsIds(
+		@Param("memberId") Long memberId,
+		@Param("goodsIds") Collection<Long> goodsIds
+	);
 }

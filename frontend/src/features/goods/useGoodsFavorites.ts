@@ -9,7 +9,7 @@ import { hasSpringApiSession } from '../../shared/api/springApiClient'
 
 export type FavoriteGoodsStatus = 'idle' | 'loading' | 'data' | 'error' | 'signedOut'
 
-export function useGoodsFavorites() {
+export function useGoodsFavorites(enabled = true) {
   const [favoriteGoods, setFavoriteGoods] = useState<GoodsSummary[]>([])
   const [status, setStatus] = useState<FavoriteGoodsStatus>('idle')
   const [error, setError] = useState('')
@@ -38,13 +38,16 @@ export function useGoodsFavorites() {
   }, [])
 
   useEffect(() => {
+    if (!enabled) {
+      return undefined
+    }
     let ignore = false
     void loadFavorites(ignore)
 
     return () => {
       ignore = true
     }
-  }, [loadFavorites])
+  }, [enabled, loadFavorites])
 
   const toggleFavorite = useCallback(async (goodsId: number) => {
     if (!(await hasSpringApiSession())) {

@@ -105,6 +105,65 @@ public class AdminGoodsImportService {
 		}
 	}
 
+	public AdminGoodsImportPreview preview(
+		MultipartFile file,
+		String imageBatchId,
+		boolean useLocalImages
+	) {
+		if (file == null || file.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CSV 파일을 선택해주세요.");
+		}
+		try {
+			List<List<String>> rawRows = parseCsv(file);
+			if (!useLocalImages) {
+				return preview(rawRows, imageUrlsByPath(), IMAGE_SOURCE_SUPABASE, null, List.of(), List.of());
+			}
+			LocalImageBatch batch = loadLocalImageBatch(imageBatchId);
+			return preview(
+				rawRows,
+				batch.logicalImageUrls(),
+				IMAGE_SOURCE_LOCAL,
+				batch.batchId(),
+				batch.imageFolders(),
+				List.of()
+			);
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CSV 파일을 읽을 수 없습니다.");
+		}
+	}
+
+	public String createLocalImageBatch() {
+		String batchId = UUID.randomUUID().toString();
+		try {
+			Files.createDirectories(localBatchDir(batchId));
+			return batchId;
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 만들 수 없습니다.");
+		}
+	}
+
+	public int appendLocalImageBatch(
+		String batchId,
+		List<MultipartFile> imageFiles,
+		List<String> imageRelativePaths
+	) {
+		try {
+			List<LocalUploadCandidate> candidates = localUploadCandidates(imageFiles, imageRelativePaths);
+			Path batchDir = localBatchDir(batchId);
+			if (!Files.isDirectory(batchDir)) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 찾을 수 없습니다. CSV와 이미지 폴더를 다시 미리보기 해주세요.");
+			}
+			copyLocalImageCandidates(
+				batchDir,
+				candidates,
+				candidates.stream().map(LocalUploadCandidate::relativePath).toList()
+			);
+			return loadLocalImageBatch(batchId).files().size();
+		} catch (IOException exception) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 배치를 저장할 수 없습니다.");
+		}
+	}
+
 	public AdminGoodsImportPreview previewRaw(List<AdminGoodsImportRow> rows) {
 		return previewRaw(rows, IMAGE_SOURCE_SUPABASE, null);
 	}
@@ -423,6 +482,20 @@ public class AdminGoodsImportService {
 		List<MultipartFile> imageFiles,
 		List<String> imageRelativePaths
 	) throws IOException {
+		List<LocalUploadCandidate> candidates = localUploadCandidates(imageFiles, imageRelativePaths);
+		List<String> strippedPaths = stripCommonRoot(candidates.stream()
+			.map(LocalUploadCandidate::relativePath)
+			.toList());
+		String batchId = createLocalImageBatch();
+		Path batchDir = localBatchDir(batchId);
+		copyLocalImageCandidates(batchDir, candidates, strippedPaths);
+		return loadLocalImageBatch(batchId);
+	}
+
+	private List<LocalUploadCandidate> localUploadCandidates(
+		List<MultipartFile> imageFiles,
+		List<String> imageRelativePaths
+	) {
 		if (imageFiles == null || imageFiles.stream().noneMatch(file -> file != null && !file.isEmpty())) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 이미지 폴더를 선택해주세요.");
 		}
@@ -446,18 +519,18 @@ public class AdminGoodsImportService {
 		if (candidates.isEmpty()) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "로컬 폴더에서 이미지 파일을 찾을 수 없습니다.");
 		}
+		return candidates;
+	}
 
-		List<String> strippedPaths = stripCommonRoot(candidates.stream()
-			.map(LocalUploadCandidate::relativePath)
-			.toList());
-		String batchId = UUID.randomUUID().toString();
-		Path batchDir = localBatchDir(batchId);
-		Files.createDirectories(batchDir);
-
-		Set<String> seenPaths = new LinkedHashSet<>();
+	private void copyLocalImageCandidates(
+		Path batchDir,
+		List<LocalUploadCandidate> candidates,
+		List<String> relativePaths
+	) throws IOException {
+		Set<String> seenPaths = existingLocalImagePaths(batchDir);
 		for (int index = 0; index < candidates.size(); index++) {
 			MultipartFile file = candidates.get(index).file();
-			String relativePath = normalizeProductRelativeImagePath(strippedPaths.get(index));
+			String relativePath = normalizeProductRelativeImagePath(relativePaths.get(index));
 			if (relativePath == null) {
 				continue;
 			}
@@ -472,8 +545,18 @@ public class AdminGoodsImportService {
 			Files.createDirectories(target.getParent());
 			Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 		}
-		LocalImageBatch batch = loadLocalImageBatch(batchId);
-		return batch;
+	}
+
+	private Set<String> existingLocalImagePaths(Path batchDir) throws IOException {
+		if (!Files.isDirectory(batchDir)) {
+			return new LinkedHashSet<>();
+		}
+		try (var paths = Files.walk(batchDir)) {
+			return paths
+				.filter(Files::isRegularFile)
+				.map(path -> batchDir.relativize(path).toString().replace('\\', '/').toLowerCase(Locale.ROOT))
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		}
 	}
 
 	private LocalImageBatch loadLocalImageBatch(String batchId) {

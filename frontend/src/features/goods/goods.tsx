@@ -5,6 +5,7 @@ import {
   fetchGoods,
   fetchGoodsFilters,
   fetchMyGoodsLike,
+  fetchMyGoodsLikes,
   removeGoodsLike,
   type GoodsFilterOption,
   type GoodsSummary,
@@ -43,13 +44,6 @@ function GoodsPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const {
-    favoriteIds,
-    favoriteGoods,
-    favoritesStatus,
-    favoritesError,
-    refreshFavorites,
-  } = useGoodsFavorites()
-  const {
     query,
     setQuery,
     sort,
@@ -74,6 +68,13 @@ function GoodsPage() {
     commitSearch,
     goToPage,
   } = useGoodsListQueryState()
+  const {
+    favoriteIds,
+    favoriteGoods,
+    favoritesStatus,
+    favoritesError,
+    refreshFavorites,
+  } = useGoodsFavorites(activeSection === 'favorites')
   const [filters, setFilters] = useState<GoodsFilterGroup[]>([])
   const [goodsPage, setGoodsPage] = useState<PageResponse<GoodsSummary> | null>(null)
   const [status, setStatus] = useState<LoadStatus>('loading')
@@ -329,16 +330,15 @@ function GoodsPage() {
           return
         }
 
-        const likeResults = await Promise.all(
-          goods.map((item) => fetchMyGoodsLike(item.goodsId).catch(() => null)),
-        )
+        const likeResults = await fetchMyGoodsLikes(goods.map((item) => item.goodsId)).catch(() => [])
         if (ignore) return
 
+        const likeResultByGoodsId = new Map(likeResults.map((like) => [like.goodsId, like]))
         setLikedGoodsIds((currentIds) => {
           const nextIds = new Set(currentIds)
-          likeResults.forEach((like, index) => {
-            const goodsId = goods[index]?.goodsId
-            if (!goodsId) return
+          goods.forEach((item) => {
+            const goodsId = item.goodsId
+            const like = likeResultByGoodsId.get(goodsId)
             if (like?.liked) {
               nextIds.add(goodsId)
             } else {
@@ -349,9 +349,9 @@ function GoodsPage() {
         })
         setLikeCountOverrides((currentCounts) => {
           const nextCounts = { ...currentCounts }
-          likeResults.forEach((like, index) => {
-            const goodsId = goods[index]?.goodsId
-            if (!goodsId || like?.likeCount === undefined) return
+          likeResults.forEach((like) => {
+            const goodsId = like.goodsId
+            if (!goodsId || like.likeCount === undefined) return
             nextCounts[goodsId] = like.likeCount
           })
           return nextCounts
