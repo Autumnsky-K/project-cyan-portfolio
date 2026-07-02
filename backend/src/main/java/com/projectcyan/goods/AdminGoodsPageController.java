@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -271,22 +272,47 @@ public class AdminGoodsPageController {
 	public String previewImportGoods(
 		@RequestParam("file") MultipartFile file,
 		@RequestParam(defaultValue = "true") boolean useLocalImages,
+		@RequestParam(required = false) String imageBatchId,
 		@RequestParam(required = false) List<MultipartFile> imageFiles,
 		@RequestParam(required = false) List<String> imageRelativePath,
 		Model model
 	) {
 		try {
-			model.addAttribute("preview", adminGoodsImportService.preview(
-				file,
-				imageFiles,
-				imageRelativePath,
-				useLocalImages
-			));
+			if (useLocalImages && imageBatchId != null && !imageBatchId.isBlank()) {
+				model.addAttribute("preview", adminGoodsImportService.preview(file, imageBatchId, true));
+			} else {
+				model.addAttribute("preview", adminGoodsImportService.preview(
+					file,
+					imageFiles,
+					imageRelativePath,
+					useLocalImages
+				));
+			}
 		} catch (ResponseStatusException exception) {
 			model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
 			model.addAttribute("error", adminGoodsErrorMessage(exception));
 		}
 		return "admin/goods/import";
+	}
+
+	@PostMapping("/admin/goods/import/local-images/batch")
+	@ResponseBody
+	public Map<String, Object> createLocalImageBatch() {
+		return Map.of("batchId", adminGoodsImportService.createLocalImageBatch());
+	}
+
+	@PostMapping("/admin/goods/import/local-images/batch/{batchId}/images")
+	@ResponseBody
+	public Map<String, Object> appendLocalImageBatch(
+		@PathVariable String batchId,
+		@RequestParam(required = false) List<MultipartFile> imageFiles,
+		@RequestParam(required = false) List<String> imageRelativePath
+	) {
+		int imageCount = adminGoodsImportService.appendLocalImageBatch(batchId, imageFiles, imageRelativePath);
+		return Map.of(
+			"batchId", batchId,
+			"imageCount", imageCount
+		);
 	}
 
 	@PostMapping("/admin/goods/import/commit")

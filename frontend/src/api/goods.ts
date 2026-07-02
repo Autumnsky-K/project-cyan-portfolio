@@ -65,6 +65,10 @@ export type GoodsLikeResponse = {
   likeCount: number
 }
 
+export type GoodsLikeItemResponse = GoodsLikeResponse & {
+  goodsId: number
+}
+
 export type GoodsFilterOption = {
   label: string
   value: string
@@ -151,6 +155,17 @@ export async function fetchMyGoodsLike(goodsId: string | number | undefined): Pr
 
   const response = await apiFetch(`/goods/${goodsId}/likes/my`)
   return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to load goods like.')
+}
+
+export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promise<GoodsLikeItemResponse[]> {
+  if (!goodsIds.length || !(await hasSpringApiSession())) {
+    return []
+  }
+
+  const params = new URLSearchParams()
+  params.set('goodsIds', goodsIds.join(','))
+  const response = await apiFetch(`/goods/likes/my?${params.toString()}`)
+  return await parseApiResponse<GoodsLikeItemResponse[]>(response, 'Failed to load goods likes.') ?? []
 }
 
 export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {

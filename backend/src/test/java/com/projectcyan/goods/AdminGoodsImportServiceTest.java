@@ -108,6 +108,37 @@ class AdminGoodsImportServiceTest {
 	}
 
 	@Test
+	void previewsChunkedLocalImageBatch() {
+		String batchId = adminGoodsImportService.createLocalImageBatch();
+		int firstCount = adminGoodsImportService.appendLocalImageBatch(
+			batchId,
+			List.of(imageFile("genshin/raiden/main.webp")),
+			List.of("genshin/raiden/main.webp")
+		);
+		int secondCount = adminGoodsImportService.appendLocalImageBatch(
+			batchId,
+			List.of(imageFile("genshin/raiden/1.webp")),
+			List.of("genshin/raiden/1.webp")
+		);
+
+		AdminGoodsImportPreview preview = adminGoodsImportService.preview(
+			csvFile("""
+				상품ID,상품명,가격,아티스트명,카테고리명,재고,판매상태,이미지폴더,태그,상세설명,베스트,AI추천
+				,라이덴 스탠드,18000,라이덴,스탠드,15,HIDDEN,genshin/raiden,라이덴,상세,FALSE,FALSE
+				"""),
+			batchId,
+			true
+		);
+
+		assertThat(firstCount).isEqualTo(1);
+		assertThat(secondCount).isEqualTo(2);
+		assertThat(preview.hasErrors()).isFalse();
+		assertThat(preview.imageBatchId()).isEqualTo(batchId);
+		assertThat(preview.rows().getFirst().mainImageUrl()).contains("/genshin/raiden/main.webp");
+		assertThat(preview.rows().getFirst().extraImageUrls()).hasSize(1);
+	}
+
+	@Test
 	void previewsLocalImageFolderWithoutMainAndMovesOverflowImagesToDetail() {
 		AdminGoodsImportPreview preview = adminGoodsImportService.preview(
 			csvFile("""
