@@ -87,6 +87,43 @@ class SupabaseJwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void protectsAiPersonalizationContextRequest() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest(
+			"GET",
+			"/api/ai/personalization-context"
+		);
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(response.getContentAsString()).contains("AUTH_UNAUTHORIZED");
+		verifyNoInteractions(jwtVerifier, memberRepository, filterChain);
+	}
+
+	@Test
+	void exposesAuthenticatedMemberForAiPersonalizationContextRequest() throws Exception {
+		UUID userId = UUID.randomUUID();
+		Member member = Member.emailMember(userId, "user@example.com", "User", "010-0000-0000");
+		MockHttpServletRequest request = new MockHttpServletRequest(
+			"GET",
+			"/api/ai/personalization-context"
+		);
+		request.addHeader("Authorization", "Bearer valid-token");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+		when(jwtVerifier.verify("valid-token")).thenReturn(new VerifiedSupabaseJwt(userId));
+		when(memberRepository.findByMemberUuid(userId)).thenReturn(Optional.of(member));
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(request.getAttribute(SupabaseJwtAuthenticationFilter.AUTHENTICATED_MEMBER_ATTRIBUTE))
+			.isInstanceOf(AuthenticatedMember.class);
+		verify(filterChain).doFilter(request, response);
+	}
+
+	@Test
 	void rejectsValidTokenWithoutMemberRow() throws Exception {
 		UUID userId = UUID.randomUUID();
 		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/orders");

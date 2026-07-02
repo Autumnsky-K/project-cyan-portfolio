@@ -13,7 +13,7 @@ import {
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsCards from './GoodsCards'
-import GoodsFilterUi, { type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
+import GoodsFilterUi, { GoodsActiveFilterChips, type GoodsFilterGroup, type GoodsSelectedFilters } from './GoodsFilterUi'
 import GoodsListState, { GoodsCardSkeleton } from './GoodsListState'
 import GoodsPagination from './GoodsPagination'
 import GoodsSearchAutocomplete from './GoodsSearchAutocomplete'
@@ -57,6 +57,8 @@ function GoodsPage() {
     setViewMode,
     selectedFilters,
     setSelectedFilters,
+    recommendedGoodsIds,
+    clearRecommendations,
     requestParams,
     pendingHistoryScrollY,
     clearPendingHistoryScroll,
@@ -287,6 +289,38 @@ function GoodsPage() {
   const hasGoods = goods.length > 0
   const isViewCountSort = sort === 'viewCount,desc'
 
+  useEffect(() => {
+    if (status !== 'data' || recommendedGoodsIds.length < 2) return undefined
+
+    const highlightedElements: HTMLElement[] = []
+    const frameId = window.requestAnimationFrame(() => {
+      recommendedGoodsIds.forEach((goodsId) => {
+        const element = document.querySelector<HTMLElement>(`[data-goods-id="${goodsId}"]`)
+        if (!element) return
+        element.classList.add('vtuber-action-highlight')
+        highlightedElements.push(element)
+      })
+      highlightedElements[0]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      })
+    })
+    const timerId = window.setTimeout(() => {
+      highlightedElements.forEach((element) => {
+        element.classList.remove('vtuber-action-highlight')
+      })
+    }, 2200)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.clearTimeout(timerId)
+      highlightedElements.forEach((element) => {
+        element.classList.remove('vtuber-action-highlight')
+      })
+    }
+  }, [recommendedGoodsIds, status])
+
   function handleQueryChange(value: string) {
     searchScrollPositionRef.current = window.scrollY
     if (goods.length > 0 && goodsResultsRef.current) {
@@ -364,6 +398,19 @@ function GoodsPage() {
         />
 
         <div className="goods-content">
+          {recommendedGoodsIds.length >= 2 && (
+            <div className="active-filter-bar" role="status">
+              <span className="active-filter-label">
+                AI 추천 상품 {recommendedGoodsIds.length}개
+              </span>
+              <button type="button" onClick={clearRecommendations}>전체 상품 보기</button>
+            </div>
+          )}
+          <GoodsActiveFilterChips
+            groups={filters}
+            selectedFilters={selectedFilters}
+            onRemoveFilter={toggleFilter}
+          />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
               <p>

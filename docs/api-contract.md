@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.12` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.15` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -534,13 +534,14 @@
 - WebSocket 엔드포인트: `/client-ws` *(OLV 표준)*
 - 클라이언트 → 서버 인증 메시지: `{ "type": "auth", "accessToken": "<Supabase access_token>" }`
 - 클라이언트 → 서버 메시지: `{ "type": "text-input", "text": "예산 5만원으로 최애 선물 골라줘" }`
-- 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional)
+- 클라이언트 → 서버 메시지 추가 가능 필드: `sessionId` (저장된 채팅 세션 ID, optional), `context.cartItems` (현재 장바구니 요약, optional), `context.recentRecommendations` (직전 추천 선택 복구용 상품 ID·순위, optional), `context.currentPath` (현재 쇼핑 화면 경로, optional)
 - 서버 → 클라이언트 메시지(동결 필드): `{ "type": "...", "text": "...", "actions": [ ... ] }`
 - 서버 → 클라이언트 메시지 추가 가능 필드: `metadata.recommendations` (추천 저장용 상품 ID·사유·순위, optional), `metadata.authRequired`, `metadata.authReason`, `metadata.loginPath` (로그인 CTA, optional), `metadata.configVersion`, `metadata.pipelineMode`, `metadata.behavior` (optional)
 - `actions` 배열 형식은 §4 따름
 - WebSocket `actions` 항목은 `[ACTION]` 태그를 JSON 객체로 표현한다. 예: `{ "type": "navigate", "path": "/goods/42" }`
 - `auth.accessToken`은 로그인 사용자의 Supabase access token이며, AI 서버는 연결 메모리에만 보관하고 DB·로그에 저장하지 않는다.
 - `metadata.recommendations[]` 항목은 `{ goodsId, recommendationReason, rankOrder }` 형태이며, AI 서버는 채팅 이력 저장 시 `virtual_recommendation` 저장에 사용할 수 있다.
+- 상품 추천 결과는 최대 3개를 하나의 추천 집합으로 확정한다. 1개면 상품 상세 `navigate`, 2개 이상이면 `showRecommendations`로 정확한 추천 목록을 표시한다.
 - `metadata.behavior`는 `{ motionKey, source }` 형태다. `motionKey`는 발행된 모션 목록의 키이며 `source`는 `llm` 또는 `fallback`이다.
 - `metadata.pipelineMode`는 `faithful18` 또는 `optimized`이고, `metadata.configVersion`은 해당 응답에 적용된 발행 설정 버전이다.
 - 로그인 필요 응답은 기존 `full-text` 형태와 빈 `actions`를 유지하고 다음 additive metadata를 포함한다.
@@ -563,6 +564,8 @@
 - `text-input.text`는 trim 후 비어 있으면 invalid이며, 최대 1,000자까지 허용한다.
 - `sessionId`는 로그인 사용자의 Spring 채팅 세션 ID다. 인증되지 않은 요청의 `sessionId`는 저장에 사용하지 않는다.
 - `context.cartItems`는 optional이며, 최대 50개까지 허용한다.
+- `context.recentRecommendations`는 optional이며, 최대 20개의 `{ goodsId, rankOrder? }`를 허용한다. AI 서버는 연결 내 최근 추천 메모리가 없을 때만 이 값을 후속 번호 선택 복구에 사용한다.
+- `context.currentPath`는 optional이며 `/goods`, `/goods/{goodsId}`, `/cart` 중 하나만 허용한다. AI 서버는 이를 현재 화면과 이동 목적지를 비교하는 데 사용한다.
 - 로그인 사용자는 WebSocket 연결 후 auth 메시지를 먼저 보낸 뒤 `text-input`에는 access token을 반복 전송하지 않는다.
 - AI 서버는 같은 `sessionId`의 이전 USER/ASSISTANT 메시지를 최근 20개까지 유지해 후속 LLM 요청에 주입한다.
 - WebSocket 재연결 시 현재 세션 메시지를 Spring에서 한 번 복원하며, 다른 세션의 원문은 직접 주입하지 않고 세션 요약만 사용한다.
@@ -592,7 +595,7 @@
   - `hook`: `input` 또는 `output`
   - `policyId`: 정책 ID
   - `check`: 검사 이름 (`maxLength`, `forbiddenWords`, `specialCharRatio`, `numberRatio`, `englishRatio`, `actionScope`, `literalText`)
-  - `threshold`: 검사 기준값 문자열 (`500`, `30%`, `navigate,highlight,addToCart` 등)
+  - `threshold`: 검사 기준값 문자열 (`500`, `30%`, `navigate,highlight,addToCart,showRecommendations` 등)
   - `action`: 위반 시 동작 (`stop`, `review`, `rewrite`, `filter`, `replace`, `remove`)
   - `message`: 차단/확인/교체 시 사용자에게 보낼 문장
   - `replacement`: `literalText + replace` 정책의 치환 문자열, 그 외에는 null 또는 빈 문자열
@@ -673,6 +676,10 @@
 ```json
 {
   "context": {
+    "currentPath": "/goods/42",
+    "recentRecommendations": [
+      { "goodsId": 42, "rankOrder": 0 }
+    ],
     "cartItems": [
       {
         "goodsId": 42,
@@ -793,14 +800,16 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 
 | 액션 | 형식 | 동작 | 의존 |
 |------|------|------|------|
-| 이동 | `[ACTION:navigate path="/goods/42"]` | 해당 경로로 AJAX 본문 교체 | 라우팅 규약 |
+| 이동 | `[ACTION:navigate path="/goods/42"]` | 허용된 쇼핑 경로로 화면 이동 | 라우팅 규약 |
 | 하이라이트 | `[ACTION:highlight selector="[data-goods-id='42']"]` | 해당 카드 강조 효과 | `data-goods-id` |
 | 담기 | `[ACTION:addToCart goodsId="42"]` | 장바구니 담기 API 호출 | 장바구니 API |
+| 추천 목록 | 서버 JSON action `{ "type": "showRecommendations", "goodsIds": ["42", "84"] }` | `/goods`에서 지정 상품만 조회하고 렌더링 후 강조 | 굿즈 목록 API |
 
-- ACTION 실행 대상은 숫자 `goodsId` 기반 값만 허용한다.
-  - `navigate.path`: `/goods/{goodsId}`
+- ACTION 실행 대상은 쇼핑 경로 및 숫자 `goodsId` 기반 값만 허용한다.
+  - `navigate.path`: `/goods`, `/cart`, `/goods/{goodsId}`
   - `highlight.selector`: `[data-goods-id='{goodsId}']` 또는 `[data-goods-id="{goodsId}"]`
   - `addToCart.goodsId`: 숫자 문자열
+  - `showRecommendations.goodsIds`: 중복 없는 숫자 문자열 배열, 2~20개
 - **스트레치(MVP 아님)**: 감정 표정 전환, STT 음성 입력 — Week 1 계약에서 제외
 
 ---
@@ -871,5 +880,7 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-06-30 | v0.2.10 | ai | additive | 발행된 Behavior runtime config, 공통 FastAPI 18단계 trace, Hook 문자열 변환, `metadata.behavior` 모션 계약 추가 | Codex |
 | 2026-06-30 | v0.2.11 | ai/admin | additive | AES-GCM LLM 연결 프로필 금고, 관리자 재인증·CSRF, FastAPI 내부 credential resolve, 새 WebSocket 연결 단위 provider 발행·롤백 추가 | Codex |
 | 2026-07-01 | v0.2.12 | 전체 | correction | additive 변경도 PATCH 버전을 반드시 1 올리도록 문서 버전 규칙 통일 | 강승민 |
+| 2026-07-01 | v0.2.13 | ai/cart | additive | WebSocket `context.recentRecommendations`를 추가해 재연결·인증 경계에서도 직전 추천 번호 선택을 복구 | 강승민 |
+| 2026-07-02 | v0.2.14 | ai/navigation | additive | WebSocket `context.currentPath`와 `/goods`·`/cart` 이동 action을 추가하고 쇼핑 화면 이동 의도 라우팅 기준을 명시 | Codex |
+| 2026-07-02 | v0.2.15 | ai/goods | additive | 복수 추천을 `/goods`의 정확한 상품 집합으로 표시하는 `showRecommendations.goodsIds` action 추가 | Codex |
 |  |  |  |  |  |  |
-
