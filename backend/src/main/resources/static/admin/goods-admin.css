@@ -1022,8 +1022,9 @@ button.admin-primary {
 }
 
 .admin-bulk-toolbar .admin-bulk-submit {
+  align-self: end;
   width: 228px;
-  min-height: 38px;
+  min-height: 52px;
   padding: 8px 14px;
   border-color: var(--admin-accent, #2f6f64);
   border-radius: 5px;
@@ -1092,7 +1093,7 @@ button.admin-primary {
 }
 
 .admin-bulk-table {
-  min-width: 1120px;
+  min-width: 1180px;
   table-layout: fixed;
 }
 
@@ -1117,14 +1118,22 @@ button.admin-primary {
 
 .admin-bulk-table th:nth-child(2),
 .admin-bulk-table td:nth-child(2) {
-  width: 54px;
+  width: 52px;
+}
+
+.admin-bulk-table th:nth-child(3),
+.admin-bulk-table td:nth-child(3) {
+  width: auto;
 }
 
 .admin-bulk-table th:nth-child(4),
-.admin-bulk-table td:nth-child(4),
+.admin-bulk-table td:nth-child(4) {
+  width: 108px;
+}
+
 .admin-bulk-table th:nth-child(8),
 .admin-bulk-table td:nth-child(8) {
-  width: 76px;
+  width: 67px;
 }
 
 .admin-bulk-table th:nth-child(5),
@@ -1133,17 +1142,17 @@ button.admin-primary {
 .admin-bulk-table td:nth-child(6),
 .admin-bulk-table th:nth-child(7),
 .admin-bulk-table td:nth-child(7) {
-  width: 124px;
+  width: 116px;
 }
 
 .admin-bulk-table th:nth-child(9),
 .admin-bulk-table td:nth-child(9) {
-  width: 178px;
+  width: 128px;
 }
 
 .admin-bulk-table th:nth-child(10),
 .admin-bulk-table td:nth-child(10) {
-  width: 72px;
+  width: 132px;
 }
 
 .admin-bulk-row.is-selected {
@@ -1216,15 +1225,21 @@ button.admin-primary {
 }
 
 .admin-bulk-actions {
+  width: 100%;
+  box-sizing: border-box;
   flex-wrap: nowrap;
   gap: 4px;
   align-items: start;
+  justify-content: flex-start;
 }
 
 .admin-bulk-actions a,
 .admin-bulk-actions button {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 54px;
   min-height: 24px;
-  padding: 2px 5px;
+  padding: 2px 7px;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -1255,6 +1270,24 @@ button.admin-primary {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.admin-thumb-link {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.admin-thumb-link:hover,
+.admin-thumb-link:focus-visible {
+  border-color: var(--admin-accent, #2f6f64);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-accent, #2f6f64) 16%, transparent);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .admin-tag-list,
