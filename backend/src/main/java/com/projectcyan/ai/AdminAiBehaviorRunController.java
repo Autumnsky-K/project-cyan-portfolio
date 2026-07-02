@@ -17,15 +17,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAiBehaviorRunController {
 
 	private final AdminAiBehaviorRunService behaviorRunService;
+	private final AdminAiBehaviorProxyService behaviorProxyService;
 
-	public AdminAiBehaviorRunController(AdminAiBehaviorRunService behaviorRunService) {
+	public AdminAiBehaviorRunController(
+		AdminAiBehaviorRunService behaviorRunService,
+		AdminAiBehaviorProxyService behaviorProxyService
+	) {
 		this.behaviorRunService = behaviorRunService;
+		this.behaviorProxyService = behaviorProxyService;
 	}
 
 	@PostMapping("/admin/ai/behavior/runs")
 	public Map<String, Object> start(@RequestBody BehaviorRunRequest request) {
-		BehaviorRunSnapshot snapshot = behaviorRunService.start(request);
-		return Map.of("ok", true, "run", snapshot);
+		return behaviorProxyService.run(request);
 	}
 
 	@GetMapping("/admin/ai/behavior/runs/{runId}")

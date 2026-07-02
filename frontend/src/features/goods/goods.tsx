@@ -1,8 +1,11 @@
 import { type ChangeEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  addGoodsLike,
   fetchGoods,
   fetchGoodsFilters,
+  fetchMyGoodsLike,
+  removeGoodsLike,
   type GoodsFilterOption,
   type GoodsSummary,
   type PageResponse,
@@ -41,8 +44,6 @@ function GoodsPage() {
     favoriteGoods,
     favoritesStatus,
     favoritesError,
-    isFavorite,
-    toggleFavorite,
     refreshFavorites,
   } = useGoodsFavorites()
   const {
@@ -74,6 +75,9 @@ function GoodsPage() {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
   const [emptyResultsMinHeight, setEmptyResultsMinHeight] = useState(0)
+  const [likedGoodsIds, setLikedGoodsIds] = useState<Set<number>>(() => new Set())
+  const [pendingLikeIds, setPendingLikeIds] = useState<Set<number>>(() => new Set())
+  const [likeCountOverrides, setLikeCountOverrides] = useState<Record<number, number>>({})
   const hasLoadedGoodsRef = useRef(false)
   const resultsStartRef = useRef<HTMLDivElement | null>(null)
   const searchToolbarRef = useRef<HTMLElement | null>(null)
@@ -87,21 +91,54 @@ function GoodsPage() {
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
 
-  const handleFavoriteToggle = useCallback(async (goodsId: number) => {
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
-    await toggleFavorite(goodsId)
-  }, [navigateToLogin, toggleFavorite])
+  const updateGoodsLikeCount = useCallback((goodsId: number, likeCount: number) => {
+    setLikeCountOverrides((currentCounts) => ({ ...currentCounts, [goodsId]: likeCount }))
+    setGoodsPage((currentPageData) => (
+      currentPageData
+        ? {
+            ...currentPageData,
+            content: currentPageData.content.map((item) =>
+              item.goodsId === goodsId ? { ...item, likeCount } : item,
+            ),
+          }
+        : currentPageData
+    ))
+  }, [])
 
-  const showFavorites = useCallback(async () => {
+  const handleLikeToggle = useCallback(async (item: GoodsSummary) => {
     if (!(await hasSpringApiSession())) {
       navigateToLogin()
       return
     }
-    setActiveSection('favorites')
-  }, [navigateToLogin, setActiveSection])
+
+    const goodsId = item.goodsId
+    setPendingLikeIds((currentIds) => new Set(currentIds).add(goodsId))
+
+    try {
+      const knownLiked = likedGoodsIds.has(goodsId)
+      const currentLike = knownLiked ? { liked: true, likeCount: Number(item.likeCount ?? 0) } : await fetchMyGoodsLike(goodsId)
+      const result = currentLike?.liked
+        ? await removeGoodsLike(goodsId)
+        : await addGoodsLike(goodsId)
+
+      setLikedGoodsIds((currentIds) => {
+        const nextIds = new Set(currentIds)
+        if (result.liked) {
+          nextIds.add(goodsId)
+        } else {
+          nextIds.delete(goodsId)
+        }
+        return nextIds
+      })
+      updateGoodsLikeCount(goodsId, result.likeCount)
+    } finally {
+      setPendingLikeIds((currentIds) => {
+        const nextIds = new Set(currentIds)
+        nextIds.delete(goodsId)
+        return nextIds
+      })
+    }
+  }, [likedGoodsIds, navigateToLogin, updateGoodsLikeCount])
 
   useEffect(() => {
     if (activeSection !== 'favorites') return
@@ -157,9 +194,9 @@ function GoodsPage() {
       try {
         const data = await fetchGoodsFilters({ signal: controller.signal })
         setFilters([
-          { title: 'Category', param: 'categoryIds', options: uniqueFilterOptions(data.categories) },
-          { title: 'Artist', param: 'artistIds', options: uniqueFilterOptions(data.artists) },
-          { title: 'Tag', param: 'tags', options: uniqueFilterOptions(data.tags) },
+          { title: '카테고리', param: 'categoryIds', options: uniqueFilterOptions(data.categories) },
+          { title: '아티스트', param: 'artistIds', options: uniqueFilterOptions(data.artists) },
+          { title: '태그', param: 'tags', options: uniqueFilterOptions(data.tags) },
         ])
         setFilterStatus('data')
       } catch (loadError) {
@@ -196,7 +233,7 @@ function GoodsPage() {
         if (loadError instanceof Error && loadError.name === 'AbortError') {
           return
         }
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load goods.')
+        setError(loadError instanceof Error ? loadError.message : '굿즈를 불러오지 못했습니다.')
         setStatus('error')
       }
     }
@@ -219,6 +256,22 @@ function GoodsPage() {
   }
 
   const goods = useMemo(() => goodsPage?.content ?? [], [goodsPage])
+  const visibleGoods = useMemo(
+    () => goods.map((item) => (
+      likeCountOverrides[item.goodsId] === undefined
+        ? item
+        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
+    )),
+    [goods, likeCountOverrides],
+  )
+  const visibleFavoriteGoods = useMemo(
+    () => favoriteGoods.map((item) => (
+      likeCountOverrides[item.goodsId] === undefined
+        ? item
+        : { ...item, likeCount: likeCountOverrides[item.goodsId] }
+    )),
+    [favoriteGoods, likeCountOverrides],
+  )
   const totalElements = goodsPage?.totalElements ?? 0
   const totalPages = goodsPage?.totalPages ?? 0
   const currentPage = goodsPage?.page ?? goodsPage?.number ?? page
@@ -236,13 +289,12 @@ function GoodsPage() {
   function handleSortChange(event: ChangeEvent<HTMLSelectElement>) {
     setPage(0)
     setSort(event.target.value)
-    scrollToResults()
   }
 
   function handlePageChange(nextPage: number) {
     goToPage(nextPage)
     window.requestAnimationFrame(() => {
-      searchToolbarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     })
   }
 
@@ -261,18 +313,9 @@ function GoodsPage() {
     <main className="goods-page">
       <Header />
 
-      <nav className="goods-section-tabs" aria-label="Goods sections">
-        <button type="button" aria-pressed={activeSection === 'all'} onClick={() => setActiveSection('all')}>
-          All goods
-        </button>
-        <button type="button" aria-pressed={activeSection === 'favorites'} onClick={() => void showFavorites()}>
-          Favorites <span>{favoriteIds.length}</span>
-        </button>
-      </nav>
-
       {activeSection === 'all' && (
         <>
-      <section className="store-toolbar" ref={searchToolbarRef} aria-label="Goods search and sort">
+      <section className="store-toolbar" ref={searchToolbarRef} aria-label="굿즈 검색 및 정렬">
         <GoodsSearchAutocomplete
           query={query}
           suggestions={searchSuggestions}
@@ -280,12 +323,12 @@ function GoodsPage() {
           onSearchCommit={commitSearch}
         />
         <label className="sort-field">
-          <span>Sort</span>
+          <span>정렬</span>
           <select value={sort} onChange={handleSortChange}>
-            <option value="createdAt,desc">Newest</option>
-            <option value="price,asc">Price low to high</option>
-            <option value="price,desc">Price high to low</option>
-            <option value="goodsName,asc">Name A to Z</option>
+            <option value="createdAt,desc">최신순</option>
+            <option value="price,asc">낮은 가격순</option>
+            <option value="price,desc">높은 가격순</option>
+            <option value="goodsName,asc">이름순</option>
           </select>
         </label>
       </section>
@@ -311,21 +354,20 @@ function GoodsPage() {
           />
           <div className="result-summary" ref={resultsStartRef}>
             <div>
-              <h2>Featured Goods</h2>
               <p>
                 {status === 'loading'
-                  ? 'Loading store items'
+                  ? '굿즈를 불러오는 중'
                   : status === 'refreshing'
-                    ? `Updating ${goods.length} of ${totalElements} store items`
-                  : `Showing ${goods.length} of ${totalElements} store items`}
+                    ? `총 ${totalElements}개의 상품`
+                  : `총 ${totalElements}개의 상품`}
               </p>
             </div>
-            <div className="view-toggle" aria-label="View options">
-              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
-                Grid
+            <div className="view-toggle" aria-label="보기 방식">
+              <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
+                <span className="view-icon view-icon-grid" aria-hidden="true" />
               </button>
-              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                List
+              <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                <span className="view-icon view-icon-list" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -346,10 +388,11 @@ function GoodsPage() {
             {hasGoods && (
               <div data-refreshing={status === 'refreshing'}>
                 <GoodsCards
-                  items={goods}
+                  items={visibleGoods}
                   viewMode={viewMode}
-                  isFavorite={isFavorite}
-                  toggleFavorite={handleFavoriteToggle}
+                  isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
+                  isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+                  toggleLike={handleLikeToggle}
                   onOpenDetail={openGoodsDetail}
                 />
               </div>
@@ -370,12 +413,16 @@ function GoodsPage() {
         <section className="favorites-content" aria-labelledby="favorites-heading">
           <div className="result-summary">
             <div>
-              <h2 id="favorites-heading">Favorite Goods</h2>
-              <p>{favoriteIds.length} saved item{favoriteIds.length === 1 ? '' : 's'}</p>
+              <h2 id="favorites-heading">관심 굿즈</h2>
+              <p>{favoriteIds.length}개 저장됨</p>
             </div>
-            <div className="view-toggle" aria-label="Favorite view options">
-              <button type="button" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>Grid</button>
-              <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>List</button>
+            <div className="view-toggle" aria-label="관심 굿즈 보기 방식">
+              <button type="button" aria-label="그리드 보기" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
+                <span className="view-icon view-icon-grid" aria-hidden="true" />
+              </button>
+              <button type="button" aria-label="리스트 보기" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                <span className="view-icon view-icon-list" aria-hidden="true" />
+              </button>
             </div>
           </div>
 
@@ -401,10 +448,11 @@ function GoodsPage() {
           )}
           {favoritesStatus === 'data' && favoriteGoods.length > 0 && (
             <GoodsCards
-              items={favoriteGoods}
+              items={visibleFavoriteGoods}
               viewMode={viewMode}
-              isFavorite={isFavorite}
-              toggleFavorite={handleFavoriteToggle}
+              isLiked={(goodsId) => likedGoodsIds.has(goodsId)}
+              isLikePending={(goodsId) => pendingLikeIds.has(goodsId)}
+              toggleLike={handleLikeToggle}
               onOpenDetail={openGoodsDetail}
             />
           )}

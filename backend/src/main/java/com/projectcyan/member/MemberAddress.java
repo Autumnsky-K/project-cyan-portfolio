@@ -40,6 +40,9 @@ public class MemberAddress {
 	@Column(name = "address_detail")
 	private String addressDetail;
 
+	@Column(name = "delivery_request")
+	private String deliveryRequest;
+
 	@Column(name = "is_default", nullable = false)
 	private boolean defaultAddress;
 
@@ -59,6 +62,7 @@ public class MemberAddress {
 		this.postalCode = null;
 		this.address = address;
 		this.addressDetail = null;
+		this.deliveryRequest = null;
 		this.defaultAddress = true;
 		this.createdAt = Instant.now();
 		this.updatedAt = this.createdAt;
@@ -68,14 +72,50 @@ public class MemberAddress {
 		return new MemberAddress(member, recipientName, phone, address);
 	}
 
+	public String getRecipientName() {
+		return recipientName;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public String getPostalCode() {
+		return postalCode;
+	}
+
 	public void updateDefaultAddress(String recipientName, String phone, String address) {
+		updateDefaultAddress(recipientName, phone, address, this.addressDetail, this.deliveryRequest);
+	}
+
+	public void updateDefaultAddress(String recipientName, String phone, String address, String addressDetail) {
+		updateDefaultAddress(recipientName, phone, address, addressDetail, this.deliveryRequest);
+	}
+
+	public void updateDefaultAddress(
+		String recipientName,
+		String phone,
+		String address,
+		String addressDetail,
+		String deliveryRequest
+	) {
 		this.recipientName = recipientName;
 		this.phone = phone;
 		this.address = address;
+		this.addressDetail = addressDetail == null || addressDetail.isBlank() ? null : addressDetail.trim();
+		this.deliveryRequest = deliveryRequest == null || deliveryRequest.isBlank() ? null : deliveryRequest.trim();
 		this.updatedAt = Instant.now();
 	}
 
 	public String getAddress() {
 		return address;
+	}
+
+	public String getAddressDetail() {
+		return addressDetail;
+	}
+
+	public String getDeliveryRequest() {
+		return deliveryRequest;
 	}
 }

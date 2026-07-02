@@ -185,6 +185,11 @@ class HttpGoodsCatalogClient:
         return content if isinstance(content, list) else []
 
 
+def build_runtime_goods_catalog_client(spring_api_url: str) -> HttpGoodsCatalogClient:
+    """Build the single catalog source shared by admin trace and client chat."""
+    return HttpGoodsCatalogClient(spring_api_url)
+
+
 class TsvGoodsCatalogClient:
     def __init__(
         self,
@@ -301,6 +306,7 @@ class CatalogGroundedChatResponseProvider:
         context: dict[str, Any] | None = None,
         favorite_artists: list[dict[str, Any]] | None = None,
         personalization_context: dict[str, Any] | None = None,
+        response_instruction: str = "",
     ) -> FullTextMessage:
         follow_up_response = build_follow_up_cart_response(
             text,
@@ -311,14 +317,20 @@ class CatalogGroundedChatResponseProvider:
 
         if not has_product_intent(text):
             return self.delegate.build_response(
-                self._personalized_text(text, personalization_context),
+                self._with_instruction(
+                    self._personalized_text(text, personalization_context),
+                    response_instruction,
+                ),
                 context,
             )
 
         candidates = self.catalog_client.search_candidates(text, favorite_artists)
         if candidates is None:
             return self.delegate.build_response(
-                self._personalized_text(text, personalization_context),
+                self._with_instruction(
+                    self._personalized_text(text, personalization_context),
+                    response_instruction,
+                ),
                 context,
             )
         self.recent_recommendation_candidates = normalize_recent_candidates(candidates)
@@ -335,6 +347,7 @@ class CatalogGroundedChatResponseProvider:
             build_catalog_prompt(text, candidates, favorite_artists),
             personalization_context,
         )
+        prompt = self._with_instruction(prompt, response_instruction)
         response = self.delegate.build_response(prompt, context)
         allowed_goods_ids = {
             str(candidate["goodsId"])
@@ -351,8 +364,13 @@ class CatalogGroundedChatResponseProvider:
                 ],
                 candidates,
             ),
-            metadata=recommendation_metadata(candidates),
+            metadata={**response.metadata, **recommendation_metadata(candidates)},
         )
+
+    def _with_instruction(self, text: str, instruction: str) -> str:
+        if not instruction.strip() or isinstance(self.delegate, MockChatResponseProvider):
+            return text
+        return f"{text}\n\n{instruction.strip()}"
 
     def _personalized_text(
         self,

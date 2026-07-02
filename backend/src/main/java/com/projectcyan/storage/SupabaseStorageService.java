@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -206,7 +207,32 @@ public class SupabaseStorageService {
 		}
 	}
 
+	public String downloadTextObject(String bucketName, String objectPath) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedObjectPath = normalizeFolderPath(objectPath);
+		try {
+			return restClient.get()
+				.uri(storageUrl("/object/authenticated/" + encodeObjectPath(normalizedBucketName, normalizedObjectPath)))
+				.headers(this::applyAuthHeaders)
+				.retrieve()
+				.body(String.class);
+		} catch (RestClientResponseException exception) {
+			throw storageException("텍스트 object 다운로드 요청에 실패했습니다.", exception);
+		}
+	}
+
 	public SupabaseStorageObject uploadObjectBySizePolicy(
+		String bucketName,
+		String path,
+		String relativePath,
+		MultipartFile file,
+		boolean allowSmallerOverwrite
+	) {
+		return uploadObjectBySizePolicyWithResult(bucketName, path, relativePath, file, allowSmallerOverwrite).object();
+	}
+
+	public SupabaseStorageWriteResult uploadObjectBySizePolicyWithResult(
 		String bucketName,
 		String path,
 		String relativePath,
@@ -224,11 +250,11 @@ public class SupabaseStorageService {
 			long incomingSize = file.getSize();
 			long existingSize = existingObject.size();
 			if (incomingSize == existingSize) {
-				return uploadObjectToPath(normalizedBucketName, objectPath, file, true);
+				return new SupabaseStorageWriteResult(uploadObjectToPath(normalizedBucketName, objectPath, file, true), false);
 			}
 			if (incomingSize > existingSize) {
 				String copyPath = nextCopyObjectPath(normalizedBucketName, objectPath);
-				return uploadObjectToPath(normalizedBucketName, copyPath, file, false);
+				return new SupabaseStorageWriteResult(uploadObjectToPath(normalizedBucketName, copyPath, file, false), true);
 			}
 			if (!allowSmallerOverwrite) {
 				throw new SupabaseStorageConflictException(
@@ -241,9 +267,13 @@ public class SupabaseStorageService {
 					incomingSize
 				);
 			}
+			return new SupabaseStorageWriteResult(uploadObjectToPath(normalizedBucketName, objectPath, file, true), false);
+		}
+		if (existingObject != null) {
+			return new SupabaseStorageWriteResult(uploadObjectToPath(normalizedBucketName, objectPath, file, true), false);
 		}
 
-		return uploadObjectToPath(normalizedBucketName, objectPath, file, true);
+		return new SupabaseStorageWriteResult(uploadObjectToPath(normalizedBucketName, objectPath, file, true), true);
 	}
 
 	public SupabaseStorageObject uploadAiModelObject(
@@ -272,6 +302,23 @@ public class SupabaseStorageService {
 			return objects;
 		} catch (RestClientResponseException exception) {
 			throw storageException("object 목록 요청에 실패했습니다.", exception);
+		}
+	}
+
+	public List<String> listFolderPaths(String bucketName, String path, int limit) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedPath = normalizeOptionalFolderPath(path);
+		int safeLimit = Math.max(1, Math.min(limit, 1000));
+		try {
+			Set<String> paths = new LinkedHashSet<>();
+			if (StringUtils.hasText(normalizedPath)) {
+				paths.add(normalizedPath);
+			}
+			collectFolderPaths(normalizedBucketName, normalizedPath, paths, safeLimit, 0);
+			return paths.stream().sorted().toList();
+		} catch (RestClientResponseException exception) {
+			throw storageException("Path 목록 요청에 실패했습니다.", exception);
 		}
 	}
 
@@ -366,6 +413,35 @@ public class SupabaseStorageService {
 		}
 	}
 
+	public List<SupabaseStorageObject> listImageObjectsInFolder(String bucketName, String path, int limit) {
+		validateConfigured();
+		String normalizedBucketName = normalizeBucketName(bucketName);
+		String normalizedPath = normalizeOptionalFolderPath(path);
+		int safeLimit = Math.max(1, Math.min(limit, 1000));
+		try {
+			List<SupabaseStorageObject> objects = new ArrayList<>();
+			for (StorageObjectRow row : listObjectRows(normalizedBucketName, normalizedPath, safeLimit)) {
+				if (objects.size() >= safeLimit || row.name() == null || FOLDER_PLACEHOLDER_FILE.equals(row.name())) {
+					continue;
+				}
+				if (isImageName(row.name())) {
+					String objectPath = joinObjectPath(normalizedPath, row.name());
+					objects.add(new SupabaseStorageObject(
+						normalizedBucketName,
+						objectPath,
+						row.name(),
+						publicObjectUrl(normalizedBucketName, objectPath),
+						metadataSize(row.metadata()),
+						row.updatedAt()
+					));
+				}
+			}
+			return objects;
+		} catch (RestClientResponseException exception) {
+			throw storageException("object 목록 요청에 실패했습니다.", exception);
+		}
+	}
+
 	private void collectImageObjects(
 		String bucketName,
 		String path,
@@ -417,7 +493,7 @@ public class SupabaseStorageService {
 			}
 
 			String objectPath = joinObjectPath(path, row.name());
-			if (looksLikeFileName(row.name())) {
+			if (looksLikeFileObject(row)) {
 				objects.add(new SupabaseStorageObject(
 					bucketName,
 					objectPath,
@@ -432,14 +508,36 @@ public class SupabaseStorageService {
 		}
 	}
 
+	private void collectFolderPaths(
+		String bucketName,
+		String path,
+		Set<String> paths,
+		int limit,
+		int depth
+	) {
+		if (paths.size() >= limit || depth > MAX_LIST_DEPTH) {
+			return;
+		}
+
+		for (StorageObjectRow row : listObjectRows(bucketName, path, 1000)) {
+			if (paths.size() >= limit || row.name() == null || FOLDER_PLACEHOLDER_FILE.equals(row.name())) {
+				continue;
+			}
+
+			if (!looksLikeFileObject(row)) {
+				String objectPath = joinObjectPath(path, row.name());
+				paths.add(objectPath);
+				collectFolderPaths(bucketName, objectPath, paths, limit, depth + 1);
+			}
+		}
+	}
+
 	private List<StorageObjectRow> listObjectRows(String bucketName, String path, int limit) {
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("limit", Math.max(1, Math.min(limit, 1000)));
 		body.put("offset", 0);
 		body.put("sortBy", Map.of("column", "name", "order", "asc"));
-		if (StringUtils.hasText(path)) {
-			body.put("prefix", path);
-		}
+		body.put("prefix", StringUtils.hasText(path) ? path : "");
 
 		List<StorageObjectRow> objects = restClient.post()
 			.uri(storageUrl("/object/list/" + encodeSegment(bucketName)))
@@ -518,8 +616,11 @@ public class SupabaseStorageService {
 
 		String normalizedObjectPath = String.join("/", normalizedSegments);
 		String objectName = objectFileName(normalizedObjectPath);
-		if (!isImageName(objectName)) {
-			throw new SupabaseStorageException("이미지 파일만 업로드할 수 있습니다.");
+		if (!isWebpName(objectName)) {
+			throw new SupabaseStorageException("이미지는 WebP 압축 파일만 업로드할 수 있습니다.");
+		}
+		if (!hasWebpHeader(file)) {
+			throw new SupabaseStorageException("WebP 형식으로 변환된 이미지 파일만 업로드할 수 있습니다.");
 		}
 		return normalizedObjectPath;
 	}
@@ -597,6 +698,28 @@ public class SupabaseStorageService {
 		return extension != null && IMAGE_EXTENSIONS.contains(extension.toLowerCase());
 	}
 
+	private boolean isWebpName(String fileName) {
+		String extension = StringUtils.getFilenameExtension(fileName);
+		return extension != null && "webp".equalsIgnoreCase(extension);
+	}
+
+	private boolean hasWebpHeader(MultipartFile file) {
+		try (var inputStream = file.getInputStream()) {
+			byte[] header = inputStream.readNBytes(12);
+			return header.length >= 12
+				&& header[0] == 'R'
+				&& header[1] == 'I'
+				&& header[2] == 'F'
+				&& header[3] == 'F'
+				&& header[8] == 'W'
+				&& header[9] == 'E'
+				&& header[10] == 'B'
+				&& header[11] == 'P';
+		} catch (IOException exception) {
+			throw new SupabaseStorageException("업로드 파일을 읽을 수 없습니다.", exception);
+		}
+	}
+
 	private boolean isAiModelName(String fileName) {
 		String normalized = fileName == null ? "" : fileName.toLowerCase();
 		if (normalized.endsWith(".model3.json")) {
@@ -608,6 +731,10 @@ public class SupabaseStorageService {
 
 	private boolean looksLikeFileName(String fileName) {
 		return StringUtils.getFilenameExtension(fileName) != null;
+	}
+
+	private boolean looksLikeFileObject(StorageObjectRow row) {
+		return row != null && (looksLikeFileName(row.name()) || metadataSize(row.metadata()) != null);
 	}
 
 	private String joinObjectPath(String path, String fileName) {

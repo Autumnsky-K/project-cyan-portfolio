@@ -234,8 +234,9 @@ public class AdminPaymentService {
 	}
 
 	private AdminPaymentDashboard dashboardFromRows(List<AdminPaymentRow> rows, String tableName) {
-		int approvedCount = countByStatus(rows, Set.of("DONE", "PAID", "APPROVED", "SUCCESS"));
-		int pendingCount = countByStatus(rows, Set.of("READY", "PENDING", "IN_PROGRESS", "PAYMENT_PENDING"));
+		int approvedCount = countMatching(rows, row -> isApproved(row.paymentStatus(), row.orderStatus())
+			&& !isProblemStatus(row.paymentStatus(), row.orderStatus()));
+		int pendingCount = countMatching(rows, row -> isPendingStatus(row.paymentStatus(), row.orderStatus()));
 		int failedCount = countMatching(rows, row -> isProblemStatus(row.paymentStatus(), row.orderStatus()));
 		int mismatchCount = countMatching(rows, row -> row.paymentStatus().contains("REPAIR")
 			|| row.orderStatus().contains("REPAIR")
@@ -716,6 +717,12 @@ public class AdminPaymentService {
 			|| containsAny(orderStatus, "FAIL", "CANCEL", "REFUND", "REPAIR", "ERROR");
 	}
 
+	private boolean isPendingStatus(String paymentStatus, String orderStatus) {
+		return !isProblemStatus(paymentStatus, orderStatus)
+			&& !isApproved(paymentStatus, orderStatus)
+			&& containsAny(paymentStatus, "READY", "PENDING", "IN_PROGRESS", "PAYMENT_PENDING");
+	}
+
 	private boolean containsAny(String value, String... needles) {
 		String normalized = value == null ? "" : value.toUpperCase(Locale.ROOT);
 		for (String needle : needles) {
@@ -724,11 +731,6 @@ public class AdminPaymentService {
 			}
 		}
 		return false;
-	}
-
-	private int countByStatus(List<AdminPaymentRow> rows, Set<String> statuses) {
-		return countMatching(rows, row -> statuses.stream()
-			.anyMatch(status -> row.paymentStatus().contains(status) || row.orderStatus().contains(status)));
 	}
 
 	private int countMatching(List<AdminPaymentRow> rows, RowPredicate predicate) {
@@ -758,19 +760,9 @@ public class AdminPaymentService {
 	private List<FilterOption> statusFilters(List<AdminPaymentRow> rows) {
 		List<FilterOption> filters = new ArrayList<>();
 		filters.add(new FilterOption("all", "전체", true));
-		List<FilterOption> fixedFilters = List.of(
-			new FilterOption("READY", "승인 대기", false),
-			new FilterOption("DONE", "승인 완료", false),
-			new FilterOption("FAILED", "실패", false),
-			new FilterOption("REPAIR_REQUIRED", "보정 필요", false),
-			new FilterOption("CANCELED", "취소", false),
-			new FilterOption("REFUND_REQUESTED", "환불 요청", false)
-		);
-		for (FilterOption filter : fixedFilters) {
-			if (rows.stream().anyMatch(row -> row.paymentStatus().contains(filter.value()))) {
-				filters.add(filter);
-			}
-		}
+		filters.add(new FilterOption("SUCCESS", "성공", false));
+		filters.add(new FilterOption("READY", "승인 대기", false));
+		filters.add(new FilterOption("FAILED", "실패", false));
 		return filters;
 	}
 

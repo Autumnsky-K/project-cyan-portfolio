@@ -1,8 +1,8 @@
 import json
 import re
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from pydantic import ValidationError
 
@@ -21,6 +21,9 @@ from project_cyan_ai.tools import (
     collect_goods_ids,
 )
 
+if TYPE_CHECKING:
+    from project_cyan_ai.runtime_config import RuntimeModelConnection
+
 RECOMMENDATION_KEYWORDS = ("추천", "보여줘", "상품")
 CART_KEYWORDS = ("장바구니", "담아줘")
 MOCK_GOODS_ID = "1002"
@@ -36,16 +39,28 @@ DEFAULT_CLAUDE_BASE_URL = "https://api.anthropic.com"
 DEFAULT_CLAUDE_MODEL = "claude-3-haiku-20240307"
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_OPENAI_MODEL = "gpt-5.4-mini"
+DEFAULT_CODEX_OAUTH_URL = "https://chatgpt.com/backend-api/codex/responses"
 ACTION_TAG_PATTERN = re.compile(
     r"\[ACTION:(?P<name>[A-Za-z][A-Za-z0-9]*)\s*"
     r"(?P<attrs>(?:[^\]\"]|\"[^\"]*\")*)\]"
 )
 ANY_ACTION_TAG_PATTERN = re.compile(r"\[ACTION:[^\]]*\]")
+MOTION_TAG_PATTERN = re.compile(r"\[MOTION:(?P<key>[a-z][a-z0-9-]*)\]", re.IGNORECASE)
+ANY_MOTION_TAG_PATTERN = re.compile(r"\[MOTION:[^\]]*\]", re.IGNORECASE)
 ACTION_ATTR_PATTERN = re.compile(
     r"(?P<key>[A-Za-z][A-Za-z0-9]*)=\"(?P<value>[^\"]*)\""
 )
 GOODS_PATH_PATTERN = re.compile(r"^/goods/(?P<goods_id>[^/?#]+)$")
 GOODS_SELECTOR_PATTERN = re.compile(r"data-goods-id=['\"](?P<goods_id>[^'\"]+)['\"]")
+
+
+class _RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _open_llm_request(request: Request, timeout: float):
+    return build_opener(_RejectRedirects()).open(request, timeout=timeout)
 
 OPENAI_SHOPPING_INSTRUCTIONS = """
 You are Project Cyan's shopping assistant.
@@ -170,7 +185,7 @@ class HttpOlvGatewayClient:
             method="POST",
         )
 
-        with urlopen(request, timeout=self.timeout_seconds) as response:
+        with _open_llm_request(request, self.timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
 
         return extract_olv_text(response_payload)
@@ -213,7 +228,7 @@ class HttpClaudeClient:
             method="POST",
         )
 
-        with urlopen(request, timeout=self.timeout_seconds) as response:
+        with _open_llm_request(request, self.timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
 
         return extract_claude_text(response_payload)
@@ -260,7 +275,7 @@ class HttpOpenAiResponsesClient:
             method="POST",
         )
 
-        with urlopen(request, timeout=self.timeout_seconds) as response:
+        with _open_llm_request(request, self.timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
 
         return extract_openai_text(response_payload)
@@ -294,7 +309,7 @@ class HttpOpenAiResponsesClient:
             method="POST",
         )
 
-        with urlopen(request, timeout=self.timeout_seconds) as response:
+        with _open_llm_request(request, self.timeout_seconds) as response:
             return json.loads(response.read().decode("utf-8"))
 
     def _responses_url(self) -> str:
@@ -302,6 +317,62 @@ class HttpOpenAiResponsesClient:
             return self.base_url
 
         return f"{self.base_url}/responses"
+
+
+class HttpCodexOAuthClient:
+    def __init__(
+        self,
+        responses_url: str,
+        access_token: str,
+        account_id: str,
+        model: str,
+        timeout_seconds: float = OPENAI_REQUEST_TIMEOUT_SECONDS,
+    ):
+        self.responses_url = responses_url
+        self.access_token = access_token
+        self.account_id = account_id
+        self.model = model
+        self.timeout_seconds = timeout_seconds
+
+    def generate_text(self, text: str) -> str:
+        payload = {
+            "model": self.model,
+            "store": False,
+            "stream": True,
+            "input": [
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": text}],
+                }
+            ],
+            "text": {"verbosity": "medium"},
+            "tool_choice": "auto",
+            "parallel_tool_calls": True,
+        }
+        request = Request(
+            self.responses_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Authorization": f"Bearer {self.access_token}",
+                "chatgpt-account-id": self.account_id,
+                "originator": "pi",
+                "OpenAI-Beta": "responses=experimental",
+                "Accept": "text/event-stream",
+                "User-Agent": "ProjectCyanFastAPI/1.0",
+            },
+            method="POST",
+        )
+        with _open_llm_request(request, self.timeout_seconds) as response:
+            return extract_codex_sse_text(response.read().decode("utf-8"))
+
+    def create_response(
+        self,
+        input_items: list[dict[str, Any]],
+        instructions: str,
+        tools: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        raise ValueError("CODEX_OAUTH shopping tool calls are not enabled")
 
 
 class MockChatResponseProvider:
@@ -429,6 +500,37 @@ def extract_openai_text(payload: Any) -> str:
     return ""
 
 
+def extract_codex_sse_text(body: str) -> str:
+    output: list[str] = []
+    final_response: dict[str, Any] | None = None
+    event_type = ""
+    for line in body.splitlines():
+        if not line.strip():
+            event_type = ""
+            continue
+        if line.startswith("event:"):
+            event_type = line[6:].strip()
+            continue
+        if not line.startswith("data:"):
+            continue
+        raw = line[5:].strip()
+        if not raw or raw == "[DONE]":
+            continue
+        value = json.loads(raw)
+        kind = str(value.get("type") or event_type)
+        if kind in ("response.output_text.delta", "response.refusal.delta"):
+            output.append(str(value.get("delta") or ""))
+        elif kind in ("error", "response.failed"):
+            raise ValueError("CODEX_OAUTH response failed")
+        elif kind in ("response.completed", "response.done", "response.incomplete"):
+            response = value.get("response")
+            if isinstance(response, dict):
+                final_response = response
+    if output:
+        return "".join(output).strip()
+    return extract_openai_text(final_response or {}).strip()
+
+
 def extract_openai_function_calls(payload: Any) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
@@ -502,6 +604,7 @@ def build_action(action_name: str, attrs: dict[str, str]) -> ActionPayload | Non
 
 def parse_action_tags(text: str) -> FullTextMessage:
     actions: list[ActionPayload] = []
+    motion_match = MOTION_TAG_PATTERN.search(text)
 
     for match in ACTION_TAG_PATTERN.finditer(text):
         attrs = {
@@ -515,13 +618,21 @@ def parse_action_tags(text: str) -> FullTextMessage:
 
     clean_text = ACTION_TAG_PATTERN.sub("", text)
     clean_text = ANY_ACTION_TAG_PATTERN.sub("", clean_text)
+    clean_text = MOTION_TAG_PATTERN.sub("", clean_text)
+    clean_text = ANY_MOTION_TAG_PATTERN.sub("", clean_text)
     clean_text = re.sub(r"\s*,\s*(?=$|\n)", "", clean_text)
     clean_text = re.sub(r"(?:,\s*){2,}", ", ", clean_text)
     clean_text = re.sub(r"(?:\s*,\s*)+$", "", clean_text)
     clean_text = re.sub(r"[ \t]{2,}", " ", clean_text)
     clean_text = re.sub(r" *\n *", "\n", clean_text).strip()
 
-    return FullTextMessage(text=clean_text, actions=actions)
+    metadata: dict[str, Any] = {}
+    if motion_match:
+        metadata["behavior"] = {
+            "motionKey": motion_match.group("key").lower(),
+            "source": "llm",
+        }
+    return FullTextMessage(text=clean_text, actions=actions, metadata=metadata)
 
 
 def action_goods_id(action: ActionPayload) -> str | None:
@@ -713,33 +824,53 @@ def get_chat_response_provider(
     provider_name: str | None = None,
     *,
     enable_shopping_tools: bool = True,
+    runtime_connection: "RuntimeModelConnection | None" = None,
 ) -> ChatResponseProvider:
     settings = get_settings()
-    provider_name = (provider_name or settings.ai_provider).strip()
+    provider_name = (
+        runtime_connection.provider.lower()
+        if runtime_connection is not None
+        else (provider_name or settings.ai_provider).strip().lower()
+    )
 
     if provider_name == "mock":
         return MockChatResponseProvider()
 
     if provider_name == "claude":
         client = HttpClaudeClient(
-            base_url=settings.llm_base_url or DEFAULT_CLAUDE_BASE_URL,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model or DEFAULT_CLAUDE_MODEL,
+            base_url=(runtime_connection.base_url if runtime_connection else settings.llm_base_url) or DEFAULT_CLAUDE_BASE_URL,
+            api_key=(runtime_connection.credential.get("apiKey") if runtime_connection else settings.llm_api_key),
+            model=(runtime_connection.model if runtime_connection else settings.llm_model) or DEFAULT_CLAUDE_MODEL,
         )
 
         return ClaudeChatResponseProvider(client=client)
 
     if provider_name == "openai":
         client = HttpOpenAiResponsesClient(
-            base_url=settings.llm_base_url or DEFAULT_OPENAI_BASE_URL,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model or DEFAULT_OPENAI_MODEL,
+            base_url=(runtime_connection.base_url if runtime_connection else settings.llm_base_url) or DEFAULT_OPENAI_BASE_URL,
+            api_key=(runtime_connection.credential.get("apiKey") if runtime_connection else settings.llm_api_key),
+            model=(runtime_connection.model if runtime_connection else settings.llm_model) or DEFAULT_OPENAI_MODEL,
         )
 
         return OpenAiChatResponseProvider(
             client=client,
             shopping_tools=build_shopping_tools() if enable_shopping_tools else None,
         )
+
+    if provider_name == "codex_oauth":
+        if runtime_connection is None:
+            raise ValueError("CODEX_OAUTH requires a runtime connection")
+        access_token = str(runtime_connection.credential.get("access") or "")
+        account_id = str(runtime_connection.credential.get("account_id") or "")
+        if not access_token or not account_id:
+            raise ValueError("CODEX_OAUTH credential is incomplete")
+        client = HttpCodexOAuthClient(
+            responses_url=runtime_connection.base_url or DEFAULT_CODEX_OAUTH_URL,
+            access_token=access_token,
+            account_id=account_id,
+            model=runtime_connection.model,
+        )
+        return OpenAiChatResponseProvider(client=client, shopping_tools=None)
 
     if provider_name == "olv":
         gateway_url = settings.olv_gateway_url

@@ -73,6 +73,13 @@ final class GoodsSpecifications {
 			: builder.equal(builder.upper(root.get("salesStatus")), salesStatus.trim().toUpperCase());
 	}
 
+	static Specification<Goods> isPubliclyVisible() {
+		return (root, query, builder) -> builder.or(
+			builder.isNull(root.get("salesStatus")),
+			builder.not(builder.upper(root.get("salesStatus")).in(GoodsVisibility.HIDDEN_FROM_PUBLIC_STATUSES))
+		);
+	}
+
 	static Specification<Goods> hasTag(String tag) {
 		return (root, query, builder) -> {
 			if (tag == null || tag.isBlank()) {

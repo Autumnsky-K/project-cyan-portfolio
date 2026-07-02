@@ -65,6 +65,9 @@
         <a class="admin-nav-child"
            th:href="@{/admin/content/artists}"
            th:attr="aria-current=${current == 'content-artists'} ? 'page' : null">아티스트 문구·이미지 편집</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/content/groups}"
+           th:attr="aria-current=${current == 'content-groups'} ? 'page' : null">그룹 화면 구성 관리</a>
       </div>
     </details>
 
@@ -95,11 +98,8 @@
       <summary class="admin-nav-parent">AI 챗봇 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
-           th:href="@{/admin/ai}"
-           th:attr="aria-current=${current == 'ai'} ? 'page' : null">챗봇 행동 관리</a>
-        <a class="admin-nav-child"
            th:href="@{/admin/ai/behavior}"
-           th:attr="aria-current=${current == 'ai-behavior'} ? 'page' : null">행동 시뮬레이션 TSV</a>
+           th:attr="aria-current=${current == 'ai-behavior'} ? 'page' : null">챗봇 행동 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/ai/animation}"
            th:attr="aria-current=${current == 'ai-animation'} ? 'page' : null">챗봇 애니메이션 관리</a>
@@ -128,7 +128,10 @@
       <span class="admin-rail-icon admin-rail-icon-goods" aria-hidden="true"></span>
       <span class="admin-rail-label">굿즈</span>
     </a>
-    <a th:href="@{/admin/members}" title="회원" aria-label="회원">M</a>
+    <a th:href="@{/admin/members}" title="회원" aria-label="회원">
+      <span class="admin-rail-icon admin-rail-icon-artists" aria-hidden="true"></span>
+      <span class="admin-rail-label">회원</span>
+    </a>
     <a th:href="@{/admin/data}" title="데이터" aria-label="데이터">
       <span class="admin-rail-icon admin-rail-icon-data" aria-hidden="true"></span>
       <span class="admin-rail-label">데이터</span>
@@ -137,7 +140,7 @@
       <span class="admin-rail-icon admin-rail-icon-storage" aria-hidden="true"></span>
       <span class="admin-rail-label">저장소</span>
     </a>
-    <a th:href="@{/admin/ai}" title="AI" aria-label="AI">
+    <a th:href="@{/admin/ai/behavior}" title="AI" aria-label="AI">
       <span class="admin-rail-icon admin-rail-icon-ai" aria-hidden="true"></span>
       <span class="admin-rail-label">AI</span>
     </a>

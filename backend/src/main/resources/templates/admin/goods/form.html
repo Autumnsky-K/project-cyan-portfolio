@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 수정'}">굿즈 입력</title>
   <link rel="stylesheet" th:href="@{/webjars/quill/2.0.3/dist/quill.snow.css}">
-  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='goods-image-slots-20260701')}">
 </head>
 <body>
 <main class="admin-page">
@@ -132,8 +132,50 @@
 
           <label>
             <span>이미지 URL</span>
-            <input type="url" th:field="*{imageUrl}" data-goods-image-url placeholder="https://example.com/goods.jpg">
+            <input type="hidden" th:field="*{imageUrl}" data-goods-image-url>
           </label>
+        </section>
+
+        <section class="admin-goods-image-slots" data-goods-image-slots aria-label="굿즈 이미지 슬롯">
+          <div class="admin-section-heading">
+            <div>
+              <p class="admin-eyebrow">굿즈 이미지</p>
+              <h3>이미지 슬롯</h3>
+            </div>
+            <small>버킷 이미지를 누르면 선택된 슬롯 또는 가장 앞 빈 슬롯에 들어갑니다.</small>
+          </div>
+
+          <div class="admin-goods-slot-grid">
+            <article class="admin-goods-image-slot"
+                     data-goods-image-slot
+                     data-slot-index="0"
+                     tabindex="0">
+              <header>
+                <strong>메인 이미지</strong>
+                <button type="button" data-goods-slot-clear>비우기</button>
+              </header>
+              <div class="admin-goods-slot-preview">
+                <img th:if="*{imageUrl}" th:src="*{imageUrl}" alt="">
+                <span th:unless="*{imageUrl}">비어 있음</span>
+              </div>
+            </article>
+
+            <article class="admin-goods-image-slot"
+                     th:each="slotIndex : ${#numbers.sequence(0, 3)}"
+                     data-goods-image-slot
+                     th:attr="data-slot-index=${slotIndex + 1}"
+                     tabindex="0">
+              <header>
+                <strong th:text="|추가 이미지 ${slotIndex + 1}|">추가 이미지</strong>
+                <button type="button" data-goods-slot-clear>비우기</button>
+              </header>
+              <input type="hidden" th:field="*{extraImageUrls[__${slotIndex}__]}" data-goods-extra-image-url>
+              <div class="admin-goods-slot-preview">
+                <img th:if="*{extraImageUrls[__${slotIndex}__]}" th:src="*{extraImageUrls[__${slotIndex}__]}" alt="">
+                <span th:unless="*{extraImageUrls[__${slotIndex}__]}">비어 있음</span>
+              </div>
+            </article>
+          </div>
         </section>
 
         <label class="admin-wide-field">
@@ -221,6 +263,7 @@
   }
 </script>
 <script th:src="@{/admin/image-library-tree.js}"></script>
-<script th:src="@{/admin/goods-form.js}"></script>
+<script th:src="@{/admin/image-webp-compressor.js(v='webp-upload-20260701')}"></script>
+<script th:src="@{/admin/goods-form.js(v='webp-upload-20260701')}"></script>
 </body>
 </html>

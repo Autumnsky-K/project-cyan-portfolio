@@ -18,6 +18,7 @@
       </div>
       <div class="admin-header-actions">
         <a th:href="${frontendGoodsBaseUrl}" target="_blank" rel="noreferrer">굿즈 화면 열기</a>
+        <a th:href="@{/admin/goods/import}">엑셀 대량 등록</a>
         <a class="admin-primary" th:href="@{/admin/goods/new}">굿즈 등록</a>
       </div>
     </header>
@@ -235,11 +236,13 @@
                    th:text="'#' + ${row.goodsId()}">#0</a>
               </td>
               <td>
-                <div class="admin-thumb" th:aria-label="${row.name()} + ' 이미지'">
+                <a class="admin-thumb admin-thumb-link"
+                   th:href="@{/admin/goods/{goodsId}/edit(goodsId=${row.goodsId()})}"
+                   th:aria-label="${row.name()} + ' 상세로 이동'">
                   <img th:if="${row.imageUrl()}" th:src="${row.imageUrl()}" alt="">
                   <span th:if="${row.imageUrl() == null or row.imageUrl().isBlank()}"
                         th:text="${row.categoryLabel()}">굿즈</span>
-                </div>
+                </a>
               </td>
               <td>
                 <div class="admin-bulk-cell">
@@ -332,7 +335,7 @@
               </td>
               <td>
                 <div class="admin-actions admin-bulk-actions">
-                  <a th:href="${frontendGoodsBaseUrl + '/' + row.goodsId()}" target="_blank" rel="noreferrer">보기</a>
+                  <a th:href="${frontendGoodsBaseUrl + '/' + row.goodsId()}" target="_blank" rel="noreferrer">상품화면</a>
                   <a th:href="@{/admin/goods/{goodsId}/edit(goodsId=${row.goodsId()})}">상세</a>
                 </div>
               </td>

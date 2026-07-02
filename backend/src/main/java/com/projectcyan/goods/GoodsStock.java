@@ -35,4 +35,11 @@ public class GoodsStock {
 	void updateCurrentStock(Integer currentStock) {
 		this.currentStock = currentStock;
 	}
+
+	public void decreaseCurrentStock(int quantity) {
+		if (currentStock == null) {
+			return;
+		}
+		this.currentStock -= quantity;
+	}
 }

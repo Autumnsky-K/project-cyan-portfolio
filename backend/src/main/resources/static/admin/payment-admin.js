@@ -117,6 +117,32 @@
     return active?.dataset.statusTab || 'all'
   }
 
+  const includesAnyStatus = (row, values) => {
+    const combinedStatus = `${row.dataset.paymentStatus || ''} ${row.dataset.orderStatus || ''}`.toUpperCase()
+    return values.some((value) => combinedStatus.includes(value))
+  }
+
+  const includesAnyPaymentStatus = (row, values) => {
+    const paymentStatus = `${row.dataset.paymentStatus || ''}`.toUpperCase()
+    return values.some((value) => paymentStatus.includes(value))
+  }
+
+  const matchesStatusFilter = (row, status) => {
+    if (status === 'all') return true
+    const isFailed = includesAnyStatus(row, ['FAIL', 'CANCEL', 'REFUND', 'REPAIR', 'ERROR'])
+    const isSuccess = !isFailed && includesAnyStatus(row, ['DONE', 'PAID', 'APPROVED', 'SUCCESS'])
+    const isPending = !isFailed && !isSuccess && includesAnyPaymentStatus(row, [
+      'READY',
+      'PENDING',
+      'IN_PROGRESS',
+      'PAYMENT_PENDING',
+    ])
+    if (status === 'SUCCESS') return isSuccess
+    if (status === 'READY') return isPending
+    if (status === 'FAILED') return isFailed
+    return row.dataset.paymentStatus === status
+  }
+
   const applyFilter = () => {
     const query = (searchInput?.value || '').trim().toLowerCase()
     const provider = activeProviderValue()
@@ -126,7 +152,7 @@
       const matchesQuery = !query || row.textContent.toLowerCase().includes(query) ||
         Object.values(row.dataset).some((value) => String(value).toLowerCase().includes(query))
       const matchesProvider = provider === 'all' || row.dataset.provider === provider
-      const matchesStatus = status === 'all' || row.dataset.paymentStatus === status
+      const matchesStatus = matchesStatusFilter(row, status)
       row.classList.toggle('is-hidden', !(matchesQuery && matchesProvider && matchesStatus))
     })
 

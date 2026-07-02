@@ -157,6 +157,10 @@ public class AdminAuthService {
 		return session != null && Boolean.TRUE.equals(session.getAttribute(SESSION_AUTHENTICATED));
 	}
 
+	public boolean verifyPassword(String password) {
+		return hasConfiguredCredentials() && constantTimeEquals(adminPassword, nullToBlank(password));
+	}
+
 	public String clientIp(HttpServletRequest request) {
 		String forwardedFor = request.getHeader("X-Forwarded-For");
 		if (forwardedFor != null && !forwardedFor.isBlank()) {
