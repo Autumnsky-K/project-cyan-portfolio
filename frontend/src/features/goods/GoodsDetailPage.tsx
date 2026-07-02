@@ -16,7 +16,6 @@ import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
-import { useGoodsFavorites } from './useGoodsFavorites'
 import { formatGoodsPrice } from './goodsFormatters'
 import './goods.css'
 import './goods-detail.css'
@@ -51,24 +50,12 @@ function GoodsDetailPage() {
   const likeFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
-  const {
-    isFavorite,
-    toggleFavorite,
-  } = useGoodsFavorites()
   const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
 
   const navigateToLogin = useCallback(() => {
     window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
-
-  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
-    await toggleFavorite(targetGoodsId)
-  }, [navigateToLogin, toggleFavorite])
 
   const handleLikeToggle = useCallback(async () => {
     if (!goods) return
@@ -254,6 +241,8 @@ function GoodsDetailPage() {
       ]
     : []
   const selectedGalleryImage = galleryImages[selectedImageIndex] ?? galleryImages[0] ?? null
+  const canGoToPreviousImage = selectedImageIndex > 0
+  const canGoToNextImage = selectedImageIndex < galleryImages.length - 1
   const detailSpecs = goods
     ? [
         { label: '아티스트', value: goods.artistName },
@@ -328,6 +317,26 @@ function GoodsDetailPage() {
                   alt={selectedGalleryImage?.altText || goods.name}
                   fallbackLabel={goods.categoryName}
                 />
+                {galleryImages.length > 1 && canGoToPreviousImage && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-prev"
+                    type="button"
+                    aria-label="이전 이미지"
+                    onClick={() => setSelectedImageIndex((index) => Math.max(0, index - 1))}
+                  >
+                    ‹
+                  </button>
+                )}
+                {galleryImages.length > 1 && canGoToNextImage && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-next"
+                    type="button"
+                    aria-label="다음 이미지"
+                    onClick={() => setSelectedImageIndex((index) => Math.min(galleryImages.length - 1, index + 1))}
+                  >
+                    ›
+                  </button>
+                )}
               </div>
               {galleryImages.length > 1 && (
                 <div className="detail-gallery-thumbnails" aria-label="상품 이미지 사진첩">
@@ -354,8 +363,6 @@ function GoodsDetailPage() {
               key={goods.goodsId}
               goods={goods}
               onReviewClick={() => setActiveTab('reviews')}
-              isFavorite={isFavorite(goods.goodsId)}
-              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
               isLiked={isLiked}
               isLikePending={isLikePending}
               likeFeedback={likeFeedback}

@@ -15,8 +15,6 @@ const PURCHASE_STATE_LABELS: Record<string, string> = {
 type GoodsPurchasePanelProps = {
   goods: GoodsDetail
   onReviewClick?: () => void
-  isFavorite?: boolean
-  onFavoriteToggle?: () => void
   isLiked?: boolean
   isLikePending?: boolean
   likeFeedback?: string
@@ -26,8 +24,6 @@ type GoodsPurchasePanelProps = {
 function GoodsPurchasePanel({
   goods,
   onReviewClick,
-  isFavorite = false,
-  onFavoriteToggle,
   isLiked = false,
   isLikePending = false,
   likeFeedback = '',
@@ -87,20 +83,6 @@ function GoodsPurchasePanel({
           <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
             {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
           </span>
-          <button
-            className="detail-favorite-button"
-            type="button"
-            aria-label={isFavorite ? `${goods.name} 즐겨찾기 해제` : `${goods.name} 즐겨찾기 추가`}
-            aria-pressed={isFavorite}
-            onClick={onFavoriteToggle}
-          >
-            <span
-              className="favorite-heart-icon"
-              data-filled={isFavorite}
-              aria-hidden="true"
-            />
-            <span className="detail-favorite-label">{isFavorite ? '저장됨' : '저장'}</span>
-          </button>
         </div>
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
