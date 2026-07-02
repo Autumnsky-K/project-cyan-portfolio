@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { exchangeAuthCodeForSession, updateMemberPassword } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
@@ -8,6 +8,7 @@ import './AccountPages.css'
 function ResetPasswordPage() {
   const navigate = useNavigate()
   const hasCheckedCode = useRef(false)
+  const [resetToken, setResetToken] = useState('')
   const [form, setForm] = useState({
     password: '',
     passwordConfirm: '',
@@ -32,9 +33,16 @@ function ResetPasswordPage() {
       const providerError =
         params.get('error_description') ?? params.get('error') ?? ''
       const code = params.get('code')
+      const token = params.get('token') ?? ''
 
       if (providerError) {
         setError(providerError)
+        return
+      }
+
+      if (token) {
+        setResetToken(token)
+        window.history.replaceState(window.history.state, '', '/reset-password')
         return
       }
 
@@ -86,7 +94,7 @@ function ResetPasswordPage() {
     setIsLoading(true)
 
     try {
-      await updateMemberPassword(form.password)
+      await updateMemberPassword(form.password, resetToken)
       setMessage('비밀번호가 변경되었습니다.')
       window.setTimeout(() => navigate('/login'), 900)
     } catch (resetError) {
@@ -97,7 +105,7 @@ function ResetPasswordPage() {
   }
 
   return (
-    <main className="account-page">
+    <main className="account-page reset-password-page">
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}
@@ -106,18 +114,22 @@ function ResetPasswordPage() {
       />
 
       <div className="account-shell">
-        <nav className="account-topbar" aria-label="계정 이동">
-          <Link to="/login">로그인</Link>
-          <Link to="/mypage">마이페이지</Link>
+        <nav className="account-topbar reset-password-topbar" aria-label="계정 이동">
+          <button
+            className="reset-password-back"
+            type="button"
+            aria-label="이전 화면으로 이동"
+            onClick={() => navigate(-1)}
+          />
         </nav>
 
-        <section className="account-card account-panel" aria-label="새 비밀번호 설정">
+        <section className="account-card account-panel reset-password-panel" aria-label="새 비밀번호 설정">
           <div className="account-heading">
             <p>비밀번호 재설정</p>
             <h1>새 비밀번호 설정</h1>
           </div>
 
-          <form className="account-form" onSubmit={handleSubmit}>
+          <form className="account-form reset-password-form" onSubmit={handleSubmit}>
             <label className="account-field">
               <span>새 비밀번호</span>
               <div className="password-input">

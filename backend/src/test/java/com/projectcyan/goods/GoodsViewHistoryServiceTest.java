@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,8 @@ class GoodsViewHistoryServiceTest {
 
 	@Test
 	void savesFirstView() {
-		when(goodsRepository.existsById(1001L)).thenReturn(true);
+		Goods goods = goods(1001L);
+		when(goodsRepository.findById(1001L)).thenReturn(Optional.of(goods));
 		when(goodsViewHistoryRepository.existsByMemberIdAndGoodsIdAndViewedAtGreaterThanEqual(
 			7L,
 			1001L,
@@ -50,7 +52,8 @@ class GoodsViewHistoryServiceTest {
 
 	@Test
 	void skipsViewWithinTenMinutes() {
-		when(goodsRepository.existsById(1001L)).thenReturn(true);
+		Goods goods = goods(1001L);
+		when(goodsRepository.findById(1001L)).thenReturn(Optional.of(goods));
 		when(goodsViewHistoryRepository.existsByMemberIdAndGoodsIdAndViewedAtGreaterThanEqual(
 			7L,
 			1001L,
@@ -64,12 +67,18 @@ class GoodsViewHistoryServiceTest {
 
 	@Test
 	void rejectsMissingGoods() {
-		when(goodsRepository.existsById(9999L)).thenReturn(false);
+		when(goodsRepository.findById(9999L)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.recordView(7L, 9999L))
 			.isInstanceOf(ResponseStatusException.class)
 			.hasMessageContaining("404");
 
 		verify(goodsViewHistoryRepository, never()).save(any());
+	}
+
+	private Goods goods(Long goodsId) {
+		Goods goods = mock(Goods.class);
+		when(goods.getGoodsId()).thenReturn(goodsId);
+		return goods;
 	}
 }

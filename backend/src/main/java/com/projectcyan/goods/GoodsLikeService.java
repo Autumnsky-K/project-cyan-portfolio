@@ -29,17 +29,13 @@ public class GoodsLikeService {
 
 	@Transactional(readOnly = true)
 	public GoodsLikeResponse findMyLike(Long memberId, Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		return response(memberId, goodsId);
 	}
 
 	@Transactional
 	public GoodsLikeResponse addLike(Long memberId, Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		if (!goodsLikeRepository.existsByMemberIdAndGoodsId(memberId, goodsId)) {
 			try {
 				goodsLikeRepository.save(new GoodsLike(memberId, goodsId, clock.instant()));
@@ -54,11 +50,18 @@ public class GoodsLikeService {
 
 	@Transactional
 	public GoodsLikeResponse removeLike(Long memberId, Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
-		}
+		findPublicGoods(goodsId);
 		goodsLikeRepository.deleteByMemberIdAndGoodsId(memberId, goodsId);
 		return response(memberId, goodsId);
+	}
+
+	private Goods findPublicGoods(Long goodsId) {
+		Goods goods = goodsRepository.findById(goodsId)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
+		}
+		return goods;
 	}
 
 	private GoodsLikeResponse response(Long memberId, Long goodsId) {

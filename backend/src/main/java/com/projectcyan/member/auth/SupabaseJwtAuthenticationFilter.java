@@ -86,6 +86,12 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (HttpMethod.POST.matches(method) && "/api/members/password-reset/eligibility".equals(path)) {
 			return false;
 		}
+		if (HttpMethod.POST.matches(method) && "/api/members/password-reset/request".equals(path)) {
+			return false;
+		}
+		if (HttpMethod.POST.matches(method) && "/api/members/password-reset/confirm".equals(path)) {
+			return false;
+		}
 		if (HttpMethod.GET.matches(method) && "/api/goods/favorites".equals(path)) {
 			return true;
 		}

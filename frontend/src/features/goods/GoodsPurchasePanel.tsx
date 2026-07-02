@@ -3,35 +3,28 @@ import type { GoodsDetail } from '../../api/goods'
 import { useCart } from '../cart/useCart'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
-
-const PURCHASE_STATE_LABELS: Record<string, string> = {
-  AVAILABLE: '판매 중',
-  UPCOMING: '판매 예정',
-  ENDED: '판매 종료',
-  SOLD_OUT: '품절',
-  UNAVAILABLE: '구매 불가',
-}
+import GoodsStatusBadge from './GoodsStatusBadge'
 
 type GoodsPurchasePanelProps = {
   goods: GoodsDetail
   onReviewClick?: () => void
-  isFavorite?: boolean
-  onFavoriteToggle?: () => void
   isLiked?: boolean
   isLikePending?: boolean
   likeFeedback?: string
   onLikeToggle?: () => void
+  shareFeedback?: string
+  onShare?: () => void
 }
 
 function GoodsPurchasePanel({
   goods,
   onReviewClick,
-  isFavorite = false,
-  onFavoriteToggle,
   isLiked = false,
   isLikePending = false,
   likeFeedback = '',
   onLikeToggle,
+  shareFeedback = '',
+  onShare,
 }: GoodsPurchasePanelProps) {
   const { addCartItem } = useCart()
   const [quantity, setQuantity] = useState(1)
@@ -83,51 +76,23 @@ function GoodsPurchasePanel({
   return (
     <aside className="purchase-panel">
       <div className="purchase-heading">
-        <div className="purchase-heading-top">
-          <span className={`purchase-state state-${goods.purchaseState?.toLowerCase()}`}>
-            {PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus ?? '판매 정보'}
-          </span>
-          <button
-            className="detail-favorite-button"
-            type="button"
-            aria-label={isFavorite ? `${goods.name} 즐겨찾기 해제` : `${goods.name} 즐겨찾기 추가`}
-            aria-pressed={isFavorite}
-            onClick={onFavoriteToggle}
-          >
-            <span
-              className="favorite-heart-icon"
-              data-filled={isFavorite}
-              aria-hidden="true"
-            />
-            <span className="detail-favorite-label">{isFavorite ? '저장됨' : '저장'}</span>
-          </button>
-        </div>
+        <GoodsStatusBadge salesStatus={goods.salesStatus} isBestSeller={goods.isBestSeller} />
         <p>{goods.artistName ?? 'Project Cyan'}</p>
         <h2>{goods.name}</h2>
-        <div className="detail-social-row">
+        <div className="purchase-rating-row">
           <GoodsRatingSummary
             averageRating={goods.averageRating}
             reviewCount={goods.reviewCount}
-            onClick={onReviewClick}
           />
-          <button
-            className="detail-like-button"
-            type="button"
-            aria-label={isLiked ? `${goods.name} 좋아요 취소` : `${goods.name} 좋아요`}
-            aria-pressed={isLiked}
-            disabled={isLikePending}
-            onClick={onLikeToggle}
-          >
-            <span aria-hidden="true">♥</span>
-            <span>{Number(goods.likeCount ?? 0).toLocaleString()}</span>
+          <button className="purchase-review-link" type="button" onClick={onReviewClick}>
+            리뷰 보기
           </button>
-          {likeFeedback && <span className="detail-like-feedback" role="status">{likeFeedback}</span>}
         </div>
         <strong>{formatGoodsPrice(unitPrice)}</strong>
       </div>
 
       <div className="purchase-selection">
-        <span>재고 {maxQuantity}개</span>
+        <span>수량</span>
         <div className="detail-quantity" aria-label="수량">
           <button
             disabled={selectedQuantity <= 1}
@@ -145,6 +110,7 @@ function GoodsPurchasePanel({
             +
           </button>
         </div>
+        <small>재고 {maxQuantity.toLocaleString()}개</small>
       </div>
 
       <div className="purchase-total">
@@ -166,7 +132,30 @@ function GoodsPurchasePanel({
       >
         {isAddingCart ? '담는 중...' : '장바구니 담기'}
       </button>
+      <div className="purchase-secondary-actions">
+        <button
+          className="detail-like-button"
+          type="button"
+          aria-label={isLiked ? `${goods.name} 좋아요 취소` : `${goods.name} 좋아요`}
+          aria-pressed={isLiked}
+          disabled={isLikePending}
+          onClick={onLikeToggle}
+        >
+          <span aria-hidden="true">♡</span>
+          <span>위시리스트</span>
+          <span>{Number(goods.likeCount ?? 0).toLocaleString()}</span>
+        </button>
+        <button className="purchase-share-button" type="button" onClick={onShare}>
+          <span aria-hidden="true">↗</span>
+          <span>{shareFeedback || '공유하기'}</span>
+        </button>
+      </div>
+      {likeFeedback && <span className="detail-like-feedback" role="status">{likeFeedback}</span>}
       {feedback && <span className="purchase-feedback" role="status">{feedback}</span>}
+      <ul className="purchase-help-list" aria-label="구매 안내">
+        <li>결제 금액별 1% 적립</li>
+        <li>평균 배송 2~3일</li>
+      </ul>
     </aside>
   )
 }

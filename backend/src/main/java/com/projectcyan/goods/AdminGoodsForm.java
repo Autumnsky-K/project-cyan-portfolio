@@ -9,6 +9,8 @@ import jakarta.validation.constraints.NotNull;
 
 public class AdminGoodsForm {
 
+	private static final int EXTRA_IMAGE_SLOT_COUNT = 4;
+
 	private Long goodsId;
 
 	@NotBlank(message = "굿즈 이름을 입력해주세요.")
@@ -21,6 +23,8 @@ public class AdminGoodsForm {
 	private String description;
 
 	private String imageUrl;
+
+	private List<String> extraImageUrls = emptyExtraImageUrls();
 
 	@NotNull(message = "아티스트를 선택해주세요.")
 	private Long artistId;
@@ -52,6 +56,7 @@ public class AdminGoodsForm {
 		form.price = goods.price();
 		form.description = goods.description();
 		form.imageUrl = goods.imageUrl();
+		form.extraImageUrls = extraImageUrlsFrom(goods.extraImages());
 		form.artistId = goods.artistId();
 		form.salesStatus = goods.salesStatus();
 		form.bestSeller = Boolean.TRUE.equals(goods.isBestSeller());
@@ -74,8 +79,24 @@ public class AdminGoodsForm {
 			bestSeller,
 			aiPickDefault,
 			stockCount,
-			tags
+			tags,
+			extraImageUrls
 		);
+	}
+
+	private static List<String> emptyExtraImageUrls() {
+		return new ArrayList<>(java.util.Collections.nCopies(EXTRA_IMAGE_SLOT_COUNT, ""));
+	}
+
+	private static List<String> extraImageUrlsFrom(List<GoodsExtraImageResponse> extraImages) {
+		List<String> urls = emptyExtraImageUrls();
+		if (extraImages == null || extraImages.isEmpty()) {
+			return urls;
+		}
+		for (int index = 0; index < extraImages.size() && index < EXTRA_IMAGE_SLOT_COUNT; index++) {
+			urls.set(index, extraImages.get(index).imageUrl());
+		}
+		return urls;
 	}
 
 	public Long getGoodsId() {
@@ -116,6 +137,20 @@ public class AdminGoodsForm {
 
 	public void setImageUrl(String imageUrl) {
 		this.imageUrl = imageUrl;
+	}
+
+	public List<String> getExtraImageUrls() {
+		return extraImageUrls;
+	}
+
+	public void setExtraImageUrls(List<String> extraImageUrls) {
+		List<String> normalizedUrls = emptyExtraImageUrls();
+		if (extraImageUrls != null) {
+			for (int index = 0; index < extraImageUrls.size() && index < EXTRA_IMAGE_SLOT_COUNT; index++) {
+				normalizedUrls.set(index, extraImageUrls.get(index));
+			}
+		}
+		this.extraImageUrls = normalizedUrls;
 	}
 
 	public Long getArtistId() {

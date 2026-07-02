@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>그룹 화면 구성 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+  <link rel="stylesheet" th:href="@{/admin/content-admin.css(v='groups-image-library-20260701')}">
+</head>
+<body>
+<main class="admin-page"
+      data-cms-page="groups"
+      th:attr="data-cms-storage-public-base-url=${cmsStoragePublicBaseUrl}">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('content-groups', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">DB 기반 그룹 미리보기</p>
+        <h2>그룹 화면 구성 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/content/artists}">아티스트 관리</a>
+        <a th:href="@{/}">홈 화면 열기</a>
+      </div>
+    </header>
+
+    <div class="admin-notice cms-ui-draft-notice" th:if="${notice}" th:text="${notice}">
+      처리 결과가 표시됩니다.
+    </div>
+
+    <div class="admin-notice cms-ui-draft-notice" th:unless="${notice}">
+      현재 화면은 DB 아티스트 행을 원본으로 그룹 트리와 미리보기를 구성합니다. 아티스트 등록은 Supabase CMS 테이블에 실제 저장되고, 정규화 데이터 적용/홈 연결은 아직 연결하지 않았습니다.
+    </div>
+
+    <section class="cms-group-source-workbench" aria-label="그룹 페이지 구성">
+      <section class="cms-group-frame-panel" aria-label="풀페이징 미리보기">
+        <div class="cms-panel-heading">
+          <h3>풀페이징 iframe 미리보기</h3>
+          <span>artist DB → group tree → home group pages</span>
+        </div>
+        <iframe id="cmsGroupPreview" title="그룹 풀페이징 미리보기"></iframe>
+      </section>
+
+      <section class="cms-group-tree-panel" aria-label="그룹 트리 구조">
+        <div class="cms-panel-heading">
+          <h3>그룹 트리 구조</h3>
+          <span>groupName 기준 취합</span>
+        </div>
+        <div id="cmsGroupTree" class="cms-group-tree">
+          <details th:each="group : ${groups}" open>
+            <summary>
+              <strong th:text="${group.groupName()}">GROUP ONE</strong>
+              <span th:text="${#lists.size(group.artists()) + ' Artists'}">2 Artists</span>
+            </summary>
+            <ol>
+              <li th:each="artist : ${group.artists()}">
+                <span th:text="${artist.name()}">아이노</span>
+                <b th:text="${artist.visible()} ? '노출' : '비노출'">노출</b>
+              </li>
+            </ol>
+          </details>
+        </div>
+      </section>
+
+      <section class="cms-group-normalized-panel" aria-label="정규화 데이터">
+        <div class="cms-panel-heading">
+          <h3>정규화 데이터</h3>
+          <span>그룹 페이지 연결용</span>
+        </div>
+        <textarea id="cmsGroupNormalizedOutput" readonly spellcheck="false"></textarea>
+      </section>
+
+      <section class="cms-group-source-panel" aria-label="아티스트 DB 원본">
+        <div class="cms-panel-heading">
+          <h3>아티스트 DB 원본</h3>
+          <span>1행 = 1아티스트</span>
+        </div>
+
+        <div class="cms-group-source-layout"
+             data-cms-group-image-editor
+             th:attr="data-upload-endpoint=@{/admin/storage/uploads},data-upload-bucket=${goodsImageBucket},data-upload-path=${goodsImagePath}">
+          <aside class="admin-goods-image-panel cms-group-image-panel" aria-label="아티스트 이미지 저장소">
+            <div class="admin-upload-header">
+              <div>
+                <p class="admin-eyebrow">아티스트 이미지</p>
+                <h3>이미지 저장소</h3>
+              </div>
+              <a th:href="@{/admin/storage}">저장소 관리</a>
+            </div>
+
+            <div class="admin-goods-direct-upload">
+              <label>
+                <span>직접 업로드</span>
+                <input type="file" accept="image/*" data-cms-group-direct-file>
+              </label>
+              <small data-cms-group-upload-status>이미지를 표의 이미지 셀로 드래그하세요.</small>
+            </div>
+
+            <div class="admin-notice admin-notice-error" th:if="${imageLibraryError}" th:text="${imageLibraryError}">
+              이미지 목록을 불러오지 못했습니다.
+            </div>
+
+            <div class="admin-image-tree admin-goods-image-tree cms-group-image-tree"
+                 data-cms-group-image-library
+                 data-image-tree
+                 data-empty-label="업로드된 이미지가 없습니다."
+                 th:attr="data-root-label=${goodsImageBucket}">
+              <div data-image-tree-root></div>
+              <div data-image-tree-source hidden>
+                <button type="button"
+                        class="admin-image-library-item"
+                        draggable="true"
+                        th:each="image : ${goodsImages}"
+                        th:attr="data-image-url=${image.publicUrl()},data-image-path=${image.path()},title=${image.path()}">
+                  <img th:src="${image.publicUrl()}" alt="">
+                  <span th:text="${image.path()}">goods/example.png</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          <form id="cmsGroupBulkForm"
+                method="post"
+                th:action="@{/admin/content/groups/artists/apply}">
+            <div id="cmsGroupChangePayload" hidden></div>
+
+            <div class="cms-group-toolbar">
+              <label>
+                <span>그룹 필터</span>
+                <select id="cmsGroupFilter">
+                  <option value="">전체</option>
+                  <option th:each="group : ${groups}"
+                          th:value="${group.groupName()}"
+                          th:text="${group.groupName()}">GROUP ONE</option>
+                </select>
+              </label>
+
+              <fieldset class="cms-group-filter-group" aria-label="행 작업">
+                <legend>행</legend>
+                <button class="is-active" id="cmsAddArtistRow" type="button">+ 행 추가</button>
+                <button type="button" id="cmsResetArtistChanges">Reset</button>
+              </fieldset>
+
+              <fieldset class="cms-group-filter-group" aria-label="적용 작업">
+                <legend>적용</legend>
+                <button class="is-active" type="submit">변경사항 적용</button>
+                <button type="button" data-ui-only-action="홈 그룹 페이지 연결">홈 그룹 페이지 연결</button>
+              </fieldset>
+            </div>
+
+            <div class="cms-group-table-legend" aria-label="행 변경 상태 안내">
+              <span><i class="legend-saved"></i>저장됨</span>
+              <span><i class="legend-done"></i>추가</span>
+              <span><i class="legend-pending"></i>수정</span>
+              <span><i class="legend-blocked"></i>삭제</span>
+            </div>
+
+            <datalist id="cmsGroupNameOptions">
+              <option th:each="group : ${groups}" th:value="${group.groupName()}">GROUP ONE</option>
+            </datalist>
+
+            <div class="cms-table-scroll">
+              <table class="cms-sheet cms-group-source-table">
+              <thead>
+              <tr>
+                <th>노출</th>
+                <th>정렬</th>
+                <th>ID</th>
+                <th>이름</th>
+                <th>그룹</th>
+                <th>데뷔일</th>
+                <th>이미지</th>
+                <th>소개</th>
+                <th>컬렉션</th>
+                <th>상태</th>
+                <th>처리</th>
+              </tr>
+              </thead>
+              <tbody id="cmsGroupArtistRows">
+              <tr th:each="artist : ${artists}" data-group-artist-row>
+                <td class="cms-check-cell">
+                  <input type="checkbox"
+                         data-group-artist-visible
+                         th:checked="${artist.visible()}">
+                </td>
+                <td><input type="number" data-group-artist-field="sortOrder" th:value="${artist.sortOrder()}"></td>
+                <td><input data-group-artist-field="artistId" th:value="${artist.artistId()}" readonly></td>
+                <td><input data-group-artist-field="name" th:value="${artist.name()}"></td>
+                <td><input data-group-artist-field="groupName" list="cmsGroupNameOptions" th:value="${artist.groupName()}" placeholder="그룹 없음"></td>
+                <td><input type="date" data-group-artist-field="debutDate" th:value="${artist.debutDate()}"></td>
+                <td><input data-group-artist-field="imageUrl" th:value="${artist.imageUrl()}" placeholder="현재 이미지 없음"></td>
+                <td><input data-group-artist-field="lore" th:value="${artist.lore()}" placeholder="현재 소개 없음"></td>
+                <td><input data-group-artist-field="collections" th:value="${artist.collections()}" placeholder="현재 컬렉션 없음"></td>
+                <td>
+                  <b class="cms-row-state-pill is-saved-state" data-row-state-label>저장됨</b>
+                </td>
+                <td>
+                  <button class="cms-row-delete-button" type="button" data-row-delete-toggle>삭제</button>
+                </td>
+              </tr>
+              </tbody>
+              </table>
+            </div>
+          </form>
+        </div>
+      </section>
+    </section>
+  </section>
+</main>
+<script th:src="@{/admin/image-library-tree.js}"></script>
+<script>
+  const groupFilter = document.querySelector('#cmsGroupFilter')
+  const groupPreviewFrame = document.querySelector('#cmsGroupPreview')
+  const groupTree = document.querySelector('#cmsGroupTree')
+  const normalizedOutput = document.querySelector('#cmsGroupNormalizedOutput')
+  const artistRowsBody = document.querySelector('#cmsGroupArtistRows')
+  const bulkForm = document.querySelector('#cmsGroupBulkForm')
+  const changePayload = document.querySelector('#cmsGroupChangePayload')
+  const addArtistRowButton = document.querySelector('#cmsAddArtistRow')
+  const resetArtistChangesButton = document.querySelector('#cmsResetArtistChanges')
+  const groupImageEditor = document.querySelector('[data-cms-group-image-editor]')
+  const groupImageLibrary = document.querySelector('[data-cms-group-image-library]')
+  const groupImageUploadInput = document.querySelector('[data-cms-group-direct-file]')
+  const groupImageUploadStatus = document.querySelector('[data-cms-group-upload-status]')
+  const artistRowSelector = '[data-group-artist-row]'
+  let activeImageInput = null
+
+  function setImageUploadStatus(message) {
+    if (groupImageUploadStatus) {
+      groupImageUploadStatus.textContent = message
+    }
+  }
+
+  function formatFileSize(size) {
+    if (!Number.isFinite(size)) {
+      return ''
+    }
+    if (size < 1024 * 1024) {
+      return `${Math.max(1, Math.round(size / 1024))} KB`
+    }
+    return `${(size / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  function confirmSmallerOverwrite(fileName, payload) {
+    const existingSize = formatFileSize(payload.existingSize)
+    const incomingSize = formatFileSize(payload.incomingSize)
+    return window.confirm(
+      `${fileName}\n\n기존 파일보다 업로드할 파일의 byte 수가 작습니다.\n`
+      + `기존 파일: ${existingSize || '알 수 없음'}\n`
+      + `업로드 파일: ${incomingSize || '알 수 없음'}\n\n`
+      + '기존 파일을 덮어쓸까요? 취소하면 업로드하지 않습니다.'
+    )
+  }
+
+  function imageButtonFromEvent(event) {
+    return event.target.closest('[data-image-url]')
+  }
+
+  function imageUrlFromTransfer(dataTransfer) {
+    return dataTransfer.getData('application/x-project-cyan-image')
+      || dataTransfer.getData('text/uri-list')
+      || dataTransfer.getData('text/plain')
+  }
+
+  function hasImageTransfer(dataTransfer) {
+    return Array.from(dataTransfer?.types || []).some((type) => (
+      type === 'application/x-project-cyan-image'
+      || type === 'text/uri-list'
+      || type === 'text/plain'
+    ))
+  }
+
+  function imageInputFromTarget(target) {
+    if (target.matches?.('[data-group-artist-field="imageUrl"]')) {
+      return target
+    }
+    return target.closest('td')?.querySelector('[data-group-artist-field="imageUrl"]')
+      || target.closest('tr')?.querySelector('[data-group-artist-field="imageUrl"]')
+      || null
+  }
+
+  function setRowImageUrl(input, url) {
+    if (!input || !url) {
+      return
+    }
+    input.value = url
+    activeImageInput = input
+    const row = input.closest(artistRowSelector)
+    if (row) {
+      updateRowState(row)
+    }
+    updateGroupView()
+    setImageUploadStatus('이미지 URL이 선택한 셀에 들어갔습니다.')
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;')
+  }
+
+  function artistField(row, name) {
+    return row.querySelector(`[data-group-artist-field="${name}"]`)?.value?.trim() ?? ''
+  }
+
+  function rowSnapshot(row) {
+    return {
+      visible: row.querySelector('[data-group-artist-visible]')?.checked ?? false,
+      sortOrder: artistField(row, 'sortOrder'),
+      artistId: artistField(row, 'artistId'),
+      name: artistField(row, 'name'),
+      groupName: artistField(row, 'groupName'),
+      debutDate: artistField(row, 'debutDate'),
+      imageUrl: artistField(row, 'imageUrl'),
+      lore: artistField(row, 'lore'),
+      collections: artistField(row, 'collections'),
+    }
+  }
+
+  function rowSnapshotText(row) {
+    return JSON.stringify(rowSnapshot(row))
+  }
+
+  function modifiedFieldNames(row) {
+    if (!row.dataset.originalSnapshot || row.dataset.rowState === 'add' || row.dataset.rowState === 'delete') {
+      return []
+    }
+    const original = JSON.parse(row.dataset.originalSnapshot)
+    const current = rowSnapshot(row)
+    return Object.keys(current).filter((field) => String(current[field] ?? '') !== String(original[field] ?? ''))
+  }
+
+  function fieldCell(row, field) {
+    const input = field === 'visible'
+      ? row.querySelector('[data-group-artist-visible]')
+      : row.querySelector(`[data-group-artist-field="${field}"]`)
+    return input?.closest('td') ?? null
+  }
+
+  function syncModifiedCells(row) {
+    row.querySelectorAll('td.is-cell-modified').forEach((cell) => {
+      cell.classList.remove('is-cell-modified')
+    })
+    if (row.dataset.rowState !== 'modify') {
+      return
+    }
+    modifiedFieldNames(row).forEach((field) => {
+      fieldCell(row, field)?.classList.add('is-cell-modified')
+    })
+  }
+
+  function setRowState(row, state) {
+    row.dataset.rowState = state
+    row.classList.toggle('is-row-added', state === 'add')
+    row.classList.toggle('is-row-modified', state === 'modify')
+    row.classList.toggle('is-row-deleted', state === 'delete')
+    const label = row.querySelector('[data-row-state-label]')
+    const deleteButton = row.querySelector('[data-row-delete-toggle]')
+    if (label) {
+      label.className = 'cms-row-state-pill'
+      if (state === 'add') {
+        label.classList.add('is-added-state')
+        label.textContent = '추가'
+      } else if (state === 'modify') {
+        label.classList.add('is-modified-state')
+        label.textContent = '수정'
+      } else if (state === 'delete') {
+        label.classList.add('is-deleted-state')
+        label.textContent = '삭제'
+      } else {
+        label.classList.add('is-saved-state')
+        label.textContent = '저장됨'
+      }
+    }
+    if (deleteButton) {
+      deleteButton.textContent = state === 'delete' ? '삭제 취소' : (state === 'add' ? '행 제거' : '삭제')
+    }
+    syncModifiedCells(row)
+  }
+
+  function updateRowState(row) {
+    const state = row.dataset.rowState
+    if (state === 'add' || state === 'delete') {
+      return
+    }
+    setRowState(row, row.dataset.originalSnapshot === rowSnapshotText(row) ? 'saved' : 'modify')
+  }
+
+  function attachRowEvents(row) {
+    row.querySelectorAll('input').forEach((input) => {
+      input.addEventListener('focus', () => {
+        if (input.dataset.groupArtistField === 'imageUrl') {
+          activeImageInput = input
+        }
+      })
+      input.addEventListener('input', () => {
+        updateRowState(row)
+        updateGroupView()
+      })
+      input.addEventListener('change', () => {
+        updateRowState(row)
+        updateGroupView()
+      })
+    })
+    row.querySelector('[data-row-delete-toggle]')?.addEventListener('click', () => {
+      const state = row.dataset.rowState
+      if (state === 'add') {
+        row.remove()
+      } else if (state === 'delete') {
+        setRowState(row, 'saved')
+        updateRowState(row)
+      } else {
+        setRowState(row, 'delete')
+      }
+      updateGroupView()
+    })
+  }
+
+  function initializeExistingRows() {
+    document.querySelectorAll(artistRowSelector).forEach((row) => {
+      row.dataset.originalSnapshot = rowSnapshotText(row)
+      row.dataset.originalArtistId = artistField(row, 'artistId')
+      setRowState(row, 'saved')
+      attachRowEvents(row)
+    })
+  }
+
+  function maxSortOrder() {
+    return Math.max(0, ...Array.from(document.querySelectorAll(artistRowSelector))
+      .map((row) => Number(artistField(row, 'sortOrder') || 0))
+      .filter((value) => Number.isFinite(value)))
+  }
+
+  function addArtistRow() {
+    const row = document.createElement('tr')
+    const groupName = groupFilter?.value ?? ''
+    row.dataset.groupArtistRow = ''
+    row.dataset.rowState = 'add'
+    row.innerHTML = `
+      <td class="cms-check-cell"><input type="checkbox" data-group-artist-visible checked></td>
+      <td><input type="number" data-group-artist-field="sortOrder" value="${maxSortOrder() + 1}"></td>
+      <td><input data-group-artist-field="artistId" placeholder="자동"></td>
+      <td><input data-group-artist-field="name" placeholder="아티스트 이름"></td>
+      <td><input data-group-artist-field="groupName" list="cmsGroupNameOptions" value="${escapeHtml(groupName)}" placeholder="그룹 없음"></td>
+      <td><input type="date" data-group-artist-field="debutDate"></td>
+      <td><input data-group-artist-field="imageUrl" placeholder="현재 이미지 없음"></td>
+      <td><input data-group-artist-field="lore" placeholder="현재 소개 없음"></td>
+      <td><input data-group-artist-field="collections" placeholder="현재 컬렉션 없음"></td>
+      <td><b class="cms-row-state-pill is-added-state" data-row-state-label>추가</b></td>
+      <td><button class="cms-row-delete-button" type="button" data-row-delete-toggle>행 제거</button></td>
+    `
+    artistRowsBody.append(row)
+    attachRowEvents(row)
+    setRowState(row, 'add')
+    updateGroupView()
+    row.querySelector('[data-group-artist-field="name"]')?.focus()
+  }
+
+  function collectArtistRows() {
+    return Array.from(document.querySelectorAll(artistRowSelector))
+      .filter((row) => row.dataset.rowState !== 'delete')
+      .map((row) => {
+        const snapshot = rowSnapshot(row)
+        return {
+          ...snapshot,
+          sortOrder: Number(snapshot.sortOrder || 999),
+          groupName: snapshot.groupName || '미지정 그룹',
+          row,
+        }
+      })
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
+  }
+
+  function normalizeGroups() {
+    const grouped = new Map()
+
+    collectArtistRows().forEach((artist) => {
+      if (!grouped.has(artist.groupName)) {
+        grouped.set(artist.groupName, [])
+      }
+      grouped.get(artist.groupName).push(artist)
+    })
+
+    return Array.from(grouped.entries()).map(([groupName, artists], index) => ({
+      pageKey: `group-${index + 1}`,
+      pageIndex: index + 1,
+      groupName,
+      visible: artists.some((artist) => artist.visible),
+      artistCount: artists.length,
+      visibleArtistCount: artists.filter((artist) => artist.visible).length,
+      artists: artists.map(({ row, ...artist }) => artist),
+    }))
+  }
+
+  function filteredGroups() {
+    const selectedGroup = groupFilter?.value ?? ''
+    const groups = normalizeGroups()
+    return selectedGroup ? groups.filter((group) => group.groupName === selectedGroup) : groups
+  }
+
+  function normalizedPayload() {
+    return {
+      source: 'cms_artist_profile',
+      transform: 'groupName -> group page -> artist list',
+      target: 'home.groupPages',
+      groups: filteredGroups(),
+    }
+  }
+
+  function renderTree() {
+    const groups = filteredGroups()
+    groupTree.innerHTML = groups.map((group) => `
+      <details open>
+        <summary>
+          <strong>${escapeHtml(group.groupName)}</strong>
+          <span>${group.visibleArtistCount}/${group.artistCount} Artists</span>
+        </summary>
+        <ol>
+          ${group.artists.map((artist) => `
+            <li class="${artist.visible ? '' : 'is-muted-artist'}">
+              <span>${escapeHtml(artist.name)} <small>${escapeHtml(artist.artistId)}</small></span>
+              <b>${artist.visible ? '노출' : '비노출'}</b>
+            </li>
+          `).join('')}
+        </ol>
+      </details>
+    `).join('')
+  }
+
+  function renderPreview() {
+    const groups = filteredGroups().filter((group) => group.visible)
+    groupPreviewFrame.srcdoc = `
+      <!doctype html>
+      <html lang="ko">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          * { box-sizing: border-box; }
+          html, body { height: 100%; margin: 0; }
+          body { overflow: hidden; background: #0f1113; color: #f7f4ec; font-family: Arial, "Noto Sans KR", sans-serif; }
+          .pager { height: 100vh; overflow-y: auto; scroll-snap-type: y mandatory; }
+          .page { display: grid; grid-template-columns: minmax(260px, .78fr) minmax(420px, 1fr); gap: 36px; min-height: 100vh; padding: 48px; scroll-snap-align: start; border-bottom: 1px solid rgba(255,255,255,.12); }
+          .group-copy { align-self: center; }
+          .eyebrow { margin: 0 0 12px; color: #92bdb4; font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
+          h1 { margin: 0; font-size: clamp(40px, 7vw, 88px); line-height: .9; letter-spacing: 0; }
+          .meta { margin: 18px 0 0; color: #b8bec2; font-size: 15px; }
+          .artist-list { display: grid; align-content: center; gap: 12px; }
+          .artist-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: center; min-height: 112px; padding: 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.055); }
+          .thumb { display: grid; place-items: center; width: 96px; height: 88px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; background: #202427; color: #92bdb4; font-weight: 800; }
+          .thumb img { width: 100%; height: 100%; object-fit: cover; }
+          .artist-card h2 { margin: 0; font-size: 24px; letter-spacing: 0; }
+          .artist-card p { margin: 7px 0 0; color: #c8ced2; line-height: 1.45; }
+          .empty { display: grid; place-items: center; min-height: 100vh; color: #c8ced2; }
+          @media (max-width: 760px) {
+            .page { grid-template-columns: 1fr; padding: 28px; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="pager">
+          ${groups.length ? groups.map((group) => `
+            <section class="page">
+              <div class="group-copy">
+                <p class="eyebrow">Page ${String(group.pageIndex).padStart(2, '0')}</p>
+                <h1>${escapeHtml(group.groupName)}</h1>
+                <p class="meta">${group.visibleArtistCount} visible artists from DB groupName</p>
+              </div>
+              <div class="artist-list">
+                ${group.artists.filter((artist) => artist.visible).map((artist) => `
+                  <article class="artist-card">
+                    <div class="thumb">${artist.imageUrl ? `<img src="${escapeHtml(artist.imageUrl)}" alt="">` : escapeHtml(artist.name.slice(0, 2))}</div>
+                    <div>
+                      <h2>${escapeHtml(artist.name)}</h2>
+                      <p>${escapeHtml(artist.lore || artist.collections || artist.artistId)}</p>
+                    </div>
+                  </article>
+                `).join('')}
+              </div>
+            </section>
+          `).join('') : '<div class="empty">노출할 그룹이 없습니다.</div>'}
+        </main>
+      </body>
+      </html>
+    `
+  }
+
+  function syncRowStates() {
+    const selectedGroup = groupFilter?.value ?? ''
+    document.querySelectorAll(artistRowSelector).forEach((row) => {
+      const groupName = artistField(row, 'groupName') || '미지정 그룹'
+      row.hidden = Boolean(selectedGroup && groupName !== selectedGroup)
+    })
+  }
+
+  function updateGroupView() {
+    syncRowStates()
+    renderTree()
+    normalizedOutput.value = JSON.stringify(normalizedPayload(), null, 2)
+    renderPreview()
+  }
+
+  function resetArtistChanges() {
+    document.querySelectorAll(artistRowSelector).forEach((row) => {
+      if (row.dataset.rowState === 'add') {
+        row.remove()
+        return
+      }
+      const original = JSON.parse(row.dataset.originalSnapshot || '{}')
+      Object.entries(original).forEach(([field, value]) => {
+        const input = field === 'visible'
+          ? row.querySelector('[data-group-artist-visible]')
+          : row.querySelector(`[data-group-artist-field="${field}"]`)
+        if (!input) {
+          return
+        }
+        if (input.type === 'checkbox') {
+          input.checked = Boolean(value)
+        } else {
+          input.value = value ?? ''
+        }
+      })
+      setRowState(row, 'saved')
+    })
+    updateGroupView()
+  }
+
+  function addHidden(name, value) {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value ?? ''
+    changePayload.append(input)
+  }
+
+  function buildChangePayload(event) {
+    changePayload.innerHTML = ''
+    const changedRows = Array.from(document.querySelectorAll(artistRowSelector))
+      .filter((row) => ['add', 'modify', 'delete'].includes(row.dataset.rowState))
+
+    if (changedRows.length === 0) {
+      event.preventDefault()
+      window.alert('적용할 변경사항이 없습니다.')
+      return
+    }
+
+    for (const row of changedRows) {
+      const state = row.dataset.rowState
+      const snapshot = rowSnapshot(row)
+      if (state !== 'delete' && !snapshot.name) {
+        event.preventDefault()
+        window.alert('추가/수정할 아티스트 이름은 필수입니다.')
+        row.querySelector('[data-group-artist-field="name"]')?.focus()
+        return
+      }
+      addHidden('changeState', state)
+      addHidden('originalArtistId', row.dataset.originalArtistId || '')
+      addHidden('artistId', snapshot.artistId)
+      addHidden('name', snapshot.name)
+      addHidden('groupName', snapshot.groupName)
+      addHidden('imageUrl', snapshot.imageUrl)
+      addHidden('lore', snapshot.lore)
+      addHidden('debutDate', snapshot.debutDate)
+      addHidden('collections', snapshot.collections)
+      addHidden('sortOrder', snapshot.sortOrder || '999')
+      addHidden('visible', snapshot.visible ? 'true' : 'false')
+    }
+  }
+
+  function currentImageTarget() {
+    if (activeImageInput && document.contains(activeImageInput) && !activeImageInput.closest('tr')?.hidden) {
+      return activeImageInput
+    }
+    return null
+  }
+
+  function clearImageDropHighlight() {
+    document.querySelectorAll('td.is-image-dragover').forEach((cell) => {
+      cell.classList.remove('is-image-dragover')
+    })
+  }
+
+  function bindGroupImageLibrary() {
+    groupImageLibrary?.addEventListener('click', (event) => {
+      const button = imageButtonFromEvent(event)
+      if (!button?.dataset.imageUrl) {
+        return
+      }
+      const target = currentImageTarget()
+      if (!target) {
+        setImageUploadStatus('먼저 표의 이미지 셀을 선택하세요.')
+        return
+      }
+      setRowImageUrl(target, button.dataset.imageUrl)
+    })
+
+    groupImageLibrary?.addEventListener('dragstart', (event) => {
+      const button = imageButtonFromEvent(event)
+      if (!button?.dataset.imageUrl) {
+        return
+      }
+      event.dataTransfer.effectAllowed = 'copy'
+      event.dataTransfer.setData('application/x-project-cyan-image', button.dataset.imageUrl)
+      event.dataTransfer.setData('text/plain', button.dataset.imageUrl)
+      event.dataTransfer.setData('text/uri-list', button.dataset.imageUrl)
+    })
+
+    artistRowsBody?.addEventListener('dragover', (event) => {
+      if (!hasImageTransfer(event.dataTransfer)) {
+        return
+      }
+      const input = imageInputFromTarget(event.target)
+      if (!input) {
+        return
+      }
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'copy'
+      clearImageDropHighlight()
+      input.closest('td')?.classList.add('is-image-dragover')
+    })
+
+    artistRowsBody?.addEventListener('dragleave', (event) => {
+      if (!artistRowsBody.contains(event.relatedTarget)) {
+        clearImageDropHighlight()
+      }
+    })
+
+    artistRowsBody?.addEventListener('drop', (event) => {
+      const input = imageInputFromTarget(event.target)
+      const url = imageUrlFromTransfer(event.dataTransfer)
+      if (!input || !url) {
+        return
+      }
+      event.preventDefault()
+      clearImageDropHighlight()
+      setRowImageUrl(input, url)
+    })
+  }
+
+  function bindGroupImageUpload() {
+    groupImageUploadInput?.addEventListener('change', async () => {
+      const file = groupImageUploadInput.files?.[0]
+      if (!file) {
+        return
+      }
+      if (!file.type.startsWith('image/') && !/\.(avif|gif|jpe?g|png|svg|webp)$/i.test(file.name)) {
+        setImageUploadStatus('이미지 파일만 업로드할 수 있습니다.')
+        groupImageUploadInput.value = ''
+        return
+      }
+
+      const endpoint = groupImageEditor?.dataset.uploadEndpoint
+      const bucketName = groupImageEditor?.dataset.uploadBucket
+      const path = groupImageEditor?.dataset.uploadPath
+      if (!endpoint || !bucketName) {
+        setImageUploadStatus('업로드 설정을 찾지 못했습니다.')
+        groupImageUploadInput.value = ''
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('bucketName', bucketName)
+      formData.append('path', path || '')
+      formData.append('upsert', 'true')
+      formData.append('allowSmallerOverwrite', 'false')
+      formData.append('relativePath', file.name)
+      formData.append('file', file)
+
+      setImageUploadStatus('이미지 업로드 중')
+      try {
+        let response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        })
+        let payload = await response.json().catch(() => ({}))
+
+        if (response.status === 409 && payload.conflict && payload.conflictReason === 'SMALLER_THAN_EXISTING') {
+          if (!confirmSmallerOverwrite(file.name, payload)) {
+            setImageUploadStatus('업로드를 건너뛰었습니다.')
+            return
+          }
+          formData.set('allowSmallerOverwrite', 'true')
+          response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+          })
+          payload = await response.json().catch(() => ({}))
+        }
+
+        if (!response.ok || payload.error) {
+          throw new Error(payload.error || '업로드 실패')
+        }
+        window.addAdminImageTreeItem?.(groupImageLibrary, payload, { draggable: true })
+        if (currentImageTarget()) {
+          setRowImageUrl(currentImageTarget(), payload.publicUrl)
+          setImageUploadStatus('업로드 후 선택한 이미지 셀에 입력했습니다.')
+        } else {
+          setImageUploadStatus('업로드 완료. 이미지 셀로 드래그하세요.')
+        }
+      } catch (error) {
+        setImageUploadStatus(error.message || '업로드 실패')
+      } finally {
+        groupImageUploadInput.value = ''
+      }
+    })
+  }
+
+  groupFilter?.addEventListener('input', updateGroupView)
+  groupFilter?.addEventListener('change', updateGroupView)
+
+  addArtistRowButton?.addEventListener('click', addArtistRow)
+  resetArtistChangesButton?.addEventListener('click', resetArtistChanges)
+  bulkForm?.addEventListener('submit', buildChangePayload)
+  bindGroupImageLibrary()
+  bindGroupImageUpload()
+
+  document.querySelectorAll(`${artistRowSelector} input`).forEach((input) => {
+    input.addEventListener('input', updateGroupView)
+    input.addEventListener('change', updateGroupView)
+  })
+
+  document.querySelectorAll('[data-ui-only-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      window.alert(`${button.dataset.uiOnlyAction}은 현재 UI 확인용입니다. 저장/연결 API는 아직 연결하지 않았습니다.`)
+    })
+  })
+
+  initializeExistingRows()
+  updateGroupView()
+</script>
+</body>
+</html>

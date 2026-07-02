@@ -234,8 +234,9 @@ public class AdminPaymentService {
 	}
 
 	private AdminPaymentDashboard dashboardFromRows(List<AdminPaymentRow> rows, String tableName) {
-		int approvedCount = countByStatus(rows, Set.of("DONE", "PAID", "APPROVED", "SUCCESS"));
-		int pendingCount = countByStatus(rows, Set.of("READY", "PENDING", "IN_PROGRESS", "PAYMENT_PENDING"));
+		int approvedCount = countMatching(rows, row -> isApproved(row.paymentStatus(), row.orderStatus())
+			&& !isProblemStatus(row.paymentStatus(), row.orderStatus()));
+		int pendingCount = countMatching(rows, row -> isPendingStatus(row.paymentStatus(), row.orderStatus()));
 		int failedCount = countMatching(rows, row -> isProblemStatus(row.paymentStatus(), row.orderStatus()));
 		int mismatchCount = countMatching(rows, row -> row.paymentStatus().contains("REPAIR")
 			|| row.orderStatus().contains("REPAIR")
@@ -716,6 +717,12 @@ public class AdminPaymentService {
 			|| containsAny(orderStatus, "FAIL", "CANCEL", "REFUND", "REPAIR", "ERROR");
 	}
 
+	private boolean isPendingStatus(String paymentStatus, String orderStatus) {
+		return !isProblemStatus(paymentStatus, orderStatus)
+			&& !isApproved(paymentStatus, orderStatus)
+			&& containsAny(paymentStatus, "READY", "PENDING", "IN_PROGRESS", "PAYMENT_PENDING");
+	}
+
 	private boolean containsAny(String value, String... needles) {
 		String normalized = value == null ? "" : value.toUpperCase(Locale.ROOT);
 		for (String needle : needles) {
@@ -724,11 +731,6 @@ public class AdminPaymentService {
 			}
 		}
 		return false;
-	}
-
-	private int countByStatus(List<AdminPaymentRow> rows, Set<String> statuses) {
-		return countMatching(rows, row -> statuses.stream()
-			.anyMatch(status -> row.paymentStatus().contains(status) || row.orderStatus().contains(status)));
 	}
 
 	private int countMatching(List<AdminPaymentRow> rows, RowPredicate predicate) {

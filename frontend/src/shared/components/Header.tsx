@@ -21,7 +21,13 @@ export default function Header() {
     <header className="site-header">
       <div>
         <p className="site-eyebrow">Cyan</p>
-        <h1>{currentItem?.label ?? 'Store'}</h1>
+        <h1>
+          {currentItem?.to === '/goods' ? (
+            <Link className="site-title-link" to="/goods" state={{ resetGoodsList: Date.now() }}>Goods</Link>
+          ) : (
+            currentItem?.label ?? 'Store'
+          )}
+        </h1>
       </div>
       <nav className="site-nav" aria-label="Store navigation">
         {NAV_ITEMS.map((item) => {

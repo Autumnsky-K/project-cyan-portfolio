@@ -122,11 +122,24 @@
     return values.some((value) => combinedStatus.includes(value))
   }
 
+  const includesAnyPaymentStatus = (row, values) => {
+    const paymentStatus = `${row.dataset.paymentStatus || ''}`.toUpperCase()
+    return values.some((value) => paymentStatus.includes(value))
+  }
+
   const matchesStatusFilter = (row, status) => {
     if (status === 'all') return true
-    if (status === 'SUCCESS') return includesAnyStatus(row, ['DONE', 'PAID', 'APPROVED', 'SUCCESS'])
-    if (status === 'READY') return includesAnyStatus(row, ['READY', 'PENDING', 'IN_PROGRESS', 'PAYMENT_PENDING'])
-    if (status === 'FAILED') return includesAnyStatus(row, ['FAIL', 'CANCEL', 'REFUND', 'REPAIR', 'ERROR'])
+    const isFailed = includesAnyStatus(row, ['FAIL', 'CANCEL', 'REFUND', 'REPAIR', 'ERROR'])
+    const isSuccess = !isFailed && includesAnyStatus(row, ['DONE', 'PAID', 'APPROVED', 'SUCCESS'])
+    const isPending = !isFailed && !isSuccess && includesAnyPaymentStatus(row, [
+      'READY',
+      'PENDING',
+      'IN_PROGRESS',
+      'PAYMENT_PENDING',
+    ])
+    if (status === 'SUCCESS') return isSuccess
+    if (status === 'READY') return isPending
+    if (status === 'FAILED') return isFailed
     return row.dataset.paymentStatus === status
   }
 

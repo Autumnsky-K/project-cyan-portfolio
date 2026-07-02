@@ -1,5 +1,6 @@
 package com.projectcyan.goods;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -12,7 +13,10 @@ import com.projectcyan.storage.SupabaseStorageException;
 import com.projectcyan.storage.SupabaseStorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -43,6 +48,7 @@ public class AdminGoodsPageController {
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final SupabaseStorageService supabaseStorageService;
+	private final AdminGoodsImportService adminGoodsImportService;
 	private final String frontendPreviewBaseUrl;
 
 	public AdminGoodsPageController(
@@ -51,6 +57,7 @@ public class AdminGoodsPageController {
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository,
 		SupabaseStorageService supabaseStorageService,
+		AdminGoodsImportService adminGoodsImportService,
 		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
 	) {
 		this.goodsService = goodsService;
@@ -58,6 +65,7 @@ public class AdminGoodsPageController {
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.supabaseStorageService = supabaseStorageService;
+		this.adminGoodsImportService = adminGoodsImportService;
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
 
@@ -244,6 +252,72 @@ public class AdminGoodsPageController {
 		return "redirect:/admin/goods";
 	}
 
+	@GetMapping("/admin/goods/import")
+	public String importGoods(Model model) {
+		model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+		return "admin/goods/import";
+	}
+
+	@GetMapping("/admin/goods/import/template")
+	public ResponseEntity<byte[]> downloadImportTemplate() {
+		String csv = goodsImportTemplateCsv();
+		return ResponseEntity.ok()
+			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"goods-import-template.csv\"")
+			.contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+			.body(csv.getBytes(StandardCharsets.UTF_8));
+	}
+
+	@PostMapping("/admin/goods/import/preview")
+	public String previewImportGoods(
+		@RequestParam("file") MultipartFile file,
+		@RequestParam(defaultValue = "true") boolean useLocalImages,
+		@RequestParam(required = false) List<MultipartFile> imageFiles,
+		@RequestParam(required = false) List<String> imageRelativePath,
+		Model model
+	) {
+		try {
+			model.addAttribute("preview", adminGoodsImportService.preview(
+				file,
+				imageFiles,
+				imageRelativePath,
+				useLocalImages
+			));
+		} catch (ResponseStatusException exception) {
+			model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+			model.addAttribute("error", adminGoodsErrorMessage(exception));
+		}
+		return "admin/goods/import";
+	}
+
+	@PostMapping("/admin/goods/import/commit")
+	public String commitImportGoods(
+		@ModelAttribute AdminGoodsImportCommitForm form,
+		Model model,
+		RedirectAttributes redirectAttributes
+	) {
+		try {
+			int importedCount = adminGoodsImportService.importRows(
+				form.toRows(),
+				form.getImageSource(),
+				form.getImageBatchId()
+			);
+			redirectAttributes.addFlashAttribute("notice", importedCount + "개 굿즈가 등록되었습니다.");
+			return "redirect:/admin/goods";
+		} catch (ResponseStatusException exception) {
+			try {
+				model.addAttribute("preview", adminGoodsImportService.previewRaw(
+					form.toRows(),
+					form.getImageSource(),
+					form.getImageBatchId()
+				));
+			} catch (ResponseStatusException ignored) {
+				model.addAttribute("preview", new AdminGoodsImportPreview(List.of()));
+			}
+			model.addAttribute("error", adminGoodsErrorMessage(exception));
+			return "admin/goods/import";
+		}
+	}
+
 	private List<AdminGoodsBulkRow> bulkRows(List<GoodsSummaryResponse> goods, Map<Long, Integer> stockCounts) {
 		return goods.stream()
 			.map(item -> new AdminGoodsBulkRow(
@@ -425,6 +499,94 @@ public class AdminGoodsPageController {
 		int startPage = Math.max(0, Math.min(currentPage - halfWindow, totalPages - maxVisiblePages));
 		int endPage = Math.min(totalPages, startPage + maxVisiblePages);
 		return java.util.stream.IntStream.range(startPage, endPage).boxed().toList();
+	}
+
+	private String goodsImportTemplateCsv() {
+		GoodsFiltersResponse filters = goodsService.findGoodsFilters();
+		List<String> artists = filters.artists().stream()
+			.map(GoodsFilterOptionResponse::label)
+			.toList();
+		List<String> categories = filters.categories().stream()
+			.map(GoodsFilterOptionResponse::label)
+			.toList();
+		List<String> salesStatuses = List.of("HIDDEN");
+		List<String> booleanOptions = List.of("false", "true");
+
+		List<String[]> rows = new ArrayList<>();
+		rows.add(new String[] {
+			"상품ID",
+			"상품명",
+			"가격",
+			"아티스트명",
+			"카테고리명",
+			"재고",
+			"판매상태",
+			"이미지폴더",
+			"태그",
+			"상세설명",
+			"베스트",
+			"AI추천"
+		});
+		rows.add(new String[] {
+			"#(숫자)",
+			"#(글자)",
+			"#(숫자)",
+			templateOptionAt(artists, 0, "#아티스트DB값"),
+			templateOptionAt(categories, 0, "#카테고리DB값"),
+			"#(숫자)",
+			"#HIDDEN",
+			"#(경로)",
+			"#(글자)",
+			"#(글자)",
+			"#false",
+			"#false"
+		});
+
+		int guideRowCount = Math.max(
+			Math.max(artists.size(), categories.size()),
+			Math.max(salesStatuses.size(), booleanOptions.size())
+		);
+		for (int index = 1; index < guideRowCount; index++) {
+			rows.add(new String[] {
+				"#",
+				"",
+				"",
+				templateOptionAt(artists, index, ""),
+				templateOptionAt(categories, index, ""),
+				"",
+				templateOptionAt(salesStatuses, index, ""),
+				"",
+				"",
+				"",
+				templateOptionAt(booleanOptions, index, ""),
+				templateOptionAt(booleanOptions, index, "")
+			});
+		}
+		return "\uFEFF" + rows.stream()
+			.map(this::csvLine)
+			.collect(Collectors.joining("\n")) + "\n";
+	}
+
+	private String templateOptionAt(List<String> values, int index, String fallback) {
+		if (index >= values.size()) {
+			return fallback;
+		}
+		String value = values.get(index);
+		return value == null || value.isBlank() ? fallback : "#" + value.trim();
+	}
+
+	private String csvLine(String[] values) {
+		return java.util.Arrays.stream(values)
+			.map(this::csvValue)
+			.collect(Collectors.joining(","));
+	}
+
+	private String csvValue(String value) {
+		String normalizedValue = value == null ? "" : value;
+		if (normalizedValue.contains(",") || normalizedValue.contains("\"") || normalizedValue.contains("\n")) {
+			return "\"" + normalizedValue.replace("\"", "\"\"") + "\"";
+		}
+		return normalizedValue;
 	}
 
 	private static String trimTrailingSlash(String value) {

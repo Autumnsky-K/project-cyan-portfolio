@@ -6,7 +6,11 @@ import { useDebouncedValue } from './useDebouncedValue'
 export type GoodsSection = 'all' | 'favorites'
 export type GoodsViewMode = 'grid' | 'list'
 
-const ALLOWED_SORTS = new Set(['createdAt,desc', 'price,asc', 'price,desc', 'goodsName,asc'])
+const VIEW_COUNT_SORT = 'viewCount,desc'
+const LIKE_COUNT_SORT = 'likeCount,desc'
+const DEFAULT_VIEW_PERIOD = 'all'
+const ALLOWED_SORTS = new Set(['createdAt,desc', VIEW_COUNT_SORT, LIKE_COUNT_SORT, 'price,asc', 'price,desc', 'goodsName,asc'])
+const ALLOWED_VIEW_PERIODS = new Set([DEFAULT_VIEW_PERIOD, 'day', '7d', '30d'])
 const EMPTY_FILTERS: GoodsSelectedFilters = { categoryIds: [], artistIds: [], tags: [] }
 const GOODS_LIST_SCROLL_STATE_KEY = 'goodsListScrollY'
 const MAX_RECOMMENDED_GOODS = 20
@@ -43,10 +47,12 @@ function expandFilterValues(values: string[]) {
 function readState() {
   const params = new URLSearchParams(window.location.search)
   const requestedSort = params.get('sort') ?? 'createdAt,desc'
+  const requestedViewPeriod = params.get('viewPeriod') ?? DEFAULT_VIEW_PERIOD
   const requestedPage = Number(params.get('page') ?? 1)
   return {
     query: params.get('q') ?? '',
     sort: ALLOWED_SORTS.has(requestedSort) ? requestedSort : 'createdAt,desc',
+    viewPeriod: ALLOWED_VIEW_PERIODS.has(requestedViewPeriod) ? requestedViewPeriod : DEFAULT_VIEW_PERIOD,
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage - 1 : 0,
     section: params.get('section') === 'favorites' ? 'favorites' as const : 'all' as const,
     viewMode: params.get('view') === 'list' ? 'list' as const : 'grid' as const,
@@ -64,6 +70,7 @@ function readState() {
 function createUrl(
   query: string,
   sort: string,
+  viewPeriod: string,
   page: number,
   filters: GoodsSelectedFilters,
   section: GoodsSection,
@@ -73,6 +80,7 @@ function createUrl(
   const params = new URLSearchParams()
   if (query.trim()) params.set('q', query.trim())
   if (sort !== 'createdAt,desc') params.set('sort', sort)
+  if (sort === VIEW_COUNT_SORT && viewPeriod !== DEFAULT_VIEW_PERIOD) params.set('viewPeriod', viewPeriod)
   if (page > 0) params.set('page', String(page + 1))
   if (filters.categoryIds.length) params.set('categories', filters.categoryIds.join(';'))
   if (filters.artistIds.length) params.set('artists', filters.artistIds.join(';'))
@@ -89,6 +97,7 @@ export function useGoodsListQueryState() {
   const [initialState] = useState(readState)
   const [query, setQueryState] = useState(initialState.query)
   const [sort, setSort] = useState(initialState.sort)
+  const [viewPeriod, setViewPeriod] = useState(initialState.viewPeriod)
   const [page, setPage] = useState(initialState.page)
   const [section, setSection] = useState<GoodsSection>(initialState.section)
   const [viewMode, setViewMode] = useState<GoodsViewMode>(initialState.viewMode)
@@ -105,18 +114,20 @@ export function useGoodsListQueryState() {
   const requestParams = useMemo<GoodsQueryParams>(() => ({
     q: debouncedQuery,
     sort,
+    viewPeriod: sort === VIEW_COUNT_SORT ? viewPeriod : undefined,
     page,
     size: 12,
     categoryIds: expandFilterValues(selectedFilters.categoryIds).join(','),
     artistIds: expandFilterValues(selectedFilters.artistIds).join(','),
     tags: expandFilterValues(selectedFilters.tags).join(','),
     goodsIds: recommendedGoodsIds.join(','),
-  }), [debouncedQuery, page, recommendedGoodsIds, selectedFilters, sort])
+  }), [debouncedQuery, page, recommendedGoodsIds, selectedFilters, sort, viewPeriod])
 
   useEffect(() => {
     const nextUrl = createUrl(
       committedQueryRef.current,
       sort,
+      viewPeriod,
       page,
       selectedFilters,
       section,
@@ -129,7 +140,7 @@ export function useGoodsListQueryState() {
       return
     }
     window.history.replaceState(window.history.state, '', nextUrl)
-  }, [page, recommendedGoodsIds, section, selectedFilters, sort, viewMode])
+  }, [page, recommendedGoodsIds, section, selectedFilters, sort, viewMode, viewPeriod])
 
   useEffect(() => {
     function restoreHistoryState(event: PopStateEvent) {
@@ -138,6 +149,7 @@ export function useGoodsListQueryState() {
       setPendingHistoryScrollY(readHistoryScrollY(event.state))
       setQueryState(restored.query)
       setSort(restored.sort)
+      setViewPeriod(restored.viewPeriod)
       setPage(restored.page)
       setSection(restored.section)
       setViewMode(restored.viewMode)
@@ -188,6 +200,7 @@ export function useGoodsListQueryState() {
     committedQueryRef.current = ''
     setQueryState('')
     setSort('createdAt,desc')
+    setViewPeriod(DEFAULT_VIEW_PERIOD)
     setPage(0)
     setSelectedFilters(EMPTY_FILTERS)
     setRecommendedGoodsIds([])
@@ -216,6 +229,7 @@ export function useGoodsListQueryState() {
     window.history.pushState(null, '', createUrl(
       normalizedValue,
       sort,
+      viewPeriod,
       0,
       selectedFilters,
       section,
@@ -241,6 +255,8 @@ export function useGoodsListQueryState() {
     setQuery,
     sort,
     setSort,
+    viewPeriod,
+    setViewPeriod,
     page,
     setPage,
     section,

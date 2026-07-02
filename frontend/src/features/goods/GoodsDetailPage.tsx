@@ -16,13 +16,21 @@ import GoodsImage from './GoodsImage'
 import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
-import { useGoodsFavorites } from './useGoodsFavorites'
+import { formatGoodsPrice } from './goodsFormatters'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
 
 type DetailStatus = 'loading' | 'data' | 'error'
 type DetailTab = 'intro' | 'reviews'
+
+const PURCHASE_STATE_LABELS: Record<string, string> = {
+  AVAILABLE: 'On sale',
+  UPCOMING: 'Coming soon',
+  ENDED: 'Sale ended',
+  SOLD_OUT: 'Sold out',
+  UNAVAILABLE: 'Unavailable',
+}
 
 function GoodsDetailPage() {
   const { goodsId } = useParams<{ goodsId: string }>()
@@ -37,28 +45,18 @@ function GoodsDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isLikePending, setIsLikePending] = useState(false)
   const [likeFeedback, setLikeFeedback] = useState('')
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const shareFeedbackTimerRef = useRef<number | null>(null)
   const likeFeedbackTimerRef = useRef<number | null>(null)
   const pendingScrollRestoreRef = useRef<number | null>(null)
   const scrollRestoreTimerRef = useRef<number | null>(null)
-  const {
-    isFavorite,
-    toggleFavorite,
-  } = useGoodsFavorites()
+  const detailTabsRef = useRef<HTMLElement | null>(null)
   const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
 
   const navigateToLogin = useCallback(() => {
     window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
     navigate('/login', { state: { from: loginReturnTo } })
   }, [loginReturnTo, navigate])
-
-  const handleFavoriteToggle = useCallback(async (targetGoodsId: number) => {
-    if (!(await hasSpringApiSession())) {
-      navigateToLogin()
-      return
-    }
-    await toggleFavorite(targetGoodsId)
-  }, [navigateToLogin, toggleFavorite])
 
   const handleLikeToggle = useCallback(async () => {
     if (!goods) return
@@ -148,6 +146,7 @@ function GoodsDetailPage() {
       setError('')
       try {
         const detail = await fetchGoodsDetail(goodsId, { signal: controller.signal })
+        setSelectedImageIndex(0)
         setGoods(detail)
         setStatus('data')
         void recordGoodsView(detail.goodsId).catch(() => undefined)
@@ -229,6 +228,44 @@ function GoodsDetailPage() {
 
   const isNotFound = error.toLocaleLowerCase().includes('not found')
   const descriptionHtml = goods?.description?.trim()
+  const galleryImages = goods
+    ? [
+        ...(goods.imageUrl
+          ? [{
+              imageId: 0,
+              imageUrl: goods.imageUrl,
+              altText: goods.name,
+              sortOrder: 0,
+            }]
+          : []),
+        ...(goods.extraImages ?? []).filter((image) => Boolean(image.imageUrl)),
+      ]
+    : []
+  const selectedGalleryImage = galleryImages[selectedImageIndex] ?? galleryImages[0] ?? null
+  const hasGalleryNavigation = galleryImages.length > 1
+  const detailSpecs = goods
+    ? [
+        { label: '아티스트', value: goods.artistName },
+        { label: '카테고리', value: goods.categoryName },
+        {
+          label: '판매 상태',
+          value: PURCHASE_STATE_LABELS[goods.purchaseState ?? ''] ?? goods.salesStatus,
+        },
+        { label: '가격', value: formatGoodsPrice(Number(goods.price ?? 0)) },
+        {
+          label: '재고',
+          value: goods.stockCount === undefined || goods.stockCount === null
+            ? null
+            : `${goods.stockCount.toLocaleString()}개`,
+        },
+        {
+          label: '리뷰',
+          value: Number(goods.reviewCount ?? 0) > 0
+            ? `${Number(goods.reviewCount ?? 0).toLocaleString()}개`
+            : null,
+        },
+      ].filter((item): item is { label: string; value: string } => Boolean(item.value))
+    : []
 
   async function handleShare() {
     try {
@@ -243,15 +280,19 @@ function GoodsDetailPage() {
     shareFeedbackTimerRef.current = window.setTimeout(() => setShareFeedback(''), 1800)
   }
 
+  function handleReviewJump() {
+    setActiveTab('reviews')
+    window.requestAnimationFrame(() => {
+      detailTabsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  }
+
   return (
     <main className="goods-page goods-detail-page">
       <Header />
 
       <section className="detail-toolbar">
         <Link className="detail-action" to="/goods">← 상품 목록</Link>
-        <button className="detail-share" type="button" onClick={handleShare}>
-          {shareFeedback || '공유'}
-        </button>
       </section>
 
       {status === 'loading' && <div className="goods-state detail-state">상품 정보를 불러오는 중입니다...</div>}
@@ -273,26 +314,95 @@ function GoodsDetailPage() {
       {status === 'data' && goods && (
         <>
           <section className="detail-layout">
-              <div className="detail-content">
-                <div className="detail-image" aria-label={`${goods.name} 이미지`}>
-                  <GoodsImage
-                    src={goods.imageUrl}
-                    alt={goods.name}
-                    fallbackLabel={goods.categoryName}
-                  />
+            <div className="detail-content">
+              <div className="detail-image" aria-label={`${goods.name} 이미지`}>
+                <GoodsImage
+                  src={selectedGalleryImage?.imageUrl ?? goods.imageUrl}
+                  alt={selectedGalleryImage?.altText || goods.name}
+                  fallbackLabel={goods.categoryName}
+                />
+                {hasGalleryNavigation && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-prev"
+                    type="button"
+                    aria-label="이전 이미지"
+                    onClick={() => setSelectedImageIndex((index) => (
+                      index <= 0 ? galleryImages.length - 1 : index - 1
+                    ))}
+                  >
+                    ‹
+                  </button>
+                )}
+                {hasGalleryNavigation && (
+                  <button
+                    className="detail-gallery-nav detail-gallery-nav-next"
+                    type="button"
+                    aria-label="다음 이미지"
+                    onClick={() => setSelectedImageIndex((index) => (
+                      index >= galleryImages.length - 1 ? 0 : index + 1
+                    ))}
+                  >
+                    ›
+                  </button>
+                )}
+              </div>
+              {galleryImages.length > 1 && (
+                <div className="detail-gallery-thumbnails" aria-label="상품 이미지 사진첩">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      key={`${image.imageId}-${image.imageUrl}`}
+                      type="button"
+                      aria-label={`${goods.name} 이미지 ${index + 1}`}
+                      aria-current={selectedImageIndex === index ? 'true' : undefined}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <GoodsImage
+                        src={image.imageUrl}
+                        alt=""
+                        fallbackLabel={goods.categoryName}
+                      />
+                    </button>
+                  ))}
                 </div>
+              )}
+            </div>
 
-              <div className="detail-tabs">
-                <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
-                  <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
-                    상품 소개
-                  </button>
-                  <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
-                    리뷰 {Number(goods.reviewCount ?? 0) > 0 ? `(${goods.reviewCount})` : ''}
-                  </button>
-                </div>
-                {activeTab === 'intro' ? (
-                  <div className="detail-tab-panel" role="tabpanel">
+            <GoodsPurchasePanel
+              key={goods.goodsId}
+              goods={goods}
+              onReviewClick={handleReviewJump}
+              isLiked={isLiked}
+              isLikePending={isLikePending}
+              likeFeedback={likeFeedback}
+              onLikeToggle={() => void handleLikeToggle()}
+              shareFeedback={shareFeedback}
+              onShare={handleShare}
+            />
+          </section>
+
+          <section className="detail-tabs" ref={detailTabsRef}>
+            <div className="detail-tab-list" role="tablist" aria-label="상품 상세 정보">
+              <button aria-selected={activeTab === 'intro'} role="tab" type="button" onClick={() => setActiveTab('intro')}>
+                상품 소개
+              </button>
+              <button aria-selected={activeTab === 'reviews'} role="tab" type="button" onClick={() => setActiveTab('reviews')}>
+                리뷰 ({Number(goods.reviewCount ?? 0).toLocaleString()})
+              </button>
+            </div>
+            {activeTab === 'intro' ? (
+              <div className="detail-tab-panel" role="tabpanel">
+                <div className="detail-overview">
+                  <dl className="detail-spec-list">
+                    {detailSpecs.map((item) => (
+                      <div key={item.label}>
+                        <dt>{item.label}</dt>
+                        <dd>{item.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <section className="detail-description-summary" aria-labelledby="detail-description-heading">
+                    <h2 id="detail-description-heading">상품 소개</h2>
                     {descriptionHtml ? (
                       <div
                         className="detail-description"
@@ -301,35 +411,14 @@ function GoodsDetailPage() {
                     ) : (
                       <p>상품 소개가 준비 중입니다.</p>
                     )}
-                    <div className="detail-long-image">
-                      {goods.imageUrl && (
-                        <GoodsImage
-                          src={goods.imageUrl}
-                          alt={`${goods.name} 상세`}
-                          fallbackLabel={goods.categoryName}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="detail-tab-panel" role="tabpanel">
-                    <GoodsReviewsPanel goodsId={goods.goodsId} />
-                  </div>
-                )}
+                  </section>
+                </div>
               </div>
-            </div>
-
-            <GoodsPurchasePanel
-              key={goods.goodsId}
-              goods={goods}
-              onReviewClick={() => setActiveTab('reviews')}
-              isFavorite={isFavorite(goods.goodsId)}
-              onFavoriteToggle={() => void handleFavoriteToggle(goods.goodsId)}
-              isLiked={isLiked}
-              isLikePending={isLikePending}
-              likeFeedback={likeFeedback}
-              onLikeToggle={() => void handleLikeToggle()}
-            />
+            ) : (
+              <div className="detail-tab-panel" role="tabpanel">
+                <GoodsReviewsPanel goodsId={goods.goodsId} />
+              </div>
+            )}
           </section>
 
           <RelatedGoodsSection goods={relatedGoods} />

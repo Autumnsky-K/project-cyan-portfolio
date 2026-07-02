@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { GoodsFilterOption } from '../../api/goods'
 
 export type GoodsFilterParam = 'categoryIds' | 'artistIds' | 'tags'

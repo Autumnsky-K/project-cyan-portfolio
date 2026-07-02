@@ -30,7 +30,8 @@ class AdminGoodsServiceTest {
 			mock(TagRepository.class),
 			goodsStockRepository,
 			new GoodsDescriptionSanitizer(),
-			new SupabaseUsageCounter()
+			new SupabaseUsageCounter(),
+			mock(GoodsExtraImageRepository.class)
 		);
 	}
 
@@ -53,6 +54,7 @@ class AdminGoodsServiceTest {
 			false,
 			false,
 			7,
+			List.of(),
 			List.of()
 		));
 

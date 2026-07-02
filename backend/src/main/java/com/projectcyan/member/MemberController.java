@@ -72,4 +72,15 @@ public class MemberController {
 	) {
 		return memberService.checkPasswordResetEligibility(request);
 	}
+
+	@PostMapping("/password-reset/request")
+	public PasswordResetRequestedResponse requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+		return memberService.requestPasswordReset(request);
+	}
+
+	@PostMapping("/password-reset/confirm")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
+		memberService.confirmPasswordReset(request);
+	}
 }
