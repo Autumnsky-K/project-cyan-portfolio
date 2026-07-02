@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +65,8 @@ class GoodsFavoriteServiceTest {
 
 	@Test
 	void addsFavoriteGoods() {
-		when(goodsRepository.existsById(1001L)).thenReturn(true);
+		Goods goods = goods(1001L, "First goods");
+		when(goodsRepository.findById(1001L)).thenReturn(Optional.of(goods));
 		when(goodsFavoriteRepository.existsByMemberIdAndGoodsId(7L, 1001L)).thenReturn(false);
 
 		service.addFavorite(7L, 1001L);
@@ -74,7 +76,8 @@ class GoodsFavoriteServiceTest {
 
 	@Test
 	void skipsExistingFavoriteGoods() {
-		when(goodsRepository.existsById(1001L)).thenReturn(true);
+		Goods goods = goods(1001L, "First goods");
+		when(goodsRepository.findById(1001L)).thenReturn(Optional.of(goods));
 		when(goodsFavoriteRepository.existsByMemberIdAndGoodsId(7L, 1001L)).thenReturn(true);
 
 		service.addFavorite(7L, 1001L);
@@ -84,7 +87,7 @@ class GoodsFavoriteServiceTest {
 
 	@Test
 	void rejectsMissingGoods() {
-		when(goodsRepository.existsById(9999L)).thenReturn(false);
+		when(goodsRepository.findById(9999L)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.addFavorite(7L, 9999L))
 			.isInstanceOf(ResponseStatusException.class)

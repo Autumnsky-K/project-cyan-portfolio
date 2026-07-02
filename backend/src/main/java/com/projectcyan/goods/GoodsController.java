@@ -55,7 +55,7 @@ public class GoodsController {
 		@RequestParam(defaultValue = "20") int size,
 		@RequestParam(defaultValue = "createdAt,desc") String sort
 	) {
-		return goodsService.findGoods(
+		return goodsService.findPublicGoods(
 			q, artistId, artistIds, categoryId, categoryIds, salesStatus, tag, tags, goodsIds, page, size, sort
 		);
 	}
@@ -99,7 +99,7 @@ public class GoodsController {
 
 	@GetMapping("/{goodsId}")
 	public GoodsDetailResponse findGoodsDetail(@PathVariable Long goodsId) {
-		return goodsService.findGoodsDetail(goodsId);
+		return goodsService.findPublicGoodsDetail(goodsId);
 	}
 
 	@PostMapping("/{goodsId}/favorites")

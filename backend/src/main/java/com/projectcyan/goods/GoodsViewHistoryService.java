@@ -39,7 +39,9 @@ public class GoodsViewHistoryService {
 
 	@Transactional
 	public void recordView(Long memberId, Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
+		Goods goods = goodsRepository.findById(goodsId)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
 		}
 

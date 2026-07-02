@@ -68,7 +68,7 @@ public class GoodsFavoriteService {
 
 		return favoriteGoodsIds.stream()
 			.map(goodsById::get)
-			.filter(goods -> goods != null)
+			.filter(GoodsVisibility::isPubliclyVisible)
 			.map(goods -> GoodsSummaryResponse.from(
 				goods,
 				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
@@ -79,7 +79,9 @@ public class GoodsFavoriteService {
 
 	@Transactional
 	public void addFavorite(Long memberId, Long goodsId) {
-		if (!goodsRepository.existsById(goodsId)) {
+		Goods goods = goodsRepository.findById(goodsId)
+			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
+		if (!GoodsVisibility.isPubliclyVisible(goods)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found.");
 		}
 		if (goodsFavoriteRepository.existsByMemberIdAndGoodsId(memberId, goodsId)) {

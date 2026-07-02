@@ -1,6 +1,7 @@
 package com.projectcyan.goods;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 
 class GoodsServiceTest {
 
@@ -62,6 +64,16 @@ class GoodsServiceTest {
 		);
 
 		assertThat(response.purchaseState()).isEqualTo("UNAVAILABLE");
+	}
+
+	@Test
+	void publicDetailRejectsHiddenGoods() {
+		Goods goods = goods("HIDDEN");
+		when(goodsRepository.findById(goods.getGoodsId())).thenReturn(Optional.of(goods));
+
+		assertThatThrownBy(() -> goodsService.findPublicGoodsDetail(goods.getGoodsId()))
+			.isInstanceOf(ResponseStatusException.class)
+			.hasMessageContaining("404");
 	}
 
 	private GoodsDetailResponse findDetail(Goods goods, int stockCount) {
