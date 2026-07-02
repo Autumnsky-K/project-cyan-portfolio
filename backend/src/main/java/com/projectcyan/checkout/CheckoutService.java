@@ -93,6 +93,9 @@ public class CheckoutService {
 		validateAmount(payment, request);
 		confirmTossPayment(payment, request);
 
+		if (!payment.isApproved() && !payment.getOrder().isPaid()) {
+			decreaseStockForApprovedOrder(payment.getOrder());
+		}
 		payment.markApproved(request.providerPaymentKey(), request.paymentMethod());
 		payment.getOrder().markPaid();
 
@@ -370,6 +373,28 @@ public class CheckoutService {
 			if (stock.getCurrentStock() < entry.getValue()) {
 				throw error("OUT_OF_STOCK", "Not enough stock.", HttpStatus.BAD_REQUEST);
 			}
+		}
+	}
+
+	private void decreaseStockForApprovedOrder(StoreOrder order) {
+		Map<Long, Integer> orderedItems = orderItemRepository.findByOrder_OrderId(order.getOrderId()).stream()
+			.filter(item -> item.getGoodsId() != null && item.getQuantity() != null && item.getQuantity() > 0)
+			.collect(Collectors.toMap(OrderItem::getGoodsId, OrderItem::getQuantity, Integer::sum));
+		if (orderedItems.isEmpty()) {
+			return;
+		}
+
+		Map<Long, GoodsStock> stocksByGoodsId = goodsStockRepository.findByGoodsIdInForUpdate(orderedItems.keySet()).stream()
+			.collect(Collectors.toMap(GoodsStock::getGoodsId, Function.identity()));
+		for (Map.Entry<Long, Integer> entry : orderedItems.entrySet()) {
+			GoodsStock stock = stocksByGoodsId.get(entry.getKey());
+			if (stock == null || stock.getCurrentStock() == null) {
+				continue;
+			}
+			if (stock.getCurrentStock() < entry.getValue()) {
+				throw error("OUT_OF_STOCK", "Not enough stock.", HttpStatus.BAD_REQUEST);
+			}
+			stock.decreaseCurrentStock(entry.getValue());
 		}
 	}
 

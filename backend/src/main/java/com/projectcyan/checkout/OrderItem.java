@@ -66,4 +66,12 @@ public class OrderItem {
 	static OrderItem snapshot(StoreOrder order, Goods goods, int quantity) {
 		return new OrderItem(order, goods, quantity);
 	}
+
+	public Long getGoodsId() {
+		return goods == null ? null : goods.getGoodsId();
+	}
+
+	public Integer getQuantity() {
+		return quantity;
+	}
 }
