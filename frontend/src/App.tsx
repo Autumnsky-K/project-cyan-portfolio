@@ -21,6 +21,8 @@ import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot'
 
 const VTUBER_HIDDEN_PATHS = [
+  '/',
+  '/artists',
   '/login',
   '/signup',
   '/auth/callback',
