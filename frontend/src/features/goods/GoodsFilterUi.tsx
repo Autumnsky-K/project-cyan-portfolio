@@ -145,10 +145,7 @@ function GoodsFilterUi({
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="mobile-filter-header">
-              <div>
-                <p>결과 좁히기</p>
-                <h2 id="mobile-filter-title">필터</h2>
-              </div>
+              <h2 id="mobile-filter-title">필터</h2>
               <button type="button" aria-label="필터 닫기" onClick={onCloseMobile}>×</button>
             </div>
             <div className="mobile-filter-body">
@@ -167,7 +164,7 @@ function GoodsFilterUi({
                 초기화
               </button>
               <button className="mobile-filter-apply" type="button" onClick={applyMobileFilters}>
-                결과 보기
+                적용
               </button>
             </div>
           </section>

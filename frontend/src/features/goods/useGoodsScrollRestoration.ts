@@ -49,6 +49,11 @@ export function useGoodsScrollRestoration(status: string) {
 
     event.preventDefault()
     storePendingScrollRestore()
-    navigate(`/goods/${goodsId}`, { state: { fromGoods: true } })
+    navigate(`/goods/${goodsId}`, {
+      state: {
+        fromGoods: true,
+        goodsListUrl: `${window.location.pathname}${window.location.search}`,
+      },
+    })
   }, [navigate])
 }

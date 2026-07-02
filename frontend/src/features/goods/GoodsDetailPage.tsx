@@ -17,6 +17,7 @@ import GoodsPurchasePanel from './GoodsPurchasePanel'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
 import RelatedGoodsSection from './RelatedGoodsSection'
 import { formatGoodsPrice } from './goodsFormatters'
+import { publishGoodsLikeSyncUpdate } from './goodsLikeSync'
 import './goods.css'
 import './goods-detail.css'
 import Header from '../../shared/components/Header'
@@ -30,6 +31,14 @@ const PURCHASE_STATE_LABELS: Record<string, string> = {
   ENDED: 'Sale ended',
   SOLD_OUT: 'Sold out',
   UNAVAILABLE: 'Unavailable',
+}
+
+function readGoodsListUrl(state: unknown) {
+  if (typeof state !== 'object' || state === null) return '/goods'
+  const goodsListUrl = (state as { goodsListUrl?: unknown }).goodsListUrl
+  return typeof goodsListUrl === 'string' && goodsListUrl.startsWith('/goods')
+    ? goodsListUrl
+    : '/goods'
 }
 
 function GoodsDetailPage() {
@@ -52,6 +61,7 @@ function GoodsDetailPage() {
   const scrollRestoreTimerRef = useRef<number | null>(null)
   const detailTabsRef = useRef<HTMLElement | null>(null)
   const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
+  const goodsListUrl = readGoodsListUrl(location.state)
 
   const navigateToLogin = useCallback(() => {
     window.sessionStorage.setItem('project-cyan:login-return-to', loginReturnTo)
@@ -78,6 +88,11 @@ function GoodsDetailPage() {
           ? { ...current, likeCount: result.likeCount }
           : current
       ))
+      publishGoodsLikeSyncUpdate({
+        goodsId: goods.goodsId,
+        liked: result.liked,
+        likeCount: result.likeCount,
+      })
     } catch (likeError) {
       setLikeFeedback(likeError instanceof Error ? likeError.message : '좋아요를 처리하지 못했습니다.')
       if (likeFeedbackTimerRef.current !== null) {
@@ -292,7 +307,7 @@ function GoodsDetailPage() {
       <Header />
 
       <section className="detail-toolbar">
-        <Link className="detail-action" to="/goods">← 상품 목록</Link>
+        <Link className="detail-action" to={goodsListUrl}>← 상품 목록</Link>
       </section>
 
       {status === 'loading' && <div className="goods-state detail-state">상품 정보를 불러오는 중입니다...</div>}
@@ -305,7 +320,7 @@ function GoodsDetailPage() {
               : error}
           </span>
           <div>
-            <Link className="detail-action" to="/goods">상품 목록으로 이동</Link>
+            <Link className="detail-action" to={goodsListUrl}>상품 목록으로 이동</Link>
             <button type="button" onClick={() => window.history.back()}>이전 페이지</button>
           </div>
         </div>

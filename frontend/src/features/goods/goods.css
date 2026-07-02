@@ -286,7 +286,7 @@ button.goods-rating-summary {
 .result-controls {
   display: grid;
   justify-items: end;
-  gap: 8px;
+  gap: 14px;
 }
 
 .view-period-field {
@@ -307,7 +307,7 @@ button.goods-rating-summary {
 
 .view-period-field select {
   min-height: 34px;
-  width: 82px;
+  width: 112px;
   box-sizing: border-box;
   padding: 6px 22px 6px 7px;
   border: 1px solid var(--goods-line);

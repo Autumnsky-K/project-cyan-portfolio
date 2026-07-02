@@ -123,20 +123,15 @@
   border-bottom: 1px solid var(--goods-line);
 }
 
-.mobile-filter-header p,
 .mobile-filter-header h2 {
   margin: 0;
-}
-
-.mobile-filter-header p {
-  margin-bottom: 3px;
-  color: var(--goods-muted);
-  font-size: 12px;
 }
 
 .mobile-filter-header h2 {
   color: var(--goods-ink);
   font-size: 22px;
+  line-height: 1;
+  transform: translateY(2px);
 }
 
 .mobile-filter-header button {
