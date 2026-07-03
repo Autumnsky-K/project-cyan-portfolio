@@ -1,10 +1,21 @@
 import { supabase } from '../../api/supabaseClient'
+import { navigateToServerError } from './errorNavigation'
 
 type ApiFetchOptions = RequestInit
 
 type ApiErrorBody = {
   error?: string
   message?: string
+}
+
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
 }
 
 export const SPRING_API_BASE_URL =
@@ -80,13 +91,26 @@ export async function apiFetch(
   }
 }
 
+type ParseApiResponseOptions = {
+  // Skip the automatic redirect to /500 for best-effort/background calls
+  // where a server error shouldn't interrupt what the user is doing.
+  silent?: boolean
+}
+
 export async function parseApiResponse<T = unknown>(
   response: Response,
   fallbackMessage: string,
+  options: ParseApiResponseOptions = {},
 ): Promise<T | null> {
   if (!response.ok) {
     const error = await response.json().catch(() => null) as ApiErrorBody | null
-    throw new Error(error?.message ?? error?.error ?? fallbackMessage)
+    const apiError = new ApiError(error?.message ?? error?.error ?? fallbackMessage, response.status)
+
+    if (!options.silent && apiError.status >= 500) {
+      navigateToServerError()
+    }
+
+    throw apiError
   }
 
   if (response.status === 204) {

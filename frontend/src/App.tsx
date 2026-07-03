@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import CartAccessGate from './features/cart/CartAccessGate'
 import { CartProvider } from './features/cart/cartStore'
+import { setGlobalNavigate } from './shared/api/errorNavigation'
 
 import AuthCallbackPage from './features/member/AuthCallbackPage'
 import ArtistPage from './features/artist/artist'
@@ -20,12 +21,22 @@ import ResetPasswordPage from './features/member/ResetPasswordPage'
 import SignupPage from './features/member/SignupPage.jsx'
 import VtuberChatbot from './features/vtuber/VtuberChatbot'
 import { isVtuberVisiblePath } from './features/vtuber/visibility'
+import ForbiddenPage from './pages/errors/ForbiddenPage'
+import NotFoundPage from './pages/errors/NotFoundPage'
+import ServerErrorPage from './pages/errors/ServerErrorPage'
+import ErrorBoundary from './shared/components/ErrorBoundary'
 import ImmersiveLayout from './shared/layouts/ImmersiveLayout'
 import StoreLayout from './shared/layouts/StoreLayout'
 
 function AppShell() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const showVtuber = isVtuberVisiblePath(pathname)
+
+  useEffect(() => {
+    setGlobalNavigate(navigate)
+    return () => setGlobalNavigate(null)
+  }, [navigate])
 
   useEffect(() => {
     const pageName = pathname.startsWith('/goods/')
@@ -79,6 +90,9 @@ function AppShell() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/like" element={<LikePage />} />
           <Route path="/likes/artists" element={<LikePage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
+          <Route path="/500" element={<ServerErrorPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </div>
       {showVtuber && <VtuberChatbot />}
@@ -89,9 +103,11 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
-      <CartProvider>
-        <AppShell />
-      </CartProvider>
+      <ErrorBoundary>
+        <CartProvider>
+          <AppShell />
+        </CartProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }
