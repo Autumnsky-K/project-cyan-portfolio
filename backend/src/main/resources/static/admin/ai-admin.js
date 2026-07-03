@@ -915,6 +915,7 @@ const modelConnectionState = {
   csrfToken: '',
   approvalToken: '',
   approvalExpiresAt: '',
+  approvalTimerId: null,
   profiles: [],
   publications: [],
   published: null,
@@ -950,6 +951,71 @@ function setModelConnectionStatus(text, error = false) {
   if (!target) return
   target.textContent = text
   target.style.color = error ? '#b91c1c' : ''
+}
+
+function setModelConnectionVaultUnlocked(unlocked) {
+  const gate = aiBehaviorRoot?.querySelector('[data-ai-vault-gate]')
+  const console = aiBehaviorRoot?.querySelector('[data-ai-connection-console]')
+  if (gate) gate.hidden = unlocked
+  if (console) console.hidden = !unlocked
+}
+
+function lockModelConnectionVault(message = '관리자 비밀번호를 확인해주세요.') {
+  if (modelConnectionState.approvalTimerId) {
+    window.clearTimeout(modelConnectionState.approvalTimerId)
+    modelConnectionState.approvalTimerId = null
+  }
+  modelConnectionState.approvalToken = ''
+  modelConnectionState.approvalExpiresAt = ''
+  modelConnectionState.profiles = []
+  modelConnectionState.publications = []
+  modelConnectionState.published = null
+  const password = aiBehaviorRoot?.querySelector('[data-ai-reauth-password]')
+  const status = aiBehaviorRoot?.querySelector('[data-ai-reauth-status]')
+  const apiKey = aiBehaviorRoot?.querySelector('[data-ai-connection-api-key]')
+  if (password) password.value = ''
+  if (apiKey) apiKey.value = ''
+  if (status) status.textContent = message
+  setModelConnectionVaultUnlocked(false)
+  setModelConnectionStatus('관리자 비밀번호 확인이 필요합니다.')
+}
+
+function scheduleModelConnectionVaultLock() {
+  if (modelConnectionState.approvalTimerId) {
+    window.clearTimeout(modelConnectionState.approvalTimerId)
+  }
+  const remainingMs = Date.parse(modelConnectionState.approvalExpiresAt) - Date.now()
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+    lockModelConnectionVault('승인이 만료되었습니다. 비밀번호를 다시 확인해주세요.')
+    return
+  }
+  modelConnectionState.approvalTimerId = window.setTimeout(() => {
+    lockModelConnectionVault('승인이 만료되었습니다. 비밀번호를 다시 확인해주세요.')
+  }, remainingMs)
+}
+
+async function loadModelConnectionSecurity() {
+  const security = await modelConnectionRequest('/api/admin/ai/model-connections/security', {
+    headers: { Accept: 'application/json' },
+  })
+  modelConnectionState.csrfToken = security.csrfToken || ''
+  if (!modelConnectionState.csrfToken) {
+    throw new Error('CSRF 토큰 응답이 비어 있습니다.')
+  }
+}
+
+async function initializeModelConnectionVault() {
+  const button = aiBehaviorRoot?.querySelector('[data-ai-reauth]')
+  const status = aiBehaviorRoot?.querySelector('[data-ai-reauth-status]')
+  lockModelConnectionVault('보안 토큰을 준비하고 있습니다.')
+  try {
+    await loadModelConnectionSecurity()
+    if (button) button.disabled = false
+    if (status) status.textContent = '관리자 비밀번호를 입력해주세요.'
+  } catch (error) {
+    if (status) status.textContent = `보안 준비 실패: ${error.message}`
+    setModelConnectionStatus(`보안 준비 실패: ${error.message}`, true)
+  }
 }
 
 function applyProviderFields() {
@@ -1026,12 +1092,8 @@ function populateSelectedModelProfile() {
 
 async function loadModelConnections(preferredProfileId = null) {
   try {
-    const security = await modelConnectionRequest('/api/admin/ai/model-connections/security', {
-      headers: { Accept: 'application/json' },
-    })
-    modelConnectionState.csrfToken = security.csrfToken || ''
     if (!modelConnectionState.csrfToken) {
-      throw new Error('CSRF 토큰 응답이 비어 있습니다.')
+      await loadModelConnectionSecurity()
     }
     const payload = await modelConnectionRequest('/api/admin/ai/model-connections', {
       headers: { Accept: 'application/json' },
@@ -1041,14 +1103,23 @@ async function loadModelConnections(preferredProfileId = null) {
     modelConnectionState.publications = payload.publications || []
     modelConnectionState.published = payload.published || null
     renderModelConnectionConsole(preferredProfileId || payload.published?.profileId || null)
+    return true
   } catch (error) {
     setModelConnectionStatus(`프로필 조회 실패: ${error.message}`, true)
+    return false
   }
 }
 
-async function reauthenticateModelConnection() {
+async function reauthenticateModelConnection(event) {
+  event?.preventDefault()
   const password = aiBehaviorRoot?.querySelector('[data-ai-reauth-password]')?.value || ''
   const status = aiBehaviorRoot?.querySelector('[data-ai-reauth-status]')
+  const button = aiBehaviorRoot?.querySelector('[data-ai-reauth]')
+  if (!password) {
+    if (status) status.textContent = '관리자 비밀번호를 입력해주세요.'
+    return
+  }
+  if (button) button.disabled = true
   try {
     const payload = await modelConnectionRequest('/api/admin/ai/model-connections/reauth', {
       method: 'POST',
@@ -1057,11 +1128,20 @@ async function reauthenticateModelConnection() {
     })
     modelConnectionState.approvalToken = payload.approvalToken || ''
     modelConnectionState.approvalExpiresAt = payload.expiresAt || ''
-    if (status) status.textContent = `승인 완료 · ${payload.expiresAt}`
     const input = aiBehaviorRoot?.querySelector('[data-ai-reauth-password]')
     if (input) input.value = ''
+    const loaded = await loadModelConnections()
+    if (!loaded) throw new Error('모델 연결 프로필을 불러오지 못했습니다.')
+    const sessionStatus = aiBehaviorRoot?.querySelector('[data-ai-vault-session-status]')
+    if (sessionStatus) sessionStatus.textContent = `관리자 확인 완료 · ${payload.expiresAt}까지 접근 가능`
+    setModelConnectionVaultUnlocked(true)
+    scheduleModelConnectionVaultLock()
   } catch (error) {
+    modelConnectionState.approvalToken = ''
+    modelConnectionState.approvalExpiresAt = ''
     if (status) status.textContent = `재인증 실패: ${error.message}`
+  } finally {
+    if (button) button.disabled = false
   }
 }
 
@@ -1612,10 +1692,10 @@ if (aiBehaviorRoot) {
   aiBehaviorRoot.querySelector('[data-ai-connection-save]')?.addEventListener('click', saveModelConnectionProfile)
   aiBehaviorRoot.querySelector('[data-ai-credential-save]')?.addEventListener('click', saveModelCredential)
   aiBehaviorRoot.querySelector('[data-ai-connection-test]')?.addEventListener('click', testModelConnection)
-  aiBehaviorRoot.querySelector('[data-ai-reauth]')?.addEventListener('click', reauthenticateModelConnection)
+  aiBehaviorRoot.querySelector('[data-ai-vault-gate]')?.addEventListener('submit', reauthenticateModelConnection)
   aiBehaviorRoot.querySelector('[data-ai-oauth-connect]')?.addEventListener('click', startModelOAuth)
   aiBehaviorRoot.querySelector('[data-ai-oauth-clear]')?.addEventListener('click', clearModelOAuth)
   aiBehaviorRoot.querySelector('[data-ai-connection-rollback]')?.addEventListener('click', rollbackModelConnection)
   renderDbHighlight()
-  loadModelConnections()
+  initializeModelConnectionVault()
 }
