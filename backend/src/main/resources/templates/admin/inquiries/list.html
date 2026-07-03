@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>문의 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('inquiries', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">고객 문의 관련 관리자페이지</p>
+        <h2>문의 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin}" class="admin-primary">대시보드</a>
+      </div>
+    </header>
+
+    <p class="admin-notice" th:if="${notice}" th:text="${notice}">작업 완료</p>
+    <p class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}">작업 실패</p>
+
+    <section class="admin-table-panel" aria-label="문의 목록">
+      <div class="admin-table-scroll">
+        <table class="admin-goods-table">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>유형</th>
+            <th>작성자</th>
+            <th>상품</th>
+            <th>제목 / 내용</th>
+            <th>비밀글</th>
+            <th>상태</th>
+            <th>답변</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(inquiries)}">
+            <td colspan="8">등록된 문의가 없습니다.</td>
+          </tr>
+          <tr th:each="inquiry : ${inquiries}">
+            <td th:text="${inquiry.inquiryId}">1</td>
+            <td th:text="${inquiry.inquiryType == 'PRODUCT'} ? '상품문의' : '1:1문의'">1:1문의</td>
+            <td>
+              <div th:text="${inquiry.memberName}">회원</div>
+              <div th:text="${inquiry.memberEmail}">member@example.com</div>
+            </td>
+            <td th:text="${inquiry.goodsName}">-</td>
+            <td>
+              <strong th:text="${inquiry.title}">제목</strong>
+              <p th:text="${inquiry.content}">내용</p>
+            </td>
+            <td th:text="${inquiry.secret} ? '비밀글' : '공개'">공개</td>
+            <td th:text="${inquiry.status == 'ANSWERED'} ? '답변완료' : '답변대기'">답변대기</td>
+            <td>
+              <div th:if="${inquiry.status == 'ANSWERED'}">
+                <p th:text="${inquiry.answerContent}">답변 내용</p>
+              </div>
+              <form th:unless="${inquiry.status == 'ANSWERED'}"
+                    class="admin-inquiry-answer-form"
+                    th:action="@{/admin/inquiries/{inquiryId}/answer(inquiryId=${inquiry.inquiryId})}"
+                    method="post">
+                <textarea name="answerContent" rows="3" placeholder="답변 내용을 입력하세요" required></textarea>
+                <button class="admin-primary" type="submit">답변 등록</button>
+              </form>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

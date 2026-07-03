@@ -6,167 +6,9 @@ const ACCOUNT_NOT_FOUND_MESSAGE = '계정을 찾을 수 없습니다. 먼저 회
 const MY_PAGE_SECTION_LIMIT = 20
 
 
-const MY_PAGE_DUMMY_DATA = {
-  orders: [
-    {
-      orderId: 101,
-      name: 'aespa OFFICIAL LIGHT STICK',
-      status: '배송 준비중',
-      description: '응원봉 단독 주문 · 2026.06.18 결제',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 102,
-      name: 'RIIZE PHOTOBOOK SET',
-      status: '배송 완료',
-      description: '포토북 + 포토카드 세트 · 2026.06.12 도착',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 103,
-      name: 'NCT DREAM MD PACKAGE',
-      status: '결제 완료',
-      description: '예약 상품 · 2026.07.02 출고 예정',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 104,
-      name: 'Red Velvet MINI BAG',
-      status: '구매 확정',
-      description: '공식 굿즈 스토어 구매 · 리뷰 작성 가능',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 105,
-      name: 'SHINee ANNIVERSARY KIT',
-      status: '배송중',
-      description: '한정판 키트 · 오늘 오후 도착 예정',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 106,
-      name: 'EXO POSTCARD BOOK',
-      status: '취소 완료',
-      description: '환불 처리 완료 · 재입고 알림 신청 가능',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-  ],
-  recentlyViewedGoods: [
-    {
-      goodsId: 201,
-      name: 'aespa Drama Hoodie',
-      price: 69000,
-      description: '무대 의상 무드의 블랙 후디',
-    },
-    {
-      goodsId: 202,
-      name: 'RIIZE Lucky Photocard',
-      price: 15000,
-      description: '랜덤 포토카드 3종 구성',
-    },
-    {
-      goodsId: 203,
-      name: 'NCT WISH Keyring',
-      price: 22000,
-      description: '가방에 달기 좋은 아크릴 키링',
-    },
-    {
-      goodsId: 204,
-      name: 'Red Velvet Cup Set',
-      price: 32000,
-      description: '데일리로 쓰기 좋은 컵 2종',
-    },
-    {
-      goodsId: 205,
-      name: 'SHINee Photo Binder',
-      price: 28000,
-      description: '포토카드 보관용 4포켓 바인더',
-    },
-    {
-      goodsId: 206,
-      name: 'EXO Travel Pouch',
-      price: 24000,
-      description: '작은 소지품을 담는 투명 파우치',
-    },
-  ],
-  likedGoods: [
-    {
-      goodsId: 301,
-      name: 'SMTOWN Live T-shirt',
-      price: 42000,
-      description: '콘서트 현장감이 담긴 투어 티셔츠',
-    },
-    {
-      goodsId: 302,
-      name: 'aespa Armageddon Poster',
-      price: 18000,
-      description: '메탈릭 인쇄 포스터 세트',
-    },
-    {
-      goodsId: 303,
-      name: 'NCT DREAM Sticker Pack',
-      price: 12000,
-      description: '노트북 꾸미기 좋은 스티커 12종',
-    },
-    {
-      goodsId: 304,
-      name: 'RIIZE Mini Doll',
-      price: 36000,
-      description: '책상 위에 두기 좋은 미니 인형',
-    },
-    {
-      goodsId: 305,
-      name: 'Red Velvet Velvet Case',
-      price: 26000,
-      description: '부드러운 질감의 휴대폰 케이스',
-    },
-    {
-      goodsId: 306,
-      name: 'SHINee Desk Calendar',
-      price: 19000,
-      description: '월별 콘셉트 컷이 담긴 캘린더',
-    },
-  ],
-  productInquiries: [
-    {
-      inquiryId: 601,
-      name: 'aespa Drama Hoodie',
-      status: '답변 완료',
-      description: '사이즈 재입고 일정 문의 · 2026.06.20',
-    },
-    {
-      inquiryId: 602,
-      name: 'RIIZE Lucky Photocard',
-      status: '접수',
-      description: '구성품 중복 가능 여부 문의 · 2026.06.27',
-    },
-  ],
-  supportInquiries: [
-    {
-      inquiryId: 701,
-      name: '배송지 변경 요청',
-      status: '처리 완료',
-      description: '주문 ORD20260618-0001 · 2026.06.19',
-    },
-    {
-      inquiryId: 702,
-      name: '회원 정보 수정 문의',
-      status: '답변 대기',
-      description: '휴대폰 번호 인증 관련 · 2026.06.28',
-    },
-  ],
+const INQUIRY_STATUS_LABELS = {
+  PENDING: '답변 대기',
+  ANSWERED: '답변 완료',
 }
 
 function checkSupabaseConfig() {
@@ -488,6 +330,31 @@ async function getMyPageGoodsActivity(memberId) {
   return {
     recentlyViewedGoods,
     likedGoods,
+  }
+}
+
+function normalizeInquirySummary(inquiry) {
+  const createdAt = formatDateLabel(inquiry.createdAt)
+
+  return {
+    inquiryId: inquiry.inquiryId,
+    name: inquiry.title,
+    status: INQUIRY_STATUS_LABELS[inquiry.status] ?? inquiry.status,
+    description: [createdAt, inquiry.content].filter(Boolean).join(' · '),
+  }
+}
+
+async function getMyPageInquiries(inquiryType) {
+  try {
+    const page = await parseApiResponse(
+      await apiFetch(`/inquiries/me?type=${inquiryType}&size=${MY_PAGE_SECTION_LIMIT}`),
+      '문의 내역을 불러오지 못했습니다.',
+    )
+
+    return (page?.content ?? []).map(normalizeInquirySummary)
+  } catch (error) {
+    console.warn(error)
+    return []
   }
 }
 
@@ -868,9 +735,11 @@ export async function getMyPageSummary() {
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
   const memberId = await getMemberId(member.memberId ?? member.userId)
-  const [orders, goodsActivity] = await Promise.all([
+  const [orders, goodsActivity, productInquiries, supportInquiries] = await Promise.all([
     getMyPageOrders(memberId),
     getMyPageGoodsActivity(memberId),
+    getMyPageInquiries('PRODUCT'),
+    getMyPageInquiries('SUPPORT'),
   ])
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
@@ -884,8 +753,8 @@ export async function getMyPageSummary() {
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
     orders,
-    productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,
-    supportInquiries: MY_PAGE_DUMMY_DATA.supportInquiries,
+    productInquiries,
+    supportInquiries,
     recentlyViewedGoods: goodsActivity.recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,

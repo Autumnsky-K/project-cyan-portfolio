@@ -2,7 +2,12 @@ package com.projectcyan.goods;
 
 import java.util.List;
 
+import com.projectcyan.inquiry.InquiryProductRequest;
+import com.projectcyan.inquiry.InquiryResponse;
+import com.projectcyan.inquiry.InquiryService;
 import com.projectcyan.member.auth.AuthenticatedMember;
+import com.projectcyan.member.auth.OptionalAuthenticatedMemberResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -25,19 +30,25 @@ public class GoodsController {
 	private final GoodsViewHistoryService goodsViewHistoryService;
 	private final GoodsFavoriteService goodsFavoriteService;
 	private final GoodsLikeService goodsLikeService;
+	private final InquiryService inquiryService;
+	private final OptionalAuthenticatedMemberResolver optionalAuthenticatedMemberResolver;
 
 	public GoodsController(
 		GoodsService goodsService,
 		GoodsRecommendationService goodsRecommendationService,
 		GoodsViewHistoryService goodsViewHistoryService,
 		GoodsFavoriteService goodsFavoriteService,
-		GoodsLikeService goodsLikeService
+		GoodsLikeService goodsLikeService,
+		InquiryService inquiryService,
+		OptionalAuthenticatedMemberResolver optionalAuthenticatedMemberResolver
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
 		this.goodsViewHistoryService = goodsViewHistoryService;
 		this.goodsFavoriteService = goodsFavoriteService;
 		this.goodsLikeService = goodsLikeService;
+		this.inquiryService = inquiryService;
+		this.optionalAuthenticatedMemberResolver = optionalAuthenticatedMemberResolver;
 	}
 
 	@GetMapping
@@ -227,5 +238,30 @@ public class GoodsController {
 		AuthenticatedMember currentMember
 	) {
 		goodsService.deleteGoodsReview(goodsId, reviewId, currentMember.memberId());
+	}
+
+	@GetMapping("/{goodsId}/inquiries")
+	public PageResponse<InquiryResponse> findGoodsInquiries(
+		@PathVariable Long goodsId,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "10") int size,
+		HttpServletRequest request
+	) {
+		goodsService.ensureGoodsVisible(goodsId);
+		Long viewerMemberId = optionalAuthenticatedMemberResolver.resolve(request)
+			.map(AuthenticatedMember::memberId)
+			.orElse(null);
+		return inquiryService.findGoodsInquiries(goodsId, viewerMemberId, page, size);
+	}
+
+	@PostMapping("/{goodsId}/inquiries")
+	public ResponseEntity<InquiryResponse> createGoodsInquiry(
+		@PathVariable Long goodsId,
+		@RequestBody InquiryProductRequest request,
+		AuthenticatedMember currentMember
+	) {
+		goodsService.ensureGoodsVisible(goodsId);
+		return ResponseEntity.status(HttpStatus.CREATED)
+			.body(inquiryService.createProductInquiry(currentMember.memberId(), goodsId, request));
 	}
 }

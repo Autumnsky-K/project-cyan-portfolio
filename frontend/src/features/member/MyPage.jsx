@@ -530,7 +530,7 @@ function MyPage() {
 
     try {
       await logoutMember()
-      navigate('/login')
+      navigate('/')
     } catch (logoutError) {
       console.error(logoutError)
       setError('로그아웃하지 못했습니다. 잠시 후 다시 시도해주세요.')

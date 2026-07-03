@@ -58,6 +58,19 @@ export type GoodsReviewSummary = {
   ratingOneCount: number
 }
 
+export type GoodsInquiry = {
+  inquiryId: number
+  inquiryType: string
+  goodsId: number | null
+  title: string
+  content: string | null
+  secret: boolean
+  status: string
+  answerContent: string | null
+  answeredAt?: string | null
+  createdAt: string
+}
+
 export type GoodsLikeResponse = {
   liked: boolean
   likeCount: number
@@ -229,6 +242,28 @@ export async function deleteGoodsReview(
 ): Promise<void> {
   const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, { method: 'DELETE' })
   await parseApiResponse(response, 'Failed to delete review.')
+}
+
+export async function fetchGoodsInquiries(
+  goodsId: string | number | undefined,
+  page = 0,
+  size = 10,
+  options: FetchOptions = {},
+): Promise<PageResponse<GoodsInquiry>> {
+  const searchParams = new URLSearchParams({ page: String(page), size: String(size) })
+  const response = await apiFetch(`/goods/${goodsId}/inquiries?${searchParams.toString()}`, options)
+  return await parseApiResponse<PageResponse<GoodsInquiry>>(response, 'Failed to load goods inquiries.') as PageResponse<GoodsInquiry>
+}
+
+export async function createGoodsInquiry(
+  goodsId: string | number,
+  payload: { title: string; content: string; secret?: boolean },
+): Promise<GoodsInquiry> {
+  const response = await apiFetch(`/goods/${goodsId}/inquiries`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return await parseApiResponse<GoodsInquiry>(response, 'Failed to create inquiry.') as GoodsInquiry
 }
 
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {

@@ -3,8 +3,9 @@ import type { GoodsDetail } from '../../api/goods'
 import GoodsDescription from './GoodsDescription'
 import GoodsDetailSpecs from './GoodsDetailSpecs'
 import GoodsReviewsPanel from './GoodsReviewsPanel'
+import GoodsQnaPanel from './GoodsQnaPanel'
 
-export type DetailTab = 'intro' | 'reviews'
+export type DetailTab = 'intro' | 'reviews' | 'qna'
 
 type GoodsDetailTabsProps = {
   activeTab: DetailTab
@@ -15,6 +16,7 @@ type GoodsDetailTabsProps = {
 const TABS: Array<{ id: DetailTab; label: string }> = [
   { id: 'intro', label: '상품 소개' },
   { id: 'reviews', label: '리뷰' },
+  { id: 'qna', label: '상품 문의' },
 ]
 
 function nextTab(current: DetailTab, direction: 1 | -1) {
@@ -70,7 +72,7 @@ const GoodsDetailTabs = forwardRef<HTMLElement, GoodsDetailTabsProps>(function G
           )
         })}
       </div>
-      {activeTab === 'intro' ? (
+      {activeTab === 'intro' && (
         <div
           id="goods-detail-panel-intro"
           aria-labelledby="goods-detail-tab-intro"
@@ -82,7 +84,8 @@ const GoodsDetailTabs = forwardRef<HTMLElement, GoodsDetailTabsProps>(function G
             <GoodsDescription sanitizedHtml={goods.description} />
           </div>
         </div>
-      ) : (
+      )}
+      {activeTab === 'reviews' && (
         <div
           id="goods-detail-panel-reviews"
           aria-labelledby="goods-detail-tab-reviews"
@@ -90,6 +93,16 @@ const GoodsDetailTabs = forwardRef<HTMLElement, GoodsDetailTabsProps>(function G
           role="tabpanel"
         >
           <GoodsReviewsPanel goodsId={goods.goodsId} />
+        </div>
+      )}
+      {activeTab === 'qna' && (
+        <div
+          id="goods-detail-panel-qna"
+          aria-labelledby="goods-detail-tab-qna"
+          className="detail-tab-panel"
+          role="tabpanel"
+        >
+          <GoodsQnaPanel goodsId={goods.goodsId} />
         </div>
       )}
     </section>
