@@ -110,6 +110,10 @@ public class StoreOrder {
 		return orderNo;
 	}
 
+	public Long getMemberId() {
+		return member.getMemberId();
+	}
+
 	public BigDecimal getTotalAmount() {
 		return totalAmount;
 	}

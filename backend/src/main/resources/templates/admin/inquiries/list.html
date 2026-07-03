@@ -33,6 +33,7 @@
             <th>유형</th>
             <th>작성자</th>
             <th>상품</th>
+            <th>연결 주문</th>
             <th>제목 / 내용</th>
             <th>비밀글</th>
             <th>상태</th>
@@ -41,7 +42,7 @@
           </thead>
           <tbody>
           <tr th:if="${#lists.isEmpty(inquiries)}">
-            <td colspan="8">등록된 문의가 없습니다.</td>
+            <td colspan="9">등록된 문의가 없습니다.</td>
           </tr>
           <tr th:each="inquiry : ${inquiries}">
             <td th:text="${inquiry.inquiryId}">1</td>
@@ -51,6 +52,7 @@
               <div th:text="${inquiry.memberEmail}">member@example.com</div>
             </td>
             <td th:text="${inquiry.goodsName}">-</td>
+            <td th:text="${inquiry.orderNo} ?: '-'">-</td>
             <td>
               <strong th:text="${inquiry.title}">제목</strong>
               <p th:text="${inquiry.content}">내용</p>

@@ -30,6 +30,9 @@ public class Inquiry {
 	@Column(name = "goods_id")
 	private Long goodsId;
 
+	@Column(name = "order_id")
+	private Long orderId;
+
 	@Column(name = "title", nullable = false)
 	private String title;
 
@@ -65,6 +68,7 @@ public class Inquiry {
 		InquiryType inquiryType,
 		Long memberId,
 		Long goodsId,
+		Long orderId,
 		String title,
 		String content,
 		boolean secret,
@@ -73,6 +77,7 @@ public class Inquiry {
 		this.inquiryType = inquiryType;
 		this.memberId = memberId;
 		this.goodsId = goodsId;
+		this.orderId = orderId;
 		this.title = title;
 		this.content = content;
 		this.secret = secret;
@@ -81,8 +86,14 @@ public class Inquiry {
 		this.updatedAt = now;
 	}
 
-	public static Inquiry supportInquiry(Long memberId, String title, String content, Instant now) {
-		return new Inquiry(InquiryType.SUPPORT, memberId, null, title, content, false, now);
+	public static Inquiry supportInquiry(
+		Long memberId,
+		String title,
+		String content,
+		Long orderId,
+		Instant now
+	) {
+		return new Inquiry(InquiryType.SUPPORT, memberId, null, orderId, title, content, false, now);
 	}
 
 	public static Inquiry productInquiry(
@@ -93,7 +104,7 @@ public class Inquiry {
 		boolean secret,
 		Instant now
 	) {
-		return new Inquiry(InquiryType.PRODUCT, memberId, goodsId, title, content, secret, now);
+		return new Inquiry(InquiryType.PRODUCT, memberId, goodsId, null, title, content, secret, now);
 	}
 
 	public Long getInquiryId() {
@@ -110,6 +121,10 @@ public class Inquiry {
 
 	public Long getGoodsId() {
 		return goodsId;
+	}
+
+	public Long getOrderId() {
+		return orderId;
 	}
 
 	public String getTitle() {

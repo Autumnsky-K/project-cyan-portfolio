@@ -12,6 +12,7 @@ public record AdminInquiryRow(
 	String memberEmail,
 	Long goodsId,
 	String goodsName,
+	String orderNo,
 	String status,
 	String answerContent,
 	Instant createdAt,
