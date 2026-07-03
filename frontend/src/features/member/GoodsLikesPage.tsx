@@ -5,7 +5,6 @@ import {
   removeGoodsLike,
   type GoodsSummary,
 } from '../../api/goods'
-import Header from '../../shared/components/Header'
 import { hasSpringApiSession } from '../../shared/api/springApiClient'
 import GoodsCards from '../goods/GoodsCards'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
@@ -92,8 +91,6 @@ function GoodsLikesPage() {
 
   return (
     <main className="goods-page goods-likes-page">
-      <Header />
-
       <section className="goods-content goods-likes-content">
         <div className="result-summary">
           <div>
