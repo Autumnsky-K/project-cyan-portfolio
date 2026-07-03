@@ -260,7 +260,7 @@ function Live2DCharacter({
     <div
       className="vtuber-live2d"
       data-render-status={renderStatus}
-      aria-label={`${character.name} Live2D character`}
+      aria-label={`${character.name} Live2D 캐릭터`}
     >
       <div ref={containerRef} className="vtuber-live2d-container" aria-hidden="true" />
       <div className="vtuber-avatar" data-display-state={displayState} aria-hidden="true">

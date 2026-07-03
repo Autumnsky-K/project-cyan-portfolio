@@ -47,9 +47,9 @@ export function useGoodsPurchaseCart(goods: GoodsDetail) {
         },
         selectedQuantity,
       )
-      showFeedback('장바구니에 담았습니다.')
+      showFeedback('카트에 담았습니다.')
     } catch (cartError) {
-      showFeedback(cartError instanceof Error ? cartError.message : '장바구니에 담지 못했습니다.')
+      showFeedback(cartError instanceof Error ? cartError.message : '카트에 담지 못했습니다.')
     } finally {
       setIsAddingCart(false)
     }

@@ -22,7 +22,7 @@ function PaymentSuccess() {
   const amount = searchParams.get('amount')
   const [result, setResult] = useState({
     status: 'loading',
-    userMessage: 'Confirming payment approval.',
+    userMessage: '결제 승인 결과를 확인하고 있습니다.',
     developerMessage: '',
     data: null,
   })
@@ -57,7 +57,7 @@ function PaymentSuccess() {
 
         setResult({
           status: 'success',
-          userMessage: 'Payment approved.',
+          userMessage: '결제가 승인되었습니다.',
           developerMessage: '',
           data,
         })
@@ -65,7 +65,7 @@ function PaymentSuccess() {
         if (ignore) return
         setResult({
           status: 'error',
-          userMessage: 'Payment result could not be verified.',
+          userMessage: '결제 결과를 확인하지 못했습니다.',
           developerMessage: error.message,
           data: { amount, orderId, paymentKey, pgToken },
         })
@@ -104,27 +104,27 @@ function PaymentSuccess() {
   return (
     <main className="page store-page">
       <section className="store-section payment-result">
-        <p className="result-eyebrow">Payment result</p>
-        <h1>Order Complete</h1>
+        <p className="result-eyebrow">결제 결과</p>
+        <h1>주문이 완료되었습니다</h1>
         <p>{result.userMessage}</p>
         {result.status === 'error' && result.developerMessage && (
           <p className="status-message">{result.developerMessage}</p>
         )}
         <div className="result-summary">
           <p>
-            Order <strong>{orderNumber}</strong>
+            주문 <strong>{orderNumber}</strong>
           </p>
           <p>
-            Payment <strong>{paymentStatus}</strong>
+            결제 <strong>{paymentStatus}</strong>
           </p>
           <p>
-            Order status <strong>{orderStatus}</strong>
+            주문 상태 <strong>{orderStatus}</strong>
           </p>
         </div>
         <div className="result-box">
-          <h2>Items</h2>
+          <h2>주문 상품</h2>
           {items.length === 0 ? (
-            <p>No preview items are available.</p>
+            <p>표시할 주문 상품이 없습니다.</p>
           ) : (
             <ul>
               {items.map((item) => (
@@ -137,10 +137,10 @@ function PaymentSuccess() {
         </div>
         <div className="payment-actions">
           <Link className="button-link" to="/cart#order-history">
-            View orders
+            주문 내역 보기
           </Link>
           <Link className="button-link" to="/cart">
-            Back to cart
+            카트로 돌아가기
           </Link>
         </div>
         {access.isAdmin && (

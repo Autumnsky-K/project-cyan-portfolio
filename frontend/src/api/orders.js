@@ -11,7 +11,7 @@ async function parseResponse(response, fallbackMessage) {
 
 export async function fetchOrders(options = {}) {
   const response = await fetch(`${API_BASE_URL}/orders`, options)
-  return parseResponse(response, 'Failed to load orders.')
+  return parseResponse(response, '주문 내역을 불러오지 못했습니다.')
 }
 
 export async function createOrderWithItems(order, options = {}) {
@@ -25,7 +25,7 @@ export async function createOrderWithItems(order, options = {}) {
     ...options,
   })
 
-  return parseResponse(response, 'Failed to create order.')
+  return parseResponse(response, '주문을 생성하지 못했습니다.')
 }
 
 export async function updateOrderPaymentStatus(orderId, payload, options = {}) {
@@ -39,5 +39,5 @@ export async function updateOrderPaymentStatus(orderId, payload, options = {}) {
     ...options,
   })
 
-  return parseResponse(response, 'Failed to update payment status.')
+  return parseResponse(response, '결제 상태를 변경하지 못했습니다.')
 }

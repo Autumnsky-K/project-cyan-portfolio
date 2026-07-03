@@ -85,7 +85,7 @@ export async function apiFetch(
       throw error
     }
 
-    throw new Error('Unable to connect to the Spring API server.', {
+    throw new Error('서버에 연결할 수 없습니다.', {
       cause: error,
     })
   }

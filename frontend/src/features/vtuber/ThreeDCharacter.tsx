@@ -308,7 +308,7 @@ function ThreeDCharacter({
     <div
       className="vtuber-three"
       data-render-status={renderStatus}
-      aria-label={`${character.name} 3D character`}
+      aria-label={`${character.name} 3D 캐릭터`}
     >
       <div ref={containerRef} className="vtuber-three-container" aria-hidden="true" />
       <div className="vtuber-avatar" data-display-state={displayState} aria-hidden="true">

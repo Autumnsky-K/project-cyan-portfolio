@@ -344,7 +344,7 @@ export function useStoreFlow(options = {}) {
         if (nextProducts.length === 0) {
           setStoreProducts([])
           setProductStatus('empty')
-          setProductMessage('No goods were returned from the API.')
+          setProductMessage('불러온 상품이 없습니다.')
           return
         }
 
@@ -378,13 +378,13 @@ export function useStoreFlow(options = {}) {
       if (!allowLocalFallback) {
         console.error('[Cart] Orders API failed.', error)
         setOrders([])
-        setOrderHistoryMessage('Order history is unavailable.')
+        setOrderHistoryMessage('주문 내역을 불러올 수 없습니다.')
         return
       }
 
       console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
       setOrders(markLocalDevOrders(loadOrders()))
-      setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
+      setOrderHistoryMessage('주문 API를 사용할 수 없어 개발용 미리보기 주문을 표시합니다.')
     }
   }
 
@@ -411,13 +411,13 @@ export function useStoreFlow(options = {}) {
         if (!allowLocalFallback) {
           console.error('[Cart] Orders API failed.', error)
           setOrders([])
-          setOrderHistoryMessage('Order history is unavailable.')
+          setOrderHistoryMessage('주문 내역을 불러올 수 없습니다.')
           return
         }
 
         console.error('[Cart] Orders API failed. Showing local dev preview orders.', error)
         setOrders(markLocalDevOrders(loadOrders()))
-        setOrderHistoryMessage('Showing local dev preview orders because the orders API is unavailable.')
+        setOrderHistoryMessage('주문 API를 사용할 수 없어 개발용 미리보기 주문을 표시합니다.')
       })
 
     return () => {
@@ -428,7 +428,7 @@ export function useStoreFlow(options = {}) {
   function useFallbackProducts() {
     setStoreProducts(fallbackProducts)
     setProductStatus('fallback')
-    setProductMessage('Showing dev preview products.')
+    setProductMessage('개발용 미리보기 상품을 표시합니다.')
   }
 
   useEffect(() => {
@@ -443,7 +443,7 @@ export function useStoreFlow(options = {}) {
       setOrders(markLocalDevOrders(nextOrders))
       setPendingPayment(null)
       setPaymentStatus(ORDER_STATUS.EXPIRED)
-      setMessage('The pending payment expired after 30 minutes.')
+      setMessage('대기 중인 결제가 30분이 지나 만료되었습니다.')
     }, 0)
 
     return () => {
@@ -476,7 +476,7 @@ export function useStoreFlow(options = {}) {
         })
         setMessage('')
       } catch (error) {
-        setMessage(error.message || 'Failed to add cart item.')
+        setMessage(error.message || '상품을 카트에 담지 못했습니다.')
       }
     }
 
@@ -491,7 +491,7 @@ export function useStoreFlow(options = {}) {
       try {
         await updateCartItemQuantity(item.cartItemKey, item.quantity + 1)
       } catch (error) {
-        setMessage(error.message || 'Failed to update cart item.')
+        setMessage(error.message || '카트 상품 수량을 변경하지 못했습니다.')
       }
     }
   }
@@ -502,7 +502,7 @@ export function useStoreFlow(options = {}) {
       try {
         await updateCartItemQuantity(item.cartItemKey, item.quantity - 1)
       } catch (error) {
-        setMessage(error.message || 'Failed to update cart item.')
+        setMessage(error.message || '카트 상품 수량을 변경하지 못했습니다.')
       }
     }
   }
@@ -513,7 +513,7 @@ export function useStoreFlow(options = {}) {
       try {
         await removeCartItem(item.cartItemKey)
       } catch (error) {
-        setMessage(error.message || 'Failed to remove cart item.')
+        setMessage(error.message || '카트 상품을 삭제하지 못했습니다.')
       }
     }
   }
@@ -531,16 +531,16 @@ export function useStoreFlow(options = {}) {
   function validateOrder() {
     const nextErrors = []
 
-    if (isCartEmpty) nextErrors.push('Add at least one product to the cart.')
-    if (!isCartSignedIn) nextErrors.push('Sign in to checkout with your cart.')
-    if (hasBlockingCartIssue) nextErrors.push('Resolve cart item issues before checkout.')
+    if (isCartEmpty) nextErrors.push('카트에 상품을 한 개 이상 담아 주세요.')
+    if (!isCartSignedIn) nextErrors.push('카트 상품을 결제하려면 로그인해 주세요.')
+    if (hasBlockingCartIssue) nextErrors.push('결제하기 전에 카트 상품의 문제를 확인해 주세요.')
     if (!normalizeMemberId(checkoutForm.memberId)) {
-      nextErrors.push('The logged-in member profile is unavailable.')
+      nextErrors.push('로그인한 회원 정보를 확인할 수 없습니다.')
     }
-    if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
-    if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
-    if (!checkoutForm.phone.trim()) nextErrors.push('Enter a phone number.')
-    if (!checkoutForm.address.trim()) nextErrors.push('Enter a shipping address.')
+    if (!checkoutForm.name.trim()) nextErrors.push('주문자 이름을 입력해 주세요.')
+    if (!checkoutForm.email.trim()) nextErrors.push('이메일 주소를 입력해 주세요.')
+    if (!checkoutForm.phone.trim()) nextErrors.push('전화번호를 입력해 주세요.')
+    if (!checkoutForm.address.trim()) nextErrors.push('배송지 주소를 입력해 주세요.')
 
     setErrors(nextErrors)
     return nextErrors.length === 0
@@ -591,7 +591,7 @@ export function useStoreFlow(options = {}) {
     setPendingPayment(null)
     setErrors([])
     setPaymentStatus(ORDER_STATUS.PAID)
-    setMessage('Payment completed. Check the order result below.')
+    setMessage('결제가 완료되었습니다. 아래에서 주문 결과를 확인해 주세요.')
   }
 
   async function handleMockPayment(order) {
@@ -617,7 +617,7 @@ export function useStoreFlow(options = {}) {
       if (!allowLocalFallback) {
         console.error('[Cart] Order API save failed.', error)
         setPaymentStatus(ORDER_STATUS.PAYMENT_FAILED)
-        setMessage('Order save failed. Please try again later.')
+        setMessage('주문을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.')
         return
       }
 
@@ -627,7 +627,7 @@ export function useStoreFlow(options = {}) {
 
       setOrders(markLocalDevOrders(nextOrders))
       savePaidOrder({ ...paidOrder, source: 'local-dev' })
-      setOrderHistoryMessage('Order saved to local dev preview because the orders API is unavailable.')
+      setOrderHistoryMessage('주문 API를 사용할 수 없어 개발용 미리보기에 주문을 저장했습니다.')
     }
   }
 
@@ -642,7 +642,7 @@ export function useStoreFlow(options = {}) {
       setIsPreparingPayment(true)
       setPendingPayment(null)
       setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
-      setMessage('Preparing KakaoPay payment.')
+      setMessage('KakaoPay 결제를 준비하고 있습니다.')
       setLastKakaoReadyPayload(readyOrder)
       setLastKakaoReadyResponse(null)
       setLastKakaoReadyDebug(getKakaoReadyDebugInfo())
@@ -697,7 +697,7 @@ export function useStoreFlow(options = {}) {
       if (!nextRedirectPcUrl) {
         setPendingPayment(null)
         setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
-        setMessage('KakaoPay did not return a payment page URL. No payment attempt was started.')
+        setMessage('KakaoPay 결제 페이지 주소를 받지 못해 결제를 시작하지 않았습니다.')
         return
       }
 
@@ -716,14 +716,14 @@ export function useStoreFlow(options = {}) {
       savePendingPayment(nextPendingPayment)
       setPendingPayment(nextPendingPayment)
       setPaymentStatus(ORDER_STATUS.PAYMENT_PENDING)
-      setMessage('KakaoPay payment is ready. Continue on the approval page.')
+      setMessage('KakaoPay 결제가 준비되었습니다. 결제 승인 페이지에서 계속해 주세요.')
 
       window.location.href = nextRedirectPcUrl
     } catch (error) {
       setLastKakaoReadyError(error.message)
       setPaymentStatus(ORDER_STATUS.CREATED)
       setPendingPayment(null)
-      setMessage(error.message || 'KakaoPay preparation did not return a payment result.')
+      setMessage(error.message || 'KakaoPay 결제 준비 결과를 받지 못했습니다.')
     } finally {
       setIsPreparingPayment(false)
     }
@@ -740,7 +740,7 @@ export function useStoreFlow(options = {}) {
       setIsPreparingPayment(true)
       setPendingPayment(null)
       setPaymentStatus(ORDER_STATUS.PAYMENT_READY)
-      setMessage('Preparing Toss Payments checkout.')
+      setMessage('Toss Payments 결제를 준비하고 있습니다.')
 
       const tossReady = await prepareCheckout({
         items: readyOrder.items.map((item) => ({
@@ -781,18 +781,18 @@ export function useStoreFlow(options = {}) {
       setPendingPayment(nextPendingPayment)
       setPaymentStatus(ORDER_STATUS.PAYMENT_PENDING)
       setCompletedOrder(pendingOrder)
-      setMessage('Opening Toss Payments checkout.')
+      setMessage('Toss Payments 결제창을 열고 있습니다.')
       await requestTossPayment(tossReady, readyOrder)
     } catch (error) {
       setPaymentStatus(ORDER_STATUS.CREATED)
       setPendingPayment(null)
-      setMessage(error.message || 'Toss Payments preparation did not return a payment result.')
+      setMessage(error.message || 'Toss Payments 결제 준비 결과를 받지 못했습니다.')
     } finally {
       setIsPreparingPayment(false)
     }
   }
 
-  function handlePaymentFail(failMessage = 'Payment failed.') {
+  function handlePaymentFail(failMessage = '결제에 실패했습니다.') {
     if (pendingPayment) {
       markFailed()
       setOrders(markLocalDevOrders(loadOrders()))
@@ -811,12 +811,12 @@ export function useStoreFlow(options = {}) {
 
     setPaymentStatus(ORDER_STATUS.CANCELED)
     setPendingPayment(null)
-    setMessage('Payment was canceled. Cart items are still available.')
+    setMessage('결제가 취소되었습니다. 카트 상품은 그대로 유지됩니다.')
   }
 
   function retryPayment() {
     if (!pendingPayment) {
-      setMessage('No pending payment is available.')
+      setMessage('대기 중인 결제가 없습니다.')
       return
     }
 
@@ -825,7 +825,7 @@ export function useStoreFlow(options = {}) {
       setOrders(markLocalDevOrders(loadOrders()))
       setPendingPayment(null)
       setPaymentStatus(ORDER_STATUS.EXPIRED)
-      setMessage('The pending payment expired after 30 minutes.')
+      setMessage('대기 중인 결제가 30분이 지나 만료되었습니다.')
       return
     }
 
@@ -836,7 +836,7 @@ export function useStoreFlow(options = {}) {
     )
 
     if (!retryOrder) {
-      setMessage('Could not find the pending order. Start checkout again.')
+      setMessage('대기 중인 주문을 찾지 못했습니다. 결제를 다시 시작해 주세요.')
       return
     }
 
@@ -862,7 +862,7 @@ export function useStoreFlow(options = {}) {
 
     if (!validateOrder()) {
       setPaymentStatus(ORDER_STATUS.PAYMENT_FAILED)
-      setMessage('Check the order form and try again.')
+      setMessage('주문 정보를 확인하고 다시 시도해 주세요.')
       return
     }
 

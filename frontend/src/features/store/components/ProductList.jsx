@@ -13,13 +13,13 @@ function ProductList({
         <h2 id="products-title">Products</h2>
         {status === 'empty' && (
           <button type="button" onClick={onUseFallbackProducts}>
-            Use preview products
+            미리보기 상품 사용
           </button>
         )}
       </div>
       {message && <p className="status-message">{message}</p>}
       {status === 'loading' ? (
-        <p>Loading products...</p>
+        <p>상품을 불러오는 중입니다...</p>
       ) : (
         <div className="product-grid">
           {products.map((product) => (
@@ -32,7 +32,7 @@ function ProductList({
               <div className="product-card-footer">
                 <strong>{formatPrice(product.price)}</strong>
                 <button type="button" onClick={() => onAddToCart(product.id)}>
-                  Add
+                  담기
                 </button>
               </div>
             </article>

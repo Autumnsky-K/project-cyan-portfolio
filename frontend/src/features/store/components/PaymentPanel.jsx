@@ -54,7 +54,7 @@ function PaymentPanel({
     <aside className="payment-panel">
       <h3>Payment</h3>
       <fieldset className="payment-methods" disabled={isPaymentProcessing}>
-        <legend>Payment method</legend>
+        <legend>결제 수단</legend>
         {allowDevPayment && (
           <label>
             <input
@@ -90,35 +90,35 @@ function PaymentPanel({
       </fieldset>
 
       <div className="confirm-box" aria-labelledby="confirm-title">
-        <h3 id="confirm-title">Order confirmation</h3>
+        <h3 id="confirm-title">주문 확인</h3>
         {isCartEmpty ? (
-          <p>Add products before checkout.</p>
+          <p>결제하기 전에 상품을 카트에 담아 주세요.</p>
         ) : (
           <>
             <p>
-              {totalQuantity} items / expected payment{' '}
+              상품 {totalQuantity}개 / 결제 예정 금액{' '}
               <strong>{formatPrice(totalPrice)}</strong>
             </p>
             <p>
-              Method: <strong>{getPaymentMethodLabel(visiblePaymentMethod)}</strong>
+              결제 수단: <strong>{getPaymentMethodLabel(visiblePaymentMethod)}</strong>
             </p>
             <p>
-              Customer: {checkoutForm.name.trim() || '-'} /{' '}
+              주문자: {checkoutForm.name.trim() || '-'} /{' '}
               {checkoutForm.email.trim() || '-'} /{' '}
               {checkoutForm.phone.trim() || '-'}
             </p>
-            <p>Address: {addressSummary || '-'}</p>
-            <p>Delivery request: {checkoutForm.deliveryRequest.trim() || '-'}</p>
+            <p>주소: {addressSummary || '-'}</p>
+            <p>배송 요청사항: {checkoutForm.deliveryRequest.trim() || '-'}</p>
           </>
         )}
       </div>
 
       <dl className="payment-summary">
-        <dt>Quantity</dt>
+        <dt>수량</dt>
         <dd>{totalQuantity}</dd>
-        <dt>Total</dt>
+        <dt>합계</dt>
         <dd>{formatPrice(totalPrice)}</dd>
-        <dt>Status</dt>
+        <dt>상태</dt>
         <dd>
           {normalizePaymentStatus(paymentStatus)} ({paymentStatusLabel})
         </dd>
@@ -126,23 +126,23 @@ function PaymentPanel({
 
       {isPaymentProcessing && (
         <p className="status-message" aria-live="polite">
-          Payment is being prepared. Wait until the payment page opens.
+          결제를 준비하고 있습니다. 결제 페이지가 열릴 때까지 기다려 주세요.
         </p>
       )}
 
       {hasBlockingCartIssue && (
         <p className="status-message" aria-live="polite">
-          Resolve cart item issues before checkout.
+          결제하기 전에 카트 상품의 문제를 확인해 주세요.
         </p>
       )}
 
       <button disabled={isCartEmpty || hasBlockingCartIssue || isPaymentProcessing} type="submit">
         {isPaymentProcessing
-          ? 'Preparing payment...'
+          ? '결제 준비 중...'
           : visiblePaymentMethod === PAYMENT_METHODS.KAKAO_PAY
-            ? 'Prepare KakaoPay'
+            ? 'KakaoPay 결제하기'
             : visiblePaymentMethod === PAYMENT_METHODS.TOSS
-              ? 'Prepare Toss Payments'
+              ? 'Toss Payments로 결제하기'
             : 'Create dev preview order'}
       </button>
 

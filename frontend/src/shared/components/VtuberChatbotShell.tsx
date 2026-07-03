@@ -439,7 +439,7 @@ function VtuberChatbotShell({
       ref={chatbotRef}
       id="vtuber"
       className={`vtuber-chatbot${isDragging ? ' is-dragging' : ''}`}
-      aria-label="Vtuber chatbot"
+      aria-label="버추얼 캐릭터 챗봇"
       data-character-id={character.id}
       data-display-state={displayState}
       data-is-hidden={settings.isHidden}
@@ -453,11 +453,11 @@ function VtuberChatbotShell({
       style={chatbotStyle}
     >
       {settings.isHidden ? (
-        <div className="vtuber-controls" aria-label="Chatbot controls">
+        <div className="vtuber-controls" aria-label="챗봇 제어">
           <IconButton
             className="vtuber-restore-button"
             icon={<span className="vtuber-restore-icon" />}
-            label="Show chatbot"
+            label="챗봇 보기"
             onClick={handleRestoreClick}
             onPointerDown={handleRestorePointerDown}
             onPointerMove={handleRestorePointerMove}
@@ -469,11 +469,11 @@ function VtuberChatbotShell({
         </div>
       ) : (
         <>
-          <div className="vtuber-controls" aria-label="Chatbot controls">
+          <div className="vtuber-controls" aria-label="챗봇 제어">
             <IconButton
               className="vtuber-hide-button"
               icon={<span className="vtuber-hide-icon" />}
-              label="Hide chatbot"
+              label="챗봇 숨기기"
               onClick={handleHideClick}
               size="small"
               title="챗봇 숨기기"
@@ -482,7 +482,7 @@ function VtuberChatbotShell({
 
           <div
             className="vtuber-stage"
-            aria-label={`${character.name} character stage`}
+            aria-label={`${character.name} 캐릭터 영역`}
           >
             {character.renderMode === 'three3d' ? (
               <ThreeDCharacter
@@ -499,7 +499,7 @@ function VtuberChatbotShell({
             )}
           </div>
 
-          <section className="vtuber-panel" aria-label="Chatbot conversation">
+          <section className="vtuber-panel" aria-label="챗봇 대화">
             <div
               className="vtuber-bubble"
               data-display-state={displayState}
@@ -508,7 +508,7 @@ function VtuberChatbotShell({
               <strong>{character.name}</strong>
               <p>{bubbleText}</p>
               <span className="vtuber-sr-only" aria-live="polite">
-                Display state: {statusLabel}. Prepared actions: {actionsCount}.
+                표시 상태: {statusLabel}. 준비된 동작: {actionsCount}개.
               </span>
             </div>
 
@@ -523,7 +523,7 @@ function VtuberChatbotShell({
 
             <form className="vtuber-form" onSubmit={handleSubmit}>
               <label className="vtuber-sr-only" htmlFor="vtuber-message">
-                Chat message
+                채팅 메시지
               </label>
               <input
                 id="vtuber-message"
@@ -537,9 +537,9 @@ function VtuberChatbotShell({
               <button
                 type="submit"
                 disabled={isSendDisabled || trimmedMessage.length === 0}
-                aria-label="Send message"
+                aria-label="메시지 보내기"
               >
-                Send
+                보내기
               </button>
             </form>
           </section>

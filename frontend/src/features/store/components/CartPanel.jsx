@@ -20,15 +20,15 @@ function CartPanel({
       <div className="section-heading">
         <h2 id="cart-title">Cart</h2>
         <p>
-          {totalQuantity} items / {formatPrice(totalPrice)}
+          상품 {totalQuantity}개 / {formatPrice(totalPrice)}
         </p>
       </div>
       {cartStatus === 'loading' ? (
-        <p>Loading cart...</p>
+        <p>카트를 불러오는 중입니다...</p>
       ) : cartStatus === 'error' ? (
-        <p>{cartError || 'Unable to load cart.'}</p>
+        <p>{cartError || '카트를 불러오지 못했습니다.'}</p>
       ) : isCartEmpty ? (
-        <p>Your cart is empty.</p>
+        <p>카트가 비어 있습니다.</p>
       ) : (
         <ul className="cart-list">
           {cartItems.map((item) => {
@@ -60,7 +60,7 @@ function CartPanel({
                     }}
                   />
                   <button type="button" onClick={() => onRemoveFromCart(cartItemKey)}>
-                    Remove
+                    삭제
                   </button>
                 </div>
               </li>

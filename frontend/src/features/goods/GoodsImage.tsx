@@ -12,9 +12,9 @@ function GoodsImage({ src, alt, fallbackLabel }: GoodsImageProps) {
 
   if (!src || hasError) {
     return (
-      <div className="goods-image-fallback" role="img" aria-label={`${alt} image unavailable`}>
+      <div className="goods-image-fallback" role="img" aria-label={`${alt} 이미지를 불러올 수 없음`}>
         <span>CYAN</span>
-        <strong>{fallbackLabel || 'Goods'}</strong>
+        <strong>{fallbackLabel || '굿즈'}</strong>
       </div>
     )
   }
