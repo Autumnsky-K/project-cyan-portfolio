@@ -1,5 +1,6 @@
 package com.projectcyan.member;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -142,6 +143,7 @@ public class DigitalLibraryService {
 			int downloadLimit = resultSet.getInt("download_limit_per_period");
 			int periodDownloadCount = resultSet.getInt("period_download_count");
 			int downloadsRemaining = Math.max(downloadLimit - periodDownloadCount, 0);
+			BigDecimal price = resultSet.getBigDecimal("price");
 			Timestamp firstPeriodDownloadedAt = resultSet.getTimestamp("first_period_downloaded_at");
 			Instant nextDownloadAvailableAt = downloadsRemaining > 0 || firstPeriodDownloadedAt == null
 				? null
@@ -153,7 +155,7 @@ public class DigitalLibraryService {
 				resultSet.getString("goods_name"),
 				resultSet.getString("artist_name"),
 				resultSet.getString("category_name"),
-				resultSet.getObject("price", Integer.class),
+				price == null ? null : price.intValueExact(),
 				resultSet.getString("main_image_url"),
 				toInstant(resultSet.getTimestamp("granted_at")),
 				toInstant(resultSet.getTimestamp("last_downloaded_at")),
