@@ -75,7 +75,7 @@ function formatPhoneNumber(value) {
 }
 
 function getDashboardItemKey(item) {
-  return item.orderId ?? item.goodsId ?? item.artistId ?? item.paymentId ?? item.refundId ?? item.inquiryId
+  return item.orderId ?? item.goodsId ?? item.artistId ?? item.inquiryId
 }
 
 function isSameGoodsId(firstGoodsId, secondGoodsId) {
@@ -137,94 +137,7 @@ function OrderHistoryCard({ item }) {
   )
 }
 
-function PaymentHistoryRow({ payment, isExpanded, onToggle }) {
-  return (
-    <article className={`mypage-payment-row ${isExpanded ? 'is-expanded' : ''}`}>
-      <button
-        className="mypage-payment-summary"
-        type="button"
-        aria-expanded={isExpanded}
-        onClick={onToggle}
-      >
-        <span>
-          <strong>결제 금액</strong>
-          {formatPrice(payment.price)}
-        </span>
-        <span>
-          <strong>결제 수단</strong>
-          {payment.method}
-        </span>
-        <span>
-          <strong>영수증</strong>
-          {payment.receipt}
-        </span>
-        <span>
-          <strong>환불 내역</strong>
-          {payment.refundHistory}
-        </span>
-      </button>
-
-      {isExpanded && (
-        <div className="mypage-payment-products">
-          {payment.products?.map((product) => (
-            <article className="mypage-payment-product" key={product.goodsId}>
-              <div className="mypage-payment-product-image" aria-hidden="true">
-                이미지
-              </div>
-              <div>
-                <h3>{product.name}</h3>
-                <p>{formatPrice(product.price)} · {product.quantity}개</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </article>
-  )
-}
-
-function PaymentHistorySection({ title, items, expandedPaymentIds, onTogglePayment, onMore, actionLabel = '더보기' }) {
-  return (
-    <section className="account-panel mypage-section" aria-label={title}>
-      <div className="mypage-section-heading">
-        <h2>{title}</h2>
-        <button className="mypage-more-button" type="button" onClick={onMore}>
-          {actionLabel}
-        </button>
-      </div>
-
-      <div className="mypage-payment-list">
-        {items.length > 0 ? (
-          items.map((payment) => (
-            <PaymentHistoryRow
-              payment={payment}
-              isExpanded={expandedPaymentIds.has(payment.paymentId)}
-              key={payment.paymentId}
-              onToggle={() => onTogglePayment(payment.paymentId)}
-            />
-          ))
-        ) : (
-          <p className="mypage-empty">표시할 항목이 없습니다.</p>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function DashboardSection({ id, title, items, onMore, actionLabel = '더보기', expandedPaymentIds, onTogglePayment }) {
-  if (id === 'payments') {
-    return (
-      <PaymentHistorySection
-        title={title}
-        items={items}
-        expandedPaymentIds={expandedPaymentIds}
-        onMore={onMore}
-        onTogglePayment={onTogglePayment}
-        actionLabel={actionLabel}
-      />
-    )
-  }
-
+function DashboardSection({ id, title, items, onMore, actionLabel = '더보기' }) {
   const startIndex = 0
   const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
   return (
@@ -479,7 +392,6 @@ function MyPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [selectedSection, setSelectedSection] = useState(null)
-  const [expandedPaymentIds, setExpandedPaymentIds] = useState(() => new Set())
   const [allArtistOptions, setAllArtistOptions] = useState([])
   const [draftFavoriteArtistIds, setDraftFavoriteArtistIds] = useState([])
   const [draftUnlikedGoodsIds, setDraftUnlikedGoodsIds] = useState(() => new Set())
@@ -625,17 +537,6 @@ function MyPage() {
     }
   }
 
-  const togglePayment = (paymentId) => {
-    setExpandedPaymentIds((currentIds) => {
-      const nextIds = new Set(currentIds)
-      if (nextIds.has(paymentId)) {
-        nextIds.delete(paymentId)
-      } else {
-        nextIds.add(paymentId)
-      }
-      return nextIds
-    })
-  }
 
   const openSection = async (section) => {
     setError('')
@@ -782,16 +683,6 @@ function MyPage() {
       items: summary.orders,
     },
     {
-      id: 'payments',
-      title: '결제 내역',
-      items: summary.payments,
-    },
-    {
-      id: 'refunds',
-      title: '환불 내역',
-      items: summary.refunds,
-    },
-    {
       id: 'productInquiries',
       title: '상품문의 내역',
       items: summary.productInquiries,
@@ -867,9 +758,7 @@ function MyPage() {
                 key={section.id}
                 title={section.title}
                 items={section.items}
-                expandedPaymentIds={expandedPaymentIds}
                 onMore={() => openSection(section)}
-                onTogglePayment={togglePayment}
                 actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
               />
             ))}
