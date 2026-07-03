@@ -105,10 +105,15 @@ function buildKakaoReadyPayload(order) {
   if (!Number.isInteger(Number(memberId)) || Number(memberId) <= 0) {
     throw new Error('The logged-in member profile is unavailable.')
   }
+  const partnerUserId =
+    typeof order.partnerUserId === 'string' && order.partnerUserId.trim()
+      ? order.partnerUserId.trim()
+      : `member-${Number(memberId)}`
 
   return {
     ...order,
     memberId: Number(memberId),
+    partnerUserId,
     items: (order.items ?? []).map((item) => ({
       ...item,
       goodsId: item.goodsId ?? item.productId,
