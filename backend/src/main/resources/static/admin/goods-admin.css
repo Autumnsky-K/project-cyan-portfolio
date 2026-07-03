@@ -64,6 +64,8 @@ body {
   gap: 24px;
   height: 100svh;
   box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 24px 14px;
   border-right: 1px solid rgb(0 0 0 / 12%);
   background: var(--admin-sidebar-bg);
@@ -4286,6 +4288,8 @@ button.admin-primary {
   .admin-sidebar {
     position: static;
     height: auto;
+    overflow-y: visible;
+    overscroll-behavior-y: auto;
     border-right: 0;
     border-bottom: 1px solid var(--admin-line);
   }
