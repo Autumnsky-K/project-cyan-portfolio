@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${pageTitle}">운영 지원</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar(${currentKey}, 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">운영 지원</p>
+        <h2 th:text="${pageTitle}">운영 지원</h2>
+      </div>
+    </header>
+
+    <section class="admin-data-grid" aria-label="운영 지원 메뉴 구성">
+      <article class="admin-data-card" th:each="section : ${sections}">
+        <div>
+          <strong th:text="${section.title()}">메뉴</strong>
+          <p th:text="${section.description()}">설명</p>
+        </div>
+        <footer>
+          <span>메뉴 자리 생성</span>
+        </footer>
+      </article>
+    </section>
+  </section>
+</main>
+</body>
+</html>
