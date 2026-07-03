@@ -1,0 +1,29 @@
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 28px;
+  background: rgb(0 0 0 / 56%);
+}
+
+.ui-modal {
+  box-sizing: border-box;
+  max-width: 100%;
+  max-height: calc(100svh - 56px);
+  overflow: auto;
+  outline: none;
+}
+
+@media (max-width: 520px) {
+  .ui-modal-backdrop {
+    padding: 16px;
+  }
+
+  .ui-modal {
+    max-height: calc(100svh - 32px);
+  }
+}

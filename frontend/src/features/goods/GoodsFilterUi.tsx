@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { GoodsFilterOption } from '../../api/goods'
+import Modal from '../../shared/components/Modal'
 
 export type GoodsFilterParam = 'categoryIds' | 'artistIds' | 'tags'
 export type GoodsSelectedFilters = Record<GoodsFilterParam, string[]>
@@ -99,23 +100,6 @@ function GoodsFilterUi({
     onCloseMobile()
   }
 
-  useEffect(() => {
-    if (!isMobileOpen) return undefined
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onCloseMobile()
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isMobileOpen, onCloseMobile])
-
   return (
     <>
       <button className="mobile-filter-trigger" type="button" onClick={openMobileFilters}>
@@ -135,15 +119,13 @@ function GoodsFilterUi({
         />
       </aside>
 
-      {isMobileOpen && (
-        <div className="mobile-filter-layer" role="presentation" onMouseDown={onCloseMobile}>
-          <section
-            className="mobile-filter-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mobile-filter-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+      <Modal
+        ariaLabelledBy="mobile-filter-title"
+        className="mobile-filter-sheet"
+        open={isMobileOpen}
+        overlayClassName="mobile-filter-layer"
+        onClose={onCloseMobile}
+      >
             <div className="mobile-filter-header">
               <h2 id="mobile-filter-title">필터</h2>
               <button type="button" aria-label="필터 닫기" onClick={onCloseMobile}>×</button>
@@ -167,9 +149,7 @@ function GoodsFilterUi({
                 적용
               </button>
             </div>
-          </section>
-        </div>
-      )}
+      </Modal>
     </>
   )
 }

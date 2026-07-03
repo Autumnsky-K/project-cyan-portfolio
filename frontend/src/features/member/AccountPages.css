@@ -1012,27 +1012,17 @@
 }
 
 .mypage-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
   background: rgba(0, 0, 0, 0.72);
-  box-sizing: border-box;
 }
 
 .mypage-modal {
   width: min(900px, 100%);
   max-height: min(760px, 90vh);
-  overflow: auto;
   padding: 28px;
   border: 1px solid #8c8c8c;
   border-radius: 8px;
   background: #111111;
   box-shadow: 0 22px 56px rgba(0, 0, 0, 0.48);
-  box-sizing: border-box;
 }
 
 .mypage-profile-modal {

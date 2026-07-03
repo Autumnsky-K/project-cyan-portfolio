@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { removeGoodsLike } from '../../api/goods'
 import Button from '../../shared/components/Button'
+import Modal from '../../shared/components/Modal'
 import {
   getArtistOptions,
   getMyPageSummary,
@@ -268,20 +269,6 @@ function SectionModal({
   onToggleLikedGoods,
   section,
 }) {
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
   if (!section) {
     return null
   }
@@ -290,18 +277,13 @@ function SectionModal({
   const isLikedGoodsSection = section.id === 'likedGoods'
 
   return (
-    <div
-      className="mypage-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
+    <Modal
+      ariaLabelledBy="mypage-modal-title"
+      className="mypage-modal"
+      open
+      overlayClassName="mypage-modal-backdrop"
+      onClose={onClose}
     >
-      <section
-        className="mypage-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mypage-modal-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
         <div className="mypage-modal-heading">
           <h2 id="mypage-modal-title">{section.title}</h2>
           <button
@@ -362,8 +344,7 @@ function SectionModal({
             ))}
           </div>
         )}
-      </section>
-    </div>
+    </Modal>
   )
 }
 
@@ -381,38 +362,19 @@ function ProfileEditModal({
   onShowWithdraw,
   onChangePassword,
 }) {
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
   if (!form) {
     return null
   }
 
   if (mode === 'withdraw') {
     return (
-      <div
-        className="mypage-modal-backdrop"
-        role="presentation"
-        onMouseDown={onClose}
+      <Modal
+        ariaLabelledBy="mypage-withdraw-modal-title"
+        className="mypage-modal mypage-profile-modal"
+        open
+        overlayClassName="mypage-modal-backdrop"
+        onClose={onClose}
       >
-        <section
-          className="mypage-modal mypage-profile-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mypage-withdraw-modal-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
           <div className="mypage-modal-heading">
             <h2 id="mypage-withdraw-modal-title">회원 탈퇴</h2>
             <button type="button" onClick={onShowEdit}>
@@ -439,24 +401,18 @@ function ProfileEditModal({
               {isWithdrawing ? '탈퇴 처리 중...' : '탈퇴하기'}
             </button>
           </div>
-        </section>
-      </div>
+      </Modal>
     )
   }
 
   return (
-    <div
-      className="mypage-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
+    <Modal
+      ariaLabelledBy="mypage-profile-modal-title"
+      className="mypage-modal mypage-profile-modal"
+      open
+      overlayClassName="mypage-modal-backdrop"
+      onClose={onClose}
     >
-      <section
-        className="mypage-modal mypage-profile-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mypage-profile-modal-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
         <form className="account-form mypage-profile-form" onSubmit={onSubmit}>
           <div className="mypage-modal-heading">
             <h2 id="mypage-profile-modal-title">개인정보 수정</h2>
@@ -511,8 +467,7 @@ function ProfileEditModal({
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </Modal>
   )
 }
 
