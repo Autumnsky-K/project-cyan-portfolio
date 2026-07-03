@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import CartAccessGate from './features/cart/CartAccessGate'
 import { CartProvider } from './features/cart/cartStore'
+import { setGlobalNavigate } from './shared/api/errorNavigation'
 
 import AuthCallbackPage from './features/member/AuthCallbackPage'
 import ArtistPage from './features/artist/artist'
@@ -29,7 +30,13 @@ import StoreLayout from './shared/layouts/StoreLayout'
 
 function AppShell() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const showVtuber = isVtuberVisiblePath(pathname)
+
+  useEffect(() => {
+    setGlobalNavigate(navigate)
+    return () => setGlobalNavigate(null)
+  }, [navigate])
 
   useEffect(() => {
     const pageName = pathname.startsWith('/goods/')

@@ -4,8 +4,6 @@ import {
   parseApiResponse,
 } from '../shared/api/springApiClient'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin}/api`
-
 export type GoodsSummary = {
   goodsId: number
   name: string
@@ -103,40 +101,26 @@ export type GoodsQueryParams = {
 
 type FetchOptions = RequestInit
 
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
-  const error = await response.json().catch(() => null) as { message?: string } | null
-  return error?.message ?? fallback
-}
-
 export async function fetchGoods(
   params: GoodsQueryParams = {},
   options: FetchOptions = {},
 ): Promise<PageResponse<GoodsSummary>> {
-  const url = new URL(`${API_BASE_URL}/goods`)
+  const searchParams = new URLSearchParams()
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
-      url.searchParams.set(key, String(value))
+      searchParams.set(key, String(value))
     }
   })
 
-  const response = await fetch(url, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load goods.'))
-  }
-
-  return response.json()
+  const query = searchParams.toString()
+  const response = await apiFetch(`/goods${query ? `?${query}` : ''}`, options)
+  return await parseApiResponse<PageResponse<GoodsSummary>>(response, 'Failed to load goods.') as PageResponse<GoodsSummary>
 }
 
 export async function fetchGoodsDetail(goodsId: string | number | undefined, options: FetchOptions = {}): Promise<GoodsDetail> {
-  const response = await fetch(`${API_BASE_URL}/goods/${goodsId}`, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load goods detail.'))
-  }
-
-  return response.json()
+  const response = await apiFetch(`/goods/${goodsId}`, options)
+  return await parseApiResponse<GoodsDetail>(response, 'Failed to load goods detail.') as GoodsDetail
 }
 
 export async function recordGoodsView(goodsId: string | number): Promise<void> {
@@ -145,7 +129,7 @@ export async function recordGoodsView(goodsId: string | number): Promise<void> {
   }
 
   const response = await apiFetch(`/goods/${goodsId}/views`, { method: 'POST' })
-  await parseApiResponse(response, 'Failed to record goods view.')
+  await parseApiResponse(response, 'Failed to record goods view.', { silent: true })
 }
 
 export async function fetchMyGoodsLike(goodsId: string | number | undefined): Promise<GoodsLikeResponse | null> {
@@ -183,15 +167,8 @@ export async function fetchRelatedGoods(
   size = 8,
   options: FetchOptions = {},
 ): Promise<GoodsSummary[]> {
-  const url = new URL(`${API_BASE_URL}/goods/${goodsId}/related`)
-  url.searchParams.set('size', String(size))
-  const response = await fetch(url, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load related goods.'))
-  }
-
-  return response.json()
+  const response = await apiFetch(`/goods/${goodsId}/related?size=${size}`, options)
+  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load related goods.') ?? []
 }
 
 export async function fetchGoodsReviews(
@@ -201,30 +178,17 @@ export async function fetchGoodsReviews(
   sort = 'newest',
   options: FetchOptions = {},
 ): Promise<PageResponse<GoodsReview>> {
-  const url = new URL(`${API_BASE_URL}/goods/${goodsId}/reviews`)
-  url.searchParams.set('page', String(page))
-  url.searchParams.set('size', String(size))
-  url.searchParams.set('sort', sort)
-  const response = await fetch(url, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load goods reviews.'))
-  }
-
-  return response.json()
+  const searchParams = new URLSearchParams({ page: String(page), size: String(size), sort })
+  const response = await apiFetch(`/goods/${goodsId}/reviews?${searchParams.toString()}`, options)
+  return await parseApiResponse<PageResponse<GoodsReview>>(response, 'Failed to load goods reviews.') as PageResponse<GoodsReview>
 }
 
 export async function fetchGoodsReviewSummary(
   goodsId: string | number | undefined,
   options: FetchOptions = {},
 ): Promise<GoodsReviewSummary> {
-  const response = await fetch(`${API_BASE_URL}/goods/${goodsId}/reviews/summary`, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load review summary.'))
-  }
-
-  return response.json()
+  const response = await apiFetch(`/goods/${goodsId}/reviews/summary`, options)
+  return await parseApiResponse<GoodsReviewSummary>(response, 'Failed to load review summary.') as GoodsReviewSummary
 }
 
 export async function fetchMyGoodsReview(goodsId: string | number | undefined): Promise<GoodsReview | null> {
@@ -268,11 +232,6 @@ export async function deleteGoodsReview(
 }
 
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {
-  const response = await fetch(`${API_BASE_URL}/goods/filters`, options)
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load goods filters.'))
-  }
-
-  return response.json()
+  const response = await apiFetch('/goods/filters', options)
+  return await parseApiResponse<GoodsFiltersResponse>(response, 'Failed to load goods filters.') as GoodsFiltersResponse
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../../api/supabaseClient'
+import { navigateToServerError } from './errorNavigation'
 
 type ApiFetchOptions = RequestInit
 
@@ -90,13 +91,26 @@ export async function apiFetch(
   }
 }
 
+type ParseApiResponseOptions = {
+  // Skip the automatic redirect to /500 for best-effort/background calls
+  // where a server error shouldn't interrupt what the user is doing.
+  silent?: boolean
+}
+
 export async function parseApiResponse<T = unknown>(
   response: Response,
   fallbackMessage: string,
+  options: ParseApiResponseOptions = {},
 ): Promise<T | null> {
   if (!response.ok) {
     const error = await response.json().catch(() => null) as ApiErrorBody | null
-    throw new ApiError(error?.message ?? error?.error ?? fallbackMessage, response.status)
+    const apiError = new ApiError(error?.message ?? error?.error ?? fallbackMessage, response.status)
+
+    if (!options.silent && apiError.status >= 500) {
+      navigateToServerError()
+    }
+
+    throw apiError
   }
 
   if (response.status === 204) {
