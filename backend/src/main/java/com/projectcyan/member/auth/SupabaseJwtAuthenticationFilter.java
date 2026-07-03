@@ -102,6 +102,9 @@ public class SupabaseJwtAuthenticationFilter extends OncePerRequestFilter {
 		if (HttpMethod.GET.matches(method) && path.matches("/api/goods/\\d+/likes/my")) {
 			return true;
 		}
+		if (HttpMethod.GET.matches(method) && "/api/goods/likes/my".equals(path)) {
+			return true;
+		}
 		if ((HttpMethod.POST.matches(method) || HttpMethod.DELETE.matches(method))
 			&& path.matches("/api/goods/\\d+/likes")) {
 			return true;
