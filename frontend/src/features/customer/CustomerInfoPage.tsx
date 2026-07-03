@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { fetchSupportFaqs, type SupportFaq } from '../../api/support'
-import Header from '../../shared/components/Header'
 import './customer-info.css'
 
 type CustomerInfoKind = 'support' | 'faq' | 'terms' | 'privacy' | 'partnership'
@@ -324,8 +323,6 @@ function CustomerInfoPage({ kind }: CustomerInfoPageProps) {
 
   return (
     <main className="customer-info-page">
-      <Header />
-
       <section className="customer-info-hero" aria-labelledby="customer-info-title">
         <p>{meta.eyebrow}</p>
         <h1 id="customer-info-title">{meta.title}</h1>
