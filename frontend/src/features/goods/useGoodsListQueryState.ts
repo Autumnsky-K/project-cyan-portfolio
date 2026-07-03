@@ -39,6 +39,10 @@ function readFilterParam(params: URLSearchParams, key: string) {
   return raw.split(separator).map((value) => value.trim()).filter(Boolean)
 }
 
+function readMergedFilterParam(params: URLSearchParams, ...keys: string[]) {
+  return [...new Set(keys.flatMap((key) => readFilterParam(params, key)))]
+}
+
 function expandFilterValues(values: string[]) {
   return values.flatMap((value) => value.split('|')).filter(Boolean)
 }
@@ -58,9 +62,9 @@ function readState() {
       readFilterParam(params, 'recommendations').filter((value) => /^\d+$/.test(value)),
     )].slice(0, MAX_RECOMMENDED_GOODS),
     selectedFilters: {
-      categoryIds: readFilterParam(params, 'categories'),
-      artistIds: readFilterParam(params, 'artists'),
-      tags: readFilterParam(params, 'tags'),
+      categoryIds: readMergedFilterParam(params, 'categories', 'categoryIds'),
+      artistIds: readMergedFilterParam(params, 'artists', 'artistIds'),
+      tags: readMergedFilterParam(params, 'tags'),
     } satisfies GoodsSelectedFilters,
   }
 }

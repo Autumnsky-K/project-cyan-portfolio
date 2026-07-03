@@ -2,6 +2,7 @@ package com.projectcyan.goods;
 
 import java.util.List;
 
+import com.projectcyan.member.DigitalLibraryItemResponse;
 import com.projectcyan.member.auth.AuthenticatedMember;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,19 +26,22 @@ public class GoodsController {
 	private final GoodsViewHistoryService goodsViewHistoryService;
 	private final GoodsFavoriteService goodsFavoriteService;
 	private final GoodsLikeService goodsLikeService;
+	private final DigitalGoodsPurchaseService digitalGoodsPurchaseService;
 
 	public GoodsController(
 		GoodsService goodsService,
 		GoodsRecommendationService goodsRecommendationService,
 		GoodsViewHistoryService goodsViewHistoryService,
 		GoodsFavoriteService goodsFavoriteService,
-		GoodsLikeService goodsLikeService
+		GoodsLikeService goodsLikeService,
+		DigitalGoodsPurchaseService digitalGoodsPurchaseService
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
 		this.goodsViewHistoryService = goodsViewHistoryService;
 		this.goodsFavoriteService = goodsFavoriteService;
 		this.goodsLikeService = goodsLikeService;
+		this.digitalGoodsPurchaseService = digitalGoodsPurchaseService;
 	}
 
 	@GetMapping
@@ -93,6 +97,11 @@ public class GoodsController {
 		return goodsService.findGoodsFilters();
 	}
 
+	@GetMapping("/home-discovery")
+	public GoodsHomeDiscoveryResponse findGoodsHomeDiscovery() {
+		return goodsService.findGoodsHomeDiscovery();
+	}
+
 	@GetMapping("/favorites")
 	public List<GoodsSummaryResponse> findFavoriteGoods(AuthenticatedMember currentMember) {
 		return goodsFavoriteService.findFavoriteGoods(currentMember.memberId());
@@ -101,6 +110,24 @@ public class GoodsController {
 	@GetMapping("/{goodsId}")
 	public GoodsDetailResponse findGoodsDetail(@PathVariable Long goodsId) {
 		return goodsService.findPublicGoodsDetail(goodsId);
+	}
+
+	@GetMapping("/{goodsId}/digital-purchase")
+	public ResponseEntity<DigitalLibraryItemResponse> findMyDigitalGoodsPurchase(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return digitalGoodsPurchaseService.findPurchased(currentMember.memberId(), goodsId)
+			.map(ResponseEntity::ok)
+			.orElseGet(() -> ResponseEntity.noContent().build());
+	}
+
+	@PostMapping("/{goodsId}/digital-purchase")
+	public DigitalLibraryItemResponse purchaseDigitalGoods(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return digitalGoodsPurchaseService.claim(currentMember.memberId(), goodsId);
 	}
 
 	@PostMapping("/{goodsId}/favorites")
@@ -127,6 +154,11 @@ public class GoodsController {
 		AuthenticatedMember currentMember
 	) {
 		return goodsLikeService.findMyLike(currentMember.memberId(), goodsId);
+	}
+
+	@GetMapping("/likes")
+	public List<GoodsSummaryResponse> findLikedGoods(AuthenticatedMember currentMember) {
+		return goodsLikeService.findLikedGoods(currentMember.memberId());
 	}
 
 	@GetMapping("/likes/my")

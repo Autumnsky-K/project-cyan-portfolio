@@ -141,7 +141,7 @@ const sampleSheets = {
     text: [
       'section\tkey\tvalue\tnote',
       'customerInput\tcase-001\t히에나 포카 있어?\t시뮬레이션 고객 문장',
-      'searchPrompt\tformat\t《키워드1》《키워드2》\t검색 LLM 출력 계약',
+      'searchPrompt\tformat\t오타보정 + 의도분류 + 검색키워드 추출\t검색 LLM 역할',
       'persona\ttone\t단아한 느낌의 소녀 점원\t최종 응대 톤',
       'memory\tpointer\t[NOW]\t현재 입력 위치',
       'dom\tsearch-results\t[data-ai-db-highlight]\t검색 결과/원본 DB 하이라이트 영역',

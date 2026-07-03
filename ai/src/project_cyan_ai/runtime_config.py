@@ -19,7 +19,7 @@ DEFAULT_LOGIC_FUNCTIONS = "\n".join(
 DEFAULT_ADMIN_SETTINGS = "\n".join(
     [
         "section\tkey\tvalue\tnote",
-        "searchPrompt\tformat\t고객 요청에서 상품 검색어와 의도를 짧게 정리하세요.\t검색 LLM",
+        "searchPrompt\tformat\t오타보정 + 의도분류 + 검색키워드 추출\t검색 LLM",
         "persona\ttone\t친근하고 간결한 쇼핑 도우미\t최종 응답",
         "responseContract\tfields\ttext,actions,metadata.behavior\tWebSocket 출력",
     ]
@@ -73,7 +73,7 @@ class RuntimeConfig:
 def default_runtime_config() -> RuntimeConfig:
     return RuntimeConfig(
         config_version=0,
-        pipeline_mode="optimized",
+        pipeline_mode="faithful18",
         published_at="",
         logic_functions=DEFAULT_LOGIC_FUNCTIONS,
         admin_settings=DEFAULT_ADMIN_SETTINGS,
@@ -124,12 +124,10 @@ class RuntimeConfigProvider:
         logic_functions = self._download_verified(files["logicFunctionsUrl"], checksums["logicFunctions"])
         admin_settings = self._download_verified(files["adminSettingsUrl"], checksums["adminSettings"])
         motion_list = self._download_verified(files["motionListUrl"], checksums["motionList"])
-        mode = str(manifest.get("pipelineMode") or "faithful18")
-        if mode not in ("faithful18", "optimized"):
-            raise ValueError("unsupported pipelineMode")
+        mode = parse_pipeline_mode(manifest.get("pipelineMode"))
         return RuntimeConfig(
             config_version=int(manifest["configVersion"]),
-            pipeline_mode=mode,  # type: ignore[arg-type]
+            pipeline_mode=mode,
             published_at=str(manifest.get("publishedAt") or ""),
             logic_functions=logic_functions,
             admin_settings=admin_settings,
@@ -147,18 +145,23 @@ class RuntimeConfigProvider:
 
 
 def runtime_config_from_draft(payload: dict) -> RuntimeConfig:
-    mode = str(payload.get("pipelineMode") or "faithful18")
-    if mode not in ("faithful18", "optimized"):
-        raise ValueError("unsupported pipelineMode")
+    mode = parse_pipeline_mode(payload.get("pipelineMode"))
     return RuntimeConfig(
         config_version=int(payload.get("configVersion") or 0),
-        pipeline_mode=mode,  # type: ignore[arg-type]
+        pipeline_mode=mode,
         published_at="",
         logic_functions=str(payload.get("logicFunctions") or DEFAULT_LOGIC_FUNCTIONS),
         admin_settings=str(payload.get("adminSettings") or DEFAULT_ADMIN_SETTINGS),
         motion_list=str(payload.get("motionList") or DEFAULT_MOTION_LIST),
         model_connection=None,
     )
+
+
+def parse_pipeline_mode(value: Any) -> PipelineMode:
+    mode = str(value or "faithful18")
+    if mode not in ("faithful18", "optimized"):
+        raise ValueError("unsupported pipelineMode")
+    return mode  # type: ignore[return-value]
 
 
 def _model_connection_reference(value: Any) -> dict[str, int] | None:

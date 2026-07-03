@@ -93,6 +93,34 @@ UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
 FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
 FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
 FOLLOW_UP_NAVIGATION_EMPTY_TEXT = "먼저 추천받을 상품을 알려주세요."
+DIRECT_CART_FILLER_TERMS = {
+    "장바구니",
+    "카트",
+    "담",
+    "담아",
+    "담아줘",
+    "담아주세요",
+    "담기",
+    "넣어",
+    "넣어줘",
+    "넣어주세요",
+    "추가",
+    "추가해",
+    "추가해줘",
+    "추가해주세요",
+    "상품",
+    "굿즈",
+    "추천",
+    "추천한",
+    "방금",
+    "이거",
+    "그거",
+    "저거",
+    "해줘",
+    "해주세요",
+    "줘",
+    "주세요",
+}
 KOREAN_NUMBER_WORDS = {
     "첫": 1,
     "한": 1,
@@ -310,6 +338,7 @@ class CatalogGroundedChatResponseProvider:
         favorite_artists: list[dict[str, Any]] | None = None,
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
+        search_text: str | None = None,
     ) -> FullTextMessage:
         if not self.recent_recommendation_candidates:
             self.recent_recommendation_candidates = recent_candidates_from_context(context)
@@ -329,7 +358,9 @@ class CatalogGroundedChatResponseProvider:
         if follow_up_response is not None:
             return follow_up_response
 
-        if not has_product_intent(text):
+        candidate_search_text = str(search_text or text).strip() or text
+        product_intent_text = f"{text} {candidate_search_text}".strip()
+        if not has_product_intent(product_intent_text):
             return self.delegate.build_response(
                 self._with_instruction(
                     self._personalized_text(text, personalization_context),
@@ -338,7 +369,7 @@ class CatalogGroundedChatResponseProvider:
                 context,
             )
 
-        candidates = self.catalog_client.search_candidates(text, favorite_artists)
+        candidates = self.catalog_client.search_candidates(candidate_search_text, favorite_artists)
         if candidates is None:
             return self.delegate.build_response(
                 self._with_instruction(
@@ -360,6 +391,11 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return build_mock_catalog_response(text, recommended_candidates)
 
+        direct_cart_candidates = select_current_search_cart_candidates(
+            text,
+            recommended_candidates,
+        )
+        direct_cart_actions = build_cart_actions(direct_cart_candidates)
         prompt = build_personalized_prompt(
             build_catalog_prompt(text, recommended_candidates, favorite_artists),
             personalization_context,
@@ -371,14 +407,25 @@ class CatalogGroundedChatResponseProvider:
             for candidate in recommended_candidates
             if candidate.get("goodsId") is not None
         }
+        response_actions = [
+            action
+            for action in response.actions
+            if action_goods_id(action) in allowed_goods_ids
+        ]
+        if direct_cart_actions:
+            response_actions = [
+                action
+                for action in response_actions
+                if not isinstance(action, AddToCartAction)
+            ] + direct_cart_actions
         return FullTextMessage(
-            text=response.text,
+            text=(
+                build_cart_confirmation_text(direct_cart_candidates)
+                if direct_cart_actions
+                else response.text
+            ),
             actions=merge_candidate_actions(
-                [
-                    action
-                    for action in response.actions
-                    if action_goods_id(action) in allowed_goods_ids
-                ],
+                response_actions,
                 recommended_candidates,
             ),
             metadata={
@@ -400,6 +447,67 @@ class CatalogGroundedChatResponseProvider:
         if isinstance(self.delegate, MockChatResponseProvider):
             return text
         return build_personalized_prompt(text, personalization_context)
+
+
+def build_cart_actions(candidates: list[dict[str, Any]]) -> list[AddToCartAction]:
+    actions: list[AddToCartAction] = []
+    for candidate in candidates:
+        goods_id = candidate.get("goodsId")
+        if goods_id is None:
+            continue
+        normalized_goods_id = str(goods_id)
+        if normalized_goods_id.isdigit():
+            actions.append(AddToCartAction(goodsId=normalized_goods_id))
+    return actions
+
+
+def build_cart_confirmation_text(candidates: list[dict[str, Any]]) -> str:
+    if len(candidates) == 1:
+        name = str(candidates[0].get("name") or "추천 상품").strip()
+        return f"{name}을 장바구니에 담을게요."
+    return f"선택한 {len(candidates)}개 상품을 장바구니에 담을게요."
+
+
+def select_current_search_cart_candidates(
+    text: str,
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    if not candidates or not is_cart_add_text(normalized_text):
+        return []
+
+    selected_indexes = extract_selected_indexes(normalized_text)
+    if selected_indexes:
+        return [
+            candidates[index]
+            for index in selected_indexes
+            if index < len(candidates)
+        ]
+
+    expected_count = extract_count_qualified_all(normalized_text)
+    if expected_count is not None:
+        if 1 <= expected_count <= len(candidates):
+            return candidates[:expected_count]
+        return []
+
+    if any(keyword in normalized_text for keyword in UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS):
+        return candidates
+
+    if has_cart_search_qualifier(normalized_text):
+        return [candidates[0]]
+
+    return []
+
+
+def has_cart_search_qualifier(normalized_text: str) -> bool:
+    tokens = [
+        strip_korean_particle(token)
+        for token in re.split(r"[\s,]+", normalized_text)
+    ]
+    return any(
+        len(token) >= 2 and token not in DIRECT_CART_FILLER_TERMS
+        for token in tokens
+    )
 
 
 def recent_candidates_from_context(
@@ -976,6 +1084,11 @@ def select_follow_up_candidates(
     if any(keyword in normalized_text for keyword in UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS):
         return "selected", recent_candidates
 
+    if recent_candidates and not has_cart_search_qualifier(normalized_text):
+        if len(recent_candidates) == 1:
+            return "selected", recent_candidates
+        return "ambiguous", []
+
     return None
 
 
@@ -1116,8 +1229,10 @@ def build_catalog_prompt(
         f"{json.dumps(compact_candidates, ensure_ascii=False)}\n\n"
         "위 JSON 안의 상품만 추천하세요. JSON에 없는 goodsId를 만들지 마세요. "
         "추천 시 실제 goodsId로 ACTION 태그를 생성하세요. "
-        "형식은 반드시 [ACTION:navigate path=\"/goods/{goodsId}\"] 또는 "
+        "상품 이동/강조 형식은 반드시 [ACTION:navigate path=\"/goods/{goodsId}\"] 또는 "
         "[ACTION:highlight selector=\"[data-goods-id='{goodsId}']\"] 입니다. "
+        "사용자가 명시적으로 장바구니 담기를 요청한 경우에만 "
+        "[ACTION:addToCart goodsId=\"{goodsId}\"] 형식을 사용할 수 있습니다. "
         "[ACTION:{goodsId}]처럼 숫자만 넣은 태그는 절대 쓰지 마세요."
     )
 
@@ -1170,20 +1285,33 @@ def merge_candidate_actions(
     if len(candidates) >= 2:
         return [
             *default_candidate_actions(candidates),
-            *[action for action in actions if isinstance(action, AddToCartAction)],
+            *unique_add_to_cart_actions(actions),
         ]
 
-    merged_actions = limit_navigate_actions(actions)
+    merged_actions = default_candidate_actions(candidates)
     existing_keys = {
         (action.__class__.__name__, action_goods_id(action))
         for action in merged_actions
     }
-    for action in default_candidate_actions(candidates):
+    for action in actions:
         key = (action.__class__.__name__, action_goods_id(action))
         if key not in existing_keys:
             merged_actions.append(action)
             existing_keys.add(key)
     return limit_navigate_actions(merged_actions)
+
+
+def unique_add_to_cart_actions(actions: list[Any]) -> list[AddToCartAction]:
+    unique_actions: list[AddToCartAction] = []
+    seen_goods_ids: set[str] = set()
+    for action in actions:
+        if not isinstance(action, AddToCartAction):
+            continue
+        if action.goodsId in seen_goods_ids:
+            continue
+        unique_actions.append(action)
+        seen_goods_ids.add(action.goodsId)
+    return unique_actions
 
 
 def limit_navigate_actions(actions: list[Any]) -> list[Any]:

@@ -44,6 +44,26 @@ MOTION_INSTRUCTION = (
 LATENCY_BUDGET_MS = 5000
 _latency_lock = Lock()
 _latencies: dict[str, deque[int]] = defaultdict(lambda: deque(maxlen=200))
+SEARCH_LLM_BASE_PROMPT = "\n".join(
+    [
+        "고객 요청을 먼저 해석해서 오타보정, 의도분류, DB 검색 키워드를 분리한다.",
+        "히ㅇ애나, 표토카드처럼 흔들린 입력은 가능한 상품명/아티스트명/카테고리명으로 보정한다.",
+        "Hook 치환으로 처리할 수 없는 오타와 띄어쓰기 오류는 여기서 보정한다.",
+        "의도유형은 searchGoods, addToCartSearch, addToCartFollowUp, navigate, cartView, smallTalk, outOfScope 중 하나로 쓴다.",
+        "장바구니에 담아달라는 말이 있고 새 상품 조건도 있으면 addToCartSearch로 분류하고 검색키워드를 낸다.",
+        "방금 추천한 것, 이거, 그거처럼 이전 추천을 가리키면 addToCartFollowUp으로 분류하고 검색키워드는 없음으로 둔다.",
+        "상품 검색 의도가 낮거나 쇼핑몰 상품과 무관하면 검색키워드는 없음으로 둔다.",
+        "출력은 반드시 세 줄만 사용한다.",
+        "의도유형: <유형>",
+        "정규화요청: <오타와 띄어쓰기를 보정한 고객 요청 또는 원문>",
+        "검색키워드: 《키워드1》《키워드2》 또는 없음",
+        "키워드는 5개 이하로 제한하고 설명, 번호, 마크다운, JSON은 출력하지 않는다.",
+    ]
+)
+BARE_SEARCH_PROMPT_VALUES = {
+    "《키워드1》《키워드2》",
+    "《키워드》",
+}
 
 
 @dataclass(frozen=True)
@@ -203,9 +223,8 @@ class BehaviorEngine:
             started,
         )
 
-        search_prompt = config.setting(
-            "searchPrompt",
-            fallback="고객 요청에서 상품 검색 키워드와 의도를 《키워드》 형식으로 정리하세요.",
+        search_prompt = build_search_llm_prompt(
+            config.setting("searchPrompt", fallback="")
         )
         started = time.perf_counter()
         add_step(
@@ -224,6 +243,7 @@ class BehaviorEngine:
         )
 
         search_output = ""
+        search_query_text = normalized_text
         navigation_candidate = (
             is_navigation_intent_candidate(normalized_text)
             or is_numbered_recommendation_follow_up(normalized_text)
@@ -235,13 +255,13 @@ class BehaviorEngine:
         ):
             started = time.perf_counter()
             search_output = self.base_provider.build_response(search_input).text
-            highlight_terms = re.findall(r"《([^》]+)》", search_output)
+            highlight_terms = extract_search_keywords(search_output)
             if not highlight_terms:
-                highlight_terms = [
-                    token
-                    for token in re.findall(r"[0-9A-Za-z가-힣]{2,}", normalized_text)
-                    if token not in {"추천", "상품", "있어", "찾아줘"}
-                ][:5]
+                highlight_terms = fallback_search_keywords(
+                    normalized_text,
+                    search_output,
+                )
+            search_query_text = build_search_query_text(normalized_text, highlight_terms)
             add_step(
                 10,
                 [
@@ -260,7 +280,7 @@ class BehaviorEngine:
             )
 
         started = time.perf_counter()
-        add_step(11, [_line("function-output", f"Spring 검색 q={normalized_text}")], started)
+        add_step(11, [_line("function-output", f"Spring 검색 q={search_query_text}")], started)
 
         persona = config.setting("persona", fallback="친근하고 간결한 쇼핑 도우미")
         motion_keys = ",".join(sorted(config.allowed_motion_keys))
@@ -277,6 +297,7 @@ class BehaviorEngine:
                 favorite_artists,
                 personalization_context,
                 response_instruction=response_instruction,
+                search_text=search_query_text,
             )
 
         candidate_ids = [
@@ -335,8 +356,59 @@ class BehaviorEngine:
                 "configVersion": config.config_version,
                 "pipelineMode": config.pipeline_mode,
                 "highlightTerms": highlight_terms,
+                "searchQuery": search_query_text,
                 "candidateGoodsIds": candidate_ids,
                 "appliedHookPolicyIds": applied_policy_ids,
                 "steps": steps,
             },
         )
+
+
+def build_search_llm_prompt(configured_prompt: str) -> str:
+    configured = str(configured_prompt or "").strip()
+    if configured in BARE_SEARCH_PROMPT_VALUES:
+        configured = "관리자 TSV 출력 계약: " + configured
+    elif configured:
+        configured = "관리자 TSV 추가 지시: " + configured
+    return "\n".join(line for line in (SEARCH_LLM_BASE_PROMPT, configured) if line)
+
+
+def extract_search_keywords(search_output: str) -> list[str]:
+    keywords: list[str] = []
+    for keyword in re.findall(r"《([^》]+)》", str(search_output or "")):
+        normalized = keyword.strip()
+        if not normalized or normalized in {"없음", "키워드", "키워드1", "키워드2"}:
+            continue
+        if normalized not in keywords:
+            keywords.append(normalized)
+    return keywords[:5]
+
+
+def fallback_search_keywords(normalized_text: str, search_output: str) -> list[str]:
+    if reports_no_search_keywords(search_output):
+        return []
+    return [
+        token
+        for token in re.findall(r"[0-9A-Za-z가-힣]{2,}", normalized_text)
+        if token not in {"추천", "상품", "있어", "찾아줘"}
+    ][:5]
+
+
+def reports_no_search_keywords(search_output: str) -> bool:
+    for line in str(search_output or "").splitlines():
+        normalized = re.sub(r"\s+", "", line)
+        if normalized.startswith("검색키워드:") and normalized.endswith("없음"):
+            return True
+    return False
+
+
+def build_search_query_text(normalized_text: str, keywords: list[str]) -> str:
+    parts = [keyword.strip() for keyword in keywords if keyword.strip()]
+    original = normalized_text.strip()
+    if original:
+        parts.append(original)
+    deduped: list[str] = []
+    for part in parts:
+        if part not in deduped:
+            deduped.append(part)
+    return " ".join(deduped) if deduped else normalized_text

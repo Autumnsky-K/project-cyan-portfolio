@@ -59,7 +59,7 @@ function Store({ mode = 'checkout' }) {
       store.checkoutForm.name.trim() &&
       store.checkoutForm.email.trim() &&
       store.checkoutForm.phone.trim() &&
-      store.checkoutForm.address.trim()
+      (!store.requiresShipping || store.checkoutForm.address.trim())
     )
   }
 
@@ -149,6 +149,7 @@ function Store({ mode = 'checkout' }) {
                       errors={store.errors}
                       onChange={store.updateCheckoutForm}
                       onConfirmField={handleCheckoutProfileConfirm}
+                      requiresShipping={store.requiresShipping}
                     />
                     <PaymentPanel
                       allowDevPayment={isAdmin}
@@ -162,6 +163,7 @@ function Store({ mode = 'checkout' }) {
                       paymentStatus={store.paymentStatus}
                       totalPrice={store.totalPrice}
                       totalQuantity={store.totalQuantity}
+                      requiresShipping={store.requiresShipping}
                       onCancelPayment={store.handlePaymentCancel}
                       onFailPayment={() => store.handlePaymentFail()}
                       onPaymentMethodChange={store.setPaymentMethod}

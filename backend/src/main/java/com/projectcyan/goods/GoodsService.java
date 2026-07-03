@@ -34,6 +34,32 @@ public class GoodsService {
 		"category.categoryName",
 		"salesStatus"
 	);
+	private static final Set<String> DIGITAL_GOODS_KEYWORDS = Set.of(
+		"digital",
+		"voice",
+		"message",
+		"download",
+		"wallpaper",
+		"stream",
+		"ticket",
+		"ar",
+		"pass",
+		"디지털",
+		"보이스",
+		"음성",
+		"메시지",
+		"메세지",
+		"다운로드",
+		"월페이퍼",
+		"배경화면",
+		"스트리밍",
+		"티켓",
+		"라이브",
+		"스티커",
+		"패스"
+	);
+	private static final int HOME_GOODS_SAMPLE_SIZE = 6;
+	private static final int HOME_GROUP_LIMIT = 12;
 
 	private final GoodsRepository goodsRepository;
 	private final ArtistRepository artistRepository;
@@ -282,11 +308,38 @@ public class GoodsService {
 		return detailResponse(goods);
 	}
 
+	public GoodsHomeDiscoveryResponse findGoodsHomeDiscovery() {
+		List<Goods> publicGoods = goodsRepository.findAllForRecommendation().stream()
+			.filter(GoodsVisibility::isPubliclyVisible)
+			.sorted(recentGoodsFirst())
+			.toList();
+		List<Goods> digitalGoods = publicGoods.stream()
+			.filter(this::isDigitalGoods)
+			.toList();
+		List<Goods> physicalGoods = publicGoods.stream()
+			.filter(goods -> !isDigitalGoods(goods))
+			.toList();
+
+		return new GoodsHomeDiscoveryResponse(
+			summaryResponses(physicalGoods, HOME_GOODS_SAMPLE_SIZE),
+			summaryResponses(digitalGoods, HOME_GOODS_SAMPLE_SIZE),
+			groupGoodsByArtist(publicGoods, HOME_GROUP_LIMIT),
+			groupGoodsByCategory(publicGoods, HOME_GROUP_LIMIT),
+			groupGoodsByCategory(physicalGoods, HOME_GROUP_LIMIT),
+			groupGoodsByCategory(digitalGoods, HOME_GROUP_LIMIT),
+			groupDigitalTags(digitalGoods, HOME_GROUP_LIMIT),
+			publicGoods.size(),
+			physicalGoods.size(),
+			digitalGoods.size()
+		);
+	}
+
 	private GoodsDetailResponse detailResponse(Goods goods) {
 		Long goodsId = goods.getGoodsId();
-		goods.setStockCount(goodsStockRepository.findById(goodsId)
+		Integer stockCount = goodsStockRepository.findById(goodsId)
 			.map(GoodsStock::getCurrentStock)
-			.orElse(0));
+			.orElse(0);
+		goods.setStockCount(isDigitalGoods(goods) ? 1 : stockCount);
 		PurchaseAvailability availability = purchaseAvailability(goods);
 		return GoodsDetailResponse.from(
 			goods,
@@ -354,6 +407,136 @@ public class GoodsService {
 				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
 				GoodsLikeRepository.GoodsLikeCount::getLikeCount
 			));
+	}
+
+	private List<GoodsSummaryResponse> summaryResponses(List<Goods> goods, int limit) {
+		List<Goods> selectedGoods = goods.stream()
+			.limit(limit)
+			.toList();
+		if (selectedGoods.isEmpty()) {
+			return List.of();
+		}
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(
+			selectedGoods.stream().map(Goods::getGoodsId).toList()
+		);
+		Map<Long, Long> likeCounts = likeCounts(selectedGoods);
+		return selectedGoods.stream()
+			.map(item -> GoodsSummaryResponse.from(
+				item,
+				reviewSummaries.getOrDefault(item.getGoodsId(), GoodsReviewSummary.empty()),
+				likeCounts.getOrDefault(item.getGoodsId(), 0L)
+			))
+			.toList();
+	}
+
+	private Comparator<Goods> recentGoodsFirst() {
+		return Comparator
+			.comparing(Goods::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+			.thenComparing(Goods::getGoodsId, Comparator.nullsLast(Comparator.reverseOrder()));
+	}
+
+	private List<GoodsHomeDiscoveryGroupResponse> groupGoodsByArtist(List<Goods> goods, int limit) {
+		Map<String, HomeDiscoveryGroup> grouped = new LinkedHashMap<>();
+		for (Goods item : goods) {
+			Artist artist = item.getArtist();
+			if (artist == null || artist.getArtistId() == null) {
+				continue;
+			}
+			addHomeDiscoveryGroup(
+				grouped,
+				artist.getArtistName(),
+				artist.getArtistId().toString(),
+				item.getMainImageUrl()
+			);
+		}
+		return homeDiscoveryGroupResponses(grouped, limit);
+	}
+
+	private List<GoodsHomeDiscoveryGroupResponse> groupGoodsByCategory(List<Goods> goods, int limit) {
+		Map<String, HomeDiscoveryGroup> grouped = new LinkedHashMap<>();
+		for (Goods item : goods) {
+			GoodsCategory category = item.getCategory();
+			if (category == null || category.getCategoryId() == null) {
+				continue;
+			}
+			addHomeDiscoveryGroup(
+				grouped,
+				category.getCategoryName(),
+				category.getCategoryId().toString(),
+				item.getMainImageUrl()
+			);
+		}
+		return homeDiscoveryGroupResponses(grouped, limit);
+	}
+
+	private List<GoodsHomeDiscoveryGroupResponse> groupDigitalTags(List<Goods> goods, int limit) {
+		Map<String, HomeDiscoveryGroup> grouped = new LinkedHashMap<>();
+		for (Goods item : goods) {
+			for (Tag tag : item.getTags()) {
+				if (isDigitalText(tag.getTagName())) {
+					addHomeDiscoveryGroup(grouped, tag.getTagName(), tag.getTagName(), item.getMainImageUrl());
+				}
+			}
+		}
+		return homeDiscoveryGroupResponses(grouped, limit);
+	}
+
+	private void addHomeDiscoveryGroup(
+		Map<String, HomeDiscoveryGroup> grouped,
+		String rawLabel,
+		String rawValue,
+		String imageUrl
+	) {
+		if (rawLabel == null || rawLabel.isBlank() || rawValue == null || rawValue.isBlank()) {
+			return;
+		}
+		String label = rawLabel.trim();
+		HomeDiscoveryGroup group = grouped.computeIfAbsent(
+			label.toLowerCase(Locale.ROOT),
+			key -> new HomeDiscoveryGroup(label)
+		);
+		group.add(rawValue.trim(), imageUrl);
+	}
+
+	private List<GoodsHomeDiscoveryGroupResponse> homeDiscoveryGroupResponses(
+		Map<String, HomeDiscoveryGroup> grouped,
+		int limit
+	) {
+		return grouped.values().stream()
+			.sorted(Comparator
+				.comparingLong(HomeDiscoveryGroup::count).reversed()
+				.thenComparing(group -> group.label().toLowerCase(Locale.ROOT)))
+			.limit(limit)
+			.map(group -> new GoodsHomeDiscoveryGroupResponse(
+				group.label(),
+				String.join("|", group.values()),
+				group.count(),
+				group.imageUrl()
+			))
+			.toList();
+	}
+
+	private boolean isDigitalGoods(Goods goods) {
+		if (goods == null) {
+			return false;
+		}
+		if (goods.getCategory() != null) {
+			return goods.getCategory().getFulfillmentType() == GoodsFulfillmentType.DIGITAL;
+		}
+		if (isDigitalText(goods.getGoodsName())) {
+			return true;
+		}
+		return goods.getTags().stream()
+			.map(Tag::getTagName)
+			.anyMatch(this::isDigitalText);
+	}
+
+	private boolean isDigitalText(String value) {
+		if (value == null || value.isBlank()) {
+			return false;
+		}
+		String normalizedValue = value.toLowerCase(Locale.ROOT);
+		return DIGITAL_GOODS_KEYWORDS.stream().anyMatch(normalizedValue::contains);
 	}
 
 	private Map<Long, Long> viewCounts(List<Goods> goods, String viewPeriod) {
@@ -477,11 +660,7 @@ public class GoodsService {
 				Artist::getArtistName,
 				artist -> artist.getArtistId().toString()
 			),
-			groupFilterOptions(
-				goodsCategoryRepository.findAllByOrderByCategoryNameAsc(),
-				GoodsCategory::getCategoryName,
-				category -> category.getCategoryId().toString()
-			),
+			categoryFilterOptions(goodsCategoryRepository.findAllByOrderByCategoryNameAsc()),
 			groupFilterOptions(
 				tagRepository.findAllByOrderByTagNameAsc(),
 				Tag::getTagName,
@@ -506,6 +685,16 @@ public class GoodsService {
 		}
 		return grouped.values().stream()
 			.map(group -> new GoodsFilterOptionResponse(group.label(), String.join("|", group.values())))
+			.toList();
+	}
+
+	private List<GoodsFilterOptionResponse> categoryFilterOptions(List<GoodsCategory> categories) {
+		return categories.stream()
+			.map(category -> new GoodsFilterOptionResponse(
+				category.getCategoryName(),
+				category.getCategoryId().toString(),
+				category.getFulfillmentType().name()
+			))
 			.toList();
 	}
 
@@ -589,7 +778,7 @@ public class GoodsService {
 			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
 		boolean hasStock = goods.getStockCount() != null && goods.getStockCount() > 0;
-		if (!hasStock) {
+		if (!isDigitalGoods(goods) && !hasStock) {
 			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
 		return new PurchaseAvailability("AVAILABLE", "구매 가능한 상품입니다.");
@@ -628,5 +817,42 @@ public class GoodsService {
 	}
 
 	private record FilterOptionGroup(String label, List<String> values) {
+	}
+
+	private static final class HomeDiscoveryGroup {
+		private final String label;
+		private final List<String> values = new ArrayList<>();
+		private long count;
+		private String imageUrl;
+
+		private HomeDiscoveryGroup(String label) {
+			this.label = label;
+		}
+
+		private void add(String value, String nextImageUrl) {
+			if (!values.contains(value)) {
+				values.add(value);
+			}
+			count += 1;
+			if ((imageUrl == null || imageUrl.isBlank()) && nextImageUrl != null && !nextImageUrl.isBlank()) {
+				imageUrl = nextImageUrl;
+			}
+		}
+
+		private String label() {
+			return label;
+		}
+
+		private List<String> values() {
+			return values;
+		}
+
+		private long count() {
+			return count;
+		}
+
+		private String imageUrl() {
+			return imageUrl;
+		}
 	}
 }

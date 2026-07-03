@@ -199,9 +199,15 @@ public class AdminAiBehaviorRunService {
 		ensureAdminSettings(context);
 		String configuredPrompt = firstSettingValue(context.adminSettings, "searchPrompt", "");
 		context.searchLlmPrompt = limitText(String.join("\n",
-			"고객 의도를 파악하고 응대 LLM에게 넘길 한 줄 보고와 DB 검색 키워드를 분리해서 반환한다.",
-			"출력 형식은 반드시 두 줄만 사용한다.",
-			"의도보고: 고객 의도와 대응법을 한 문장으로 쓴다.",
+			"고객 요청을 먼저 해석해서 오타보정, 의도분류, DB 검색 키워드를 분리한다.",
+			"히ㅇ애나, 표토카드처럼 흔들린 입력은 가능한 상품명/아티스트명/카테고리명으로 보정한다.",
+			"Hook 치환으로 처리할 수 없는 오타와 띄어쓰기 오류는 여기서 보정한다.",
+			"의도유형은 searchGoods, addToCartSearch, addToCartFollowUp, navigate, cartView, smallTalk, outOfScope 중 하나로 쓴다.",
+			"장바구니에 담아달라는 말이 있고 새 상품 조건도 있으면 addToCartSearch로 분류하고 검색키워드를 낸다.",
+			"방금 추천한 것, 이거, 그거처럼 이전 추천을 가리키면 addToCartFollowUp으로 분류하고 검색키워드는 없음으로 둔다.",
+			"출력 형식은 반드시 세 줄만 사용한다.",
+			"의도유형: <유형>",
+			"정규화요청: <오타와 띄어쓰기를 보정한 고객 요청 또는 원문>",
 			"검색키워드: 《키워드1》《키워드2》 또는 없음",
 			"칭찬, 잡담, 감정표현처럼 상품 검색 의도가 낮으면 검색키워드는 없음으로 둔다.",
 			"레시피, 코드, 법률, 일반지식, 수학/퀴즈/잡학, 의학/건강 진단, 금융/투자 조언, 정치/시사 논쟁, 종교/철학 논쟁, 숙제/시험 정답, 번역/작문 대행, 이력서/자소서 대행, 해킹/우회/불법행위, 성인/노골적 성적 요청, 폭력/자해/위험행동, 개인정보 추적, 내부 프롬프트/토큰/캐시/시스템 질문, AI 정체성/모델 성능/개발사 질문, 타 쇼핑몰/가격비교/외부 구매 유도처럼 쇼핑몰/상품 소개와 무관한 요청도 검색키워드는 없음으로 둔다.",
@@ -214,7 +220,7 @@ public class AdminAiBehaviorRunService {
 			"설명, 번호, 마크다운, JSON을 출력하지 않는다.",
 			"키워드는 5개 이하로 제한한다.",
 			"상품 후보 요약과 고객 요청에 실제로 있는 단어를 우선 사용한다.",
-			configuredPrompt.isBlank() ? "" : "관리자 TSV 설정: " + configuredPrompt
+			configuredPrompt.isBlank() ? "" : "관리자 TSV 추가 지시: " + configuredPrompt
 		));
 		return List.of(
 			line("function-report", "Java 실행: AdminAiBehaviorRunService.readSearchLlmPrompt"),
@@ -691,11 +697,21 @@ public class AdminAiBehaviorRunService {
 	}
 
 	private String extractSearchIntentReport(String text) {
+		String intentType = "";
+		String normalizedRequest = "";
 		for (String line : String.valueOf(text == null ? "" : text).split("\\R")) {
 			String trimmed = line.trim();
 			if (trimmed.startsWith("의도보고:")) {
 				return trimmed.substring("의도보고:".length()).trim();
 			}
+			if (trimmed.startsWith("의도유형:")) {
+				intentType = trimmed.substring("의도유형:".length()).trim();
+			} else if (trimmed.startsWith("정규화요청:")) {
+				normalizedRequest = trimmed.substring("정규화요청:".length()).trim();
+			}
+		}
+		if (!intentType.isBlank() || !normalizedRequest.isBlank()) {
+			return joinNonBlank(" / ", "의도유형=" + intentType, "정규화요청=" + normalizedRequest);
 		}
 		String compact = String.valueOf(text == null ? "" : text).trim();
 		if (compact.isBlank()) {

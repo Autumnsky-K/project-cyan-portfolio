@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import type { GoodsDetail } from '../../api/goods'
+import type { DigitalLibraryItem } from '../../api/digitalLibrary'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsStatusBadge from './GoodsStatusBadge'
@@ -13,6 +15,10 @@ type GoodsPurchasePanelProps = {
   onLikeToggle?: () => void
   shareFeedback?: string
   onShare?: () => void
+  digitalEntitlement?: DigitalLibraryItem | null
+  digitalClaimFeedback?: string
+  isClaimingFreeDigitalGoods?: boolean
+  onFreeDigitalClaim?: () => void
 }
 
 function GoodsPurchasePanel({
@@ -24,7 +30,14 @@ function GoodsPurchasePanel({
   onLikeToggle,
   shareFeedback = '',
   onShare,
+  digitalEntitlement = null,
+  digitalClaimFeedback = '',
+  isClaimingFreeDigitalGoods = false,
+  onFreeDigitalClaim,
 }: GoodsPurchasePanelProps) {
+  const isDigitalGoods = goods.fulfillmentType === 'DIGITAL'
+  const isFreeDigitalGoods = isDigitalGoods && Number(goods.price ?? 0) === 0
+  const isPurchasedDigitalGoods = isDigitalGoods && Boolean(digitalEntitlement)
   const {
     addSelectedQuantityToCart,
     canAdd,
@@ -54,56 +67,86 @@ function GoodsPurchasePanel({
         <strong>{formatGoodsPrice(unitPrice)}</strong>
       </div>
 
-      <div className="purchase-selection">
-        <span>수량</span>
-        <div className="detail-quantity" aria-label="수량">
-          <button
-            disabled={selectedQuantity <= 1}
-            type="button"
-            onClick={() => updateQuantity(selectedQuantity - 1)}
-          >
-            -
-          </button>
-          <input
-            aria-label="수량 직접 입력"
-            disabled={!canAdd}
-            inputMode="numeric"
-            max={maxQuantity || 1}
-            min={1}
-            type="number"
-            value={selectedQuantity}
-            onChange={(event) => updateQuantity(event.currentTarget.valueAsNumber)}
-          />
-          <button
-            disabled={!maxQuantity || selectedQuantity >= maxQuantity}
-            type="button"
-            onClick={() => updateQuantity(selectedQuantity + 1)}
-          >
-            +
-          </button>
-        </div>
-        <small>재고 {maxQuantity.toLocaleString()}개</small>
-      </div>
-
-      <div className="purchase-total">
-        <span>총 상품 금액</span>
-        <strong>{formatGoodsPrice(unitPrice * selectedQuantity)}</strong>
-      </div>
-
-      {!canAdd && (
-        <p className="purchase-message">
-          {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
+      {isDigitalGoods && (
+        <p className="purchase-digital-notice">
+          디지털 상품입니다. 구매 후 30일마다 1회씩 마이페이지에서 다운로드 할 수 있습니다.
         </p>
       )}
-      <button
-        className="purchase-button"
-        data-add-to-cart={goods.goodsId}
-        disabled={!canAdd || isAddingCart}
-        type="button"
-        onClick={() => void addSelectedQuantityToCart()}
-      >
-        {isAddingCart ? '담는 중...' : '장바구니 담기'}
-      </button>
+
+      {isPurchasedDigitalGoods ? (
+        <div className="purchase-owned-digital">
+          <span>구매 완료</span>
+          <p>배송 없이 마이페이지의 디지털 제품 저장소에서 다운로드할 수 있습니다.</p>
+          <Link className="purchase-button purchase-download-link" to={`/mypage/digital-library?goodsId=${goods.goodsId}`}>
+            구매완료(다운로드)
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="purchase-selection">
+            <span>수량</span>
+            <div className="detail-quantity" aria-label="수량">
+              <button
+                disabled={selectedQuantity <= 1 || isDigitalGoods}
+                type="button"
+                onClick={() => updateQuantity(selectedQuantity - 1)}
+              >
+                -
+              </button>
+              <input
+                aria-label="수량 직접 입력"
+                disabled={!canAdd || isDigitalGoods}
+                inputMode="numeric"
+                max={maxQuantity || 1}
+                min={1}
+                type="number"
+                value={selectedQuantity}
+                onChange={(event) => updateQuantity(event.currentTarget.valueAsNumber)}
+              />
+              <button
+                disabled={!maxQuantity || selectedQuantity >= maxQuantity || isDigitalGoods}
+                type="button"
+                onClick={() => updateQuantity(selectedQuantity + 1)}
+              >
+                +
+              </button>
+            </div>
+            <small>{isDigitalGoods ? '디지털 상품은 1개만 구매 가능' : `재고 ${maxQuantity.toLocaleString()}개`}</small>
+          </div>
+
+          <div className="purchase-total">
+            <span>총 상품 금액</span>
+            <strong>{formatGoodsPrice(unitPrice * selectedQuantity)}</strong>
+          </div>
+
+          {!canAdd && (
+            <p className="purchase-message">
+              {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
+            </p>
+          )}
+          {isFreeDigitalGoods ? (
+            <button
+              className="purchase-button"
+              data-claim-free-digital={goods.goodsId}
+              disabled={!canAdd || isClaimingFreeDigitalGoods}
+              type="button"
+              onClick={onFreeDigitalClaim}
+            >
+              {isClaimingFreeDigitalGoods ? '구매 처리 중...' : '구매하기'}
+            </button>
+          ) : (
+            <button
+              className="purchase-button"
+              data-add-to-cart={goods.goodsId}
+              disabled={!canAdd || isAddingCart}
+              type="button"
+              onClick={() => void addSelectedQuantityToCart()}
+            >
+              {isAddingCart ? '담는 중...' : isDigitalGoods ? '디지털 굿즈 담기' : '장바구니 담기'}
+            </button>
+          )}
+        </>
+      )}
       <div className="purchase-secondary-actions">
         <button
           className="detail-like-button"
@@ -127,10 +170,11 @@ function GoodsPurchasePanel({
         </button>
       </div>
       {likeFeedback && <span className="detail-like-feedback" role="status">{likeFeedback}</span>}
+      {digitalClaimFeedback && <span className="purchase-feedback" role="status">{digitalClaimFeedback}</span>}
       {feedback && <span className="purchase-feedback" role="status">{feedback}</span>}
       <ul className="purchase-help-list" aria-label="구매 안내">
         <li>결제 금액별 1% 적립</li>
-        <li>평균 배송 2~3일</li>
+        <li>{isDigitalGoods ? '실물 배송이 없는 상품' : '평균 배송 2~3일'}</li>
       </ul>
     </aside>
   )

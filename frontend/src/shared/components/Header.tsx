@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import CartNavLink from '../../features/cart/CartNavLink'
 import './Header.css'
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { label: 'Artists', to: '/artists' },
   { label: 'Goods', to: '/goods' },
   { label: 'Cart', to: '/cart' },
+  { label: 'Help', to: '/partnership' },
   { label: 'Mypage', to: '/mypage' },
 ]
 
@@ -19,17 +20,13 @@ export default function Header() {
   const currentItem = NAV_ITEMS.find((item) => isCurrentPath(pathname, item.to))
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  useEffect(() => {
-    setIsMenuOpen(false)
-  }, [pathname])
-
   return (
     <header className="site-header">
       <div>
         <p className="site-eyebrow">Cyan</p>
         <h1>
           {currentItem?.to === '/goods' ? (
-            <Link className="site-title-link" to="/goods" state={{ resetGoodsList: Date.now() }}>Goods</Link>
+            <Link className="site-title-link" to="/goods" state={{ resetGoodsList: true }}>Goods</Link>
           ) : (
             currentItem?.label ?? 'Store'
           )}
@@ -50,11 +47,16 @@ export default function Header() {
           const isCurrent = isCurrentPath(pathname, item.to)
 
           if (item.to === '/cart') {
-            return <CartNavLink key={item.to} current={isCurrent} />
+            return <CartNavLink key={item.to} current={isCurrent} onClick={() => setIsMenuOpen(false)} />
           }
 
           return (
-            <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to}>
+            <Link
+              key={item.to}
+              aria-current={isCurrent ? 'page' : undefined}
+              to={item.to}
+              onClick={() => setIsMenuOpen(false)}
+            >
               {item.label}
             </Link>
           )

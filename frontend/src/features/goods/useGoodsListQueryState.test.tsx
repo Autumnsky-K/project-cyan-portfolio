@@ -43,4 +43,18 @@ describe('useGoodsListQueryState recommendation results', () => {
       expect(result.current.requestParams.goodsIds).toBe('7,9')
     })
   })
+
+  it('accepts filter id query aliases from external links', () => {
+    window.history.replaceState(null, '', '/goods?categoryIds=10;11&artistIds=7&tags=Voice')
+    const { result } = renderHook(() => useGoodsListQueryState(), {
+      wrapper: BrowserRouter,
+    })
+
+    expect(result.current.selectedFilters.categoryIds).toEqual(['10', '11'])
+    expect(result.current.selectedFilters.artistIds).toEqual(['7'])
+    expect(result.current.selectedFilters.tags).toEqual(['Voice'])
+    expect(result.current.requestParams.categoryIds).toBe('10,11')
+    expect(result.current.requestParams.artistIds).toBe('7')
+    expect(result.current.requestParams.tags).toBe('Voice')
+  })
 })

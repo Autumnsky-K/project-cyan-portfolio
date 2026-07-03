@@ -7,6 +7,7 @@ export type CartGoodsInput = {
   imageUrl?: string | null
   artistName?: string | null
   categoryName?: string | null
+  fulfillmentType?: string | null
   tags?: string[] | null
   variantId?: string | number | null
   variantLabel?: string | null
@@ -26,6 +27,7 @@ export type CartItem = {
   imageUrl: string | null
   artistName: string
   categoryName: string
+  fulfillmentType?: string | null
   tags: string[]
   quantity: number
   maxQuantity: number | null

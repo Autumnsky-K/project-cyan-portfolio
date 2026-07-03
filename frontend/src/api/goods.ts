@@ -3,8 +3,15 @@ import {
   hasSpringApiSession,
   parseApiResponse,
 } from '../shared/api/springApiClient'
+import type { DigitalLibraryItem } from './digitalLibrary'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin}/api`
+
+function buildPublicApiUrl(path: string): URL {
+  const baseUrl = API_BASE_URL.replace(/\/+$/, '')
+  const normalizedPath = path.replace(/^\/+/, '')
+  return new URL(`${baseUrl}/${normalizedPath}`, window.location.origin)
+}
 
 export type GoodsSummary = {
   goodsId: number
@@ -12,8 +19,11 @@ export type GoodsSummary = {
   price: number
   imageUrl: string | null
   tags: string[]
+  artistId?: number | null
   artistName?: string | null
+  categoryId?: number | null
   categoryName?: string | null
+  fulfillmentType?: 'PHYSICAL' | 'DIGITAL' | string | null
   salesStatus?: string | null
   isBestSeller?: boolean | null
   aiPickDefault?: boolean | null
@@ -72,12 +82,33 @@ export type GoodsLikeItemResponse = GoodsLikeResponse & {
 export type GoodsFilterOption = {
   label: string
   value: string
+  fulfillmentType?: 'PHYSICAL' | 'DIGITAL' | string | null
 }
 
 export type GoodsFiltersResponse = {
   artists?: GoodsFilterOption[]
   categories?: GoodsFilterOption[]
   tags?: GoodsFilterOption[]
+}
+
+export type GoodsHomeDiscoveryGroup = {
+  label: string
+  value: string
+  count: number
+  imageUrl?: string | null
+}
+
+export type GoodsHomeDiscovery = {
+  physicalGoods?: GoodsSummary[]
+  digitalGoods?: GoodsSummary[]
+  artists?: GoodsHomeDiscoveryGroup[]
+  categories?: GoodsHomeDiscoveryGroup[]
+  physicalCategories?: GoodsHomeDiscoveryGroup[]
+  digitalCategories?: GoodsHomeDiscoveryGroup[]
+  digitalTags?: GoodsHomeDiscoveryGroup[]
+  totalGoods?: number
+  physicalGoodsCount?: number
+  digitalGoodsCount?: number
 }
 
 export type PageResponse<T> = {
@@ -112,7 +143,7 @@ export async function fetchGoods(
   params: GoodsQueryParams = {},
   options: FetchOptions = {},
 ): Promise<PageResponse<GoodsSummary>> {
-  const url = new URL(`${API_BASE_URL}/goods`)
+  const url = buildPublicApiUrl('goods')
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
@@ -168,6 +199,11 @@ export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promi
   return await parseApiResponse<GoodsLikeItemResponse[]>(response, 'Failed to load goods likes.') ?? []
 }
 
+export async function fetchLikedGoods(): Promise<GoodsSummary[]> {
+  const response = await apiFetch('/goods/likes')
+  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load liked goods.') ?? []
+}
+
 export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
   const response = await apiFetch(`/goods/${goodsId}/likes`, { method: 'POST' })
   return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to add goods like.') as GoodsLikeResponse
@@ -183,7 +219,7 @@ export async function fetchRelatedGoods(
   size = 8,
   options: FetchOptions = {},
 ): Promise<GoodsSummary[]> {
-  const url = new URL(`${API_BASE_URL}/goods/${goodsId}/related`)
+  const url = buildPublicApiUrl(`goods/${goodsId}/related`)
   url.searchParams.set('size', String(size))
   const response = await fetch(url, options)
 
@@ -201,7 +237,7 @@ export async function fetchGoodsReviews(
   sort = 'newest',
   options: FetchOptions = {},
 ): Promise<PageResponse<GoodsReview>> {
-  const url = new URL(`${API_BASE_URL}/goods/${goodsId}/reviews`)
+  const url = buildPublicApiUrl(`goods/${goodsId}/reviews`)
   url.searchParams.set('page', String(page))
   url.searchParams.set('size', String(size))
   url.searchParams.set('sort', sort)
@@ -275,4 +311,36 @@ export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<Goo
   }
 
   return response.json()
+}
+
+export async function fetchGoodsHomeDiscovery(options: FetchOptions = {}): Promise<GoodsHomeDiscovery> {
+  const response = await fetch(`${API_BASE_URL}/goods/home-discovery`, options)
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to load home goods discovery.'))
+  }
+
+  return response.json()
+}
+
+export async function fetchMyDigitalGoodsPurchase(goodsId: string | number): Promise<DigitalLibraryItem | null> {
+  if (!(await hasSpringApiSession())) {
+    return null
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/digital-purchase`)
+  return await parseApiResponse<DigitalLibraryItem>(
+    response,
+    '디지털 상품 구매 여부를 확인하지 못했습니다.',
+  )
+}
+
+export async function purchaseDigitalGoods(goodsId: string | number): Promise<DigitalLibraryItem> {
+  const response = await apiFetch(`/goods/${goodsId}/digital-purchase`, {
+    method: 'POST',
+  })
+  return await parseApiResponse<DigitalLibraryItem>(
+    response,
+    '디지털 상품 구매를 처리하지 못했습니다.',
+  ) as DigitalLibraryItem
 }

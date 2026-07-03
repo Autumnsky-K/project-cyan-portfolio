@@ -317,6 +317,7 @@ export function useStoreFlow(options = {}) {
             description: item.categoryName,
             image: item.imageUrl || '',
             price: item.price,
+            fulfillmentType: item.fulfillmentType,
             quantity: item.quantity,
             cartIssue: item.cartIssue,
           }
@@ -330,6 +331,10 @@ export function useStoreFlow(options = {}) {
     [cartItems],
   )
   const totalPrice = useMemo(() => calculateTotalPrice(cartItems), [cartItems])
+  const requiresShipping = useMemo(
+    () => cartItems.some((item) => item.fulfillmentType !== 'DIGITAL'),
+    [cartItems],
+  )
   const isCartEmpty = cartItems.length === 0
   const isPaymentProcessing = isPreparingPayment
 
@@ -540,7 +545,7 @@ export function useStoreFlow(options = {}) {
     if (!checkoutForm.name.trim()) nextErrors.push('Enter a customer name.')
     if (!checkoutForm.email.trim()) nextErrors.push('Enter an email address.')
     if (!checkoutForm.phone.trim()) nextErrors.push('Enter a phone number.')
-    if (!checkoutForm.address.trim()) nextErrors.push('Enter a shipping address.')
+    if (requiresShipping && !checkoutForm.address.trim()) nextErrors.push('Enter a shipping address.')
 
     setErrors(nextErrors)
     return nextErrors.length === 0
@@ -563,6 +568,7 @@ export function useStoreFlow(options = {}) {
         image: item.image,
         price: item.price,
         quantity: item.quantity,
+        fulfillmentType: item.fulfillmentType,
       })),
       totalQuantity,
       totalPrice,
@@ -653,14 +659,16 @@ export function useStoreFlow(options = {}) {
           goodsId: Number(item.goodsId ?? item.productId),
           quantity: Number(item.quantity),
         })),
-        shippingAddress: {
-          recipientName: readyOrder.customer.name,
-          recipientPhone: readyOrder.customer.phone,
-          postalCode: readyOrder.customer.postalCode ?? '',
-          address: readyOrder.customer.address,
-          addressDetail: readyOrder.customer.addressDetail || '-',
-          deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
-        },
+        shippingAddress: requiresShipping
+          ? {
+              recipientName: readyOrder.customer.name,
+              recipientPhone: readyOrder.customer.phone,
+              postalCode: readyOrder.customer.postalCode ?? '',
+              address: readyOrder.customer.address,
+              addressDetail: readyOrder.customer.addressDetail || '-',
+              deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
+            }
+          : null,
         paymentProvider: 'KAKAO_PAY',
       })
       const preparedOrder = {
@@ -743,14 +751,16 @@ export function useStoreFlow(options = {}) {
           goodsId: Number(item.goodsId ?? item.productId),
           quantity: Number(item.quantity),
         })),
-        shippingAddress: {
-          recipientName: readyOrder.customer.name,
-          recipientPhone: readyOrder.customer.phone,
-          postalCode: readyOrder.customer.postalCode ?? '',
-          address: readyOrder.customer.address,
-          addressDetail: readyOrder.customer.addressDetail || '-',
-          deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
-        },
+        shippingAddress: requiresShipping
+          ? {
+              recipientName: readyOrder.customer.name,
+              recipientPhone: readyOrder.customer.phone,
+              postalCode: readyOrder.customer.postalCode ?? '',
+              address: readyOrder.customer.address,
+              addressDetail: readyOrder.customer.addressDetail || '-',
+              deliveryRequest: readyOrder.customer.deliveryRequest ?? '',
+            }
+          : null,
         paymentProvider: 'TOSS',
       })
 
@@ -889,6 +899,7 @@ export function useStoreFlow(options = {}) {
     isCartSignedIn,
     hasBlockingCartIssue,
     isPaymentProcessing,
+    requiresShipping,
     lastKakaoReadyDebug,
     lastKakaoReadyError,
     lastKakaoReadyPayload,

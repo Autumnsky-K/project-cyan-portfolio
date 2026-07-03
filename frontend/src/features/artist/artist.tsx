@@ -4,6 +4,7 @@ import CartNavLink from '../cart/CartNavLink'
 
 import { fetchCmsArtists, fetchCmsPage, type CmsArtistProfile, type CmsPage } from '../../api/cms'
 import { applyPreviewTheme, previewTypographyStyle } from '../theme/previewTheme'
+import { buildArtistGoodsGroups, createArtistGoodsPath } from './artistGoodsLinks'
 import './artist.css'
 
 type ArtistVisual = {
@@ -16,6 +17,11 @@ type ArtistProfile = {
   artistId: number | string
   name: string
   groupName: string
+  groupKey?: string
+  groupSortOrder?: number
+  groupVisible?: boolean
+  groupHeroImageUrl?: string | null
+  groupSummary?: string | null
   imageUrl: string | null
   lore: string
   debutDate: string
@@ -26,6 +32,54 @@ type ArtistProfile = {
   bpm: string
   signal: string
   stationCode: string
+  sortOrder?: number
+}
+
+type ArtistGroupPanel = {
+  groupKey: string
+  groupName: string
+  artists: ArtistProfile[]
+  artistAnchors: string[]
+  goodsPath: string
+  groupSortOrder: number
+  heroImageUrl: string | null
+  summary: string
+  accentColor: string
+  glowColor: string
+  area: string
+  signal: string
+  debutDate: string
+  collections: string[]
+  stationCode: string
+}
+
+const defaultArtistCopySettings = {
+  navHome: 'Home',
+  navArtists: 'Artists',
+  navGoods: 'Goods',
+  navCart: 'Cart',
+  broadcastStrip: 'CYAN IDOL NETWORK // AREA STREAM // MUSIC MEDIA MIX // CHARACTER SIGNAL',
+  statsArtistsLabel: 'Artists',
+  statsModeLabel: 'Mode',
+  statsViewLabel: 'View',
+  statsViewValue: 'Stage',
+  statusLoadingLabel: 'Loading',
+  statusLiveLabel: 'Live',
+  statusPreviewLabel: 'Preview',
+  channelWorld: 'WORLD',
+  channelArea: 'AREA',
+  channelCharacter: 'CHARACTER',
+  channelMusic: 'MUSIC',
+  profileBpmLabel: 'BPM',
+  profileDebutLabel: 'Debut',
+  profileCollectionsLabel: 'Collections',
+  profileSignalLabel: 'Signal',
+  artistGoodsCta: '이 아티스트 굿즈 보기',
+  groupGoodsCta: '그룹 굿즈 보기',
+  indexEyebrow: 'Roster',
+  indexTitle: 'Artist Index',
+  indexGroupGoodsCta: '그룹 굿즈 보기',
+  pagerIndexLabel: 'All',
 }
 
 const defaultArtistPage: CmsPage = {
@@ -38,6 +92,7 @@ const defaultArtistPage: CmsPage = {
   accentColor: '#00d5ff',
   backgroundColor: '#070815',
   heroImageUrl: null,
+  copySettings: defaultArtistCopySettings,
 }
 
 const fallbackVisuals: ArtistVisual[] = [
@@ -172,6 +227,11 @@ function normalizeCmsArtist(artist: CmsArtistProfile, index: number): ArtistProf
     artistId: artist.artistId,
     name: artist.name,
     groupName: artist.groupName || 'Project Cyan',
+    groupKey: artist.groupKey || artist.groupName || 'Project Cyan',
+    groupSortOrder: artist.groupSortOrder ?? artist.sortOrder ?? index + 1,
+    groupVisible: artist.groupVisible !== false,
+    groupHeroImageUrl: hasDemoImageUrl(artist.groupHeroImageUrl) ? null : artist.groupHeroImageUrl || null,
+    groupSummary: artist.groupSummary || null,
     imageUrl: hasDemoImageUrl(artist.imageUrl) ? visual.imageUrl : artist.imageUrl || visual.imageUrl,
     lore: artist.lore || 'Artist profile and collection direction are ready for preview.',
     debutDate: artist.debutDate || 'Profile ready',
@@ -182,6 +242,7 @@ function normalizeCmsArtist(artist: CmsArtistProfile, index: number): ArtistProf
     bpm: bpmValues[index % bpmValues.length],
     signal: signalNames[index % signalNames.length],
     stationCode: `CY-${String(index + 1).padStart(2, '0')}`,
+    sortOrder: artist.sortOrder ?? index + 1,
   }
 }
 
@@ -193,6 +254,67 @@ function initials(name: string) {
     .map((part) => part.at(0))
     .join('')
     .toUpperCase()
+}
+
+function textOrDefault(value: string | null | undefined, fallback: string) {
+  const text = value?.trim()
+  return text ? text : fallback
+}
+
+function safePanelKey(value: string, fallback: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣ぁ-んァ-ン一-龥]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return normalized || fallback
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))]
+}
+
+function buildArtistGroupPanels(artists: ArtistProfile[], goodsGroups: ReturnType<typeof buildArtistGoodsGroups>): ArtistGroupPanel[] {
+  const groupedArtists = new Map<string, { groupName: string; artists: ArtistProfile[] }>()
+
+  artists.filter((artist) => artist.groupVisible !== false).forEach((artist) => {
+    const groupName = artist.groupName.trim() || 'Project Cyan'
+    const groupKey = (artist.groupKey?.trim() || groupName).toLowerCase()
+    const group = groupedArtists.get(groupKey) ?? { groupName, artists: [] }
+    group.artists.push(artist)
+    groupedArtists.set(groupKey, group)
+  })
+
+  const goodsGroupByName = new Map(goodsGroups.map((group) => [group.groupKey, group]))
+
+  return [...groupedArtists.entries()].map(([groupLookupKey, group], index) => {
+    const representative = group.artists[0]
+    const goodsGroup = goodsGroupByName.get(groupLookupKey)
+    const collections = uniqueStrings(group.artists.flatMap((artist) => artist.collections))
+    const groupKey = safePanelKey(groupLookupKey, `group-${index + 1}`)
+    const groupSortOrder = group.artists.reduce((minOrder, artist) => Math.min(minOrder, artist.groupSortOrder ?? artist.sortOrder ?? 999), 999)
+    const heroImageUrl = group.artists.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl || representative.imageUrl
+    const summary = group.artists.find((artist) => artist.groupSummary)?.groupSummary || representative.lore
+
+    return {
+      groupKey,
+      groupName: group.groupName,
+      artists: group.artists,
+      artistAnchors: group.artists.map((artist) => `artist-${artist.artistId}`),
+      goodsPath: goodsGroup?.goodsPath ?? createArtistGoodsPath(representative),
+      groupSortOrder,
+      heroImageUrl,
+      summary,
+      accentColor: representative.accentColor,
+      glowColor: representative.glowColor,
+      area: representative.area,
+      signal: uniqueStrings(group.artists.map((artist) => artist.signal)).slice(0, 3).join(' / ') || representative.signal,
+      debutDate: representative.debutDate,
+      collections: collections.length ? collections : [group.groupName],
+      stationCode: `GR-${String(index + 1).padStart(2, '0')}`,
+    }
+  }).sort((left, right) => left.groupSortOrder - right.groupSortOrder || left.groupName.localeCompare(right.groupName))
 }
 
 function ArtistPage() {
@@ -353,6 +475,8 @@ function ArtistPage() {
 
   const hasManagedContent = useMemo(() => cmsArtists.some((artist) => !isSeedPlaceholder(artist)), [cmsArtists])
   const artists = useMemo(() => (hasManagedContent ? cmsArtists.map(normalizeCmsArtist) : fallbackArtists), [cmsArtists, hasManagedContent])
+  const artistGoodsGroups = useMemo(() => buildArtistGoodsGroups(artists), [artists])
+  const artistGroups = useMemo(() => buildArtistGroupPanels(artists, artistGoodsGroups), [artists, artistGoodsGroups])
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -368,9 +492,24 @@ function ArtistPage() {
         return
       }
 
-      const targetIndex = Array.from(scrollerElement.children).findIndex((panel) => panel.id === hashId)
+      const panels = Array.from(scrollerElement.children)
+      const exactPanelIndex = panels.findIndex((panel) => panel.id === hashId)
+      const targetIndex = exactPanelIndex >= 0
+        ? exactPanelIndex
+        : panels.findIndex((panel) => {
+            if (!(panel instanceof HTMLElement)) {
+              return false
+            }
+
+            return (panel.dataset.artistAnchors ?? '').split(' ').includes(hashId)
+          })
       if (targetIndex < 0) {
         return
+      }
+
+      const targetPanel = panels[targetIndex]
+      if (targetPanel instanceof HTMLElement && targetPanel.id && targetPanel.id !== hashId) {
+        window.history.replaceState(null, '', `#${targetPanel.id}`)
       }
 
       scrollerElement.scrollTo({
@@ -397,15 +536,20 @@ function ArtistPage() {
       initialHashTimers.forEach((timerId) => window.clearTimeout(timerId))
       window.removeEventListener('hashchange', handleHashChange)
     }
-  }, [artists.length])
+  }, [artistGroups.length])
 
   const previewPage = applyPreviewTheme(cmsPage)
+  const artistCopySettings = {
+    ...defaultArtistCopySettings,
+    ...(previewPage.copySettings ?? {}),
+  }
+  const copy = (key: keyof typeof defaultArtistCopySettings) => textOrDefault(artistCopySettings[key], defaultArtistCopySettings[key])
   const displayPage = {
     ...previewPage,
-    eyebrow: /^(cyan|sm universe store)$/i.test(previewPage.eyebrow) ? defaultArtistPage.eyebrow : previewPage.eyebrow,
-    title: /^(artists|cyan idol frequencies)$/i.test(previewPage.title) ? defaultArtistPage.title : previewPage.title,
-    summaryTitle: /^artist universe$/i.test(previewPage.summaryTitle) ? defaultArtistPage.summaryTitle : previewPage.summaryTitle,
-    summaryBody: /^showing artist profiles$/i.test(previewPage.summaryBody) ? defaultArtistPage.summaryBody : previewPage.summaryBody || defaultArtistPage.summaryBody,
+    eyebrow: /^(cyan|sm universe store)$/i.test(previewPage.eyebrow) ? defaultArtistPage.eyebrow : textOrDefault(previewPage.eyebrow, defaultArtistPage.eyebrow),
+    title: /^(artists|cyan idol frequencies)$/i.test(previewPage.title) ? defaultArtistPage.title : textOrDefault(previewPage.title, defaultArtistPage.title),
+    summaryTitle: /^artist universe$/i.test(previewPage.summaryTitle) ? defaultArtistPage.summaryTitle : textOrDefault(previewPage.summaryTitle, defaultArtistPage.summaryTitle),
+    summaryBody: /^showing artist profiles$/i.test(previewPage.summaryBody) ? defaultArtistPage.summaryBody : textOrDefault(previewPage.summaryBody, defaultArtistPage.summaryBody),
     primaryColor: previewPage.primaryColor === '#111111' ? defaultArtistPage.primaryColor : previewPage.primaryColor,
     accentColor: previewPage.accentColor === '#2f6f64' ? defaultArtistPage.accentColor : previewPage.accentColor,
     backgroundColor: previewPage.backgroundColor === '#ffffff' ? defaultArtistPage.backgroundColor : previewPage.backgroundColor,
@@ -417,7 +561,11 @@ function ArtistPage() {
     ...previewTypographyStyle(),
   } as CSSProperties
 
-  const statusLabel = status === 'loading' ? 'Loading' : hasManagedContent ? 'Live' : 'Preview'
+  const statusLabel = status === 'loading'
+    ? copy('statusLoadingLabel')
+    : hasManagedContent
+      ? copy('statusLiveLabel')
+      : copy('statusPreviewLabel')
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
 
   return (
@@ -427,13 +575,13 @@ function ArtistPage() {
       <div className="cyan-led-frame" aria-hidden="true" />
       <nav className="artist-floating-nav" aria-label="Artist navigation">
         <Link to="/" aria-label="Home">
-          Home
+          {copy('navHome')}
         </Link>
         <Link to="/artists" aria-current="page">
-          Artists
+          {copy('navArtists')}
         </Link>
-        <Link to="/goods">Goods</Link>
-        <CartNavLink />
+        <Link to="/goods">{copy('navGoods')}</Link>
+        <CartNavLink label={copy('navCart')} />
       </nav>
 
       <div className="artist-menu-wrap">
@@ -448,27 +596,27 @@ function ArtistPage() {
           <span aria-hidden="true" />
         </button>
         <nav className="artist-menu" id="artist-menu" data-open={isArtistMenuOpen} aria-label="Artist navigation">
-          <Link to="/" onClick={() => setIsArtistMenuOpen(false)}>Home</Link>
-          <Link to="/artists" aria-current="page" onClick={() => setIsArtistMenuOpen(false)}>Artists</Link>
-          <Link to="/goods" onClick={() => setIsArtistMenuOpen(false)}>Goods</Link>
-          <CartNavLink />
+          <Link to="/" onClick={() => setIsArtistMenuOpen(false)}>{copy('navHome')}</Link>
+          <Link to="/artists" aria-current="page" onClick={() => setIsArtistMenuOpen(false)}>{copy('navArtists')}</Link>
+          <Link to="/goods" onClick={() => setIsArtistMenuOpen(false)}>{copy('navGoods')}</Link>
+          <CartNavLink label={copy('navCart')} />
         </nav>
       </div>
 
       <nav className="artist-pager" aria-label="Artist pages">
         <a href="#artist-landing">00</a>
-        {artists.map((artist, index) => (
-          <a href={`#artist-${artist.artistId}`} key={artist.artistId}>
+        {artistGroups.map((group, index) => (
+          <a href={`#artist-${index + 1}`} key={group.groupKey}>
             {String(index + 1).padStart(2, '0')}
           </a>
         ))}
-        <a href="#artist-index">All</a>
+        <a href="#artist-index">{copy('pagerIndexLabel')}</a>
       </nav>
 
       <section className="artist-scroll" ref={scrollRef} aria-label="Artist horizontal pages">
         <section className="artist-panel artist-intro" id="artist-landing">
           <div className="artist-broadcast-strip" aria-hidden="true">
-            CYAN IDOL NETWORK // AREA STREAM // MUSIC MEDIA MIX // CHARACTER SIGNAL
+            {copy('broadcastStrip')}
           </div>
           <div className="artist-intro-copy">
             <p className="artist-eyebrow">{displayPage.eyebrow}</p>
@@ -477,109 +625,142 @@ function ArtistPage() {
             <p>{displayPage.summaryBody}</p>
             <dl className="artist-stats" aria-label="Artist summary">
               <div>
-                <dt>Artists</dt>
+                <dt>{copy('statsArtistsLabel')}</dt>
                 <dd>{artists.length}</dd>
               </div>
               <div>
-                <dt>Mode</dt>
+                <dt>{copy('statsModeLabel')}</dt>
                 <dd>{statusLabel}</dd>
               </div>
               <div>
-                <dt>View</dt>
-                <dd>Stage</dd>
+                <dt>{copy('statsViewLabel')}</dt>
+                <dd>{copy('statsViewValue')}</dd>
               </div>
             </dl>
             <div className="artist-channel-row" aria-label="Broadcast channels">
-              <span>WORLD</span>
-              <span>AREA</span>
-              <span>CHARACTER</span>
-              <span>MUSIC</span>
+              <span>{copy('channelWorld')}</span>
+              <span>{copy('channelArea')}</span>
+              <span>{copy('channelCharacter')}</span>
+              <span>{copy('channelMusic')}</span>
             </div>
           </div>
           <div className="artist-intro-gallery" aria-label="Artist visuals">
-            {artists.slice(0, 4).map((artist, index) => (
-              <a className="artist-gallery-tile" href={`#artist-${artist.artistId}`} key={artist.artistId} data-featured={index === 0 ? 'true' : undefined}>
-                {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <span>{initials(artist.name)}</span>}
-                <small>{artist.area}</small>
-                <strong>{artist.name}</strong>
-              </a>
-            ))}
+            {artistGroups.slice(0, 4).map((group, index) => {
+              return (
+                <a className="artist-gallery-tile" href={`#artist-${index + 1}`} key={group.groupKey} data-featured={index === 0 ? 'true' : undefined}>
+                  {group.heroImageUrl ? <img src={group.heroImageUrl} alt={group.groupName} /> : <span>{initials(group.groupName)}</span>}
+                  <small>Group</small>
+                  <strong>{group.groupName}</strong>
+                </a>
+              )
+            })}
           </div>
         </section>
 
-        {artists.map((artist, index) => (
-          <article
-            className="artist-panel artist-profile"
-            id={`artist-${artist.artistId}`}
-            key={artist.artistId}
-            style={
-              {
-                '--artist-profile-accent': artist.accentColor,
-                '--artist-profile-glow': artist.glowColor,
-              } as CSSProperties
-            }
-          >
-            <aside className="artist-profile-frequency" aria-label={`${artist.name} frequency`}>
-              <span>{artist.stationCode}</span>
-              <strong>{artist.bpm}</strong>
-              <small>BPM</small>
-            </aside>
-            <div className="artist-profile-visual">
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <strong>{initials(artist.name)}</strong>}
-              <div className="artist-visual-caption">
-                <small>{artist.stationCode}</small>
-                <strong>{artist.area}</strong>
-              </div>
-            </div>
-            <div className="artist-profile-copy">
-              <p className="artist-eyebrow">{artist.area}</p>
-              <h2 className="artist-profile-name">
-                <span className="artist-profile-name-faded">{artist.name}</span>
-                <span className="artist-profile-name-solid" aria-hidden="true">
-                  {artist.name}
-                </span>
-              </h2>
-              <div className="artist-signal-card">
-                <span>{artist.signal}</span>
-                <strong>{artist.groupName}</strong>
-              </div>
-              <p>{artist.lore}</p>
-              <dl className="artist-profile-meta" aria-label={`${artist.name} profile`}>
-                <div>
-                  <dt>Debut</dt>
-                  <dd>{artist.debutDate}</dd>
+        {artistGroups.map((group, index) => {
+          return (
+            <article
+              className="artist-panel artist-profile artist-group-profile"
+              id={`artist-${index + 1}`}
+              key={group.groupKey}
+              data-artist-anchors={[`artist-group-${group.groupKey}`, ...group.artistAnchors].join(' ')}
+              style={
+                {
+                  '--artist-profile-accent': group.accentColor,
+                  '--artist-profile-glow': group.glowColor,
+                } as CSSProperties
+              }
+            >
+              <aside className="artist-profile-frequency" aria-label={`${group.groupName} group`}>
+                <span>{group.stationCode}</span>
+                <strong>{String(index + 1).padStart(2, '0')}</strong>
+                <small>Group</small>
+              </aside>
+              <div className="artist-profile-copy artist-group-copy">
+                <p className="artist-eyebrow">{group.area}</p>
+                <h2 className="artist-profile-name">
+                  <span className="artist-profile-name-faded">{group.groupName}</span>
+                  <span className="artist-profile-name-solid" aria-hidden="true">
+                    {group.groupName}
+                  </span>
+                </h2>
+                <div className="artist-signal-card">
+                  <span>{String(index + 1).padStart(2, '0')} / {group.stationCode}</span>
+                  <strong>{group.artists.map((artist) => artist.name).join(' · ')}</strong>
                 </div>
-                <div>
-                  <dt>Collections</dt>
-                  <dd>{artist.collections.length}</dd>
+                <p>{group.summary}</p>
+                <dl className="artist-profile-meta" aria-label={`${group.groupName} profile`}>
+                  <div>
+                    <dt>{copy('profileDebutLabel')}</dt>
+                    <dd>{group.debutDate}</dd>
+                  </div>
+                  <div>
+                    <dt>{copy('profileSignalLabel')}</dt>
+                    <dd>{group.signal}</dd>
+                  </div>
+                </dl>
+                <div className="artist-collection-row" aria-label={`${group.groupName} collections`}>
+                  {group.collections.slice(0, 8).map((collection) => (
+                    <span key={collection}>{collection}</span>
+                  ))}
                 </div>
-                <div>
-                  <dt>Signal</dt>
-                  <dd>{artist.signal}</dd>
+                <div className="artist-shop-actions" aria-label={`${group.groupName} goods links`}>
+                  <Link className="artist-shop-link artist-shop-link-primary" to={group.goodsPath}>
+                    {copy('groupGoodsCta')}
+                  </Link>
                 </div>
-              </dl>
-              <div className="artist-collection-row" aria-label={`${artist.name} collections`}>
-                {artist.collections.map((collection) => (
-                  <span key={collection}>{collection}</span>
-                ))}
               </div>
-            </div>
-          </article>
-        ))}
+              <div className="artist-group-stage" aria-label={`${group.groupName} group visual`}>
+                <div className="artist-group-roster" aria-label={`${group.groupName} artist cards`}>
+                  {(group.artists.length > 1 ? group.artists : [{
+                    ...group.artists[0],
+                    imageUrl: group.heroImageUrl || group.artists[0]?.imageUrl,
+                    name: group.groupName,
+                    stationCode: group.stationCode,
+                  }]).map((artist, artistIndex) => (
+                    <article
+                      className="artist-group-card"
+                      id={`artist-card-${artist.artistId}`}
+                      key={`${artist.artistId}-${artistIndex}`}
+                      data-featured={artistIndex === 0 ? 'true' : undefined}
+                    >
+                      <div className="artist-group-card-image">
+                        {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <strong>{initials(artist.name)}</strong>}
+                      </div>
+                      <span className="artist-group-card-number">{String(index + 1).padStart(2, '0')}</span>
+                      <div className="artist-group-card-copy">
+                        <small>{artist.stationCode}</small>
+                        <h3>{artist.name}</h3>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </article>
+          )
+        })}
 
         <section className="artist-panel artist-index" id="artist-index">
           <div>
-            <p className="artist-eyebrow">Roster</p>
-            <h2>Artist Index</h2>
+            <p className="artist-eyebrow">{copy('indexEyebrow')}</p>
+            <h2>{copy('indexTitle')}</h2>
           </div>
           <div className="artist-index-list">
-            {artists.map((artist, index) => (
-              <a href={`#artist-${artist.artistId}`} key={artist.artistId}>
+            {artistGroups.map((group, index) => (
+              <a href={`#artist-${index + 1}`} key={group.groupKey}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{artist.name}</strong>
-                <small>{artist.area} / {artist.signal}</small>
+                <strong>{group.groupName}</strong>
+                <small>{group.artists.map((artist) => artist.name).join(' / ')}</small>
               </a>
+            ))}
+          </div>
+          <div className="artist-group-goods-list" aria-label="Group goods links">
+            {artistGoodsGroups.map((group) => (
+              <Link to={group.goodsPath} key={group.groupKey}>
+                <span>{String(group.artistNames.length).padStart(2, '0')}</span>
+                <strong>{group.groupName}</strong>
+                <small>{copy('indexGroupGoodsCta')}</small>
+              </Link>
             ))}
           </div>
         </section>

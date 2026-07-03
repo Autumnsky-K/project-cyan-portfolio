@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../api/supabaseClient'
+import { fetchDigitalLibrary } from '../../api/digitalLibrary'
 import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
@@ -139,6 +140,7 @@ const MY_PAGE_DUMMY_DATA = {
       description: '월별 콘셉트 컷이 담긴 캘린더',
     },
   ],
+  digitalLibrary: [],
   payments: [
     {
       paymentId: 401,
@@ -572,6 +574,29 @@ async function getMyPageGoodsActivity(memberId) {
   }
 }
 
+function digitalLibraryItemToDashboardItem(item) {
+  const grantedAt = formatDateLabel(item.grantedAt)
+  const nextDownloadAt = formatDateLabel(item.nextDownloadAvailableAt)
+
+  return {
+    entitlementId: item.entitlementId,
+    goodsId: item.goodsId,
+    name: item.name,
+    price: Number(item.price ?? 0),
+    imageUrl: item.imageUrl ?? '',
+    status: item.downloadAvailable ? '다운로드 가능' : '다운로드 대기',
+    description: [
+      item.artistName,
+      grantedAt ? `${grantedAt} 구매` : null,
+      item.downloadAvailable
+        ? '마이페이지에서 즉시 다운로드'
+        : nextDownloadAt
+          ? `${nextDownloadAt}부터 재다운로드`
+          : '등록된 다운로드 파일 확인 필요',
+    ].filter(Boolean).join(' · '),
+  }
+}
+
 async function getMemberGradeFromTable(userId) {
   const { data, error } = await supabase
     .from('member')
@@ -949,9 +974,13 @@ export async function getMyPageSummary() {
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
   const memberId = await getMemberId(member.memberId ?? member.userId)
-  const [orders, goodsActivity] = await Promise.all([
+  const [orders, goodsActivity, digitalLibrary] = await Promise.all([
     getMyPageOrders(memberId),
     getMyPageGoodsActivity(memberId),
+    fetchDigitalLibrary().catch((error) => {
+      console.warn(error)
+      return []
+    }),
   ])
   const passwordHistory = readStoredJson(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
@@ -965,6 +994,7 @@ export async function getMyPageSummary() {
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
     orders,
+    digitalLibrary: digitalLibrary.map(digitalLibraryItemToDashboardItem),
     payments: MY_PAGE_DUMMY_DATA.payments,
     refunds: MY_PAGE_DUMMY_DATA.refunds,
     productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,

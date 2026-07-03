@@ -8,6 +8,26 @@ export type VtuberDisplayState =
   | 'speaking'
   | 'error'
 
+export type VtuberCharacterRenderStatus = 'loading' | 'ready' | 'fallback'
+
+export type VtuberConversationRole = 'assistant' | 'user'
+
+export const VTUBER_MOTION_KEYS = [
+  'idle',
+  'wave',
+  'point',
+  'nod',
+  'shake-head',
+] as const
+
+export type VtuberMotionKey = (typeof VTUBER_MOTION_KEYS)[number]
+
+export type VtuberConversationMessage = {
+  id: string
+  role: VtuberConversationRole
+  text: string
+}
+
 export type VtuberCharacterConfig = {
   id: string
   name: string
@@ -91,10 +111,16 @@ export type VtuberAuthReason =
   | 'persistence'
   | 'guestLimit'
 
+export type VtuberBehaviorMetadata = {
+  motionKey?: VtuberMotionKey
+  source?: string
+}
+
 export type VtuberServerMetadata = {
   recommendations?: VtuberRecommendationMetadata[]
   authRequired?: boolean
   authReason?: VtuberAuthReason
+  behavior?: VtuberBehaviorMetadata
   loginPath?: '/login'
   [key: string]: unknown
 }

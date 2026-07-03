@@ -6,13 +6,14 @@ import './cart-nav.css'
 type CartNavLinkProps = {
   current?: boolean
   label?: string
+  onClick?: () => void
 }
 
 function formatPrice(value: number) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
 }
 
-function CartNavLink({ current = false, label = 'Cart' }: CartNavLinkProps) {
+function CartNavLink({ current = false, label = 'Cart', onClick }: CartNavLinkProps) {
   const { isAuthenticated, items } = useCart()
   const previewItems = items.slice(0, 3)
   const hiddenItemCount = Math.max(items.length - previewItems.length, 0)
@@ -24,6 +25,7 @@ function CartNavLink({ current = false, label = 'Cart' }: CartNavLinkProps) {
         aria-current={current ? 'page' : undefined}
         className="cart-nav-link"
         to="/cart"
+        onClick={onClick}
       >
         {label}{items.length > 0 ? ` ${items.length}` : ''}
       </Link>

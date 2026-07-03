@@ -33,6 +33,7 @@ function CartPanel({
           {cartItems.map((item) => {
             const cartItemKey = item.cartItemKey ?? item.id
             const imageUrl = item.image ?? item.imageUrl ?? ''
+            const isDigitalItem = item.fulfillmentType === 'DIGITAL'
 
             return (
               <li key={cartItemKey}>
@@ -49,11 +50,11 @@ function CartPanel({
                   )}
                 </div>
                 <div className="cart-controls">
-                  <button type="button" onClick={() => onDecreaseQuantity(cartItemKey)}>
+                  <button type="button" disabled={isDigitalItem} onClick={() => onDecreaseQuantity(cartItemKey)}>
                     -
                   </button>
                   <span>{item.quantity}</span>
-                  <button type="button" onClick={() => onIncreaseQuantity(cartItemKey)}>
+                  <button type="button" disabled={isDigitalItem} onClick={() => onIncreaseQuantity(cartItemKey)}>
                     +
                   </button>
                   <button type="button" onClick={() => onRemoveFromCart(cartItemKey)}>

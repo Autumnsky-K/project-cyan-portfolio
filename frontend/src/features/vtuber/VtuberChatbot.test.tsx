@@ -12,18 +12,21 @@ const mocks = vi.hoisted(() => ({
     authUserId: null as string | null,
     isAuthenticated: false,
   },
+  actionBatchId: 0,
+  latestText: '응답',
   metadata: {} as Record<string, unknown>,
   getSession: vi.fn(),
+  sendText: vi.fn(() => true),
 }))
 
 vi.mock('./useVtuberWebSocket', () => ({
   useVtuberWebSocket: () => ({
-    actionBatchId: 0,
+    actionBatchId: mocks.actionBatchId,
     actions: [],
     connectionStatus: 'open',
-    latestText: '응답',
+    latestText: mocks.latestText,
     metadata: mocks.metadata,
-    sendText: vi.fn(() => true),
+    sendText: mocks.sendText,
   }),
 }))
 
@@ -54,10 +57,39 @@ vi.mock('../../api/supabaseClient', () => ({
 vi.mock('../../shared/components/VtuberChatbotShell', () => ({
   default: ({
     authNotice,
+    characterBubbleText,
+    messages,
+    motionKey,
+    motionTriggerId,
+    onSendMessage,
   }: {
     authNotice?: { message: string; actionLabel: string; onAction: () => void } | null
+    characterBubbleText: string
+    messages?: Array<{ role: string; text: string }>
+    motionKey?: string | null
+    motionTriggerId?: number
+    onSendMessage: (message: string) => boolean | Promise<boolean>
   }) => (
     <div>
+      <p aria-label="mock character bubble">{characterBubbleText}</p>
+      <p aria-label="mock motion key">{motionKey ?? 'none'}</p>
+      <p aria-label="mock motion trigger">{motionTriggerId ?? 0}</p>
+      <div aria-label="mock conversation messages">
+        {messages?.map((message) => (
+          <p key={`${message.role}:${message.text}`}>
+            {message.role}:{message.text}
+          </p>
+        ))}
+      </div>
+      <button
+        type="button"
+        aria-label="mock send message"
+        onClick={() => {
+          void onSendMessage('테스트 질문')
+        }}
+      >
+        Send mock
+      </button>
       {authNotice && (
         <div>
           <p>{authNotice.message}</p>
@@ -89,8 +121,54 @@ describe('VtuberChatbot auth notice', () => {
       authUserId: null,
       isAuthenticated: false,
     }
+    mocks.actionBatchId = 0
+    mocks.latestText = '응답'
     mocks.metadata = {}
     mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    mocks.sendText.mockClear()
+    mocks.sendText.mockReturnValue(true)
+  })
+
+  it('passes chat history messages to the shell and appends sent user messages', async () => {
+    renderChatbot()
+
+    expect(screen.getByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock send message' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('user:테스트 질문')).toBeTruthy()
+    })
+    expect(mocks.sendText).toHaveBeenCalledWith('테스트 질문', null)
+  })
+
+  it('sends the same assistant response to the character bubble and chat history', async () => {
+    const recommendationText = '1. 디지털 굿즈 테스트는 루루 보이스와 잘 맞아요. 2. Hiena Voice Pack도 함께 추천드릴게요.'
+    mocks.actionBatchId = 1
+    mocks.latestText = recommendationText
+    renderChatbot()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock character bubble').textContent).toBe(recommendationText)
+    })
+    expect(screen.getByText(`assistant:${recommendationText}`)).toBeTruthy()
+  })
+
+  it('passes response behavior motion metadata to the shell', async () => {
+    mocks.actionBatchId = 2
+    mocks.latestText = '장바구니에 담았어요.'
+    mocks.metadata = {
+      behavior: {
+        motionKey: 'nod',
+        source: 'llm',
+      },
+    }
+    renderChatbot()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock motion key').textContent).toBe('nod')
+    })
+    expect(screen.getByLabelText('mock motion trigger').textContent).toBe('2')
   })
 
   it.each([

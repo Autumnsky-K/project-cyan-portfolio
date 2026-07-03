@@ -7,7 +7,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.projectcyan.goods.DigitalGoodsEntitlementGrantService;
 import com.projectcyan.goods.Goods;
+import com.projectcyan.goods.GoodsFulfillmentType;
 import com.projectcyan.goods.GoodsRepository;
 import com.projectcyan.goods.GoodsStock;
 import com.projectcyan.goods.GoodsStockRepository;
@@ -25,6 +27,7 @@ public class CartService {
 	private final CartItemRepository cartItemRepository;
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
+	private final DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService;
 	private final Clock clock;
 
 	@Autowired
@@ -32,9 +35,10 @@ public class CartService {
 		CartRepository cartRepository,
 		CartItemRepository cartItemRepository,
 		GoodsRepository goodsRepository,
-		GoodsStockRepository goodsStockRepository
+		GoodsStockRepository goodsStockRepository,
+		DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService
 	) {
-		this(cartRepository, cartItemRepository, goodsRepository, goodsStockRepository, Clock.systemUTC());
+		this(cartRepository, cartItemRepository, goodsRepository, goodsStockRepository, digitalGoodsEntitlementGrantService, Clock.systemUTC());
 	}
 
 	CartService(
@@ -42,12 +46,14 @@ public class CartService {
 		CartItemRepository cartItemRepository,
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository,
+		DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService,
 		Clock clock
 	) {
 		this.cartRepository = cartRepository;
 		this.cartItemRepository = cartItemRepository;
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
+		this.digitalGoodsEntitlementGrantService = digitalGoodsEntitlementGrantService;
 		this.clock = clock;
 	}
 
@@ -70,10 +76,10 @@ public class CartService {
 		int quantity = normalizeQuantity(request == null ? null : request.quantity());
 		Goods goods = goodsRepository.findById(goodsId == null ? -1L : goodsId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Goods not found."));
-		int stockCount = stockCount(goods.getGoodsId());
-		PurchaseAvailability availability = purchaseAvailability(goods, stockCount);
+		int stockCount = stockCount(goods);
+		PurchaseAvailability availability = purchaseAvailability(memberId, goods, stockCount);
 		if (!"AVAILABLE".equals(availability.state())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Goods cannot be added to cart.");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, availability.message());
 		}
 		validateStock(quantity, stockCount);
 
@@ -95,10 +101,10 @@ public class CartService {
 		int quantity = normalizeQuantity(request == null ? null : request.quantity());
 		CartItem cartItem = cartItemRepository.findByCartMemberIdAndCartItemId(memberId, cartItemId)
 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cart item not found."));
-		int stockCount = stockCount(cartItem.getGoods().getGoodsId());
-		PurchaseAvailability availability = purchaseAvailability(cartItem.getGoods(), stockCount);
+		int stockCount = stockCount(cartItem.getGoods());
+		PurchaseAvailability availability = purchaseAvailability(memberId, cartItem.getGoods(), stockCount);
 		if (!"AVAILABLE".equals(availability.state())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Goods cannot be purchased.");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, availability.message());
 		}
 		validateStock(quantity, stockCount);
 		cartItem.updateQuantity(quantity, clock.instant());
@@ -128,7 +134,7 @@ public class CartService {
 				return CartItemResponse.from(
 					cartItem,
 					stockCount,
-					purchaseAvailability(cartItem.getGoods(), stockCount)
+					purchaseAvailability(cartItem.getCart().getMemberId(), cartItem.getGoods(), stockCount)
 				);
 			})
 			.toList();
@@ -138,14 +144,30 @@ public class CartService {
 		List<Long> goodsIds = cartItems.stream()
 			.map(cartItem -> cartItem.getGoods().getGoodsId())
 			.toList();
-		return goodsStockRepository.findByGoodsIdIn(goodsIds).stream()
+		Map<Long, Integer> stockCountsByGoodsId = goodsStockRepository.findByGoodsIdIn(goodsIds).stream()
 			.collect(Collectors.toMap(GoodsStock::getGoodsId, stock -> stock.getCurrentStock() == null ? 0 : stock.getCurrentStock()));
+		return cartItems.stream()
+			.collect(Collectors.toMap(
+				cartItem -> cartItem.getGoods().getGoodsId(),
+				cartItem -> effectiveStockCount(
+					cartItem.getGoods(),
+					stockCountsByGoodsId.getOrDefault(cartItem.getGoods().getGoodsId(), 0)
+				),
+				(first, second) -> first
+			));
 	}
 
-	private int stockCount(Long goodsId) {
-		return goodsStockRepository.findById(goodsId)
+	private int stockCount(Goods goods) {
+		if (isDigitalGoods(goods)) {
+			return 1;
+		}
+		return goodsStockRepository.findById(goods.getGoodsId())
 			.map(stock -> stock.getCurrentStock() == null ? 0 : stock.getCurrentStock())
 			.orElse(0);
+	}
+
+	private int effectiveStockCount(Goods goods, int stockCount) {
+		return isDigitalGoods(goods) ? 1 : stockCount;
 	}
 
 	private int normalizeQuantity(Integer quantity) {
@@ -161,10 +183,13 @@ public class CartService {
 		}
 	}
 
-	private PurchaseAvailability purchaseAvailability(Goods goods, int stockCount) {
+	private PurchaseAvailability purchaseAvailability(Long memberId, Goods goods, int stockCount) {
 		String salesStatus = goods.getSalesStatus() == null
 			? ""
 			: goods.getSalesStatus().trim().toUpperCase(Locale.ROOT);
+		if (isDigitalGoods(goods) && digitalGoodsEntitlementGrantService.hasActiveEntitlement(memberId, goods.getGoodsId())) {
+			return new PurchaseAvailability("UNAVAILABLE", "이미 구매한 디지털 상품입니다. 마이페이지의 디지털 제품 저장소에서 다운로드해 주세요.");
+		}
 		if ("UPCOMING".equals(salesStatus)) {
 			return new PurchaseAvailability("UPCOMING", "판매 시작 전입니다.");
 		}
@@ -178,5 +203,11 @@ public class CartService {
 			return new PurchaseAvailability("SOLD_OUT", "품절된 상품입니다.");
 		}
 		return new PurchaseAvailability("AVAILABLE", "구매 가능한 상품입니다.");
+	}
+
+	private boolean isDigitalGoods(Goods goods) {
+		return goods != null
+			&& goods.getCategory() != null
+			&& goods.getCategory().getFulfillmentType() == GoodsFulfillmentType.DIGITAL;
 	}
 }

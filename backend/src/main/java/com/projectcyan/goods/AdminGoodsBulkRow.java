@@ -8,10 +8,19 @@ public record AdminGoodsBulkRow(
 	String artistLabel,
 	Long categoryId,
 	String categoryLabel,
+	String fulfillmentType,
 	String salesStatus,
 	String salesStatusLabel,
 	Integer stockCount,
 	String imageUrl,
-	String tagsText
+	String tagsText,
+	Integer activeDigitalAssetCount
 ) {
+	public boolean digital() {
+		return "DIGITAL".equals(fulfillmentType);
+	}
+
+	public boolean missingActiveDigitalAsset() {
+		return digital() && (activeDigitalAssetCount == null || activeDigitalAssetCount <= 0);
+	}
 }

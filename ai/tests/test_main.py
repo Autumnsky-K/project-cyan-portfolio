@@ -1019,6 +1019,87 @@ def test_catalog_grounding_restores_recent_candidates_from_client_context():
     }
 
 
+def test_catalog_grounding_adds_single_recent_candidate_for_deictic_cart_follow_up():
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=FakeGoodsCatalogClient(
+            [{"goodsId": 1005, "name": "Tour Poster A2"}]
+        ),
+    )
+    provider.build_response("Artist C 포스터 추천해줘")
+
+    response = provider.build_response("이거 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "방금 추천한 상품을 장바구니에 담을게요.",
+        "actions": [{"type": "addToCart", "goodsId": "1005"}],
+    }
+
+
+def test_catalog_grounding_adds_current_search_candidate_without_llm_action():
+    class NoActionProvider:
+        def build_response(self, text, context=None):
+            return FullTextMessage(text="추천 상품을 찾았어요.", actions=[])
+
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=NoActionProvider(),
+        catalog_client=FakeGoodsCatalogClient(
+            [{"goodsId": 1007, "name": "Photocard Binder"}]
+        ),
+    )
+
+    response = provider.build_response("포토카드 장바구니에 담아줘")
+
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "Photocard Binder을 장바구니에 담을게요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/1007"},
+            {"type": "highlight", "selector": "[data-goods-id='1007']"},
+            {"type": "addToCart", "goodsId": "1007"},
+        ],
+        "metadata": {
+            "recommendations": [
+                {
+                    "goodsId": 1007,
+                    "recommendationReason": None,
+                    "rankOrder": 0,
+                }
+            ]
+        },
+    }
+
+
+def test_catalog_grounding_uses_deterministic_cart_selection_over_llm_extra_actions():
+    class OvereagerProvider:
+        def build_response(self, text, context=None):
+            return FullTextMessage(
+                text="여러 상품을 담을게요.",
+                actions=[
+                    AddToCartAction(goodsId="1005"),
+                    AddToCartAction(goodsId="1006"),
+                    AddToCartAction(goodsId="1007"),
+                ],
+            )
+
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=OvereagerProvider(),
+        catalog_client=FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES),
+    )
+
+    response = provider.build_response("포토카드 장바구니에 담아줘")
+
+    assert response.model_dump()["text"] == "Tour Poster A2을 장바구니에 담을게요."
+    assert response.model_dump()["actions"] == [
+        {
+            "type": "showRecommendations",
+            "goodsIds": ["1005", "1006", "1007"],
+        },
+        {"type": "addToCart", "goodsId": "1005"},
+    ]
+
+
 @pytest.mark.parametrize(
     "text",
     ["굿즈 리스트로 돌아가줘", "상품 목록 보여줘", "굿즈 페이지로 가줘"],
@@ -2653,7 +2734,7 @@ def test_client_ws_guest_limit_blocks_eleventh_provider_call(monkeypatch):
     assert blocked["metadata"]["authReason"] == "accountPersonalization"
     assert invalid["text"] == "입력 내용을 확인해주세요."
     assert hook_blocked["text"] == "입력이 너무 길어요."
-    assert len(provider.calls) == GUEST_REQUEST_LIMIT
+    assert len(provider.calls) == GUEST_REQUEST_LIMIT * 2
     assert limited == {
         "type": "full-text",
         "text": "게스트 채팅 이용 횟수를 모두 사용했어요. 로그인하고 계속 대화해 주세요.",

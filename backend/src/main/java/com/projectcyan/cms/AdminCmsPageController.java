@@ -66,7 +66,9 @@ public class AdminCmsPageController {
 
 	@GetMapping("/admin/content/artists")
 	public String editArtists(Model model) {
-		model.addAttribute("page", cmsContentService.findPage("artists"));
+		CmsPageResponse page = cmsContentService.findPage("artists");
+		model.addAttribute("page", page);
+		model.addAttribute("artistCopySettings", artistCopySettings(page));
 		model.addAttribute("artists", cmsContentService.findArtists(true));
 		addCmsStorageModel(model);
 		return "admin/content/artists";
@@ -86,6 +88,11 @@ public class AdminCmsPageController {
 		@RequestParam(required = false) Long artistId,
 		@RequestParam(required = false) String name,
 		@RequestParam(required = false) String groupName,
+		@RequestParam(required = false) String groupKey,
+		@RequestParam(required = false) Integer groupSortOrder,
+		@RequestParam(required = false, defaultValue = "true") Boolean groupVisible,
+		@RequestParam(required = false) String groupHeroImageUrl,
+		@RequestParam(required = false) String groupSummary,
 		@RequestParam(required = false) String imageUrl,
 		@RequestParam(required = false) String lore,
 		@RequestParam(required = false) String debutDate,
@@ -103,6 +110,11 @@ public class AdminCmsPageController {
 				artistId,
 				name,
 				groupName,
+				groupKey,
+				groupSortOrder,
+				groupVisible,
+				groupHeroImageUrl,
+				groupSummary,
 				imageUrl,
 				lore,
 				debutDate,
@@ -126,6 +138,11 @@ public class AdminCmsPageController {
 		@RequestParam(required = false) List<String> artistId,
 		@RequestParam(required = false) List<String> name,
 		@RequestParam(required = false) List<String> groupName,
+		@RequestParam(required = false) List<String> groupKey,
+		@RequestParam(required = false) List<String> groupSortOrder,
+		@RequestParam(required = false) List<String> groupVisible,
+		@RequestParam(required = false) List<String> groupHeroImageUrl,
+		@RequestParam(required = false) List<String> groupSummary,
 		@RequestParam(required = false) List<String> imageUrl,
 		@RequestParam(required = false) List<String> lore,
 		@RequestParam(required = false) List<String> debutDate,
@@ -147,6 +164,11 @@ public class AdminCmsPageController {
 				longStringAt(artistId, index),
 				valueAt(name, index),
 				valueAt(groupName, index),
+				valueAt(groupKey, index),
+				intStringAt(groupSortOrder, index, 999),
+				Boolean.parseBoolean(valueAt(groupVisible, index, "true")),
+				valueAt(groupHeroImageUrl, index),
+				valueAt(groupSummary, index),
 				valueAt(imageUrl, index),
 				valueAt(lore, index),
 				valueAt(debutDate, index),
@@ -176,7 +198,7 @@ public class AdminCmsPageController {
 		@RequestParam Map<String, String> requestParameters,
 		RedirectAttributes redirectAttributes
 	) {
-		cmsContentService.savePage("artists", pageRequestWithCopySettings(request, copySettings(requestParameters)));
+		cmsContentService.savePage("artists", pageRequestWithCopySettings(request, artistCopySettings(requestParameters)));
 		redirectAttributes.addFlashAttribute("notice", "아티스트 화면 내용이 적용되었습니다.");
 		return "redirect:/admin/content/artists";
 	}
@@ -186,6 +208,11 @@ public class AdminCmsPageController {
 		@RequestParam(required = false) List<String> artistId,
 		@RequestParam(required = false) List<String> name,
 		@RequestParam(required = false) List<String> groupName,
+		@RequestParam(required = false) List<String> groupKey,
+		@RequestParam(required = false) List<String> groupSortOrder,
+		@RequestParam(required = false) List<String> groupVisible,
+		@RequestParam(required = false) List<String> groupHeroImageUrl,
+		@RequestParam(required = false) List<String> groupSummary,
 		@RequestParam(required = false) List<String> imageUrl,
 		@RequestParam(required = false) List<String> lore,
 		@RequestParam(required = false) List<String> debutDate,
@@ -194,7 +221,22 @@ public class AdminCmsPageController {
 		@RequestParam(required = false) List<String> visible,
 		RedirectAttributes redirectAttributes
 	) {
-		int rowCount = maxRowCount(artistId, name, groupName, imageUrl, lore, debutDate, collections, sortOrder, visible);
+		int rowCount = maxRowCount(
+			artistId,
+			name,
+			groupName,
+			groupKey,
+			groupSortOrder,
+			groupVisible,
+			groupHeroImageUrl,
+			groupSummary,
+			imageUrl,
+			lore,
+			debutDate,
+			collections,
+			sortOrder,
+			visible
+		);
 		if (rowCount == 0) {
 			redirectAttributes.addFlashAttribute("notice", "적용할 아티스트 행이 없습니다.");
 			return "redirect:/admin/content/artists";
@@ -214,6 +256,11 @@ public class AdminCmsPageController {
 				currentArtistId,
 				nextName,
 				valueAt(groupName, index, currentArtist == null ? "" : currentArtist.groupName()),
+				valueAt(groupKey, index, currentArtist == null ? "" : currentArtist.groupKey()),
+				intStringAt(groupSortOrder, index, currentArtist == null || currentArtist.groupSortOrder() == null ? 999 : currentArtist.groupSortOrder()),
+				booleanAt(groupVisible, index, currentArtist == null || Boolean.TRUE.equals(currentArtist.groupVisible())),
+				valueAt(groupHeroImageUrl, index, currentArtist == null ? "" : currentArtist.groupHeroImageUrl()),
+				valueAt(groupSummary, index, currentArtist == null ? "" : currentArtist.groupSummary()),
 				valueAt(imageUrl, index, currentArtist == null ? "" : currentArtist.imageUrl()),
 				valueAt(lore, index, currentArtist == null ? "" : currentArtist.lore()),
 				valueAt(debutDate, index, currentArtist == null ? "" : currentArtist.debutDate()),
@@ -281,19 +328,20 @@ public class AdminCmsPageController {
 	private List<CmsGroupPageDraft> groupDrafts(List<CmsArtistProfileResponse> artists) {
 		Map<String, List<CmsArtistProfileResponse>> groupedArtists = new LinkedHashMap<>();
 		for (CmsArtistProfileResponse artist : artists) {
-			String groupName = valueOrDefault(artist.groupName(), "미지정 그룹");
-			groupedArtists.computeIfAbsent(groupName, ignored -> new ArrayList<>()).add(artist);
+			String groupKey = valueOrDefault(artist.groupKey(), valueOrDefault(artist.groupName(), "unknown-group"));
+			groupedArtists.computeIfAbsent(groupKey, ignored -> new ArrayList<>()).add(artist);
 		}
 
 		List<CmsGroupPageDraft> groups = new ArrayList<>();
 		int index = 1;
 		for (Map.Entry<String, List<CmsArtistProfileResponse>> entry : groupedArtists.entrySet()) {
 			List<CmsArtistProfileResponse> groupArtists = entry.getValue();
+			CmsArtistProfileResponse firstArtist = groupArtists.get(0);
 			groups.add(new CmsGroupPageDraft(
-				"group-" + index,
 				entry.getKey(),
-				groupArtists.stream().anyMatch(artist -> Boolean.TRUE.equals(artist.visible())),
-				index,
+				valueOrDefault(firstArtist.groupName(), entry.getKey()),
+				groupArtists.stream().anyMatch(artist -> Boolean.TRUE.equals(artist.groupVisible()) && Boolean.TRUE.equals(artist.visible())),
+				firstArtist.groupSortOrder() == null ? index : firstArtist.groupSortOrder(),
 				groupArtists
 			));
 			index++;
@@ -346,16 +394,20 @@ public class AdminCmsPageController {
 		return settings;
 	}
 
-	private Map<String, String> copySettings(Map<String, String> requestParameters) {
+	private Map<String, String> artistCopySettings(CmsPageResponse page) {
+		Map<String, String> settings = defaultArtistCopySettings();
+		if (page.copySettings() != null) {
+			settings.putAll(page.copySettings());
+		}
+		return settings;
+	}
+
+	private Map<String, String> artistCopySettings(Map<String, String> requestParameters) {
 		Map<String, String> settings = new LinkedHashMap<>();
-		for (Map.Entry<String, String> entry : requestParameters.entrySet()) {
-			String key = entry.getKey();
-			if (!key.startsWith("copySettings[") || !key.endsWith("]")) {
-				continue;
-			}
-			String settingName = key.substring("copySettings[".length(), key.length() - 1);
-			if (!settingName.isBlank() && entry.getValue() != null && !entry.getValue().isBlank()) {
-				settings.put(settingName, entry.getValue().trim());
+		for (String key : defaultArtistCopySettings().keySet()) {
+			String value = requestParameters.get("copySettings[" + key + "]");
+			if (value != null && !value.isBlank()) {
+				settings.put(key, value.trim());
 			}
 		}
 		return settings;
@@ -408,6 +460,37 @@ public class AdminCmsPageController {
 		settings.put("footerInfoCategories", "Categories");
 		settings.put("footerBottomLabel", "CYAN PRODUCTION");
 		settings.put("footerBackToFirst", "Back to first page");
+		return settings;
+	}
+
+	private Map<String, String> defaultArtistCopySettings() {
+		Map<String, String> settings = new LinkedHashMap<>();
+		settings.put("navHome", "Home");
+		settings.put("navArtists", "Artists");
+		settings.put("navGoods", "Goods");
+		settings.put("navCart", "Cart");
+		settings.put("broadcastStrip", "CYAN IDOL NETWORK // AREA STREAM // MUSIC MEDIA MIX // CHARACTER SIGNAL");
+		settings.put("statsArtistsLabel", "Artists");
+		settings.put("statsModeLabel", "Mode");
+		settings.put("statsViewLabel", "View");
+		settings.put("statsViewValue", "Stage");
+		settings.put("statusLoadingLabel", "Loading");
+		settings.put("statusLiveLabel", "Live");
+		settings.put("statusPreviewLabel", "Preview");
+		settings.put("channelWorld", "WORLD");
+		settings.put("channelArea", "AREA");
+		settings.put("channelCharacter", "CHARACTER");
+		settings.put("channelMusic", "MUSIC");
+		settings.put("profileBpmLabel", "BPM");
+		settings.put("profileDebutLabel", "Debut");
+		settings.put("profileCollectionsLabel", "Collections");
+		settings.put("profileSignalLabel", "Signal");
+		settings.put("artistGoodsCta", "이 아티스트 굿즈 보기");
+		settings.put("groupGoodsCta", "그룹 굿즈 보기");
+		settings.put("indexEyebrow", "Roster");
+		settings.put("indexTitle", "Artist Index");
+		settings.put("indexGroupGoodsCta", "그룹 굿즈 보기");
+		settings.put("pagerIndexLabel", "All");
 		return settings;
 	}
 

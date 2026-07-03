@@ -30,7 +30,7 @@
     </div>
 
     <div class="admin-notice cms-ui-draft-notice" th:unless="${notice}">
-      현재 화면은 DB 아티스트 행을 원본으로 그룹 트리와 미리보기를 구성합니다. 아티스트 등록은 Supabase CMS 테이블에 실제 저장되고, 정규화 데이터 적용/홈 연결은 아직 연결하지 않았습니다.
+      현재 화면은 Supabase CMS 아티스트 행을 원본으로 그룹 트리와 프론트 아티스트 수평 페이지 구성을 확인합니다.
     </div>
 
     <section class="cms-group-source-workbench" aria-label="그룹 페이지 구성">
@@ -131,7 +131,7 @@
                 <select id="cmsGroupFilter">
                   <option value="">전체</option>
                   <option th:each="group : ${groups}"
-                          th:value="${group.groupName()}"
+                          th:value="${group.pageKey()}"
                           th:text="${group.groupName()}">GROUP ONE</option>
                 </select>
               </label>
@@ -145,7 +145,6 @@
               <fieldset class="cms-group-filter-group" aria-label="적용 작업">
                 <legend>적용</legend>
                 <button class="is-active" type="submit">변경사항 적용</button>
-                <button type="button" data-ui-only-action="홈 그룹 페이지 연결">홈 그룹 페이지 연결</button>
               </fieldset>
             </div>
 
@@ -159,18 +158,26 @@
             <datalist id="cmsGroupNameOptions">
               <option th:each="group : ${groups}" th:value="${group.groupName()}">GROUP ONE</option>
             </datalist>
+            <datalist id="cmsGroupKeyOptions">
+              <option th:each="group : ${groups}" th:value="${group.pageKey()}">group-one</option>
+            </datalist>
 
             <div class="cms-table-scroll">
               <table class="cms-sheet cms-group-source-table">
               <thead>
               <tr>
                 <th>노출</th>
+                <th>그룹 노출</th>
+                <th>그룹 정렬</th>
+                <th>그룹 키</th>
                 <th>정렬</th>
                 <th>ID</th>
                 <th>이름</th>
-                <th>그룹</th>
+                <th>그룹명</th>
                 <th>데뷔일</th>
                 <th>이미지</th>
+                <th>그룹 대표 이미지</th>
+                <th>그룹 설명</th>
                 <th>소개</th>
                 <th>컬렉션</th>
                 <th>상태</th>
@@ -184,12 +191,21 @@
                          data-group-artist-visible
                          th:checked="${artist.visible()}">
                 </td>
+                <td class="cms-check-cell">
+                  <input type="checkbox"
+                         data-group-artist-visible-group
+                         th:checked="${artist.groupVisible()}">
+                </td>
+                <td><input type="number" data-group-artist-field="groupSortOrder" th:value="${artist.groupSortOrder()}"></td>
+                <td><input data-group-artist-field="groupKey" list="cmsGroupKeyOptions" th:value="${artist.groupKey()}" placeholder="예: cyan-origin-idol"></td>
                 <td><input type="number" data-group-artist-field="sortOrder" th:value="${artist.sortOrder()}"></td>
                 <td><input data-group-artist-field="artistId" th:value="${artist.artistId()}" readonly></td>
                 <td><input data-group-artist-field="name" th:value="${artist.name()}"></td>
                 <td><input data-group-artist-field="groupName" list="cmsGroupNameOptions" th:value="${artist.groupName()}" placeholder="그룹 없음"></td>
                 <td><input type="date" data-group-artist-field="debutDate" th:value="${artist.debutDate()}"></td>
                 <td><input data-group-artist-field="imageUrl" th:value="${artist.imageUrl()}" placeholder="현재 이미지 없음"></td>
+                <td><input data-group-artist-field="groupHeroImageUrl" th:value="${artist.groupHeroImageUrl()}" placeholder="현재 대표 이미지 없음"></td>
+                <td><input data-group-artist-field="groupSummary" th:value="${artist.groupSummary()}" placeholder="현재 그룹 설명 없음"></td>
                 <td><input data-group-artist-field="lore" th:value="${artist.lore()}" placeholder="현재 소개 없음"></td>
                 <td><input data-group-artist-field="collections" th:value="${artist.collections()}" placeholder="현재 컬렉션 없음"></td>
                 <td>
@@ -272,10 +288,10 @@
   }
 
   function imageInputFromTarget(target) {
-    if (target.matches?.('[data-group-artist-field="imageUrl"]')) {
+    if (target.matches?.('[data-group-artist-field="imageUrl"], [data-group-artist-field="groupHeroImageUrl"]')) {
       return target
     }
-    return target.closest('td')?.querySelector('[data-group-artist-field="imageUrl"]')
+    return target.closest('td')?.querySelector('[data-group-artist-field="imageUrl"], [data-group-artist-field="groupHeroImageUrl"]')
       || target.closest('tr')?.querySelector('[data-group-artist-field="imageUrl"]')
       || null
   }
@@ -310,12 +326,17 @@
   function rowSnapshot(row) {
     return {
       visible: row.querySelector('[data-group-artist-visible]')?.checked ?? false,
+      groupVisible: row.querySelector('[data-group-artist-visible-group]')?.checked ?? true,
+      groupSortOrder: artistField(row, 'groupSortOrder'),
+      groupKey: artistField(row, 'groupKey'),
       sortOrder: artistField(row, 'sortOrder'),
       artistId: artistField(row, 'artistId'),
       name: artistField(row, 'name'),
       groupName: artistField(row, 'groupName'),
       debutDate: artistField(row, 'debutDate'),
       imageUrl: artistField(row, 'imageUrl'),
+      groupHeroImageUrl: artistField(row, 'groupHeroImageUrl'),
+      groupSummary: artistField(row, 'groupSummary'),
       lore: artistField(row, 'lore'),
       collections: artistField(row, 'collections'),
     }
@@ -337,6 +358,8 @@
   function fieldCell(row, field) {
     const input = field === 'visible'
       ? row.querySelector('[data-group-artist-visible]')
+      : field === 'groupVisible'
+        ? row.querySelector('[data-group-artist-visible-group]')
       : row.querySelector(`[data-group-artist-field="${field}"]`)
     return input?.closest('td') ?? null
   }
@@ -393,7 +416,7 @@
   function attachRowEvents(row) {
     row.querySelectorAll('input').forEach((input) => {
       input.addEventListener('focus', () => {
-        if (input.dataset.groupArtistField === 'imageUrl') {
+        if (input.dataset.groupArtistField === 'imageUrl' || input.dataset.groupArtistField === 'groupHeroImageUrl') {
           activeImageInput = input
         }
       })
@@ -437,17 +460,23 @@
 
   function addArtistRow() {
     const row = document.createElement('tr')
-    const groupName = groupFilter?.value ?? ''
+    const groupKey = groupFilter?.value ?? ''
+    const groupName = groupKey ? groupFilter?.selectedOptions?.[0]?.textContent?.trim() ?? groupKey : ''
     row.dataset.groupArtistRow = ''
     row.dataset.rowState = 'add'
     row.innerHTML = `
       <td class="cms-check-cell"><input type="checkbox" data-group-artist-visible checked></td>
+      <td class="cms-check-cell"><input type="checkbox" data-group-artist-visible-group checked></td>
+      <td><input type="number" data-group-artist-field="groupSortOrder" value="999"></td>
+      <td><input data-group-artist-field="groupKey" list="cmsGroupKeyOptions" value="${escapeHtml(groupKey)}" placeholder="예: cyan-origin-idol"></td>
       <td><input type="number" data-group-artist-field="sortOrder" value="${maxSortOrder() + 1}"></td>
       <td><input data-group-artist-field="artistId" placeholder="자동"></td>
       <td><input data-group-artist-field="name" placeholder="아티스트 이름"></td>
       <td><input data-group-artist-field="groupName" list="cmsGroupNameOptions" value="${escapeHtml(groupName)}" placeholder="그룹 없음"></td>
       <td><input type="date" data-group-artist-field="debutDate"></td>
       <td><input data-group-artist-field="imageUrl" placeholder="현재 이미지 없음"></td>
+      <td><input data-group-artist-field="groupHeroImageUrl" placeholder="현재 대표 이미지 없음"></td>
+      <td><input data-group-artist-field="groupSummary" placeholder="그룹 설명"></td>
       <td><input data-group-artist-field="lore" placeholder="현재 소개 없음"></td>
       <td><input data-group-artist-field="collections" placeholder="현재 컬렉션 없음"></td>
       <td><b class="cms-row-state-pill is-added-state" data-row-state-label>추가</b></td>
@@ -467,7 +496,9 @@
         const snapshot = rowSnapshot(row)
         return {
           ...snapshot,
+          groupSortOrder: Number(snapshot.groupSortOrder || 999),
           sortOrder: Number(snapshot.sortOrder || 999),
+          groupKey: snapshot.groupKey || snapshot.groupName || '미지정 그룹',
           groupName: snapshot.groupName || '미지정 그룹',
           row,
         }
@@ -479,34 +510,39 @@
     const grouped = new Map()
 
     collectArtistRows().forEach((artist) => {
-      if (!grouped.has(artist.groupName)) {
-        grouped.set(artist.groupName, [])
+      const groupKey = String(artist.groupKey || artist.groupName).toLowerCase()
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, [])
       }
-      grouped.get(artist.groupName).push(artist)
+      grouped.get(groupKey).push(artist)
     })
 
-    return Array.from(grouped.entries()).map(([groupName, artists], index) => ({
-      pageKey: `group-${index + 1}`,
+    return Array.from(grouped.entries()).map(([groupKey, artists], index) => ({
+      pageKey: groupKey,
       pageIndex: index + 1,
-      groupName,
-      visible: artists.some((artist) => artist.visible),
+      groupKey,
+      groupName: artists[0]?.groupName || groupKey,
+      groupSortOrder: artists[0]?.groupSortOrder ?? 999,
+      groupHeroImageUrl: artists.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl || artists[0]?.imageUrl || '',
+      groupSummary: artists.find((artist) => artist.groupSummary)?.groupSummary || artists[0]?.lore || '',
+      visible: artists.some((artist) => artist.visible && artist.groupVisible),
       artistCount: artists.length,
-      visibleArtistCount: artists.filter((artist) => artist.visible).length,
+      visibleArtistCount: artists.filter((artist) => artist.visible && artist.groupVisible).length,
       artists: artists.map(({ row, ...artist }) => artist),
-    }))
+    })).sort((left, right) => left.groupSortOrder - right.groupSortOrder || left.groupName.localeCompare(right.groupName))
   }
 
   function filteredGroups() {
     const selectedGroup = groupFilter?.value ?? ''
     const groups = normalizeGroups()
-    return selectedGroup ? groups.filter((group) => group.groupName === selectedGroup) : groups
+    return selectedGroup ? groups.filter((group) => group.pageKey === selectedGroup) : groups
   }
 
   function normalizedPayload() {
     return {
       source: 'cms_artist_profile',
-      transform: 'groupName -> group page -> artist list',
-      target: 'home.groupPages',
+      transform: 'groupKey/groupName -> artists horizontal pages',
+      target: 'artists.horizontalGroupPages',
       groups: filteredGroups(),
     }
   }
@@ -517,6 +553,7 @@
       <details open>
         <summary>
           <strong>${escapeHtml(group.groupName)}</strong>
+          <small>${escapeHtml(group.groupKey)}</small>
           <span>${group.visibleArtistCount}/${group.artistCount} Artists</span>
         </summary>
         <ol>
@@ -544,6 +581,8 @@
           body { overflow: hidden; background: #0f1113; color: #f7f4ec; font-family: Arial, "Noto Sans KR", sans-serif; }
           .pager { height: 100vh; overflow-y: auto; scroll-snap-type: y mandatory; }
           .page { display: grid; grid-template-columns: minmax(260px, .78fr) minmax(420px, 1fr); gap: 36px; min-height: 100vh; padding: 48px; scroll-snap-align: start; border-bottom: 1px solid rgba(255,255,255,.12); }
+          .hero { width: min(340px, 100%); aspect-ratio: 16 / 9; margin-top: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: #202427; }
+          .hero img { width: 100%; height: 100%; object-fit: cover; }
           .group-copy { align-self: center; }
           .eyebrow { margin: 0 0 12px; color: #92bdb4; font-size: 13px; font-weight: 800; letter-spacing: 0; text-transform: uppercase; }
           h1 { margin: 0; font-size: clamp(40px, 7vw, 88px); line-height: .9; letter-spacing: 0; }
@@ -567,10 +606,11 @@
               <div class="group-copy">
                 <p class="eyebrow">Page ${String(group.pageIndex).padStart(2, '0')}</p>
                 <h1>${escapeHtml(group.groupName)}</h1>
-                <p class="meta">${group.visibleArtistCount} visible artists from DB groupName</p>
+                <p class="meta">${escapeHtml(group.groupSummary || `${group.visibleArtistCount} visible artists`)}</p>
+                ${group.groupHeroImageUrl ? `<div class="hero"><img src="${escapeHtml(group.groupHeroImageUrl)}" alt=""></div>` : ''}
               </div>
               <div class="artist-list">
-                ${group.artists.filter((artist) => artist.visible).map((artist) => `
+                ${group.artists.filter((artist) => artist.visible && artist.groupVisible).map((artist) => `
                   <article class="artist-card">
                     <div class="thumb">${artist.imageUrl ? `<img src="${escapeHtml(artist.imageUrl)}" alt="">` : escapeHtml(artist.name.slice(0, 2))}</div>
                     <div>
@@ -592,7 +632,8 @@
     const selectedGroup = groupFilter?.value ?? ''
     document.querySelectorAll(artistRowSelector).forEach((row) => {
       const groupName = artistField(row, 'groupName') || '미지정 그룹'
-      row.hidden = Boolean(selectedGroup && groupName !== selectedGroup)
+      const groupKey = (artistField(row, 'groupKey') || groupName).toLowerCase()
+      row.hidden = Boolean(selectedGroup && groupKey !== selectedGroup)
     })
   }
 
@@ -661,6 +702,11 @@
       addHidden('artistId', snapshot.artistId)
       addHidden('name', snapshot.name)
       addHidden('groupName', snapshot.groupName)
+      addHidden('groupKey', snapshot.groupKey)
+      addHidden('groupSortOrder', snapshot.groupSortOrder || '999')
+      addHidden('groupVisible', snapshot.groupVisible ? 'true' : 'false')
+      addHidden('groupHeroImageUrl', snapshot.groupHeroImageUrl)
+      addHidden('groupSummary', snapshot.groupSummary)
       addHidden('imageUrl', snapshot.imageUrl)
       addHidden('lore', snapshot.lore)
       addHidden('debutDate', snapshot.debutDate)
@@ -820,12 +866,6 @@
   document.querySelectorAll(`${artistRowSelector} input`).forEach((input) => {
     input.addEventListener('input', updateGroupView)
     input.addEventListener('change', updateGroupView)
-  })
-
-  document.querySelectorAll('[data-ui-only-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      window.alert(`${button.dataset.uiOnlyAction}은 현재 UI 확인용입니다. 저장/연결 API는 아직 연결하지 않았습니다.`)
-    })
   })
 
   initializeExistingRows()

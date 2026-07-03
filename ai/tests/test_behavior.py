@@ -1,7 +1,13 @@
 from project_cyan_ai.behavior import BehaviorEngine
 from project_cyan_ai.goods_catalog import CatalogGroundedChatResponseProvider
 from project_cyan_ai.hook_policy import CachedHookPolicyProvider, HookFilter, HookPolicy
-from project_cyan_ai.runtime_config import RuntimeConfig, DEFAULT_LOGIC_FUNCTIONS, DEFAULT_MOTION_LIST
+from project_cyan_ai.runtime_config import (
+    RuntimeConfig,
+    DEFAULT_LOGIC_FUNCTIONS,
+    DEFAULT_MOTION_LIST,
+    default_runtime_config,
+    runtime_config_from_draft,
+)
 from project_cyan_ai.schemas.ws import FullTextMessage
 
 
@@ -28,7 +34,11 @@ class FakeProvider:
 
 
 class FakeCatalogClient:
+    def __init__(self):
+        self.received_texts = []
+
     def search_candidates(self, text, favorite_artists=None):
+        self.received_texts.append(text)
         return [{"goodsId": 42, "name": "포토카드", "price": 10000}]
 
 
@@ -53,16 +63,58 @@ def hook_filter(policies=()):
 
 def test_faithful_engine_returns_eighteen_steps_and_shared_response_contract():
     provider = FakeProvider()
-    grounded = CatalogGroundedChatResponseProvider(provider, FakeCatalogClient())
+    catalog = FakeCatalogClient()
+    grounded = CatalogGroundedChatResponseProvider(provider, catalog)
     execution = BehaviorEngine(provider, grounded, hook_filter()).run("포카 추천", config())
 
     assert len(execution.run["steps"]) == 18
     assert execution.run["highlightTerms"] == ["포토카드"]
+    assert execution.run["searchQuery"] == "포토카드 포카 추천"
+    assert catalog.received_texts == ["포토카드 포카 추천"]
     assert execution.run["candidateGoodsIds"] == [42]
     assert execution.response.metadata["configVersion"] == 12
     assert execution.response.metadata["pipelineMode"] == "faithful18"
     assert execution.response.metadata["behavior"] == {"motionKey": "point", "source": "llm"}
     assert len(provider.calls) == 2
+
+
+def test_runtime_config_defaults_to_faithful_pipeline_but_preserves_admin_choice():
+    assert default_runtime_config().pipeline_mode == "faithful18"
+    assert runtime_config_from_draft(
+        {
+            "pipelineMode": "optimized",
+            "logicFunctions": DEFAULT_LOGIC_FUNCTIONS,
+            "adminSettings": "section\tkey\tvalue\tnote\npersona\ttone\t친근한 점원\t",
+            "motionList": DEFAULT_MOTION_LIST,
+        }
+    ).pipeline_mode == "optimized"
+
+
+def test_search_llm_corrected_keywords_are_used_for_catalog_query():
+    class TypoCorrectingProvider:
+        def __init__(self):
+            self.calls = []
+
+        def build_response(self, text, context=None):
+            self.calls.append(text)
+            if "검색키워드" in text:
+                return FullTextMessage(
+                    text="의도유형: searchGoods\n정규화요청: 히에나 포토카드 있어?\n검색키워드: 《히에나》《포토카드》"
+                )
+            return FullTextMessage(text="추천했어요.")
+
+    provider = TypoCorrectingProvider()
+    catalog = FakeCatalogClient()
+    grounded = CatalogGroundedChatResponseProvider(provider, catalog)
+
+    execution = BehaviorEngine(provider, grounded, hook_filter()).run(
+        "히ㅇ애나 표토카드 있어?",
+        config(),
+    )
+
+    assert execution.run["highlightTerms"] == ["히에나", "포토카드"]
+    assert execution.run["searchQuery"] == "히에나 포토카드 히ㅇ애나 표토카드 있어?"
+    assert catalog.received_texts == ["히에나 포토카드 히ㅇ애나 표토카드 있어?"]
 
 
 def test_optimized_engine_skips_search_llm_and_uses_one_provider_call():
