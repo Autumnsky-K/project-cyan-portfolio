@@ -15,6 +15,7 @@ import {
 } from '../../features/vtuber/types'
 import Live2DCharacter from '../../features/vtuber/Live2DCharacter'
 import ThreeDCharacter from '../../features/vtuber/ThreeDCharacter'
+import IconButton from './IconButton'
 import './VtuberChatbot.css'
 
 type VtuberChatbotProps = {
@@ -453,32 +454,30 @@ function VtuberChatbotShell({
     >
       {settings.isHidden ? (
         <div className="vtuber-controls" aria-label="Chatbot controls">
-          <button
+          <IconButton
             className="vtuber-restore-button"
-            type="button"
+            icon={<span className="vtuber-restore-icon" />}
+            label="Show chatbot"
             onClick={handleRestoreClick}
             onPointerDown={handleRestorePointerDown}
             onPointerMove={handleRestorePointerMove}
             onPointerUp={handleRestorePointerUp}
             onPointerCancel={handleRestorePointerCancel}
-            aria-label="Show chatbot"
+            size="small"
             title="챗봇 보기"
-          >
-            <span aria-hidden="true" />
-          </button>
+          />
         </div>
       ) : (
         <>
           <div className="vtuber-controls" aria-label="Chatbot controls">
-            <button
+            <IconButton
               className="vtuber-hide-button"
-              type="button"
+              icon={<span className="vtuber-hide-icon" />}
+              label="Hide chatbot"
               onClick={handleHideClick}
-              aria-label="Hide chatbot"
+              size="small"
               title="챗봇 숨기기"
-            >
-              <span aria-hidden="true" />
-            </button>
+            />
           </div>
 
           <div

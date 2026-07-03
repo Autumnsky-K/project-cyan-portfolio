@@ -114,26 +114,19 @@
 
 .site-header .site-menu-button {
   appearance: none;
-  box-sizing: border-box;
   display: none;
-  place-items: center;
-  width: 40px;
-  min-width: 40px;
   height: 36px;
   min-height: 36px;
-  padding: 0;
   border: 1px solid var(--header-border);
-  border-radius: 4px;
   background: var(--header-menu-background);
   color: var(--header-text);
-  cursor: pointer;
   font-size: 0;
   line-height: 0;
 }
 
-.site-header .site-menu-button span,
-.site-header .site-menu-button span::before,
-.site-header .site-menu-button span::after {
+.site-menu-icon,
+.site-menu-icon::before,
+.site-menu-icon::after {
   display: block;
   width: 18px;
   height: 2px;
@@ -142,21 +135,21 @@
   content: '';
 }
 
-.site-header .site-menu-button span {
+.site-menu-icon {
   position: relative;
 }
 
-.site-header .site-menu-button span::before,
-.site-header .site-menu-button span::after {
+.site-menu-icon::before,
+.site-menu-icon::after {
   position: absolute;
   left: 0;
 }
 
-.site-header .site-menu-button span::before {
+.site-menu-icon::before {
   top: -6px;
 }
 
-.site-header .site-menu-button span::after {
+.site-menu-icon::after {
   top: 6px;
 }
 

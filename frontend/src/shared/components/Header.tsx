@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import CartNavLink from '../../features/cart/CartNavLink'
+import IconButton from './IconButton'
 import './Header.css'
 
 const NAV_ITEMS = [
@@ -22,7 +23,6 @@ type HeaderProps = {
 
 export default function Header({ tone = 'surface' }: HeaderProps) {
   const { pathname } = useLocation()
-  const currentItem = NAV_ITEMS.find((item) => isCurrentPath(pathname, item.to))
   const [openMenuPath, setOpenMenuPath] = useState<string | null>(null)
   const isMenuOpen = openMenuPath === pathname
 
@@ -38,16 +38,15 @@ export default function Header({ tone = 'surface' }: HeaderProps) {
             {currentItem?.label}
           </p> */}
         </div>
-        <button
+        <IconButton
           className="site-menu-button"
-          type="button"
-          aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
           aria-expanded={isMenuOpen}
           aria-controls="site-navigation"
+          icon={<span className="site-menu-icon" />}
+          label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
           onClick={() => setOpenMenuPath((currentPath) => currentPath === pathname ? null : pathname)}
-        >
-          <span aria-hidden="true" />
-        </button>
+          size="medium"
+        />
         <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="Primary navigation">
           {NAV_ITEMS.map((item) => {
             const isCurrent = isCurrentPath(pathname, item.to)
