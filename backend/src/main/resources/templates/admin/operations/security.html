@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${pageTitle}">고객접속통계/보안</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
+  <link rel="stylesheet" th:href="@{/admin/security-admin.css(v='security-admin-polish-20260703')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar(${currentKey}, 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main admin-security-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Security Operations</p>
+        <h2 th:text="${pageTitle}">고객접속통계/보안</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/support}">고객센터 관리</a>
+        <a th:href="@{/goods}" target="_blank" rel="noreferrer">굿즈 화면</a>
+      </div>
+    </header>
+
+    <section class="security-collection-banner"
+             th:classappend="${securityDashboard.temporaryCollection().active()} ? ' is-active' : ' is-stopped'"
+             aria-label="임시 수집 상태">
+      <div>
+        <p class="admin-eyebrow">Temporary Collection Gate</p>
+        <h3 th:text="${securityDashboard.temporaryCollection().active()} ? '임시 수집 진행 중' : '임시 수집 중단'">임시 수집 진행 중</h3>
+        <span th:text="${securityDashboard.message()}">수집 상태</span>
+      </div>
+      <div class="security-progress-block">
+        <div class="security-progress-meter"
+             th:attr="aria-valuenow=${securityDashboard.temporaryCollection().collectedCount()}, aria-valuemax=${securityDashboard.temporaryCollection().limitCount()}"
+             role="meter"
+             aria-label="수집 건수">
+          <i th:style="|width: ${securityDashboard.temporaryCollection().collectedCount() * 100 / securityDashboard.temporaryCollection().limitCount()}%|"></i>
+        </div>
+        <strong th:text="|${securityDashboard.temporaryCollection().collectedCount()}/${securityDashboard.temporaryCollection().limitCount()}건|">0/50건</strong>
+      </div>
+    </section>
+
+    <section class="security-kpi-grid" aria-label="접속 통계 요약">
+      <article>
+        <span>오늘 기록</span>
+        <strong th:text="${securityDashboard.todayAccessCount()}">0</strong>
+        <em>서버 요청 + 동의 page-view</em>
+      </article>
+      <article>
+        <span>24시간 차단</span>
+        <strong th:text="${securityDashboard.blockedCount24h()}">0</strong>
+        <em>429 및 차단 로그</em>
+      </article>
+      <article>
+        <span>24시간 IP</span>
+        <strong th:text="${securityDashboard.uniqueIpCount24h()}">0</strong>
+        <em>중복 제거 기준</em>
+      </article>
+      <article>
+        <span>동의 기반 식별</span>
+        <strong th:text="${securityDashboard.uniqueFingerprintCount24h()}">0</strong>
+        <em>해시 저장만 사용</em>
+      </article>
+      <article>
+        <span>임시 수집 잔여</span>
+        <strong th:text="${securityDashboard.temporaryCollection().remainingCount()}">0</strong>
+        <em th:text="|${securityDashboard.temporaryCollection().remainingSeconds()}초 남음|">0초 남음</em>
+      </article>
+    </section>
+
+    <section class="security-bottom-grid" aria-label="보안 운영 요약">
+      <article class="security-ops-panel">
+        <header>
+          <p class="admin-eyebrow">Collection Window</p>
+          <h3>수집 게이트</h3>
+        </header>
+        <dl class="security-definition-list">
+          <div>
+            <dt>상태</dt>
+            <dd>
+              <b class="security-chip"
+                 th:classappend="${securityDashboard.temporaryCollection().active()} ? ' security-chip-ok' : ' security-chip-muted'"
+                 th:text="${securityDashboard.temporaryCollection().active()} ? '수집 중' : '중단'">수집 중</b>
+            </dd>
+          </div>
+          <div>
+            <dt>중단 사유</dt>
+            <dd th:text="${securityDashboard.temporaryCollection().stopReason()}">수집 중</dd>
+          </div>
+          <div>
+            <dt>수집 종료</dt>
+            <dd th:text="${securityDashboard.temporaryCollection().endsAt()}">-</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="security-ops-panel">
+        <header>
+          <p class="admin-eyebrow">Protection Rules</p>
+          <h3>적용된 방어</h3>
+        </header>
+        <table class="security-mini-table">
+          <thead>
+          <tr>
+            <th>정책</th>
+            <th>기준</th>
+            <th>상태</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>무한 새로고침</td>
+            <td>IP/메서드/경로 1분 120회</td>
+            <td><b class="security-chip security-chip-warn">429</b></td>
+          </tr>
+          <tr>
+            <td>DB 과수집 방지</td>
+            <td>10분 또는 50건</td>
+            <td><b class="security-chip security-chip-ok">게이트</b></td>
+          </tr>
+          <tr>
+            <td>브라우저 식별</td>
+            <td>동의 후 SHA-256 해시</td>
+            <td><b class="security-chip security-chip-muted">원본 미저장</b></td>
+          </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="security-ops-panel">
+        <header>
+          <p class="admin-eyebrow">Identity</p>
+          <h3>개인정보 처리 기준</h3>
+        </header>
+        <dl class="security-definition-list">
+          <div>
+            <dt>수집 조건</dt>
+            <dd>쿠키 통계 동의가 있을 때만 공개 page-view 저장</dd>
+          </div>
+          <div>
+            <dt>저장값</dt>
+            <dd>IP, UA, 화면명, UTM, 해시 식별값</dd>
+          </div>
+          <div>
+            <dt>미저장</dt>
+            <dd>원본 브라우저 식별값, 원본 세션값</dd>
+          </div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="security-workbench">
+      <section class="security-list-panel" aria-label="최근 접속 기록">
+        <header class="security-panel-header">
+          <div>
+            <p class="admin-eyebrow">customer_access_log</p>
+            <h3>최근 접속 기록</h3>
+          </div>
+          <div class="security-table-legend">
+            <span><i class="legend-page-view"></i>PAGE_VIEW</span>
+            <span><i class="legend-server"></i>SERVER_REQUEST</span>
+            <span><i class="legend-blocked"></i>BLOCKED</span>
+          </div>
+        </header>
+
+        <div class="security-empty-state" th:if="${#lists.isEmpty(securityDashboard.recentAccessLogs())}">
+          최근 접속 기록이 없습니다.
+        </div>
+        <div class="security-table-wrap" th:if="${!#lists.isEmpty(securityDashboard.recentAccessLogs())}">
+          <table class="security-log-table">
+            <thead>
+            <tr>
+              <th>시간</th>
+              <th>출처</th>
+              <th>메서드</th>
+              <th>화면</th>
+              <th>경로</th>
+              <th>상태</th>
+              <th>ms</th>
+              <th>기기</th>
+              <th>IP</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="accessLog : ${securityDashboard.recentAccessLogs()}"
+                th:classappend="${accessLog.blocked()} ? ' is-blocked' : ''">
+              <td th:text="${accessLog.occurredAt()}">-</td>
+              <td>
+                <b class="security-chip"
+                   th:classappend="${accessLog.blocked()} ? ' security-chip-fail' : (${accessLog.eventSource() == 'PAGE_VIEW'} ? ' security-chip-ok' : ' security-chip-muted')"
+                   th:text="${accessLog.eventSource()}">PAGE_VIEW</b>
+              </td>
+              <td th:text="${accessLog.method()}">GET</td>
+              <td th:text="${accessLog.routeName() == null || #strings.isEmpty(accessLog.routeName()) ? '-' : accessLog.routeName()}">상품</td>
+              <td><code th:text="${accessLog.path()}">/api/goods</code></td>
+              <td th:text="${accessLog.status()}">200</td>
+              <td th:text="${accessLog.durationMs()}">0</td>
+              <td th:text="${accessLog.deviceType() == null || #strings.isEmpty(accessLog.deviceType()) ? '-' : accessLog.deviceType()}">desktop</td>
+              <td th:text="${accessLog.ipAddress()}">127.0.0.1</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="security-side-stack">
+        <article class="security-ops-panel" aria-label="상위 경로">
+          <header>
+            <p class="admin-eyebrow">Last 24 Hours</p>
+            <h3>요청/방문 상위 경로</h3>
+          </header>
+          <div class="security-empty-state" th:if="${#lists.isEmpty(securityDashboard.topPaths())}">
+            아직 기록된 경로가 없습니다.
+          </div>
+          <table class="security-mini-table" th:if="${!#lists.isEmpty(securityDashboard.topPaths())}">
+            <thead>
+            <tr>
+              <th>경로</th>
+              <th>건수</th>
+              <th>최근</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="pathMetric : ${securityDashboard.topPaths()}">
+              <td><code th:text="${pathMetric.path()}">/goods</code></td>
+              <td th:text="${pathMetric.requestCount()}">0</td>
+              <td th:text="${pathMetric.lastSeenAt()}">-</td>
+            </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="security-ops-panel" aria-label="최근 보안 이벤트">
+          <header>
+            <p class="admin-eyebrow">security_event</p>
+            <h3>최근 보안 이벤트</h3>
+          </header>
+          <div class="security-empty-state" th:if="${#lists.isEmpty(securityDashboard.recentEvents())}">
+            최근 보안 이벤트가 없습니다.
+          </div>
+          <div class="security-event-list" th:if="${!#lists.isEmpty(securityDashboard.recentEvents())}">
+            <div th:each="event : ${securityDashboard.recentEvents()}">
+              <time th:text="${event.occurredAt()}">-</time>
+              <strong th:text="${event.eventType()}">RATE_LIMIT_BLOCK</strong>
+              <span th:text="${event.detail()}">detail</span>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </section>
+  </section>
+</main>
+</body>
+</html>

@@ -10,8 +10,11 @@ import {
 } from 'react'
 
 import {
+  type VtuberCharacterRenderStatus,
   type VtuberCharacterConfig,
+  type VtuberConversationMessage,
   type VtuberDisplayState,
+  type VtuberMotionKey,
 } from '../../features/vtuber/types'
 import Live2DCharacter from '../../features/vtuber/Live2DCharacter'
 import ThreeDCharacter from '../../features/vtuber/ThreeDCharacter'
@@ -25,10 +28,14 @@ type VtuberChatbotProps = {
     message: string
     onAction: () => void
   } | null
-  bubbleText: string
+  characterBubbleText: string
+  characterBubbleSequence: number
   character: VtuberCharacterConfig
   displayState: VtuberDisplayState
   isSendDisabled: boolean
+  messages: VtuberConversationMessage[]
+  motionKey: VtuberMotionKey | null
+  motionTriggerId: number
   onSendMessage: (message: string) => boolean | Promise<boolean>
   statusLabel: string
 }
@@ -54,10 +61,53 @@ type DragState = {
 const CHATBOT_SETTINGS_STORAGE_KEY = 'project-cyan.vtuber-chatbot.settings'
 const DESKTOP_DRAG_MIN_WIDTH = 721
 const DRAG_CLICK_TOLERANCE_PX = 4
+const CHARACTER_BUBBLE_VISIBLE_MS = 5000
+const DEFAULT_CHARACTER_GREETING = '안녕! 궁금한거 있어?'
+const CART_PANEL_SELECTOR = '.goods-cart-side-panel'
+const CART_PANEL_GAP_PX = 16
+const CHAT_SIDEBAR_MIN_HEIGHT_PX = 260
+const CHAT_SIDEBAR_MAX_HEIGHT_PX = 640
+const CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX = 8
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   isHidden: false,
   position: null,
+}
+
+function buildVisibleCharacterBubbleText({
+  characterRenderStatus,
+  displayState,
+  fallbackText,
+}: {
+  characterRenderStatus: VtuberCharacterRenderStatus
+  displayState: VtuberDisplayState
+  fallbackText: string
+}): string {
+  if (characterRenderStatus === 'loading') {
+    return '주섬주섬 옷 입는 중...'
+  }
+
+  if (characterRenderStatus === 'fallback') {
+    return '거울 앞에서 옷매무새를 다시 고치는 중...'
+  }
+
+  if (displayState === 'connecting') {
+    return '낮잠에서 깨는 중...'
+  }
+
+  if (displayState === 'thinking') {
+    return '생각 주머니를 뒤적이는 중...'
+  }
+
+  if (displayState === 'error') {
+    return '잠깐 길을 다시 찾는 중...'
+  }
+
+  if (fallbackText.trim()) {
+    return fallbackText
+  }
+
+  return DEFAULT_CHARACTER_GREETING
 }
 
 function loadChatbotSettings(): ChatbotSettings {
@@ -113,30 +163,49 @@ function isDesktopDragViewport(): boolean {
 function isDragExcludedTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
-    Boolean(target.closest('button, input, textarea, select, a'))
+    Boolean(target.closest('button, input, textarea, select, a, [data-vtuber-drag-excluded="true"]'))
   )
 }
 
 function VtuberChatbotShell({
   actionsCount,
   authNotice = null,
-  bubbleText,
+  characterBubbleText,
+  characterBubbleSequence,
   character,
   displayState,
   isSendDisabled,
+  messages,
+  motionKey,
+  motionTriggerId,
   onSendMessage,
   statusLabel,
 }: VtuberChatbotProps): ReactElement {
   const chatbotRef = useRef<HTMLElement>(null)
+  const characterBubbleRef = useRef<HTMLDivElement>(null)
+  const messageListRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const removeDragListenersRef = useRef<(() => void) | null>(null)
   const shouldSuppressRestoreClickRef = useRef(false)
   const [settings, setSettings] = useState<ChatbotSettings>(loadChatbotSettings)
   const [isDesktopViewport, setIsDesktopViewport] = useState(isDesktopDragViewport)
   const [isDragging, setIsDragging] = useState(false)
+  const [characterRenderStatus, setCharacterRenderStatus] =
+    useState<VtuberCharacterRenderStatus>('loading')
+  const [isCharacterBubbleVisible, setIsCharacterBubbleVisible] = useState(true)
+  const [characterBubbleNudgeX, setCharacterBubbleNudgeX] = useState(0)
+  const [sidebarDockStyle, setSidebarDockStyle] = useState<CSSProperties | undefined>(undefined)
   const [message, setMessage] = useState('')
   const trimmedMessage = message.trim()
   const shouldUseCustomPosition = isDesktopViewport && settings.position !== null
+  const visibleCharacterBubbleText = buildVisibleCharacterBubbleText({
+    characterRenderStatus,
+    displayState,
+    fallbackText: characterBubbleText,
+  })
+  const characterBubbleStyle = {
+    '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
+  } as CSSProperties
   const chatbotStyle: CSSProperties | undefined = shouldUseCustomPosition
     ? {
         bottom: 'auto',
@@ -152,6 +221,126 @@ function VtuberChatbotShell({
       JSON.stringify(settings),
     )
   }, [settings])
+
+  useEffect(() => {
+    let resizeObserver: ResizeObserver | null = null
+
+    function findVisibleCartPanel(): HTMLElement | null {
+      const cartPanel = document.querySelector<HTMLElement>(CART_PANEL_SELECTOR)
+
+      if (!cartPanel) {
+        return null
+      }
+
+      const rect = cartPanel.getBoundingClientRect()
+      const style = window.getComputedStyle(cartPanel)
+
+      return rect.width > 0 && rect.height > 0 && style.display !== 'none'
+        ? cartPanel
+        : null
+    }
+
+    function updateSidebarDock() {
+      const cartPanel = findVisibleCartPanel()
+
+      if (!cartPanel) {
+        setSidebarDockStyle(undefined)
+        return
+      }
+
+      const rect = cartPanel.getBoundingClientRect()
+      const top = Math.round(rect.bottom + CART_PANEL_GAP_PX)
+      const availableHeight = Math.floor(window.innerHeight - top - 24)
+
+      if (availableHeight < CHAT_SIDEBAR_MIN_HEIGHT_PX) {
+        setSidebarDockStyle(undefined)
+        return
+      }
+
+      setSidebarDockStyle({
+        height: Math.min(CHAT_SIDEBAR_MAX_HEIGHT_PX, availableHeight),
+        right: Math.max(0, Math.round(document.documentElement.clientWidth - rect.right)),
+        top,
+        width: Math.round(rect.width),
+      })
+    }
+
+    updateSidebarDock()
+
+    const cartPanel = findVisibleCartPanel()
+    if (cartPanel) {
+      resizeObserver = new ResizeObserver(updateSidebarDock)
+      resizeObserver.observe(cartPanel)
+    }
+
+    window.addEventListener('resize', updateSidebarDock)
+    window.addEventListener('scroll', updateSidebarDock, { passive: true })
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateSidebarDock)
+      window.removeEventListener('scroll', updateSidebarDock)
+    }
+  }, [])
+
+  useEffect(() => {
+    const messageList = messageListRef.current
+
+    if (!messageList) {
+      return
+    }
+
+    messageList.scrollTop = messageList.scrollHeight
+  }, [messages])
+
+  useEffect(() => {
+    setIsCharacterBubbleVisible(true)
+
+    const timerId = window.setTimeout(() => {
+      setIsCharacterBubbleVisible(false)
+    }, CHARACTER_BUBBLE_VISIBLE_MS)
+
+    return () => window.clearTimeout(timerId)
+  }, [characterBubbleSequence, visibleCharacterBubbleText])
+
+  useEffect(() => {
+    function updateCharacterBubbleNudge() {
+      const bubbleElement = characterBubbleRef.current
+
+      if (!bubbleElement) {
+        return
+      }
+
+      const rect = bubbleElement.getBoundingClientRect()
+      let nextNudgeX = characterBubbleNudgeX
+
+      if (rect.left < CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX) {
+        nextNudgeX += CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX - rect.left
+      }
+
+      if (rect.right > window.innerWidth - CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX) {
+        nextNudgeX -= rect.right - (window.innerWidth - CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX)
+      }
+
+      const roundedNudgeX = Math.round(nextNudgeX)
+      if (roundedNudgeX !== characterBubbleNudgeX) {
+        setCharacterBubbleNudgeX(roundedNudgeX)
+      }
+    }
+
+    const frameId = window.requestAnimationFrame(updateCharacterBubbleNudge)
+    window.addEventListener('resize', updateCharacterBubbleNudge)
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      window.removeEventListener('resize', updateCharacterBubbleNudge)
+    }
+  }, [
+    characterBubbleNudgeX,
+    isCharacterBubbleVisible,
+    settings.position,
+    visibleCharacterBubbleText,
+  ])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -444,6 +633,7 @@ function VtuberChatbotShell({
       data-display-state={displayState}
       data-is-hidden={settings.isHidden}
       data-model-url={character.modelUrl}
+      data-motion-key={motionKey ?? undefined}
       data-render-mode={character.renderMode ?? 'live2d'}
       data-position-mode={shouldUseCustomPosition ? 'custom' : 'default'}
       onPointerDown={handleDragPointerDown}
@@ -481,35 +671,78 @@ function VtuberChatbotShell({
           </div>
 
           <div
-            className="vtuber-stage"
-            aria-label={`${character.name} 캐릭터 영역`}
+            className="vtuber-character-stack"
+            aria-label={`${character.name} 캐릭터`}
           >
-            {character.renderMode === 'three3d' ? (
-              <ThreeDCharacter
-                character={character}
-                displayState={displayState}
-                statusLabel={statusLabel}
-              />
-            ) : (
-              <Live2DCharacter
-                character={character}
-                displayState={displayState}
-                statusLabel={statusLabel}
-              />
-            )}
-          </div>
-
-          <section className="vtuber-panel" aria-label="챗봇 대화">
             <div
-              className="vtuber-bubble"
+              ref={characterBubbleRef}
+              className="vtuber-character-bubble"
               data-display-state={displayState}
+              data-is-visible={isCharacterBubbleVisible}
               aria-live="polite"
+              style={characterBubbleStyle}
             >
-              <strong>{character.name}</strong>
-              <p>{bubbleText}</p>
+              <p>{visibleCharacterBubbleText}</p>
               <span className="vtuber-sr-only" aria-live="polite">
                 표시 상태: {statusLabel}. 준비된 동작: {actionsCount}개.
               </span>
+            </div>
+
+            <div
+              className="vtuber-stage"
+              aria-label={`${character.name} 캐릭터 영역`}
+            >
+              {character.renderMode === 'three3d' ? (
+                <ThreeDCharacter
+                  character={character}
+                  displayState={displayState}
+                  motionKey={motionKey}
+                  motionTriggerId={motionTriggerId}
+                  onRenderStatusChange={setCharacterRenderStatus}
+                  statusLabel={statusLabel}
+                />
+              ) : (
+                <Live2DCharacter
+                  character={character}
+                  displayState={displayState}
+                  motionKey={motionKey}
+                  motionTriggerId={motionTriggerId}
+                  onRenderStatusChange={setCharacterRenderStatus}
+                  statusLabel={statusLabel}
+                />
+              )}
+            </div>
+          </div>
+
+          <section
+            className="vtuber-chat-sidebar"
+            aria-label="Chatbot conversation"
+            data-vtuber-drag-excluded="true"
+            style={sidebarDockStyle}
+          >
+            <header className="vtuber-chat-sidebar-header">
+              <strong>{character.name}</strong>
+              <span>쇼핑 도우미</span>
+            </header>
+
+            <div
+              ref={messageListRef}
+              className="vtuber-message-list"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions text"
+            >
+              {messages.map((conversationMessage) => (
+                <article
+                  key={conversationMessage.id}
+                  className={`vtuber-message is-${conversationMessage.role}`}
+                >
+                  <span className="vtuber-message-author">
+                    {conversationMessage.role === 'assistant' ? character.name : 'You'}
+                  </span>
+                  <p>{conversationMessage.text}</p>
+                </article>
+              ))}
             </div>
 
             {authNotice ? (

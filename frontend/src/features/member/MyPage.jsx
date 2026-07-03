@@ -796,6 +796,11 @@ function MyPage() {
       items: summary.recentlyViewedGoods,
     },
     {
+      id: 'digitalLibrary',
+      title: '디지털 제품 저장소',
+      items: summary.digitalLibrary,
+    },
+    {
       id: 'orders',
       title: '구매내역',
       items: summary.orders,
@@ -876,8 +881,14 @@ function MyPage() {
                 key={section.id}
                 title={section.title}
                 items={section.items}
-                onMore={() => openSection(section)}
-                actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
+                onMore={() => {
+                  if (section.id === 'digitalLibrary') {
+                    navigate('/mypage/digital-library')
+                    return
+                  }
+                  openSection(section)
+                }}
+                actionLabel={section.id === 'favoriteArtists' ? '수정하기' : section.id === 'digitalLibrary' ? '열기' : '더보기'}
                 onWrite={section.id === 'supportInquiries' ? openSupportInquiryForm : undefined}
               />
             ))}

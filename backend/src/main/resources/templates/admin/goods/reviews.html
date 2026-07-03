@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>리뷰 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='review-ops-20260703')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods-reviews', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">Review Operations</p>
+        <h2>리뷰 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/goods}">굿즈 정보 관리</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+    <div class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}"></div>
+
+    <section class="admin-stats" aria-label="리뷰 현황">
+      <article>
+        <span>전체 리뷰</span>
+        <strong th:text="${reviewPage.totalElements()}">0</strong>
+      </article>
+      <article>
+        <span>현재 페이지</span>
+        <strong th:text="${reviewPage.totalPages() > 0 ? reviewPage.page() + 1 : 0}">0</strong>
+      </article>
+      <article>
+        <span>표시 행 수</span>
+        <strong th:text="${#lists.size(reviewPage.content())}">0</strong>
+      </article>
+    </section>
+
+    <form class="admin-toolbar admin-review-toolbar" method="get" th:action="@{/admin/goods/reviews}" aria-label="리뷰 검색">
+      <label>
+        <span>검색</span>
+        <input type="search" name="q" placeholder="리뷰 번호, 상품 번호, 상품명, 작성자, 내용" th:value="${q}">
+      </label>
+      <button class="admin-toolbar-search-button" type="submit">검색</button>
+    </form>
+
+    <section class="admin-table-panel" aria-label="리뷰 목록">
+      <div class="admin-state" th:if="${#lists.isEmpty(reviewPage.content())}">조건에 맞는 리뷰가 없습니다.</div>
+
+      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(reviewPage.content())}">
+        <table class="admin-goods-table admin-review-table">
+          <thead>
+          <tr>
+            <th>리뷰</th>
+            <th>상품</th>
+            <th>별점</th>
+            <th>작성자</th>
+            <th>내용</th>
+            <th>작성일</th>
+            <th>관리</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="review : ${reviewPage.content()}">
+            <td>
+              <strong th:text="'#' + ${review.reviewId()}">#1</strong>
+              <span th:text="${review.memberId() == null ? '회원 정보 없음' : 'member #' + review.memberId()}">member #1</span>
+            </td>
+            <td>
+              <strong th:text="${review.goodsName()}">굿즈명</strong>
+              <span th:text="'goods #' + ${review.goodsId()}">goods #1</span>
+            </td>
+            <td>
+              <strong th:text="${review.rating()} + '점'">5점</strong>
+            </td>
+            <td>
+              <span th:text="${review.authorName()}">작성자</span>
+            </td>
+            <td class="admin-review-content">
+              <strong th:if="${review.optionLabel()}" th:text="${review.optionLabel()}">옵션</strong>
+              <p th:text="${review.content()}">리뷰 내용</p>
+            </td>
+            <td>
+              <time th:text="${review.createdAtLabel()}">2026-07-03 12:00</time>
+              <span th:if="${review.updatedAtLabel()}" th:text="'수정 ' + ${review.updatedAtLabel()}">수정 2026-07-03 12:10</span>
+            </td>
+            <td>
+              <div class="admin-actions">
+                <a th:href="${frontendGoodsBaseUrl + '/' + review.goodsId() + '#reviews'}"
+                   target="_blank"
+                   rel="noreferrer">상품 리뷰</a>
+                <form method="post"
+                      th:action="@{/admin/goods/reviews/{reviewId}/delete(reviewId=${review.reviewId()})}"
+                      onsubmit="return window.confirm('이 리뷰를 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.')">
+                  <input type="hidden" name="q" th:value="${q}">
+                  <input type="hidden" name="page" th:value="${reviewPage.page()}">
+                  <button class="admin-danger-button" type="submit">삭제</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <nav class="admin-pagination" th:if="${reviewPage.totalPages() > 0}" aria-label="리뷰 페이지 이동">
+      <a th:classappend="${reviewPage.page() <= 0} ? ' is-disabled'"
+         th:href="@{/admin/goods/reviews(q=${q},page=${reviewPage.page() - 1})}">이전</a>
+      <div class="admin-page-list">
+        <a th:each="pageNumber : ${pageNumbers}"
+           th:href="@{/admin/goods/reviews(q=${q},page=${pageNumber})}"
+           th:aria-current="${pageNumber == reviewPage.page()} ? 'page'"
+           th:text="${pageNumber + 1}">1</a>
+      </div>
+      <a th:classappend="${reviewPage.page() >= reviewPage.totalPages() - 1} ? ' is-disabled'"
+         th:href="@{/admin/goods/reviews(q=${q},page=${reviewPage.page() + 1})}">다음</a>
+      <span th:text="${(reviewPage.page() + 1) + ' / ' + reviewPage.totalPages() + ' 페이지'}">1 / 1 페이지</span>
+    </nav>
+  </section>
+</main>
+</body>
+</html>

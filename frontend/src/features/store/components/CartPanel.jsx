@@ -34,6 +34,7 @@ function CartPanel({
           {cartItems.map((item) => {
             const cartItemKey = item.cartItemKey ?? item.id
             const imageUrl = item.image ?? item.imageUrl ?? ''
+            const isDigitalItem = item.fulfillmentType === 'DIGITAL'
 
             return (
               <li key={cartItemKey}>
@@ -51,8 +52,9 @@ function CartPanel({
                 </div>
                 <div className="cart-controls">
                   <QuantityStepper
+                    disabled={isDigitalItem}
                     label={`${item.name} 수량`}
-                    max={item.maxQuantity ?? null}
+                    max={isDigitalItem ? 1 : item.maxQuantity ?? null}
                     value={item.quantity}
                     onChange={(nextQuantity) => {
                       if (nextQuantity < item.quantity) onDecreaseQuantity(cartItemKey)

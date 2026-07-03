@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -35,7 +36,11 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
 		}
 
 		String next = path + (request.getQueryString() == null ? "" : "?" + request.getQueryString());
-		response.sendRedirect(request.getContextPath() + "/admin/login?next=" + URLEncoder.encode(next, StandardCharsets.UTF_8));
+		response.setStatus(HttpServletResponse.SC_FOUND);
+		response.setHeader(
+			HttpHeaders.LOCATION,
+			request.getContextPath() + "/admin/login?next=" + URLEncoder.encode(next, StandardCharsets.UTF_8)
+		);
 		return false;
 	}
 }

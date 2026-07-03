@@ -1,0 +1,414 @@
+.cms-puck-host {
+  min-height: 740px;
+  border-bottom: 1px solid var(--admin-line, #d8dadd);
+  background: #ffffff;
+}
+
+.cms-puck-host .Puck {
+  height: 740px;
+  min-height: 740px;
+  color: #202124;
+  font-family: Arial, "Noto Sans KR", sans-serif;
+}
+
+.cms-puck-host [class*="PuckLayout"],
+.cms-puck-host [class*="Puck"] {
+  letter-spacing: 0;
+}
+
+.cms-puck-preview {
+  min-height: 100%;
+  overflow: hidden;
+  background: #05070f;
+  color: #f7fbff;
+  font-family: Arial, "Noto Sans KR", sans-serif;
+}
+
+.cms-puck-preview button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 8%);
+  color: inherit;
+  cursor: default;
+  font: inherit;
+}
+
+.cms-puck-preview [data-cms-inline-edit] {
+  cursor: text;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+}
+
+.cms-puck-preview [data-cms-inline-edit]:hover,
+.cms-puck-preview [data-cms-inline-edit]:focus {
+  background: rgb(125 245 255 / 10%);
+  outline-color: rgb(125 245 255 / 78%);
+}
+
+.cms-puck-preview-nav {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  background: rgb(0 0 0 / 72%);
+  backdrop-filter: blur(10px);
+}
+
+.cms-puck-preview-nav span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 7%);
+  font-size: 13px;
+}
+
+.cms-puck-hero {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  min-height: 430px;
+  padding: 48px;
+  background:
+    radial-gradient(circle at 75% 18%, rgb(0 213 255 / 20%), transparent 32%),
+    linear-gradient(135deg, #070815, #030308 62%, #0c2023);
+  background-position: center;
+  background-size: cover;
+}
+
+.cms-puck-hero p,
+.cms-puck-hero h1,
+.cms-puck-hero strong,
+.cms-puck-feature-grid h2,
+.cms-puck-feature-grid p,
+.cms-puck-footer-preview h2,
+.cms-puck-footer-preview p,
+.cms-puck-artist-card h2,
+.cms-puck-artist-card p,
+.cms-puck-index-preview h2 {
+  margin: 0;
+}
+
+.cms-puck-hero > p:first-of-type,
+.cms-puck-page-strip span,
+.cms-puck-feature-grid span,
+.cms-puck-footer-preview span,
+.cms-puck-artist-card > div > p:first-child,
+.cms-puck-index-preview p {
+  color: #7df5ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.cms-puck-hero h1 {
+  max-width: 780px;
+  font-size: clamp(44px, 8vw, 104px);
+  line-height: 0.92;
+}
+
+.cms-puck-hero > strong {
+  max-width: 520px;
+  color: #ffffff;
+  font-size: 24px;
+}
+
+.cms-puck-status-strip,
+.cms-puck-channel-row,
+.cms-puck-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cms-puck-status-strip span,
+.cms-puck-channel-row span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 4px 9px;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 8%);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cms-puck-page-strip,
+.cms-puck-feature-grid,
+.cms-puck-footer-preview,
+.cms-puck-artist-card,
+.cms-puck-index-preview {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.cms-puck-page-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: #0b0f19;
+}
+
+.cms-puck-page-strip article,
+.cms-puck-feature-grid article,
+.cms-puck-footer-preview,
+.cms-puck-artist-card,
+.cms-puck-index-preview {
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.cms-puck-page-strip article,
+.cms-puck-feature-grid article {
+  display: grid;
+  gap: 12px;
+  min-height: 150px;
+  align-content: end;
+  padding: 18px;
+}
+
+.cms-puck-page-strip h2,
+.cms-puck-feature-grid h2 {
+  color: #ffffff;
+  font-size: 24px;
+}
+
+.cms-puck-feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: #05070f;
+}
+
+.cms-puck-feature-grid p,
+.cms-puck-footer-preview p,
+.cms-puck-artist-card p {
+  color: rgb(247 251 255 / 72%);
+  line-height: 1.55;
+}
+
+.cms-puck-footer-preview {
+  grid-template-columns: minmax(240px, 1.1fr) minmax(240px, 1fr);
+  padding: 24px;
+  background: #030308;
+}
+
+.cms-puck-footer-preview small {
+  grid-column: 1 / -1;
+  color: rgb(247 251 255 / 64%);
+}
+
+.cms-puck-footer-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cms-puck-footer-columns strong {
+  display: block;
+  padding: 10px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.cms-puck-artist-preview {
+  background: #070815;
+}
+
+.cms-puck-artist-hero {
+  position: relative;
+  min-height: 520px;
+  background:
+    radial-gradient(circle at 78% 50%, rgb(255 95 183 / 18%), transparent 31%),
+    linear-gradient(135deg, #070815, #101227 60%, #061e24);
+}
+
+.cms-puck-broadcast {
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgb(125 245 255 / 28%);
+  background: rgb(125 245 255 / 9%);
+  color: #7df5ff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cms-puck-artist-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 8px 0 0;
+}
+
+.cms-puck-artist-stats div,
+.cms-puck-artist-card dl div {
+  display: grid;
+  gap: 4px;
+  min-width: 92px;
+  padding: 10px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.cms-puck-artist-stats dt,
+.cms-puck-artist-card dt {
+  color: rgb(247 251 255 / 62%);
+  font-size: 11px;
+}
+
+.cms-puck-artist-stats dd,
+.cms-puck-artist-card dd {
+  margin: 0;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.cms-puck-artist-card {
+  grid-template-columns: 240px minmax(0, 1fr);
+  padding: 24px;
+  background: #0c1020;
+}
+
+.cms-puck-artist-visual {
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  border: 1px solid rgb(125 245 255 / 24%);
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, rgb(0 213 255 / 20%), transparent 62%),
+    rgb(255 255 255 / 5%);
+  color: #7df5ff;
+  font-size: 54px;
+  font-weight: 900;
+}
+
+.cms-puck-artist-card > div:last-child {
+  display: grid;
+  gap: 12px;
+  align-content: center;
+}
+
+.cms-puck-artist-card h2 {
+  color: #ffffff;
+  font-size: 54px;
+  line-height: 0.95;
+}
+
+.cms-puck-artist-card strong {
+  color: #7df5ff;
+}
+
+.cms-puck-artist-card dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.cms-puck-index-preview {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  padding: 24px;
+  background: #05070f;
+}
+
+.cms-puck-index-preview p {
+  grid-column: 1 / -1;
+}
+
+.cms-puck-index-preview h2 {
+  color: #ffffff;
+  font-size: 38px;
+}
+
+.cms-puck-index-preview span {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 4px;
+  color: #7df5ff;
+  font-weight: 800;
+}
+
+.cms-legacy-form-source {
+  border-top: 1px solid var(--admin-line, #d8dadd);
+}
+
+.cms-legacy-form-source summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  color: var(--admin-muted, #666a70);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cms-legacy-form-source[open] summary {
+  border-bottom: 1px solid var(--admin-line, #d8dadd);
+}
+
+/* Loaded after content-admin.css, so this keeps the artist CMS split readable even if the running template is cached. */
+.cms-artist-editor-grid {
+  grid-template-columns: 1fr !important;
+  gap: 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.cms-artist-editor-grid > .cms-sheet-panel {
+  border: 1px solid var(--cms-line, #d8dadd) !important;
+  border-radius: 6px !important;
+  overflow: hidden;
+}
+
+.cms-artist-editor-grid > .cms-sheet-panel + .cms-sheet-panel {
+  border-left: 1px solid var(--cms-line, #d8dadd) !important;
+}
+
+.cms-artist-table-area {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--cms-line, #d8dadd);
+  border-radius: 6px;
+}
+
+.cms-artist-table-area .cms-table-scroll {
+  max-height: min(68vh, 720px);
+  overflow: auto;
+}
+
+.cms-artist-sheet thead th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+}
+
+@media (max-width: 1100px) {
+  .cms-puck-host,
+  .cms-puck-host .Puck {
+    min-height: 680px;
+    height: 680px;
+  }
+
+  .cms-puck-page-strip,
+  .cms-puck-feature-grid,
+  .cms-puck-footer-preview,
+  .cms-puck-artist-card,
+  .cms-puck-artist-card dl,
+  .cms-puck-index-preview {
+    grid-template-columns: 1fr;
+  }
+}

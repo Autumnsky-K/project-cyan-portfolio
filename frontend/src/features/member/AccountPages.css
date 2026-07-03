@@ -1438,6 +1438,139 @@
   color: #666666;
 }
 
+.digital-library-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.digital-library-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.digital-library-hero p,
+.digital-library-status {
+  margin: 0;
+  color: #666666;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.digital-library-hero h1 {
+  margin: 5px 0 8px;
+  color: #111111;
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 0.95;
+}
+
+.digital-library-hero span {
+  color: #333333;
+  font-weight: 700;
+}
+
+.digital-library-list {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.digital-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.digital-library-card {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  min-height: 210px;
+  border: 1px solid #d8d8d5;
+  background: #ffffff;
+}
+
+.digital-library-image {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  overflow: hidden;
+  border-right: 1px solid #d8d8d5;
+  background: #f4f4f2;
+  color: #777777;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.digital-library-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.digital-library-body {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 16px;
+}
+
+.digital-library-body h2 {
+  margin: 0;
+  color: #111111;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.digital-library-body p {
+  margin: 0;
+  color: #555555;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.digital-library-wait {
+  color: #8a5a00;
+}
+
+.digital-library-assets {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.digital-library-assets button,
+.digital-library-empty-asset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #111111;
+  background: #111111;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 900;
+  text-align: left;
+}
+
+.digital-library-assets button:disabled,
+.digital-library-empty-asset {
+  border-color: #d8d8d5;
+  background: #f4f4f2;
+  color: #777777;
+}
+
+.digital-library-assets small {
+  color: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 @media (max-width: 520px) {
   .account-page,
   .account-auth-page,

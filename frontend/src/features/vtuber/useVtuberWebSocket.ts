@@ -4,12 +4,15 @@ import {
   type VtuberClientCartItem,
   type VtuberAction,
   type VtuberAuthReason,
+  type VtuberBehaviorMetadata,
   type VtuberClientAuthMessage,
   type VtuberClientTextInputMessage,
   type VtuberConnectionStatus,
+  type VtuberMotionKey,
   type VtuberRecommendationMetadata,
   type VtuberServerMessage,
   type VtuberServerMetadata,
+  VTUBER_MOTION_KEYS,
 } from './types'
 
 const VTUBER_WS_PATH = '/client-ws'
@@ -72,6 +75,7 @@ const VTUBER_AUTH_REASONS = new Set<VtuberAuthReason>([
   'persistence',
   'guestLimit',
 ])
+const VTUBER_MOTION_KEY_SET = new Set<string>(VTUBER_MOTION_KEYS)
 
 function normalizeAuthReason(value: unknown): VtuberAuthReason | undefined {
   return typeof value === 'string' && VTUBER_AUTH_REASONS.has(value as VtuberAuthReason)
@@ -79,13 +83,40 @@ function normalizeAuthReason(value: unknown): VtuberAuthReason | undefined {
     : undefined
 }
 
+function normalizeBehaviorMetadata(value: unknown): VtuberBehaviorMetadata | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const motionKey = typeof value.motionKey === 'string' &&
+    VTUBER_MOTION_KEY_SET.has(value.motionKey)
+    ? value.motionKey as VtuberMotionKey
+    : undefined
+  const source = typeof value.source === 'string' && value.source.trim()
+    ? value.source
+    : undefined
+
+  if (!motionKey && !source) {
+    return undefined
+  }
+
+  return {
+    ...(motionKey ? { motionKey } : {}),
+    ...(source ? { source } : {}),
+  }
+}
+
 function normalizeMetadata(value: unknown): VtuberServerMetadata {
   if (!isRecord(value)) {
     return {}
   }
 
+  const passthroughMetadata = { ...value }
+  delete passthroughMetadata.behavior
+  const behavior = normalizeBehaviorMetadata(value.behavior)
+
   return {
-    ...value,
+    ...passthroughMetadata,
     recommendations: Array.isArray(value.recommendations)
       ? value.recommendations
         .map(normalizeRecommendation)
@@ -95,6 +126,7 @@ function normalizeMetadata(value: unknown): VtuberServerMetadata {
       : undefined,
     authRequired: value.authRequired === true ? true : undefined,
     authReason: normalizeAuthReason(value.authReason),
+    ...(behavior ? { behavior } : {}),
     loginPath: value.loginPath === '/login' ? '/login' : undefined,
   }
 }

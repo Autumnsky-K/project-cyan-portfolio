@@ -1,0 +1,353 @@
+.admin-security-main {
+  gap: 14px;
+}
+
+.security-collection-banner,
+.security-kpi-grid article,
+.security-ops-panel,
+.security-list-panel {
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-surface);
+}
+
+.security-collection-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.32fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+}
+
+.security-collection-banner h3,
+.security-panel-header h3,
+.security-ops-panel h3 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.security-collection-banner span,
+.security-kpi-grid span,
+.security-kpi-grid em,
+.security-definition-list dt,
+.security-table-legend,
+.security-log-table th,
+.security-mini-table th,
+.security-event-list time,
+.security-event-list span {
+  color: var(--admin-muted);
+}
+
+.security-progress-block {
+  display: grid;
+  gap: 7px;
+  align-items: center;
+}
+
+.security-progress-block strong {
+  color: var(--admin-ink);
+  text-align: right;
+  font-size: 18px;
+}
+
+.security-progress-meter {
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid var(--admin-line);
+  border-radius: 999px;
+  background: var(--admin-soft);
+}
+
+.security-progress-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--admin-accent, #2f6f64);
+}
+
+.security-collection-banner.is-stopped .security-progress-meter i {
+  background: #98a2b3;
+}
+
+.security-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.security-kpi-grid article {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+}
+
+.security-kpi-grid strong {
+  color: var(--admin-ink);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.security-kpi-grid em {
+  font-style: normal;
+  font-size: 12px;
+}
+
+.security-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(260px, 0.8fr);
+  gap: 10px;
+}
+
+.security-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.55fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.security-list-panel,
+.security-ops-panel {
+  min-width: 0;
+  padding: 12px;
+}
+
+.security-panel-header,
+.security-ops-panel header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.security-side-stack {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.security-definition-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.security-definition-list div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.security-definition-list dt {
+  font-size: 12px;
+}
+
+.security-definition-list dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--admin-ink);
+  overflow-wrap: anywhere;
+}
+
+.security-table-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 12px;
+}
+
+.security-table-legend span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.security-table-legend i {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 3px;
+}
+
+.legend-page-view {
+  background: #dff6ea;
+}
+
+.legend-server {
+  background: #f2f4f7;
+}
+
+.legend-blocked {
+  background: #ffe1df;
+}
+
+.security-table-wrap {
+  max-width: 100%;
+  max-height: 560px;
+  overflow: auto;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+}
+
+.security-log-table,
+.security-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.security-log-table {
+  min-width: 1040px;
+  font-size: 12px;
+  line-height: 1.18;
+}
+
+.security-log-table th,
+.security-log-table td,
+.security-mini-table th,
+.security-mini-table td {
+  border-bottom: 1px solid var(--admin-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.security-log-table th,
+.security-log-table td {
+  padding: 6px 7px;
+  white-space: nowrap;
+}
+
+.security-mini-table th,
+.security-mini-table td {
+  padding: 8px 10px;
+}
+
+.security-log-table th,
+.security-mini-table th {
+  color: var(--admin-muted);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.security-log-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--admin-surface);
+}
+
+.security-log-table tr:hover {
+  background: color-mix(in srgb, var(--admin-accent, #2f6f64) 7%, #ffffff);
+}
+
+.security-log-table tr.is-blocked td {
+  background: #fff4f2;
+}
+
+.security-log-table td:nth-child(5),
+.security-mini-table td:first-child {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.security-log-table code,
+.security-mini-table code {
+  color: var(--admin-ink);
+  font-size: 11px;
+}
+
+.security-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 21px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.security-chip-ok {
+  background: #e6f7ed;
+  color: #157347;
+}
+
+.security-chip-warn {
+  background: #fff3d6;
+  color: #8a5300;
+}
+
+.security-chip-fail {
+  background: #ffe7e7;
+  color: #b42318;
+}
+
+.security-chip-muted {
+  background: #eceff3;
+  color: #475467;
+}
+
+.security-empty-state {
+  display: grid;
+  min-height: 118px;
+  place-items: center;
+  border: 1px dashed var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-soft);
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.security-event-list {
+  display: grid;
+  gap: 8px;
+}
+
+.security-event-list div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 0.72fr) minmax(0, 1.2fr);
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--admin-line);
+  font-size: 13px;
+}
+
+.security-event-list div:last-child,
+.security-log-table tr:last-child td,
+.security-mini-table tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 1180px) {
+  .security-collection-banner,
+  .security-kpi-grid,
+  .security-bottom-grid,
+  .security-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .security-panel-header,
+  .security-ops-panel header {
+    display: grid;
+  }
+
+  .security-table-legend {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .security-definition-list div,
+  .security-event-list div {
+    grid-template-columns: 1fr;
+  }
+}

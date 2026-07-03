@@ -662,6 +662,21 @@ button.admin-primary {
   background: #fff8e7;
 }
 
+.admin-digital-asset-notice {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-digital-asset-notice strong {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.admin-digital-asset-notice span {
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -703,6 +718,10 @@ button.admin-primary {
   border: 1px solid var(--admin-line);
   border-radius: 6px;
   background: var(--admin-surface);
+}
+
+.admin-review-toolbar {
+  grid-template-columns: minmax(220px, 1fr) minmax(96px, auto);
 }
 
 .admin-toolbar label,
@@ -1472,6 +1491,37 @@ button.admin-primary {
   white-space: nowrap;
 }
 
+.admin-digital-asset-status {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border: 1px solid var(--admin-line);
+  border-radius: 6px;
+  background: var(--admin-soft);
+  line-height: 1.25;
+}
+
+.admin-digital-asset-status strong {
+  color: var(--admin-ink);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.admin-digital-asset-status small {
+  color: var(--admin-muted);
+  font-size: 10px;
+}
+
+.admin-digital-asset-status.is-ready {
+  border-color: #9bd4b2;
+  background: #f1fff6;
+}
+
+.admin-digital-asset-status.is-warning {
+  border-color: #e5c37a;
+  background: #fff8e7;
+}
+
 .admin-bulk-actions {
   width: 100%;
   box-sizing: border-box;
@@ -1565,6 +1615,30 @@ button.admin-primary {
 
 .admin-actions button {
   min-height: 36px;
+}
+
+.admin-danger-button {
+  border-color: #b42318 !important;
+  background: #b42318 !important;
+  color: #ffffff !important;
+}
+
+.admin-review-table {
+  min-width: 1080px;
+}
+
+.admin-review-content {
+  max-width: 420px;
+}
+
+.admin-review-content strong {
+  margin-bottom: 6px;
+}
+
+.admin-review-content p {
+  margin: 0;
+  color: var(--admin-ink);
+  white-space: pre-wrap;
 }
 
 .inline-form {
@@ -4308,3 +4382,176 @@ button.admin-primary {
 .admin-ai-sensitive-actions label,
 .admin-ai-connection-rollbacks label { min-width: 280px; }
 .admin-ai-oauth-warning { color: #9a3412; font-weight: 750; }
+
+.admin-classification-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-classification-create {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-classification-table {
+  min-width: 760px;
+}
+
+.admin-classification-table input,
+.admin-classification-table select {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-control-bg);
+  color: var(--admin-text);
+  font: inherit;
+}
+
+.admin-classification-inline-form {
+  width: min(100%, 360px);
+}
+
+.admin-classification-table .admin-actions {
+  align-items: center;
+}
+
+.admin-classification-table button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-danger {
+  border-color: #c94848;
+  color: #8a1f1f;
+}
+
+@media (max-width: 960px) {
+  .admin-classification-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-support-faq-create {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-support-faq-form {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-support-faq-form-grid,
+.admin-support-faq-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(90px, 120px) minmax(90px, 110px);
+  align-items: end;
+  gap: 10px;
+}
+
+.admin-support-faq-row {
+  grid-template-columns: 72px minmax(180px, 1fr) minmax(90px, 120px) minmax(90px, 110px);
+}
+
+.admin-support-faq-row > strong {
+  align-self: center;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.admin-support-faq-visible {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--admin-line);
+  border-radius: 4px;
+  background: var(--admin-control-bg);
+}
+
+.admin-support-faq-visible input {
+  width: auto;
+  min-height: auto;
+}
+
+.admin-support-faq-visible span {
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-support-faq-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-support-faq-item {
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  background: var(--admin-panel);
+}
+
+.admin-support-faq-actions {
+  justify-content: flex-end;
+}
+
+.admin-support-policy-grid,
+.admin-security-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-support-policy-grid .admin-data-card,
+.admin-security-policy-grid .admin-data-card {
+  min-height: 150px;
+}
+
+.admin-support-policy-grid .admin-data-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-security-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.admin-security-table {
+  min-width: 720px;
+}
+
+.admin-security-table td,
+.admin-security-table th {
+  vertical-align: top;
+}
+
+.admin-security-table td:nth-child(3),
+.admin-security-table td:nth-child(4),
+.admin-security-table td:nth-child(5) {
+  word-break: break-all;
+}
+
+.admin-security-table tr.is-blocked td {
+  background: #fff7ed;
+  color: #8a3b12;
+}
+
+@media (max-width: 900px) {
+  .admin-support-faq-form-grid,
+  .admin-support-faq-row,
+  .admin-support-policy-grid,
+  .admin-security-policy-grid,
+  .admin-security-grid {
+    grid-template-columns: 1fr;
+  }
+}

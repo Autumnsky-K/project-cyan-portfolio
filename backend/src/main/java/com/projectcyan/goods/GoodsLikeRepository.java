@@ -17,6 +17,8 @@ public interface GoodsLikeRepository extends JpaRepository<GoodsLike, Long> {
 
 	boolean existsByMemberIdAndGoodsId(Long memberId, Long goodsId);
 
+	List<GoodsLike> findByMemberIdOrderByCreatedAtDescLikeIdDesc(Long memberId);
+
 	void deleteByMemberIdAndGoodsId(Long memberId, Long goodsId);
 
 	long countByGoodsId(Long goodsId);
@@ -27,7 +29,7 @@ public interface GoodsLikeRepository extends JpaRepository<GoodsLike, Long> {
 		where goodsLike.goodsId in :goodsIds
 		group by goodsLike.goodsId
 		""")
-	List<GoodsLikeCount> countByGoodsIdIn(Collection<Long> goodsIds);
+	List<GoodsLikeCount> countByGoodsIdIn(@Param("goodsIds") Collection<Long> goodsIds);
 
 	@Query("""
 		select goodsLike.goodsId

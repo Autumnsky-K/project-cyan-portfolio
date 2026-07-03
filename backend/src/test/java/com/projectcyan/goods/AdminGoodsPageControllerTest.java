@@ -28,6 +28,7 @@ class AdminGoodsPageControllerTest {
 			mock(GoodsStockRepository.class),
 			mock(SupabaseStorageService.class),
 			mock(AdminGoodsImportService.class),
+			mock(DigitalGoodsAssetStatusService.class),
 			"http://localhost:5173"
 		);
 

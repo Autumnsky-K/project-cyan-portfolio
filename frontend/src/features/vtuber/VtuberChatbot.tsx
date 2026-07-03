@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useRef, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../../api/supabaseClient'
@@ -13,7 +13,11 @@ import {
   VTUBER_DISPLAY_STATE_LABELS,
 } from './displayState'
 import { useVtuberWebSocket } from './useVtuberWebSocket'
-import { type VtuberAuthReason } from './types'
+import {
+  type VtuberAuthReason,
+  type VtuberConversationMessage,
+  type VtuberConversationRole,
+} from './types'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
 const SPEAKING_STATE_DURATION_MS = 2400
@@ -52,6 +56,7 @@ function VtuberChatbot(): ReactElement {
   const navigate = useNavigate()
   const { authLoading, authUserId, isAuthenticated } = useCartAuthSession()
   const { addCartItem, items } = useCart()
+  const conversationMessageIdRef = useRef(0)
   const executedActionBatchRef = useRef(0)
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [speakingBatchId, setSpeakingBatchId] = useState(0)
@@ -59,6 +64,15 @@ function VtuberChatbot(): ReactElement {
   const [chatAccessToken, setChatAccessToken] = useState<string | null>(null)
   const [chatAuthStatus, setChatAuthStatus] = useState<ChatAuthStatus>('anonymous')
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
+  const [characterBubbleText, setCharacterBubbleText] = useState('')
+  const [characterBubbleSequence, setCharacterBubbleSequence] = useState(0)
+  const [conversationMessages, setConversationMessages] = useState<VtuberConversationMessage[]>([
+    {
+      id: 'assistant-initial',
+      role: 'assistant',
+      text: INITIAL_BUBBLE_TEXT,
+    },
+  ])
   const { actionBatchId, actions, connectionStatus, latestText, metadata, sendText } =
     useVtuberWebSocket(
       INITIAL_BUBBLE_TEXT,
@@ -67,6 +81,27 @@ function VtuberChatbot(): ReactElement {
       chatAccessToken,
       location.pathname,
     )
+
+  const appendConversationMessage = useCallback((
+    role: VtuberConversationRole,
+    text: string,
+  ) => {
+    const trimmedText = text.trim()
+
+    if (!trimmedText) {
+      return
+    }
+
+    conversationMessageIdRef.current += 1
+    setConversationMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `${role}-${Date.now()}-${conversationMessageIdRef.current}`,
+        role,
+        text: trimmedText,
+      },
+    ])
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -294,6 +329,9 @@ function VtuberChatbot(): ReactElement {
 
     setIsAwaitingResponse(false)
     setSpeakingBatchId(actionBatchId)
+    setCharacterBubbleText(latestText)
+    setCharacterBubbleSequence((currentSequence) => currentSequence + 1)
+    appendConversationMessage('assistant', latestText)
 
     const speakingTimerId = window.setTimeout(() => {
       setSpeakingBatchId((currentBatchId) =>
@@ -302,7 +340,7 @@ function VtuberChatbot(): ReactElement {
     }, SPEAKING_STATE_DURATION_MS)
 
     return () => window.clearTimeout(speakingTimerId)
-  }, [actionBatchId])
+  }, [actionBatchId, appendConversationMessage, latestText])
 
   useEffect(() => {
     if (actionBatchId === 0 || executedActionBatchRef.current === actionBatchId) {
@@ -325,9 +363,11 @@ function VtuberChatbot(): ReactElement {
       return false
     }
 
-    const didSend = sendText(message, freshToken.accessToken)
+    const trimmedMessage = message.trim()
+    const didSend = sendText(trimmedMessage, freshToken.accessToken)
 
     if (didSend) {
+      appendConversationMessage('user', trimmedMessage)
       setIsAwaitingResponse(true)
       setSpeakingBatchId(0)
     }
@@ -346,6 +386,7 @@ function VtuberChatbot(): ReactElement {
     isAwaitingResponse,
     isSpeaking: speakingBatchId > 0,
   })
+  const motionKey = metadata.behavior?.motionKey ?? null
   const authRequiredMessage = metadata.authRequired && metadata.authReason
     ? AUTH_REQUIRED_MESSAGES[metadata.authReason]
     : null
@@ -367,12 +408,16 @@ function VtuberChatbot(): ReactElement {
     <VtuberChatbotShell
       actionsCount={actions.length}
       authNotice={authNotice}
-      bubbleText={latestText}
+      characterBubbleText={characterBubbleText}
+      characterBubbleSequence={characterBubbleSequence}
       character={DEFAULT_VTUBER_CHARACTER}
       displayState={displayState}
       isSendDisabled={
         connectionStatus !== 'open' || isAwaitingResponse || authLoading
       }
+      messages={conversationMessages}
+      motionKey={motionKey}
+      motionTriggerId={actionBatchId}
       onSendMessage={handleSendMessage}
       statusLabel={VTUBER_DISPLAY_STATE_LABELS[displayState]}
     />

@@ -17,9 +17,11 @@ export function useGoodsPurchaseCart(goods: GoodsDetail) {
   )
 
   const maxQuantity = goods.stockCount ?? 0
-  const selectedQuantity = Math.max(1, Math.min(quantity, maxQuantity || 1))
+  const isDigitalGoods = goods.fulfillmentType === 'DIGITAL'
+  const purchaseLimit = isDigitalGoods ? 1 : maxQuantity
+  const selectedQuantity = Math.max(1, Math.min(quantity, purchaseLimit || 1))
   const purchasingAvailable = goods.purchaseState === 'AVAILABLE'
-  const canAdd = purchasingAvailable && maxQuantity > 0
+  const canAdd = purchasingAvailable && (isDigitalGoods || purchaseLimit > 0)
   const unitPrice = Number(goods.price ?? 0)
 
   function showFeedback(message: string) {
@@ -30,7 +32,7 @@ export function useGoodsPurchaseCart(goods: GoodsDetail) {
 
   function updateQuantity(nextQuantity: number) {
     if (!Number.isFinite(nextQuantity)) return
-    setQuantity(Math.max(1, Math.min(Math.trunc(nextQuantity), maxQuantity || 1)))
+    setQuantity(Math.max(1, Math.min(Math.trunc(nextQuantity), purchaseLimit || 1)))
   }
 
   async function addSelectedQuantityToCart() {
@@ -42,7 +44,8 @@ export function useGoodsPurchaseCart(goods: GoodsDetail) {
         {
           ...goods,
           variantPrice: unitPrice,
-          maxQuantity,
+          maxQuantity: purchaseLimit,
+          fulfillmentType: goods.fulfillmentType,
           shippingFee: 0,
         },
         selectedQuantity,
@@ -60,7 +63,7 @@ export function useGoodsPurchaseCart(goods: GoodsDetail) {
     canAdd,
     feedback,
     isAddingCart,
-    maxQuantity,
+    maxQuantity: purchaseLimit,
     selectedQuantity,
     unitPrice,
     updateQuantity,

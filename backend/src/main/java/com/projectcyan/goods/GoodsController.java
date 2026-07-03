@@ -5,6 +5,7 @@ import java.util.List;
 import com.projectcyan.inquiry.InquiryProductRequest;
 import com.projectcyan.inquiry.InquiryResponse;
 import com.projectcyan.inquiry.InquiryService;
+import com.projectcyan.member.DigitalLibraryItemResponse;
 import com.projectcyan.member.auth.AuthenticatedMember;
 import com.projectcyan.member.auth.OptionalAuthenticatedMemberResolver;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,7 @@ public class GoodsController {
 	private final GoodsLikeService goodsLikeService;
 	private final InquiryService inquiryService;
 	private final OptionalAuthenticatedMemberResolver optionalAuthenticatedMemberResolver;
+	private final DigitalGoodsPurchaseService digitalGoodsPurchaseService;
 
 	public GoodsController(
 		GoodsService goodsService,
@@ -40,7 +42,8 @@ public class GoodsController {
 		GoodsFavoriteService goodsFavoriteService,
 		GoodsLikeService goodsLikeService,
 		InquiryService inquiryService,
-		OptionalAuthenticatedMemberResolver optionalAuthenticatedMemberResolver
+		OptionalAuthenticatedMemberResolver optionalAuthenticatedMemberResolver,
+		DigitalGoodsPurchaseService digitalGoodsPurchaseService
 	) {
 		this.goodsService = goodsService;
 		this.goodsRecommendationService = goodsRecommendationService;
@@ -49,6 +52,7 @@ public class GoodsController {
 		this.goodsLikeService = goodsLikeService;
 		this.inquiryService = inquiryService;
 		this.optionalAuthenticatedMemberResolver = optionalAuthenticatedMemberResolver;
+		this.digitalGoodsPurchaseService = digitalGoodsPurchaseService;
 	}
 
 	@GetMapping
@@ -104,6 +108,11 @@ public class GoodsController {
 		return goodsService.findGoodsFilters();
 	}
 
+	@GetMapping("/home-discovery")
+	public GoodsHomeDiscoveryResponse findGoodsHomeDiscovery() {
+		return goodsService.findGoodsHomeDiscovery();
+	}
+
 	@GetMapping("/favorites")
 	public List<GoodsSummaryResponse> findFavoriteGoods(AuthenticatedMember currentMember) {
 		return goodsFavoriteService.findFavoriteGoods(currentMember.memberId());
@@ -112,6 +121,24 @@ public class GoodsController {
 	@GetMapping("/{goodsId}")
 	public GoodsDetailResponse findGoodsDetail(@PathVariable Long goodsId) {
 		return goodsService.findPublicGoodsDetail(goodsId);
+	}
+
+	@GetMapping("/{goodsId}/digital-purchase")
+	public ResponseEntity<DigitalLibraryItemResponse> findMyDigitalGoodsPurchase(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return digitalGoodsPurchaseService.findPurchased(currentMember.memberId(), goodsId)
+			.map(ResponseEntity::ok)
+			.orElseGet(() -> ResponseEntity.noContent().build());
+	}
+
+	@PostMapping("/{goodsId}/digital-purchase")
+	public DigitalLibraryItemResponse purchaseDigitalGoods(
+		@PathVariable Long goodsId,
+		AuthenticatedMember currentMember
+	) {
+		return digitalGoodsPurchaseService.claim(currentMember.memberId(), goodsId);
 	}
 
 	@PostMapping("/{goodsId}/favorites")
@@ -138,6 +165,11 @@ public class GoodsController {
 		AuthenticatedMember currentMember
 	) {
 		return goodsLikeService.findMyLike(currentMember.memberId(), goodsId);
+	}
+
+	@GetMapping("/likes")
+	public List<GoodsSummaryResponse> findLikedGoods(AuthenticatedMember currentMember) {
+		return goodsLikeService.findLikedGoods(currentMember.memberId());
 	}
 
 	@GetMapping("/likes/my")

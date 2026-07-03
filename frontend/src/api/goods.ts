@@ -3,6 +3,7 @@ import {
   hasSpringApiSession,
   parseApiResponse,
 } from '../shared/api/springApiClient'
+import type { DigitalLibraryItem } from './digitalLibrary'
 
 export type GoodsSummary = {
   goodsId: number
@@ -10,8 +11,11 @@ export type GoodsSummary = {
   price: number
   imageUrl: string | null
   tags: string[]
+  artistId?: number | null
   artistName?: string | null
+  categoryId?: number | null
   categoryName?: string | null
+  fulfillmentType?: 'PHYSICAL' | 'DIGITAL' | string | null
   salesStatus?: string | null
   isBestSeller?: boolean | null
   aiPickDefault?: boolean | null
@@ -83,12 +87,33 @@ export type GoodsLikeItemResponse = GoodsLikeResponse & {
 export type GoodsFilterOption = {
   label: string
   value: string
+  fulfillmentType?: 'PHYSICAL' | 'DIGITAL' | string | null
 }
 
 export type GoodsFiltersResponse = {
   artists?: GoodsFilterOption[]
   categories?: GoodsFilterOption[]
   tags?: GoodsFilterOption[]
+}
+
+export type GoodsHomeDiscoveryGroup = {
+  label: string
+  value: string
+  count: number
+  imageUrl?: string | null
+}
+
+export type GoodsHomeDiscovery = {
+  physicalGoods?: GoodsSummary[]
+  digitalGoods?: GoodsSummary[]
+  artists?: GoodsHomeDiscoveryGroup[]
+  categories?: GoodsHomeDiscoveryGroup[]
+  physicalCategories?: GoodsHomeDiscoveryGroup[]
+  digitalCategories?: GoodsHomeDiscoveryGroup[]
+  digitalTags?: GoodsHomeDiscoveryGroup[]
+  totalGoods?: number
+  physicalGoodsCount?: number
+  digitalGoodsCount?: number
 }
 
 export type PageResponse<T> = {
@@ -163,6 +188,11 @@ export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promi
   params.set('goodsIds', goodsIds.join(','))
   const response = await apiFetch(`/goods/likes/my?${params.toString()}`)
   return await parseApiResponse<GoodsLikeItemResponse[]>(response, '상품 좋아요 목록을 불러오지 못했습니다.') ?? []
+}
+
+export async function fetchLikedGoods(): Promise<GoodsSummary[]> {
+  const response = await apiFetch('/goods/likes')
+  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load liked goods.') ?? []
 }
 
 export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
@@ -269,4 +299,34 @@ export async function createGoodsInquiry(
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {
   const response = await apiFetch('/goods/filters', options)
   return await parseApiResponse<GoodsFiltersResponse>(response, '상품 필터를 불러오지 못했습니다.') as GoodsFiltersResponse
+}
+
+export async function fetchGoodsHomeDiscovery(options: FetchOptions = {}): Promise<GoodsHomeDiscovery> {
+  const response = await apiFetch('/goods/home-discovery', options)
+  return await parseApiResponse<GoodsHomeDiscovery>(
+    response,
+    'Failed to load home goods discovery.',
+  ) as GoodsHomeDiscovery
+}
+
+export async function fetchMyDigitalGoodsPurchase(goodsId: string | number): Promise<DigitalLibraryItem | null> {
+  if (!(await hasSpringApiSession())) {
+    return null
+  }
+
+  const response = await apiFetch(`/goods/${goodsId}/digital-purchase`)
+  return await parseApiResponse<DigitalLibraryItem>(
+    response,
+    '디지털 상품 구매 여부를 확인하지 못했습니다.',
+  )
+}
+
+export async function purchaseDigitalGoods(goodsId: string | number): Promise<DigitalLibraryItem> {
+  const response = await apiFetch(`/goods/${goodsId}/digital-purchase`, {
+    method: 'POST',
+  })
+  return await parseApiResponse<DigitalLibraryItem>(
+    response,
+    '디지털 상품 구매를 처리하지 못했습니다.',
+  ) as DigitalLibraryItem
 }

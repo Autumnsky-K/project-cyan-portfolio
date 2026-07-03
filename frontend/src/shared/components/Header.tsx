@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { label: 'Artists', to: '/artists' },
   { label: 'Goods', to: '/goods' },
   { label: 'Cart', to: '/cart' },
+  { label: 'Help', to: '/partnership' },
   { label: 'Mypage', to: '/mypage' },
 ]
 
@@ -24,6 +25,7 @@ export default function Header({ tone = 'surface' }: HeaderProps) {
   const { pathname } = useLocation()
   const [openMenuPath, setOpenMenuPath] = useState<string | null>(null)
   const isMenuOpen = openMenuPath === pathname
+  const closeMenu = () => setOpenMenuPath(null)
 
   return (
     <header className="site-header" data-tone={tone}>
@@ -51,11 +53,11 @@ export default function Header({ tone = 'surface' }: HeaderProps) {
             const isCurrent = isCurrentPath(pathname, item.to)
 
             if (item.to === '/cart') {
-              return <CartNavLink key={item.to} current={isCurrent} />
+              return <CartNavLink key={item.to} current={isCurrent} onClick={closeMenu} />
             }
 
             return (
-              <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to}>
+              <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to} onClick={closeMenu}>
                 {item.label}
               </Link>
             )

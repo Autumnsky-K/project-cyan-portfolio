@@ -2,8 +2,10 @@ import { type ReactElement, useEffect, useRef, useState } from 'react'
 import * as PIXI from 'pixi.js'
 
 import {
+  type VtuberCharacterRenderStatus,
   type VtuberCharacterConfig,
   type VtuberDisplayState,
+  type VtuberMotionKey,
 } from './types'
 
 const CUBISM_CORE_SCRIPT_URL = '/live2d/runtime/live2dcubismcore.min.js'
@@ -23,6 +25,14 @@ const MOTION_BY_STATE: Partial<Record<VtuberDisplayState, string[]>> = {
   speaking: ['TapBody', 'MenuClick'],
 }
 
+const MOTION_BY_KEY: Record<VtuberMotionKey, string[]> = {
+  idle: ['Idle'],
+  wave: ['wave', 'Wave', 'Greeting', 'TapBody'],
+  point: ['point', 'Point', 'TapBody', 'MenuClick'],
+  nod: ['nod', 'Nod', 'Yes', 'TapBody'],
+  'shake-head': ['shake_head', 'shake-head', 'ShakeHead', 'No', 'TapBody'],
+}
+
 type Live2DModelModule = typeof import('pixi-live2d-display/cubism4')
 type Live2DModelInstance = Awaited<ReturnType<Live2DModelModule['Live2DModel']['from']>>
 type MotionPriorityModule = Live2DModelModule['MotionPriority']
@@ -30,10 +40,13 @@ type MotionPriorityModule = Live2DModelModule['MotionPriority']
 type Live2DCharacterProps = {
   character: VtuberCharacterConfig
   displayState: VtuberDisplayState
+  motionKey?: VtuberMotionKey | null
+  motionTriggerId?: number
+  onRenderStatusChange?: (status: VtuberCharacterRenderStatus) => void
   statusLabel: string
 }
 
-type RenderStatus = 'loading' | 'ready' | 'fallback'
+type RenderStatus = VtuberCharacterRenderStatus
 
 declare global {
   interface Window {
@@ -120,10 +133,13 @@ async function applyFirstMotion(
   model: Live2DModelInstance,
   groups: string[],
   MotionPriority: MotionPriorityModule,
+  force = false,
 ) {
+  const priority = force ? MotionPriority.FORCE : MotionPriority.NORMAL
+
   for (const group of groups) {
     try {
-      if (await model.motion(group, undefined, MotionPriority.NORMAL)) {
+      if (await model.motion(group, undefined, priority)) {
         return true
       }
     } catch {
@@ -141,6 +157,9 @@ function resetExpression(model: Live2DModelInstance) {
 function Live2DCharacter({
   character,
   displayState,
+  motionKey = null,
+  motionTriggerId = 0,
+  onRenderStatusChange,
   statusLabel,
 }: Live2DCharacterProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -229,6 +248,10 @@ function Live2DCharacter({
   }, [character.modelUrl])
 
   useEffect(() => {
+    onRenderStatusChange?.(renderStatus)
+  }, [onRenderStatusChange, renderStatus])
+
+  useEffect(() => {
     const model = modelRef.current
     const MotionPriority = priorityRef.current
 
@@ -256,14 +279,43 @@ function Live2DCharacter({
     void applyDisplayState()
   }, [displayState, renderStatus])
 
+  useEffect(() => {
+    const model = modelRef.current
+    const MotionPriority = priorityRef.current
+
+    if (
+      !model ||
+      !MotionPriority ||
+      renderStatus !== 'ready' ||
+      !motionKey ||
+      motionTriggerId === 0
+    ) {
+      return
+    }
+
+    const motions = MOTION_BY_KEY[motionKey]
+    if (motions.length === 0) {
+      return
+    }
+
+    void applyFirstMotion(model, motions, MotionPriority, motionKey !== 'idle')
+  }, [motionKey, motionTriggerId, renderStatus])
+
   return (
     <div
       className="vtuber-live2d"
       data-render-status={renderStatus}
+      data-motion-key={motionKey ?? undefined}
       aria-label={`${character.name} Live2D 캐릭터`}
     >
       <div ref={containerRef} className="vtuber-live2d-container" aria-hidden="true" />
-      <div className="vtuber-avatar" data-display-state={displayState} aria-hidden="true">
+      <div
+        className="vtuber-avatar"
+        data-display-state={displayState}
+        data-motion-key={motionKey ?? undefined}
+        data-motion-trigger-id={motionTriggerId || undefined}
+        aria-hidden="true"
+      >
         <span className="vtuber-avatar-face" />
         {displayState === 'thinking' || renderStatus === 'loading' ? (
           <span className="vtuber-thinking-dots" aria-hidden="true">

@@ -2,6 +2,7 @@ package com.projectcyan.member;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,15 +26,18 @@ public class MemberController {
 	private final MemberService memberService;
 	private final FavoriteArtistService favoriteArtistService;
 	private final MemberGoodsActivityService memberGoodsActivityService;
+	private final DigitalLibraryService digitalLibraryService;
 
 	public MemberController(
 		MemberService memberService,
 		FavoriteArtistService favoriteArtistService,
-		MemberGoodsActivityService memberGoodsActivityService
+		MemberGoodsActivityService memberGoodsActivityService,
+		DigitalLibraryService digitalLibraryService
 	) {
 		this.memberService = memberService;
 		this.favoriteArtistService = favoriteArtistService;
 		this.memberGoodsActivityService = memberGoodsActivityService;
+		this.digitalLibraryService = digitalLibraryService;
 	}
 
 	@GetMapping("/me")
@@ -63,6 +69,30 @@ public class MemberController {
 		return memberGoodsActivityService.findGoodsActivity(currentMember.memberId());
 	}
 
+	@GetMapping("/me/digital-library")
+	public List<DigitalLibraryItemResponse> findDigitalLibrary(
+		AuthenticatedMember currentMember,
+		@RequestParam(name = "goodsId", required = false) Long goodsId
+	) {
+		return digitalLibraryService.findLibrary(currentMember.memberId(), goodsId);
+	}
+
+	@PostMapping("/me/digital-library/{entitlementId}/downloads")
+	public DigitalDownloadResponse requestDigitalDownload(
+		AuthenticatedMember currentMember,
+		@PathVariable Long entitlementId,
+		@RequestBody(required = false) DigitalDownloadRequest downloadRequest,
+		HttpServletRequest servletRequest
+	) {
+		return digitalLibraryService.requestDownload(
+			currentMember.memberId(),
+			entitlementId,
+			downloadRequest,
+			clientIp(servletRequest),
+			servletRequest.getHeader("User-Agent")
+		);
+	}
+
 	@PostMapping("/signup")
 	@ResponseStatus(HttpStatus.CREATED)
 	public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
@@ -90,5 +120,13 @@ public class MemberController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
 		memberService.confirmPasswordReset(request);
+	}
+
+	private String clientIp(HttpServletRequest request) {
+		String forwardedFor = request.getHeader("X-Forwarded-For");
+		if (forwardedFor != null && !forwardedFor.isBlank()) {
+			return forwardedFor.split(",")[0].trim();
+		}
+		return request.getRemoteAddr();
 	}
 }

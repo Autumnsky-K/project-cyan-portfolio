@@ -71,6 +71,10 @@ public class OrderItem {
 		return goods == null ? null : goods.getGoodsId();
 	}
 
+	Goods getGoods() {
+		return goods;
+	}
+
 	public Integer getQuantity() {
 		return quantity;
 	}

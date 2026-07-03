@@ -81,6 +81,7 @@ export function normalizeProduct(goods) {
     description: goods.description ?? goods.summary ?? '',
     image: goods.image ?? goods.imageUrl ?? goods.mainImageUrl ?? goods.image_url ?? goods.main_image_url ?? '',
     price: Number(goods.price ?? goods.unitPrice ?? goods.unit_price ?? 0),
+    fulfillmentType: goods.fulfillmentType ?? goods.fulfillment_type ?? null,
   }
 }
 

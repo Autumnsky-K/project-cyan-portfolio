@@ -11,6 +11,7 @@ export type CartApiItem = {
   artistName?: string | null
   categoryId?: number | null
   categoryName?: string | null
+  fulfillmentType?: string | null
   salesStatus?: string | null
   stockCount?: number | null
   quantity: number
