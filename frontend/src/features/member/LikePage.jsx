@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 import {
   getArtistOptions,
   getCurrentMember,
@@ -149,14 +150,15 @@ function LikePage() {
           </div>
 
           <div className="account-actions like-actions">
-            <button
+            <Button
               className="account-button like-action-button"
-              type="button"
+              shape="pill"
+              size="small"
               onClick={handleActionButtonClick}
               disabled={isSaving}
             >
               {actionButtonText}
-            </button>
+            </Button>
           </div>
         </section>
       </div>

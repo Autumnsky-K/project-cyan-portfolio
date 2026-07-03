@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 import { sendPasswordResetEmail } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import './AccountPages.css'
@@ -54,9 +55,9 @@ function ForgotPasswordPage() {
               />
             </label>
 
-            <button className="account-button" type="submit" disabled={isLoading}>
+            <Button className="account-button" shape="pill" size="large" type="submit" disabled={isLoading}>
               {isLoading ? '메일 발송 중...' : '재설정 링크 받기'}
-            </button>
+            </Button>
           </form>
 
           <nav className="account-card-links" aria-label="계정 이동">

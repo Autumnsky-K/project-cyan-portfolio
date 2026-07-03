@@ -43,8 +43,6 @@
 .purchase-total span { color: var(--goods-muted); font-size: 12px; font-weight: 700; }
 .purchase-total strong { font-size: 18px; }
 .purchase-message { margin: 0; padding: 12px; border-radius: 4px; background: #f5f5f5; color: #6a6a6a; font-size: 14px; }
-.purchase-button { min-height: 46px; border: 0; border-radius: 2px; background: #111; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
-.purchase-button:disabled { background: #c8c8c8; cursor: not-allowed; }
 .purchase-secondary-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .purchase-share-button span:first-child { color: var(--goods-ink); font-size: 14px; line-height: 1; }
 .purchase-feedback { text-align: center; color: #3153b8; font-size: 14px; font-weight: 700; }

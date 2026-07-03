@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 import { loginMember, loginWithKakao } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
@@ -138,9 +139,9 @@ function LoginPage() {
               </p>
             )}
 
-            <button className="login-submit" type="submit" disabled={isLoading}>
+            <Button className="login-submit" fullWidth shape="pill" size="large" type="submit" disabled={isLoading}>
               {loadingProvider === 'email' ? '로그인 중...' : '로그인'}
-            </button>
+            </Button>
           </form>
 
           <p className="login-help">

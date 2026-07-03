@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 import { checkSignupAvailability, signupMember } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
@@ -319,14 +320,17 @@ function SignupPage() {
                 />
               </label>
 
-              <button
+              <Button
                 className="signup-submit"
+                fullWidth
+                shape="pill"
+                size="large"
                 type="button"
                 onClick={handleNextStep}
                 disabled={isLoading}
               >
                 {isLoading ? '확인 중...' : '다음'}
-              </button>
+              </Button>
             </>
           )}
 
@@ -414,16 +418,19 @@ function SignupPage() {
               </fieldset>
 
               <div className="signup-actions">
-                <button
+                <Button
                   className="signup-secondary"
+                  fullWidth
+                  shape="pill"
+                  size="large"
                   type="button"
                   onClick={handlePreviousStep}
                 >
                   이전
-                </button>
-                <button className="signup-submit" type="submit" disabled={isLoading}>
+                </Button>
+                <Button className="signup-submit" fullWidth shape="pill" size="large" type="submit" disabled={isLoading}>
                   {isLoading ? '가입 중...' : '회원가입'}
-                </button>
+                </Button>
               </div>
             </>
           )}

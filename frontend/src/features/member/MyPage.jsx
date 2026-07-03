@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { removeGoodsLike } from '../../api/goods'
+import Button from '../../shared/components/Button'
 import {
   getArtistOptions,
   getMyPageSummary,
@@ -800,9 +801,9 @@ function MyPage() {
             {error || '마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'}
           </p>
           <div className="account-actions">
-            <button className="account-button" type="button" onClick={() => navigate('/login')}>
+            <Button className="account-button" shape="pill" size="large" onClick={() => navigate('/login')}>
               로그인으로 이동
-            </button>
+            </Button>
           </div>
         </section>
       </>

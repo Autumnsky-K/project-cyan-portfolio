@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 import { exchangeAuthCodeForSession, updateMemberPassword } from './member'
 import AccountFeedbackPopup from './AccountFeedbackPopup'
 import PasswordVisibilityButton from './PasswordVisibilityButton'
@@ -168,9 +169,9 @@ function ResetPasswordPage() {
               </div>
             </label>
 
-            <button className="account-button" type="submit" disabled={isLoading}>
+            <Button className="account-button" shape="pill" size="large" type="submit" disabled={isLoading}>
               {isLoading ? '변경 중...' : '비밀번호 변경'}
-            </button>
+            </Button>
           </form>
         </section>
       </div>

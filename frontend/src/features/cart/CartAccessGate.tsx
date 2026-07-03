@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Button from '../../shared/components/Button'
 
 import { requestCartLogin } from './requestCartLogin'
 import { useCart } from './useCart'
@@ -29,9 +30,9 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
         <section>
           <h1>Login required</h1>
           <p>Please log in to continue checkout.</p>
-          <button type="button" onClick={() => requestCartLogin(navigate)}>
+          <Button variant="primary" onClick={() => requestCartLogin(navigate)}>
             Go to login
-          </button>
+          </Button>
         </section>
       </main>
     )

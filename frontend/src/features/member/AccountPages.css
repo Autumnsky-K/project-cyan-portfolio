@@ -258,42 +258,6 @@
   outline-offset: 2px;
 }
 
-.account-button,
-.account-secondary {
-  min-height: 46px;
-  padding: 0 20px;
-  border: 1px solid #111111;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #111111;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.account-button:hover,
-.account-button:focus,
-.account-secondary:hover,
-.account-secondary:focus,
-.account-button:active,
-.account-secondary:active {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
-}
-
-.account-button:disabled,
-.account-secondary:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
-
-.account-secondary {
-  border-color: #7f7f7f;
-}
-
 .account-feedback {
   margin: 0;
   padding: 10px 12px;

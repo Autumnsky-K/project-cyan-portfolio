@@ -1,3 +1,5 @@
+import Button from '../../shared/components/Button'
+
 type GoodsListStateProps = {
   kind: 'empty' | 'error'
   message?: string
@@ -37,9 +39,9 @@ function GoodsListState({ kind, message, onAction }: GoodsListStateProps) {
           ? message || '잠시 후 다시 시도해 주세요.'
           : '다른 검색어를 입력하거나 적용된 필터를 초기화해 주세요.'}
       </span>
-      <button type="button" onClick={onAction}>
+      <Button variant="primary" onClick={onAction}>
         {isError ? '다시 시도' : '필터 초기화'}
-      </button>
+      </Button>
     </div>
   )
 }
