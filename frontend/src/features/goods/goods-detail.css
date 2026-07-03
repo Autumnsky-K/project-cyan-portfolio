@@ -111,6 +111,9 @@
 .review-form-actions button, .review-state button { padding: 9px 13px; border: 1px solid var(--goods-ink); border-radius: 999px; background: var(--goods-ink); color: #fff; font: inherit; cursor: pointer; }
 .review-form-actions button:disabled, .review-list-heading button:disabled { cursor: not-allowed; opacity: .5; }
 .review-form-message { margin: 0; color: var(--goods-muted); font-size: 13px; }
+.qna-secret-toggle { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; }
+.qna-secret-toggle input { width: auto !important; }
+.qna-answer { padding: 10px 12px; border-radius: 6px; background: var(--goods-soft); color: var(--goods-text) !important; }
 .related-section { display: grid; gap: 24px; max-width: 1380px; margin: 0 auto; padding: 56px 32px 80px; border-top: 1px solid var(--goods-line); }
 .related-section h2 { margin: 0; }
 .related-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }

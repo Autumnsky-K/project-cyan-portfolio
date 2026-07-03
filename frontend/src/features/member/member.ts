@@ -5,249 +5,257 @@ const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
 const ACCOUNT_NOT_FOUND_MESSAGE = '계정을 찾을 수 없습니다. 먼저 회원가입을 진행해 주세요.'
 const MY_PAGE_SECTION_LIMIT = 20
 
+const INQUIRY_STATUS_LABELS: Record<string, string> = {
+  PENDING: '답변 대기',
+  ANSWERED: '답변 완료',
+}
 
-const MY_PAGE_DUMMY_DATA = {
-  orders: [
-    {
-      orderId: 101,
-      name: 'aespa OFFICIAL LIGHT STICK',
-      status: '배송 준비중',
-      description: '응원봉 단독 주문 · 2026.06.18 결제',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 102,
-      name: 'RIIZE PHOTOBOOK SET',
-      status: '배송 완료',
-      description: '포토북 + 포토카드 세트 · 2026.06.12 도착',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 103,
-      name: 'NCT DREAM MD PACKAGE',
-      status: '결제 완료',
-      description: '예약 상품 · 2026.07.02 출고 예정',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 104,
-      name: 'Red Velvet MINI BAG',
-      status: '구매 확정',
-      description: '공식 굿즈 스토어 구매 · 리뷰 작성 가능',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 105,
-      name: 'SHINee ANNIVERSARY KIT',
-      status: '배송중',
-      description: '한정판 키트 · 오늘 오후 도착 예정',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-    {
-      orderId: 106,
-      name: 'EXO POSTCARD BOOK',
-      status: '취소 완료',
-      description: '환불 처리 완료 · 재입고 알림 신청 가능',
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
-    },
-  ],
-  recentlyViewedGoods: [
-    {
-      goodsId: 201,
-      name: 'aespa Drama Hoodie',
-      price: 69000,
-      description: '무대 의상 무드의 블랙 후디',
-    },
-    {
-      goodsId: 202,
-      name: 'RIIZE Lucky Photocard',
-      price: 15000,
-      description: '랜덤 포토카드 3종 구성',
-    },
-    {
-      goodsId: 203,
-      name: 'NCT WISH Keyring',
-      price: 22000,
-      description: '가방에 달기 좋은 아크릴 키링',
-    },
-    {
-      goodsId: 204,
-      name: 'Red Velvet Cup Set',
-      price: 32000,
-      description: '데일리로 쓰기 좋은 컵 2종',
-    },
-    {
-      goodsId: 205,
-      name: 'SHINee Photo Binder',
-      price: 28000,
-      description: '포토카드 보관용 4포켓 바인더',
-    },
-    {
-      goodsId: 206,
-      name: 'EXO Travel Pouch',
-      price: 24000,
-      description: '작은 소지품을 담는 투명 파우치',
-    },
-  ],
-  likedGoods: [
-    {
-      goodsId: 301,
-      name: 'SMTOWN Live T-shirt',
-      price: 42000,
-      description: '콘서트 현장감이 담긴 투어 티셔츠',
-    },
-    {
-      goodsId: 302,
-      name: 'aespa Armageddon Poster',
-      price: 18000,
-      description: '메탈릭 인쇄 포스터 세트',
-    },
-    {
-      goodsId: 303,
-      name: 'NCT DREAM Sticker Pack',
-      price: 12000,
-      description: '노트북 꾸미기 좋은 스티커 12종',
-    },
-    {
-      goodsId: 304,
-      name: 'RIIZE Mini Doll',
-      price: 36000,
-      description: '책상 위에 두기 좋은 미니 인형',
-    },
-    {
-      goodsId: 305,
-      name: 'Red Velvet Velvet Case',
-      price: 26000,
-      description: '부드러운 질감의 휴대폰 케이스',
-    },
-    {
-      goodsId: 306,
-      name: 'SHINee Desk Calendar',
-      price: 19000,
-      description: '월별 콘셉트 컷이 담긴 캘린더',
-    },
-  ],
-  payments: [
-    {
-      paymentId: 401,
-      name: 'ORD20260618-0001',
-      status: 'APPROVED',
-      price: 69000,
-      paidAt: '2026.06.18',
-      method: '카카오페이',
-      receipt: '영수증 보기',
-      refundHistory: '환불 내역 없음',
-      description: '카카오페이 · 2026.06.18 결제 완료',
-      products: [
-        {
-          goodsId: 201,
-          name: 'aespa OFFICIAL LIGHT STICK',
-          price: 69000,
-          quantity: 1,
-        },
-      ],
-    },
-    {
-      paymentId: 402,
-      name: 'ORD20260612-0007',
-      status: 'APPROVED',
-      price: 87000,
-      paidAt: '2026.06.12',
-      method: '00은행 체크카드',
-      receipt: '영수증 보기',
-      refundHistory: '환불 내역 없음',
-      description: '카드 간편결제 · 2026.06.12 결제 완료',
-      products: [
-        {
-          goodsId: 202,
-          name: 'RIIZE PHOTOBOOK SET',
-          price: 54000,
-          quantity: 1,
-        },
-        {
-          goodsId: 203,
-          name: 'RIIZE Lucky Photocard',
-          price: 33000,
-          quantity: 1,
-        },
-      ],
-    },
-    {
-      paymentId: 403,
-      name: 'ORD20260603-0012',
-      status: 'READY',
-      price: 42000,
-      paidAt: '2026.06.03',
-      method: '카카오페이',
-      receipt: '영수증 대기',
-      refundHistory: '환불 내역 없음',
-      description: '결제 대기 · 주문서 확인 필요',
-      products: [
-        {
-          goodsId: 204,
-          name: 'SMTOWN Live T-shirt',
-          price: 42000,
-          quantity: 1,
-        },
-      ],
-    },
-  ],
-  refunds: [
-    {
-      refundId: 501,
-      name: 'EXO POSTCARD BOOK',
-      status: '환불 완료',
-      price: 18000,
-      description: '2026.06.16 취소 접수 · 2026.06.17 환불 완료',
-    },
-    {
-      refundId: 502,
-      name: 'NCT DREAM MD PACKAGE',
-      status: '검토 중',
-      price: 54000,
-      description: '2026.06.26 환불 요청 · 고객센터 확인 중',
-    },
-  ],
-  productInquiries: [
-    {
-      inquiryId: 601,
-      name: 'aespa Drama Hoodie',
-      status: '답변 완료',
-      description: '사이즈 재입고 일정 문의 · 2026.06.20',
-    },
-    {
-      inquiryId: 602,
-      name: 'RIIZE Lucky Photocard',
-      status: '접수',
-      description: '구성품 중복 가능 여부 문의 · 2026.06.27',
-    },
-  ],
-  supportInquiries: [
-    {
-      inquiryId: 701,
-      name: '배송지 변경 요청',
-      status: '처리 완료',
-      description: '주문 ORD20260618-0001 · 2026.06.19',
-    },
-    {
-      inquiryId: 702,
-      name: '회원 정보 수정 문의',
-      status: '답변 대기',
-      description: '휴대폰 번호 인증 관련 · 2026.06.28',
-    },
-  ],
+export interface CurrentMember {
+  userId: string
+  memberId: number | null
+  memberUuid: string
+  email: string | null | undefined
+  phone: string
+  memberGrade: string
+  postalCode: string
+  address: string
+  addressDetail: string
+  deliveryRequest: string
+  role: string | null
+  isAdmin: boolean
+  name: string
+}
+
+export interface MyPageMember extends CurrentMember {
+  passwordUpdatedAt: string | null
+}
+
+export interface GoodsSummaryItem {
+  goodsId: number | string | null | undefined
+  name: string
+  price: number
+  imageUrl: string
+  description: string
+}
+
+export interface OrderSummary {
+  orderId: number
+  name: string
+  status: string
+  price: number
+  imageUrl: string
+  description: string
+  deliveryAction: string
+  confirmAction: string
+  reviewAction: string
+}
+
+export interface ArtistOption {
+  artistId: number
+  name: string
+  imageUrl: string
+}
+
+export interface FavoriteArtistSummary extends ArtistOption {
+  status: string
+  description: string
+}
+
+export interface InquirySummary {
+  inquiryId: number
+  name: string
+  status: string
+  description: string
+}
+
+export interface MyPageSummary {
+  member: MyPageMember
+  orders: OrderSummary[]
+  productInquiries: InquirySummary[]
+  supportInquiries: InquirySummary[]
+  recentlyViewedGoods: GoodsSummaryItem[]
+  favoriteArtists: FavoriteArtistSummary[]
+  likedGoods: GoodsSummaryItem[]
+}
+
+interface GoodsRow {
+  goods_id?: number
+  goodsId?: number
+  goods_name?: string
+  goodsName?: string
+  name?: string
+  description?: string
+  category_name?: string
+  categoryName?: string
+  price?: number
+  main_image_url?: string
+  image_url?: string
+  imageUrl?: string
+  image?: string
+}
+
+interface GoodsSummaryFallback {
+  goodsId?: number | string | null
+  name?: string
+  description?: string
+  price?: number
+  imageUrl?: string
+}
+
+interface OrderRow {
+  order_id: number
+  order_no: string | null
+  order_status: string
+  total_amount: number | null
+  ordered_at: string
+}
+
+interface OrderItemRow {
+  order_id: number
+  order_item_id: number
+  goods_id: number
+  goods_name: string
+  artist_name: string | null
+  unit_price: number
+  quantity: number
+  item_total_amount: number
+  main_image_url: string | null
+}
+
+interface GoodsViewHistoryRow {
+  view_history_id: number
+  goods_id: number
+  viewed_at: string
+}
+
+interface GoodsLikeRow {
+  like_id: number
+  goods_id: number
+  created_at: string
+}
+
+interface GoodsFavoriteRow {
+  favorite_id: number
+  goods_id: number
+  created_at: string
+}
+
+interface ArtistRow {
+  artist_id: number
+  artist_name: string
+}
+
+interface MemberAddressRow {
+  address?: string
+  address_line?: string
+  address1?: string
+  road_address?: string
+  detail_address?: string
+}
+
+interface GoodsActivityItem {
+  goodsId?: number
+  goods_id?: number
+  goodsName?: string
+  goods_name?: string
+  name?: string
+  description?: string
+  category_name?: string
+  categoryName?: string
+  price?: number
+  main_image_url?: string
+  image_url?: string
+  imageUrl?: string
+  image?: string
+  activityAt?: string
+}
+
+interface GoodsActivityResponse {
+  recentlyViewedGoods?: GoodsActivityItem[]
+  likedGoods?: GoodsActivityItem[]
+}
+
+interface InquiryApiItem {
+  inquiryId: number
+  inquiryType: string
+  goodsId: number | null
+  title: string
+  content: string | null
+  secret: boolean
+  status: string
+  answerContent: string | null
+  answeredAt: string | null
+  createdAt: string
+}
+
+interface InquiryPageResponse {
+  content: InquiryApiItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+interface MemberProfileResponse {
+  memberId?: number
+  memberUuid?: string
+  email?: string
+  name?: string
+  phone?: string
+  memberGrade?: string
+  postalCode?: string
+  address?: string
+  addressDetail?: string
+  deliveryRequest?: string
+}
+
+interface LoginForm {
+  email: string
+  password: string
+}
+
+interface SignupForm {
+  email: string
+  password: string
+  name: string
+  phone: string
+  address: string
+  agreements: unknown
+}
+
+interface SignupResult {
+  member: {
+    name?: string
+    email?: string
+    userId?: string
+  }
+}
+
+interface ProfileUpdateForm {
+  email: string
+  name: string
+  phone: string
+  address: string
+  addressDetail: string
+  deliveryRequest: string
+}
+
+interface PasswordUpdateResult {
+  member: {
+    userId?: string
+    email?: string | null
+    passwordUpdatedAt: string | null
+  }
+}
+
+function requireSupabase() {
+  checkSupabaseConfig()
+
+  if (!supabase) {
+    throw new Error(supabaseConfigError || 'Supabase 설정을 확인해주세요.')
+  }
+
+  return supabase
 }
 
 function checkSupabaseConfig() {
@@ -256,25 +264,25 @@ function checkSupabaseConfig() {
   }
 }
 
-function getStorageKey(userId, name) {
+function getStorageKey(userId: string, name: string): string {
   return `project-cyan:${userId}:${name}`
 }
 
-function readStoredJson(key, fallbackValue) {
+function readStoredJson<T>(key: string, fallbackValue: T): T {
   try {
     const storedValue = window.localStorage.getItem(key)
 
-    return storedValue ? JSON.parse(storedValue) : fallbackValue
+    return storedValue ? (JSON.parse(storedValue) as T) : fallbackValue
   } catch {
     return fallbackValue
   }
 }
 
-function writeStoredJson(key, value) {
+function writeStoredJson(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value))
 }
 
-function pickAddressFromRow(row) {
+function pickAddressFromRow(row: MemberAddressRow | null | undefined): string {
   if (!row) {
     return ''
   }
@@ -289,7 +297,7 @@ function pickAddressFromRow(row) {
   )
 }
 
-function formatDateLabel(value) {
+function formatDateLabel(value: string | null | undefined): string {
   if (!value) {
     return ''
   }
@@ -307,8 +315,8 @@ function formatDateLabel(value) {
   }).format(date)
 }
 
-function formatOrderStatus(status) {
-  const statusLabels = {
+function formatOrderStatus(status: string): string {
+  const statusLabels: Record<string, string> = {
     PENDING: '결제 대기',
     PAID: '결제 완료',
     PREPARING: '배송 준비중',
@@ -320,11 +328,11 @@ function formatOrderStatus(status) {
   return statusLabels[status] ?? status ?? '주문 상태 확인 중'
 }
 
-function getFirstOrderItem(items) {
+function getFirstOrderItem(items: OrderItemRow[] | undefined): OrderItemRow | null {
   return Array.isArray(items) && items.length > 0 ? items[0] : null
 }
 
-function stripHtml(value) {
+function stripHtml(value: unknown): string {
   if (typeof value !== 'string') {
     return ''
   }
@@ -332,7 +340,10 @@ function stripHtml(value) {
   return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-function normalizeGoodsSummary(goods, fallback = {}) {
+function normalizeGoodsSummary(
+  goods: GoodsRow | GoodsActivityItem | undefined,
+  fallback: GoodsSummaryFallback = {},
+): GoodsSummaryItem {
   const goodsId = goods?.goods_id ?? goods?.goodsId ?? fallback.goodsId
   const goodsName =
     goods?.goods_name ??
@@ -363,14 +374,22 @@ function normalizeGoodsSummary(goods, fallback = {}) {
   }
 }
 
-async function getGoodsByIds(goodsIds) {
-  const uniqueGoodsIds = [...new Set(goodsIds.filter(Boolean).map((goodsId) => Number(goodsId)))]
+async function getGoodsByIds(
+  goodsIds: Array<number | string | null | undefined>,
+): Promise<Map<string, GoodsRow>> {
+  const uniqueGoodsIds = [
+    ...new Set(
+      goodsIds
+        .filter((goodsId): goodsId is number | string => Boolean(goodsId))
+        .map((goodsId) => Number(goodsId)),
+    ),
+  ]
 
   if (uniqueGoodsIds.length === 0) {
     return new Map()
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('goods')
     .select('*')
     .in('goods_id', uniqueGoodsIds)
@@ -380,11 +399,13 @@ async function getGoodsByIds(goodsIds) {
     return new Map()
   }
 
-  return new Map((data ?? []).map((goods) => [String(goods.goods_id ?? goods.goodsId), goods]))
+  const rows = (data ?? []) as GoodsRow[]
+
+  return new Map(rows.map((goods) => [String(goods.goods_id ?? goods.goodsId), goods]))
 }
 
-async function getMyPageOrders(memberId) {
-  const { data: orders, error: ordersError } = await supabase
+async function getMyPageOrders(memberId: number): Promise<OrderSummary[]> {
+  const { data: orders, error: ordersError } = await requireSupabase()
     .from('orders')
     .select('order_id, order_no, order_status, total_amount, ordered_at')
     .eq('member_id', memberId)
@@ -396,12 +417,14 @@ async function getMyPageOrders(memberId) {
     return []
   }
 
-  if (!orders || orders.length === 0) {
+  const orderRows = (orders ?? []) as OrderRow[]
+
+  if (orderRows.length === 0) {
     return []
   }
 
-  const orderIds = orders.map((order) => order.order_id)
-  const { data: orderItems, error: orderItemsError } = await supabase
+  const orderIds = orderRows.map((order) => order.order_id)
+  const { data: orderItems, error: orderItemsError } = await requireSupabase()
     .from('order_item')
     .select('order_id, order_item_id, goods_id, goods_name, artist_name, unit_price, quantity, item_total_amount, main_image_url')
     .in('order_id', orderIds)
@@ -411,15 +434,15 @@ async function getMyPageOrders(memberId) {
     console.warn(orderItemsError)
   }
 
-  const itemsByOrderId = new Map()
+  const itemsByOrderId = new Map<number, OrderItemRow[]>()
 
-  for (const item of orderItems ?? []) {
+  for (const item of (orderItems ?? []) as OrderItemRow[]) {
     const items = itemsByOrderId.get(item.order_id) ?? []
     items.push(item)
     itemsByOrderId.set(item.order_id, items)
   }
 
-  return orders.map((order) => {
+  return orderRows.map((order) => {
     const items = itemsByOrderId.get(order.order_id) ?? []
     const firstItem = getFirstOrderItem(items)
     const extraItemCount = Math.max(items.length - 1, 0)
@@ -446,8 +469,8 @@ async function getMyPageOrders(memberId) {
   })
 }
 
-async function getMyPageRecentlyViewedGoods(memberId) {
-  const { data, error } = await supabase
+async function getMyPageRecentlyViewedGoods(memberId: number): Promise<GoodsSummaryItem[]> {
+  const { data, error } = await requireSupabase()
     .from('goods_view_history')
     .select('view_history_id, goods_id, viewed_at')
     .eq('member_id', memberId)
@@ -459,9 +482,10 @@ async function getMyPageRecentlyViewedGoods(memberId) {
     return []
   }
 
-  const goodsById = await getGoodsByIds((data ?? []).map((row) => row.goods_id))
+  const rows = (data ?? []) as GoodsViewHistoryRow[]
+  const goodsById = await getGoodsByIds(rows.map((row) => row.goods_id))
 
-  return (data ?? []).map((row) => {
+  return rows.map((row) => {
     const viewedAt = formatDateLabel(row.viewed_at)
 
     return normalizeGoodsSummary(goodsById.get(String(row.goods_id)), {
@@ -471,8 +495,8 @@ async function getMyPageRecentlyViewedGoods(memberId) {
   })
 }
 
-async function getMyPageLikedGoods(memberId) {
-  const { data: likedRows, error: likeError } = await supabase
+async function getMyPageLikedGoods(memberId: number): Promise<GoodsSummaryItem[]> {
+  const { data: likedRows, error: likeError } = await requireSupabase()
     .from('goods_like')
     .select('like_id, goods_id, created_at')
     .eq('member_id', memberId)
@@ -483,7 +507,7 @@ async function getMyPageLikedGoods(memberId) {
     console.warn(likeError)
   }
 
-  const { data: favoriteRows, error: favoriteError } = await supabase
+  const { data: favoriteRows, error: favoriteError } = await requireSupabase()
     .from('goods_favorite')
     .select('favorite_id, goods_id, created_at')
     .eq('member_id', memberId)
@@ -494,16 +518,16 @@ async function getMyPageLikedGoods(memberId) {
     console.warn(favoriteError)
   }
 
-  const rowsByGoodsId = new Map()
+  const rowsByGoodsId = new Map<number, (GoodsLikeRow | GoodsFavoriteRow) & { source: string }>()
 
-  for (const row of likedRows ?? []) {
+  for (const row of (likedRows ?? []) as GoodsLikeRow[]) {
     rowsByGoodsId.set(row.goods_id, {
       ...row,
       source: 'like',
     })
   }
 
-  for (const row of favoriteRows ?? []) {
+  for (const row of (favoriteRows ?? []) as GoodsFavoriteRow[]) {
     const currentRow = rowsByGoodsId.get(row.goods_id)
 
     if (!currentRow || new Date(row.created_at) > new Date(currentRow.created_at)) {
@@ -532,9 +556,12 @@ async function getMyPageLikedGoods(memberId) {
   })
 }
 
-async function getMyPageGoodsActivity(memberId) {
+async function getMyPageGoodsActivity(memberId: number): Promise<{
+  recentlyViewedGoods: GoodsSummaryItem[]
+  likedGoods: GoodsSummaryItem[]
+}> {
   try {
-    const activity = await parseApiResponse(
+    const activity = await parseApiResponse<GoodsActivityResponse>(
       await apiFetch('/members/me/goods-activity'),
       '상품 활동 내역을 불러오지 못했습니다.',
     )
@@ -572,8 +599,38 @@ async function getMyPageGoodsActivity(memberId) {
   }
 }
 
-async function getMemberGradeFromTable(userId) {
-  const { data, error } = await supabase
+function normalizeInquirySummary(inquiry: InquiryApiItem): InquirySummary {
+  const createdAt = formatDateLabel(inquiry.createdAt)
+  const descriptionParts = [createdAt, inquiry.content]
+
+  if (inquiry.status === 'ANSWERED' && inquiry.answerContent) {
+    descriptionParts.push(`답변: ${inquiry.answerContent}`)
+  }
+
+  return {
+    inquiryId: inquiry.inquiryId,
+    name: inquiry.title,
+    status: INQUIRY_STATUS_LABELS[inquiry.status] ?? inquiry.status,
+    description: descriptionParts.filter(Boolean).join(' · '),
+  }
+}
+
+async function getMyPageInquiries(inquiryType: 'PRODUCT' | 'SUPPORT'): Promise<InquirySummary[]> {
+  try {
+    const page = await parseApiResponse<InquiryPageResponse>(
+      await apiFetch(`/inquiries/me?type=${inquiryType}&size=${MY_PAGE_SECTION_LIMIT}`),
+      '문의 내역을 불러오지 못했습니다.',
+    )
+
+    return (page?.content ?? []).map(normalizeInquirySummary)
+  } catch (error) {
+    console.warn(error)
+    return []
+  }
+}
+
+async function getMemberGradeFromTable(userId: string): Promise<string> {
+  const { data, error } = await requireSupabase()
     .from('member')
     .select('member_grade')
     .eq('member_uuid', userId)
@@ -584,14 +641,14 @@ async function getMemberGradeFromTable(userId) {
     return ''
   }
 
-  return data?.member_grade ?? ''
+  return (data as { member_grade?: string } | null)?.member_grade ?? ''
 }
 
-export async function loginMember(form) {
+export async function loginMember(form: LoginForm): Promise<{ member: CurrentMember }> {
   checkSupabaseConfig()
 
   // Supabase Auth의 기본 비밀번호 로그인은 이메일을 기준으로 동작합니다.
-  const { error } = await supabase.auth.signInWithPassword({
+  const { error } = await requireSupabase().auth.signInWithPassword({
     email: form.email,
     password: form.password,
   })
@@ -609,16 +666,16 @@ export async function loginMember(form) {
 
     return { member }
   } catch (memberError) {
-    await supabase.auth.signOut()
+    await requireSupabase().auth.signOut()
     throw memberError
   }
 }
 
-export async function loginWithKakao() {
+export async function loginWithKakao(): Promise<void> {
   checkSupabaseConfig()
 
   // 이메일 없는 가입을 허용하기 위해 카카오 동의 항목은 프로필 정보만 요청합니다.
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await requireSupabase().auth.signInWithOAuth({
     provider: 'kakao',
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
@@ -644,10 +701,10 @@ export async function loginWithKakao() {
   window.location.assign(data.url)
 }
 
-export async function exchangeAuthCodeForSession(code) {
+export async function exchangeAuthCodeForSession(code: string) {
   checkSupabaseConfig()
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await requireSupabase().auth.exchangeCodeForSession(code)
 
   if (error) {
     throw new Error(error.message)
@@ -664,14 +721,14 @@ export async function exchangeAuthCodeForSession(code) {
       throw new Error('회원 정보를 확인하지 못했습니다.')
     }
   } catch (memberError) {
-    await supabase.auth.signOut()
+    await requireSupabase().auth.signOut()
     throw memberError
   }
 
   return data.session
 }
 
-export async function signupMember(form) {
+export async function signupMember(form: SignupForm): Promise<SignupResult> {
   checkSupabaseConfig()
 
   const response = await apiFetch('/members/signup', {
@@ -686,8 +743,11 @@ export async function signupMember(form) {
     }),
   })
 
-  const member = await parseApiResponse(response, '회원가입에 실패했습니다.')
-  const { error: loginError } = await supabase.auth.signInWithPassword({
+  const member = await parseApiResponse<{ name: string; email: string; userId: string }>(
+    response,
+    '회원가입에 실패했습니다.',
+  )
+  const { error: loginError } = await requireSupabase().auth.signInWithPassword({
     email: form.email,
     password: form.password,
   })
@@ -698,14 +758,14 @@ export async function signupMember(form) {
 
   return {
     member: {
-      name: member.name,
-      email: member.email,
-      userId: member.userId,
+      name: member?.name,
+      email: member?.email,
+      userId: member?.userId,
     },
   }
 }
 
-export async function checkSignupAvailability(form) {
+export async function checkSignupAvailability(form: { email: string; phone: string }) {
   const response = await apiFetch('/members/signup/availability', {
     method: 'POST',
     body: JSON.stringify({
@@ -717,7 +777,7 @@ export async function checkSignupAvailability(form) {
   return parseApiResponse(response, '가입 정보 중복 확인에 실패했습니다.')
 }
 
-export async function sendPasswordResetEmail(email) {
+export async function sendPasswordResetEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase()
   const response = await apiFetch('/members/password-reset/request', {
     method: 'POST',
@@ -732,7 +792,7 @@ export async function sendPasswordResetEmail(email) {
   )
 }
 
-export async function updateMemberPassword(password, resetToken = '') {
+export async function updateMemberPassword(password: string, resetToken = ''): Promise<PasswordUpdateResult> {
   if (resetToken) {
     await parseApiResponse(
       await apiFetch('/members/password-reset/confirm', {
@@ -754,7 +814,7 @@ export async function updateMemberPassword(password, resetToken = '') {
 
   checkSupabaseConfig()
 
-  const { data, error } = await supabase.auth.updateUser({ password })
+  const { data, error } = await requireSupabase().auth.updateUser({ password })
 
   if (error) {
     throw new Error(error.message)
@@ -771,17 +831,20 @@ export async function updateMemberPassword(password, resetToken = '') {
       userId: data.user?.id,
       email: data.user?.email,
       passwordUpdatedAt: data.user?.id
-        ? readStoredJson(getStorageKey(data.user.id, 'passwordUpdatedAt'), null)
-            ?.passwordUpdatedAt
+        ? readStoredJson<{ passwordUpdatedAt: string | null } | null>(
+            getStorageKey(data.user.id, 'passwordUpdatedAt'),
+            null,
+          )?.passwordUpdatedAt ?? null
         : null,
     },
   }
 }
 
-export async function getCurrentMember() {
+export async function getCurrentMember(): Promise<CurrentMember | null> {
   checkSupabaseConfig()
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  const client = requireSupabase()
+  const { data: sessionData, error: sessionError } = await client.auth.getSession()
 
   if (sessionError) {
     throw new Error(sessionError.message)
@@ -791,7 +854,7 @@ export async function getCurrentMember() {
     return null
   }
 
-  const { data, error } = await supabase.auth.getUser()
+  const { data, error } = await client.auth.getUser()
 
   if (error) {
     throw new Error(error.message)
@@ -801,12 +864,12 @@ export async function getCurrentMember() {
     return null
   }
 
-  const memberProfile = await parseApiResponse(
+  const memberProfile = await parseApiResponse<MemberProfileResponse>(
     await apiFetch('/members/me'),
     '회원 정보를 불러오지 못했습니다.',
   )
   const role =
-    data.user.app_metadata?.role ??
+    (data.user.app_metadata?.role as string | undefined) ??
     null
   const memberGrade = memberProfile?.memberGrade || await getMemberGradeFromTable(data.user.id)
 
@@ -815,12 +878,12 @@ export async function getCurrentMember() {
     memberId: memberProfile?.memberId ?? null,
     memberUuid: memberProfile?.memberUuid ?? data.user.id,
     email: memberProfile?.email ?? data.user.email,
-    phone: memberProfile?.phone ?? data.user.user_metadata?.phone ?? '',
-      memberGrade,
-      postalCode: memberProfile?.postalCode ?? '',
-      address: memberProfile?.address ?? '',
-      addressDetail: memberProfile?.addressDetail ?? '',
-      deliveryRequest: memberProfile?.deliveryRequest ?? '',
+    phone: memberProfile?.phone ?? (data.user.user_metadata?.phone as string | undefined) ?? '',
+    memberGrade,
+    postalCode: memberProfile?.postalCode ?? '',
+    address: memberProfile?.address ?? '',
+    addressDetail: memberProfile?.addressDetail ?? '',
+    deliveryRequest: memberProfile?.deliveryRequest ?? '',
     role,
     isAdmin:
       role === 'ADMIN' ||
@@ -828,23 +891,23 @@ export async function getCurrentMember() {
       data.user.app_metadata?.isAdmin === true,
     name:
       memberProfile?.name ??
-      data.user.user_metadata?.name ??
-      data.user.user_metadata?.full_name ??
-      data.user.user_metadata?.nickname ??
+      (data.user.user_metadata?.name as string | undefined) ??
+      (data.user.user_metadata?.full_name as string | undefined) ??
+      (data.user.user_metadata?.nickname as string | undefined) ??
       'SM Universe 회원',
   }
 }
 
-export async function getArtistOptions() {
+export async function getArtistOptions(): Promise<ArtistOption[]> {
   checkSupabaseConfig()
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('artist')
     .select('artist_id, artist_name')
     .order('artist_id', { ascending: true })
 
   if (error) {
-    const cmsArtists = await parseApiResponse(
+    const cmsArtists = await parseApiResponse<ArtistOption[]>(
       await apiFetch('/cms/artists'),
       '관심 아티스트 정보를 불러오지 못했습니다.',
     )
@@ -856,14 +919,14 @@ export async function getArtistOptions() {
     }))
   }
 
-  return data.map((artist) => ({
+  return (data as ArtistRow[]).map((artist) => ({
     artistId: artist.artist_id,
     name: artist.artist_name,
     imageUrl: '',
   }))
 }
 
-async function getMemberId(memberIdOrUserId) {
+async function getMemberId(memberIdOrUserId: number | string): Promise<number> {
   if (typeof memberIdOrUserId === 'number') {
     return memberIdOrUserId
   }
@@ -872,7 +935,7 @@ async function getMemberId(memberIdOrUserId) {
     return Number(memberIdOrUserId)
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('member')
     .select('member_id')
     .eq('member_uuid', memberIdOrUserId)
@@ -882,15 +945,15 @@ async function getMemberId(memberIdOrUserId) {
     throw new Error(error.message)
   }
 
-  return data.member_id
+  return (data as { member_id: number }).member_id
 }
 
-export async function getFavoriteArtistIds(userId) {
+export async function getFavoriteArtistIds(userId: number | string): Promise<number[]> {
   checkSupabaseConfig()
 
   const memberId = await getMemberId(userId)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('member_artist')
     .select('artist_id')
     .eq('member_id', memberId)
@@ -900,15 +963,16 @@ export async function getFavoriteArtistIds(userId) {
     return []
   }
 
-  return data.map((row) => row.artist_id)
+  return (data as Array<{ artist_id: number }>).map((row) => row.artist_id)
 }
 
-export async function saveFavoriteArtists(userId, artistIds) {
+export async function saveFavoriteArtists(userId: number | string, artistIds: number[]): Promise<number[]> {
   checkSupabaseConfig()
 
   const memberId = await getMemberId(userId)
+  const client = requireSupabase()
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await client
     .from('member_artist')
     .delete()
     .eq('member_id', memberId)
@@ -926,7 +990,7 @@ export async function saveFavoriteArtists(userId, artistIds) {
     artist_id: artistId,
   }))
 
-  const { error: insertError } = await supabase
+  const { error: insertError } = await client
     .from('member_artist')
     .insert(rows)
   if (insertError) {
@@ -936,7 +1000,7 @@ export async function saveFavoriteArtists(userId, artistIds) {
   return artistIds
 }
 
-export async function getMyPageSummary() {
+export async function getMyPageSummary(): Promise<MyPageSummary | null> {
   const member = await getCurrentMember()
 
   if (!member) {
@@ -949,11 +1013,13 @@ export async function getMyPageSummary() {
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
   const memberId = await getMemberId(member.memberId ?? member.userId)
-  const [orders, goodsActivity] = await Promise.all([
+  const [orders, goodsActivity, productInquiries, supportInquiries] = await Promise.all([
     getMyPageOrders(memberId),
     getMyPageGoodsActivity(memberId),
+    getMyPageInquiries('PRODUCT'),
+    getMyPageInquiries('SUPPORT'),
   ])
-  const passwordHistory = readStoredJson(
+  const passwordHistory = readStoredJson<{ passwordUpdatedAt: string | null } | null>(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
     null,
   )
@@ -965,10 +1031,8 @@ export async function getMyPageSummary() {
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
     orders,
-    payments: MY_PAGE_DUMMY_DATA.payments,
-    refunds: MY_PAGE_DUMMY_DATA.refunds,
-    productInquiries: MY_PAGE_DUMMY_DATA.productInquiries,
-    supportInquiries: MY_PAGE_DUMMY_DATA.supportInquiries,
+    productInquiries,
+    supportInquiries,
     recentlyViewedGoods: goodsActivity.recentlyViewedGoods,
     favoriteArtists: favoriteArtists.map((artist) => ({
       ...artist,
@@ -979,7 +1043,7 @@ export async function getMyPageSummary() {
   }
 }
 
-export async function updateMemberProfile(form) {
+export async function updateMemberProfile(form: ProfileUpdateForm) {
   const response = await apiFetch('/members/me', {
     method: 'PATCH',
     body: JSON.stringify({
@@ -992,20 +1056,20 @@ export async function updateMemberProfile(form) {
     }),
   })
 
-  return parseApiResponse(response, '개인정보를 저장하지 못했습니다.')
+  return parseApiResponse<MemberProfileResponse>(response, '개인정보를 저장하지 못했습니다.')
 }
 
-export async function logoutMember() {
+export async function logoutMember(): Promise<void> {
   checkSupabaseConfig()
 
-  const { error } = await supabase.auth.signOut()
+  const { error } = await requireSupabase().auth.signOut()
 
   if (error) {
     throw new Error(error.message)
   }
 }
 
-export async function withdrawMember() {
+export async function withdrawMember(): Promise<void> {
   await parseApiResponse(
     await apiFetch('/members/me', {
       method: 'DELETE',
@@ -1016,12 +1080,13 @@ export async function withdrawMember() {
   await logoutMember()
 }
 
-export async function updateMemberAddress(userId, address) {
+export async function updateMemberAddress(userId: number | string, address: string): Promise<string> {
   checkSupabaseConfig()
 
   const memberId = await getMemberId(userId)
+  const client = requireSupabase()
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await client
     .from('member_address')
     .delete()
     .eq('member_id', memberId)
@@ -1030,7 +1095,7 @@ export async function updateMemberAddress(userId, address) {
     throw new Error(deleteError.message)
   }
 
-  const { error: insertError } = await supabase
+  const { error: insertError } = await client
     .from('member_address')
     .insert({
       member_id: memberId,
@@ -1044,12 +1109,12 @@ export async function updateMemberAddress(userId, address) {
   return address
 }
 
-export async function getMemberAddress(userId) {
+export async function getMemberAddress(userId: number | string): Promise<string> {
   checkSupabaseConfig()
 
   const memberId = await getMemberId(userId)
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('member_address')
     .select('*')
     .eq('member_id', memberId)
@@ -1061,5 +1126,5 @@ export async function getMemberAddress(userId) {
     return ''
   }
 
-  return pickAddressFromRow(data)
+  return pickAddressFromRow(data as MemberAddressRow | null)
 }

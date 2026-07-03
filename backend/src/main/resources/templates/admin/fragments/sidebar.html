@@ -72,7 +72,7 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'members' or current == 'storage' or current == 'payment'} ? 'open' : null">
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'members' or current == 'inquiries' or current == 'storage' or current == 'payment'} ? 'open' : null">
       <summary class="admin-nav-parent">데이터 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -84,6 +84,9 @@
         <a class="admin-nav-child"
            th:href="@{/admin/members}"
            th:attr="aria-current=${current == 'members'} ? 'page' : null">회원 정보 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/inquiries}"
+           th:attr="aria-current=${current == 'inquiries'} ? 'page' : null">문의 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/storage}"
            th:attr="aria-current=${current == 'storage'} ? 'page' : null">이미지 저장소 관리</a>

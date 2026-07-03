@@ -470,6 +470,10 @@ public class GoodsService {
 		return goods;
 	}
 
+	public void ensureGoodsVisible(Long goodsId) {
+		findPublicGoods(goodsId);
+	}
+
 	public GoodsFiltersResponse findGoodsFilters() {
 		return new GoodsFiltersResponse(
 			groupFilterOptions(
