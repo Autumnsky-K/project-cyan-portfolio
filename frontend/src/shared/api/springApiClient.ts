@@ -7,6 +7,16 @@ type ApiErrorBody = {
   message?: string
 }
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export const SPRING_API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
 
@@ -86,7 +96,7 @@ export async function parseApiResponse<T = unknown>(
 ): Promise<T | null> {
   if (!response.ok) {
     const error = await response.json().catch(() => null) as ApiErrorBody | null
-    throw new Error(error?.message ?? error?.error ?? fallbackMessage)
+    throw new ApiError(error?.message ?? error?.error ?? fallbackMessage, response.status)
   }
 
   if (response.status === 204) {

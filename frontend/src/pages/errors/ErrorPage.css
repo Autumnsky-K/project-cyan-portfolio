@@ -1,0 +1,41 @@
+.error-page {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 60vh;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.error-page-code {
+  margin: 0;
+  font: 800 15px/1 var(--sans);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.error-page-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.3;
+  color: var(--text-h);
+}
+
+.error-page-message {
+  margin: 0;
+  max-width: 480px;
+  color: var(--text);
+}
+
+.error-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
