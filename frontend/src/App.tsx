@@ -59,26 +59,18 @@ function AppShell() {
               path="/cart"
               element={<Store mode="cart" />}
             />
+            <Route
+              path="/checkout"
+              element={(
+                <CartAccessGate>
+                  <Store mode="checkout" />
+                </CartAccessGate>
+              )}
+            />
             <Route path="/mypage" element={<MyPage />} />
           </Route>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route
-            path="/store"
-            element={(
-              <CartAccessGate>
-                <Store mode="checkout" />
-              </CartAccessGate>
-            )}
-          />
-          <Route
-            path="/checkout"
-            element={(
-              <CartAccessGate>
-                <Store mode="checkout" />
-              </CartAccessGate>
-            )}
-          />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
           <Route path="/payment/fail" element={<PaymentFail />} />

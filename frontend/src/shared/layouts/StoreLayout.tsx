@@ -8,6 +8,8 @@ export default function StoreLayout() {
   const pageClassName =
     pathname === '/cart'
       ? 'cart-page'
+      : pathname === '/checkout'
+        ? 'checkout-page'
       : pathname === '/mypage'
         ? 'account-page mypage-page'
         : 'goods-page'
