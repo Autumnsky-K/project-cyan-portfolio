@@ -1,7 +1,7 @@
 import { formatDate, formatPrice, getStatusLabel } from '../utils/storeUtils'
 
 function getOrderSourceLabel(source) {
-  return source === 'local-dev' ? 'Local dev preview' : 'Remote order'
+  return source === 'local-dev' ? '개발용 미리보기' : '서버 주문'
 }
 
 function getOrderNumber(order) {
@@ -40,26 +40,26 @@ function OrderHistory({ completedOrder, message, orders }) {
     <>
       {completedOrder && (
         <section className="store-section" aria-labelledby="complete-title">
-          <h2 id="complete-title">Order Complete</h2>
+          <h2 id="complete-title">주문 완료</h2>
           <div className="completed-order">
             <p>
-              Order <strong>{completedOrder.orderNumber || completedOrder.orderId}</strong>
+              주문 <strong>{completedOrder.orderNumber || completedOrder.orderId}</strong>
             </p>
             <p>
-              Total <strong>{formatPrice(completedOrder.totalPrice)}</strong>
+              합계 <strong>{formatPrice(completedOrder.totalPrice)}</strong>
             </p>
             <p>
-              Status <strong>{getStatusLabel(completedOrder.status)}</strong>
+              상태 <strong>{getStatusLabel(completedOrder.status)}</strong>
             </p>
           </div>
         </section>
       )}
 
       <section className="store-section" id="order-history" aria-labelledby="orders-title">
-        <h2 id="orders-title">Order History</h2>
+        <h2 id="orders-title">주문 내역</h2>
         {message && <p className="status-message">{message}</p>}
         {visibleOrders.length === 0 ? (
-          <p>No orders yet.</p>
+          <p>아직 주문 내역이 없습니다.</p>
         ) : (
           <div className="order-list">
             {visibleOrders.map((order) => {

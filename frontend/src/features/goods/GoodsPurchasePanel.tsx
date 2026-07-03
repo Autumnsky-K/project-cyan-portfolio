@@ -87,7 +87,7 @@ function GoodsPurchasePanel({
         variant="primary"
         onClick={() => void addSelectedQuantityToCart()}
       >
-        {isAddingCart ? '담는 중...' : '장바구니 담기'}
+        {isAddingCart ? '담는 중...' : '카트에 담기'}
       </Button>
       <div className="purchase-secondary-actions">
         <button

@@ -18,7 +18,7 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
   if (authLoading) {
     return (
       <main className="cart-access-gate">
-        <AsyncState kind="loading" title="Checking your login status..." />
+        <AsyncState kind="loading" title="로그인 상태를 확인하고 있습니다..." />
       </main>
     )
   }
@@ -27,10 +27,10 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
     return (
       <main className="cart-access-gate">
         <AsyncState
-          actions={<Button variant="primary" onClick={() => requestCartLogin(navigate)}>Go to login</Button>}
+          actions={<Button variant="primary" onClick={() => requestCartLogin(navigate)}>로그인하러 가기</Button>}
           kind="info"
-          message="Please log in to continue checkout."
-          title="Login required"
+          message="결제를 계속하려면 로그인해 주세요."
+          title="로그인이 필요합니다"
         />
       </main>
     )

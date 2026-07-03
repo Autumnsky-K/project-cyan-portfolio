@@ -46,7 +46,7 @@ export default function Header({ tone = 'surface' }: HeaderProps) {
           onClick={() => setOpenMenuPath((currentPath) => currentPath === pathname ? null : pathname)}
           size="medium"
         />
-        <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="Primary navigation">
+        <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="주요 메뉴">
           {NAV_ITEMS.map((item) => {
             const isCurrent = isCurrentPath(pathname, item.to)
 

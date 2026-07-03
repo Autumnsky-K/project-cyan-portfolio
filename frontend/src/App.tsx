@@ -46,7 +46,7 @@ function AppShell() {
         : pathname === '/artists'
           ? '아티스트'
           : pathname === '/cart'
-            ? '장바구니'
+            ? '카트'
             : pathname === '/login'
               ? '로그인'
               : pathname === '/signup'

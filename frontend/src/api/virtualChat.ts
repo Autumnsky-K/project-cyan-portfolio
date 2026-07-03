@@ -23,6 +23,6 @@ export async function createVirtualChatSession(
 
   return await parseApiResponse<VirtualChatSession>(
     response,
-    'Failed to create chat session.',
+    '채팅 세션을 생성하지 못했습니다.',
   ) as VirtualChatSession
 }
