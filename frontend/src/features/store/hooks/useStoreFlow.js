@@ -668,6 +668,10 @@ export function useStoreFlow(options = {}) {
         orderId: checkoutReady.orderId,
         orderNumber: checkoutReady.orderNo,
         partnerOrderId: checkoutReady.orderNo,
+        partnerUserId:
+          checkoutReady.customerKey ||
+          readyOrder.partnerUserId ||
+          `member-${readyOrder.customer.memberId}`,
         paymentId: checkoutReady.paymentId,
         totalPrice: Number(checkoutReady.amount ?? readyOrder.totalPrice),
         totalAmount: Number(checkoutReady.amount ?? readyOrder.totalPrice),

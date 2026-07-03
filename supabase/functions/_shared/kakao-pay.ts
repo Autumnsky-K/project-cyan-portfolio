@@ -92,7 +92,16 @@ export async function kakaoFetch(path: string, payload: Record<string, unknown>)
     },
     body: JSON.stringify(payload),
   })
-  const text = await response.text().catch(() => '')
+  let text = ''
+  try {
+    text = await response.text()
+  } catch (error) {
+    throw new Error(
+      `KakaoPay ${path} response body could not be read. status=${response.status}, contentType=${response.headers.get('content-type') ?? 'unknown'}, contentLength=${response.headers.get('content-length') ?? 'none'}. ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
   let data: unknown = null
   if (text) {
     try {
