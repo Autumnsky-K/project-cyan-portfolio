@@ -5,7 +5,6 @@ import IconButton from './IconButton'
 import './Header.css'
 
 const NAV_ITEMS = [
-  { label: 'Home', to: '/' },
   { label: 'Artists', to: '/artists' },
   { label: 'Goods', to: '/goods' },
   { label: 'Cart', to: '/cart' },
