@@ -660,30 +660,9 @@ body:has(.store-page) {
   color: #ffffff;
 }
 
-.store-page .cart-controls button {
-  width: 34px;
-  min-height: 34px;
-  padding: 0;
-  border-left: 0;
-}
-
-.store-page .cart-controls button:first-child {
-  border-left: 1px solid var(--store-line);
-}
-
-.store-page .cart-controls span {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  min-height: 34px;
-  border-block: 1px solid var(--store-line);
-  color: var(--store-ink);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.store-page .cart-controls button:last-child {
+.store-page .cart-controls > button {
   width: auto;
+  min-height: 34px;
   margin-left: 10px;
   padding-inline: 13px;
   border-left: 1px solid var(--store-line);

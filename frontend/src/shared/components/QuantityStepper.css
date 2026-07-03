@@ -1,0 +1,70 @@
+.quantity-stepper {
+  display: inline-grid;
+  grid-template-columns: auto minmax(34px, auto) auto;
+  align-items: center;
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid #d8dadd;
+  background: #ffffff;
+  color: #111111;
+}
+
+.quantity-stepper .ui-icon-button {
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  color: inherit;
+}
+
+.quantity-stepper .ui-icon-button:not(:disabled):hover,
+.quantity-stepper .ui-icon-button:not(:disabled):focus-visible {
+  background: #f1f1ef;
+  color: inherit;
+}
+
+.quantity-stepper output,
+.quantity-stepper input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  appearance: textfield;
+}
+
+.quantity-stepper input::-webkit-inner-spin-button,
+.quantity-stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.quantity-stepper--compact .ui-icon-button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
+
+.quantity-stepper--compact output,
+.quantity-stepper--compact input {
+  height: 30px;
+}
+
+.quantity-stepper--medium .ui-icon-button,
+.quantity-stepper--medium output,
+.quantity-stepper--medium input {
+  height: 34px;
+  min-height: 34px;
+}
+
+.quantity-stepper .ui-icon-button:disabled,
+.quantity-stepper input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

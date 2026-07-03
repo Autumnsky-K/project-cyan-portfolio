@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import QuantityStepper from '../../shared/components/QuantityStepper'
 import { useCart } from './useCart'
 import './goods-cart-side-panel.css'
 
@@ -51,21 +52,12 @@ function GoodsCartSidePanel() {
                 <strong>{item.name}</strong>
                 <span>{formatCartPrice(item.price)}</span>
                 <div className="goods-cart-panel-controls">
-                  <button
-                    type="button"
-                    disabled={item.quantity <= 1}
-                    onClick={() => void updateCartItemQuantity(item.cartItemKey, item.quantity - 1)}
-                  >
-                    -
-                  </button>
-                  <span>{item.quantity}</span>
-                  <button
-                    type="button"
-                    disabled={item.maxQuantity !== null && item.quantity >= item.maxQuantity}
-                    onClick={() => void updateCartItemQuantity(item.cartItemKey, item.quantity + 1)}
-                  >
-                    +
-                  </button>
+                  <QuantityStepper
+                    label={`${item.name} 수량`}
+                    max={item.maxQuantity}
+                    value={item.quantity}
+                    onChange={(nextQuantity) => void updateCartItemQuantity(item.cartItemKey, nextQuantity)}
+                  />
                   <button type="button" onClick={() => void removeCartItem(item.cartItemKey)}>
                     Remove
                   </button>
