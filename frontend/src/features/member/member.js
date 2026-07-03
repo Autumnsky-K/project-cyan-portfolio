@@ -335,12 +335,17 @@ async function getMyPageGoodsActivity(memberId) {
 
 function normalizeInquirySummary(inquiry) {
   const createdAt = formatDateLabel(inquiry.createdAt)
+  const descriptionParts = [createdAt, inquiry.content]
+
+  if (inquiry.status === 'ANSWERED' && inquiry.answerContent) {
+    descriptionParts.push(`답변: ${inquiry.answerContent}`)
+  }
 
   return {
     inquiryId: inquiry.inquiryId,
     name: inquiry.title,
     status: INQUIRY_STATUS_LABELS[inquiry.status] ?? inquiry.status,
-    description: [createdAt, inquiry.content].filter(Boolean).join(' · '),
+    description: descriptionParts.filter(Boolean).join(' · '),
   }
 }
 
