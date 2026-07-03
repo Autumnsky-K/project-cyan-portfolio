@@ -9,7 +9,7 @@ const DELIVERY_REQUEST_OPTIONS = [
   '택배함에 넣어주세요',
 ]
 
-function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField }) {
+function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requiresShipping = true }) {
   const [editableFields, setEditableFields] = useState({})
   const [savingField, setSavingField] = useState('')
   const [isDeliveryRequestOpen, setIsDeliveryRequestOpen] = useState(false)
@@ -140,6 +140,8 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField }) {
         </div>
       </div>
 
+      {requiresShipping ? (
+        <>
       <div className="checkout-field full-width">
         <span>Address</span>
         <div className={inputRowClassName('address')}>
@@ -228,6 +230,13 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField }) {
           )}
         </div>
       </div>
+        </>
+      ) : (
+        <div className="checkout-digital-notice full-width">
+          <strong>디지털 상품</strong>
+          <span>배송 주소 입력 없이 결제 후 디지털 제품 저장소에서 다운로드합니다.</span>
+        </div>
+      )}
 
       {errors.length > 0 && (
         <ul className="form-errors">

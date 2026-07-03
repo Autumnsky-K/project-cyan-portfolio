@@ -1,0 +1,1 @@
+import{c as e,d as t,s as n}from"./jsx-runtime-ChLRiGhH.js";import{N as r,P as i}from"./chunk-XQHCQEAF-DW9qO_MS.js";var a=t(e(),1);n();var o={ul:{label:`Bullet list`,icon:r},ol:{label:`Numbered list`,icon:i}},s=e=>{let t=[];return e?.listItem!==!1&&(t=[`ul`,`ol`]),(0,a.useMemo)(()=>t.map(e=>({value:e,label:o[e].label,icon:o[e].icon})),[t])};export{s as t};

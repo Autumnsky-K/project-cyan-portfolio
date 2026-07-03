@@ -158,6 +158,71 @@ body {
   min-width: 0;
 }
 
+.cms-artist-editor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.cms-artist-editor-grid > .cms-sheet-panel {
+  border: 1px solid var(--cms-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cms-artist-data-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px 12px;
+}
+
+.cms-artist-table-area {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--cms-line);
+  border-radius: 6px;
+}
+
+.cms-artist-table-area .cms-table-scroll {
+  max-height: min(68vh, 720px);
+  overflow: auto;
+}
+
+.cms-artist-image-panel {
+  position: sticky;
+  top: 18px;
+  max-height: calc(100svh - 36px);
+  overflow: hidden;
+  padding: 12px;
+}
+
+.cms-artist-image-panel .admin-upload-header h3 {
+  font-size: 18px;
+}
+
+.cms-artist-image-panel .admin-upload-header a {
+  white-space: nowrap;
+  color: var(--admin-accent, #2f6f64);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cms-artist-image-tree {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.cms-artist-sheet td.is-image-dragover {
+  outline: 2px solid var(--admin-accent, #2f6f64);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--admin-accent, #2f6f64) 10%, #ffffff);
+}
+
 .cms-sheet-panel,
 .cms-preview-panel {
   min-width: 0;
@@ -191,6 +256,12 @@ body {
 
 .cms-artist-sheet {
   min-width: 1220px;
+}
+
+.cms-artist-sheet thead th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
 }
 
 .cms-sheet th,
@@ -1140,6 +1211,15 @@ body {
 
   .cms-group-create-wide {
     grid-column: auto;
+  }
+
+  .cms-artist-data-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cms-artist-image-panel {
+    position: static;
+    max-height: none;
   }
 }
 

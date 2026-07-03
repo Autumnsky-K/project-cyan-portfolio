@@ -223,6 +223,33 @@ button.goods-rating-summary {
   padding: 0;
 }
 
+.filter-options-sectioned {
+  gap: 9px;
+}
+
+.filter-option-section {
+  display: grid;
+  gap: 1px;
+}
+
+.filter-option-divider {
+  display: grid;
+  grid-template-columns: auto minmax(24px, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 3px;
+  color: var(--goods-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.filter-option-divider::after {
+  height: 1px;
+  background: var(--goods-line);
+  content: '';
+}
+
 .filter-options label {
   display: flex;
   align-items: center;

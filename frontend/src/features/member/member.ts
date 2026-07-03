@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../api/supabaseClient'
+import { fetchDigitalLibrary, type DigitalLibraryItem } from '../../api/digitalLibrary'
 import { apiFetch, parseApiResponse } from '../../shared/api/springApiClient'
 
 const KAKAO_LOGIN_SCOPES = 'profile_nickname profile_image'
@@ -35,6 +36,7 @@ export interface GoodsSummaryItem {
   name: string
   price: number
   imageUrl: string
+  status?: string
   description: string
 }
 
@@ -71,6 +73,7 @@ export interface InquirySummary {
 export interface MyPageSummary {
   member: MyPageMember
   orders: OrderSummary[]
+  digitalLibrary: GoodsSummaryItem[]
   productInquiries: InquirySummary[]
   supportInquiries: InquirySummary[]
   recentlyViewedGoods: GoodsSummaryItem[]
@@ -629,6 +632,28 @@ async function getMyPageInquiries(inquiryType: 'PRODUCT' | 'SUPPORT'): Promise<I
   }
 }
 
+function digitalLibraryItemToDashboardItem(item: DigitalLibraryItem): GoodsSummaryItem {
+  const grantedAt = formatDateLabel(item.grantedAt)
+  const nextDownloadAt = formatDateLabel(item.nextDownloadAvailableAt)
+
+  return {
+    goodsId: item.goodsId,
+    name: item.name,
+    price: Number(item.price ?? 0),
+    imageUrl: item.imageUrl ?? '',
+    status: item.downloadAvailable ? '다운로드 가능' : '다운로드 대기',
+    description: [
+      item.artistName,
+      grantedAt ? `${grantedAt} 구매` : null,
+      item.downloadAvailable
+        ? '마이페이지에서 즉시 다운로드'
+        : nextDownloadAt
+          ? `${nextDownloadAt}부터 재다운로드`
+          : '등록된 다운로드 파일 확인 필요',
+    ].filter(Boolean).join(' · '),
+  }
+}
+
 async function getMemberGradeFromTable(userId: string): Promise<string> {
   const { data, error } = await requireSupabase()
     .from('member')
@@ -1013,11 +1038,15 @@ export async function getMyPageSummary(): Promise<MyPageSummary | null> {
   const favoriteArtists = artistOptions.filter((artist) => favoriteArtistIdSet.has(artist.artistId))
   const address = await getMemberAddress(member.memberId ?? member.userId)
   const memberId = await getMemberId(member.memberId ?? member.userId)
-  const [orders, goodsActivity, productInquiries, supportInquiries] = await Promise.all([
+  const [orders, goodsActivity, productInquiries, supportInquiries, digitalLibrary] = await Promise.all([
     getMyPageOrders(memberId),
     getMyPageGoodsActivity(memberId),
     getMyPageInquiries('PRODUCT'),
     getMyPageInquiries('SUPPORT'),
+    fetchDigitalLibrary().catch((error) => {
+      console.warn(error)
+      return []
+    }),
   ])
   const passwordHistory = readStoredJson<{ passwordUpdatedAt: string | null } | null>(
     getStorageKey(member.userId, 'passwordUpdatedAt'),
@@ -1031,6 +1060,7 @@ export async function getMyPageSummary(): Promise<MyPageSummary | null> {
       passwordUpdatedAt: passwordHistory?.passwordUpdatedAt ?? null,
     },
     orders,
+    digitalLibrary: digitalLibrary.map(digitalLibraryItemToDashboardItem),
     productInquiries,
     supportInquiries,
     recentlyViewedGoods: goodsActivity.recentlyViewedGoods,

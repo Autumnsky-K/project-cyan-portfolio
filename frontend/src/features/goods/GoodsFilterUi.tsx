@@ -25,12 +25,39 @@ type GoodsFilterUiProps = FilterContentsProps & {
   onReset: () => void
 }
 
+const CATEGORY_FILTER_SECTIONS = [
+  { type: 'PHYSICAL', label: '실물 굿즈' },
+  { type: 'DIGITAL', label: '디지털 굿즈' },
+]
+
 function copySelectedFilters(selectedFilters: GoodsSelectedFilters): GoodsSelectedFilters {
   return {
     categoryIds: [...selectedFilters.categoryIds],
     artistIds: [...selectedFilters.artistIds],
     tags: [...selectedFilters.tags],
   }
+}
+
+function optionFulfillmentType(option: GoodsFilterOption) {
+  return (option.fulfillmentType ?? 'PHYSICAL').toUpperCase()
+}
+
+function renderFilterOption(
+  group: GoodsFilterGroup,
+  option: GoodsFilterOption,
+  selectedFilters: GoodsSelectedFilters,
+  onToggle: (param: GoodsFilterParam, value: string) => void,
+) {
+  return (
+    <label key={option.value}>
+      <input
+        type="checkbox"
+        checked={selectedFilters[group.param].includes(option.value)}
+        onChange={() => onToggle(group.param, option.value)}
+      />
+      <span>{option.label}</span>
+    </label>
+  )
 }
 
 function FilterContents({
@@ -46,18 +73,26 @@ function FilterContents({
       {groups.map((group) => (
         <fieldset className="filter-group" key={group.title}>
           <legend>{group.title}</legend>
-          <div className="filter-options">
-            {group.options.map((option) => (
-              <label key={option.value}>
-                <input
-                  type="checkbox"
-                  checked={selectedFilters[group.param].includes(option.value)}
-                  onChange={() => onToggle(group.param, option.value)}
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
-          </div>
+          {group.param === 'categoryIds' ? (
+            <div className="filter-options filter-options-sectioned">
+              {CATEGORY_FILTER_SECTIONS
+                .map((section) => ({
+                  ...section,
+                  options: group.options.filter((option) => optionFulfillmentType(option) === section.type),
+                }))
+                .filter((section) => section.options.length > 0)
+                .map((section) => (
+                  <div className="filter-option-section" key={section.type}>
+                    <div className="filter-option-divider"><span>{section.label}</span></div>
+                    {section.options.map((option) => renderFilterOption(group, option, selectedFilters, onToggle))}
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="filter-options">
+              {group.options.map((option) => renderFilterOption(group, option, selectedFilters, onToggle))}
+            </div>
+          )}
         </fieldset>
       ))}
     </>

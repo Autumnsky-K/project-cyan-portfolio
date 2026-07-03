@@ -50,6 +50,7 @@ public class AdminGoodsPageController {
 	private final GoodsStockRepository goodsStockRepository;
 	private final SupabaseStorageService supabaseStorageService;
 	private final AdminGoodsImportService adminGoodsImportService;
+	private final DigitalGoodsAssetStatusService digitalGoodsAssetStatusService;
 	private final String frontendPreviewBaseUrl;
 
 	public AdminGoodsPageController(
@@ -59,6 +60,7 @@ public class AdminGoodsPageController {
 		GoodsStockRepository goodsStockRepository,
 		SupabaseStorageService supabaseStorageService,
 		AdminGoodsImportService adminGoodsImportService,
+		DigitalGoodsAssetStatusService digitalGoodsAssetStatusService,
 		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
 	) {
 		this.goodsService = goodsService;
@@ -67,6 +69,7 @@ public class AdminGoodsPageController {
 		this.goodsStockRepository = goodsStockRepository;
 		this.supabaseStorageService = supabaseStorageService;
 		this.adminGoodsImportService = adminGoodsImportService;
+		this.digitalGoodsAssetStatusService = digitalGoodsAssetStatusService;
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
 
@@ -96,6 +99,11 @@ public class AdminGoodsPageController {
 		);
 
 		Map<Long, Integer> stockCounts = stockCounts(goodsPage.content());
+		Map<Long, Integer> activeDigitalAssetCounts = digitalGoodsAssetStatusService.activeAssetCounts(
+			goodsPage.content().stream()
+				.map(GoodsSummaryResponse::goodsId)
+				.toList()
+		);
 		model.addAttribute("goodsPage", goodsPage);
 		model.addAttribute("filters", goodsService.findGoodsFilters());
 		model.addAttribute("q", q == null ? "" : q);
@@ -107,7 +115,7 @@ public class AdminGoodsPageController {
 		model.addAttribute("salesStatuses", SALES_STATUSES);
 		model.addAttribute("salesStatusLabels", SALES_STATUS_LABELS);
 		model.addAttribute("stockCounts", stockCounts);
-		model.addAttribute("bulkRows", bulkRows(goodsPage.content(), stockCounts));
+		model.addAttribute("bulkRows", bulkRows(goodsPage.content(), stockCounts, activeDigitalAssetCounts));
 		model.addAttribute("defaultGoodsChecked", false);
 		model.addAttribute("frontendGoodsBaseUrl", frontendPreviewBaseUrl + "/goods");
 		return "admin/goods/list";
@@ -344,7 +352,11 @@ public class AdminGoodsPageController {
 		}
 	}
 
-	private List<AdminGoodsBulkRow> bulkRows(List<GoodsSummaryResponse> goods, Map<Long, Integer> stockCounts) {
+	private List<AdminGoodsBulkRow> bulkRows(
+		List<GoodsSummaryResponse> goods,
+		Map<Long, Integer> stockCounts,
+		Map<Long, Integer> activeDigitalAssetCounts
+	) {
 		return goods.stream()
 			.map(item -> new AdminGoodsBulkRow(
 				item.goodsId(),
@@ -354,11 +366,13 @@ public class AdminGoodsPageController {
 				item.artistName() == null ? "아티스트 없음" : item.artistName(),
 				item.categoryId(),
 				item.categoryName() == null ? "카테고리 없음" : item.categoryName(),
+				item.fulfillmentType(),
 				item.salesStatus(),
 				SALES_STATUS_LABELS.getOrDefault(item.salesStatus(), item.salesStatus()),
 				stockCounts.getOrDefault(item.goodsId(), 0),
 				item.imageUrl(),
-				formatTags(item.tags())
+				formatTags(item.tags()),
+				activeDigitalAssetCounts.getOrDefault(item.goodsId(), 0)
 			))
 			.toList();
 	}
@@ -393,11 +407,13 @@ public class AdminGoodsPageController {
 				null,
 				nullableLongAt(rowCategoryId, index, "카테고리"),
 				null,
+				null,
 				stringAt(salesStatus, index),
 				null,
 				integerAt(stockCount, index, "재고"),
 				stringAt(imageUrl, index),
-				stringAt(tagsText, index)
+				stringAt(tagsText, index),
+				0
 			));
 		}
 		return rows;
@@ -465,8 +481,16 @@ public class AdminGoodsPageController {
 	}
 
 	private String goodsForm(Model model, String mode) {
-		addFormOptions(model);
+		GoodsFiltersResponse filters = addFormOptions(model);
+		AdminGoodsForm form = model.asMap().get("form") instanceof AdminGoodsForm adminGoodsForm
+			? adminGoodsForm
+			: null;
+		Long goodsId = form == null ? null : form.getGoodsId();
+		int activeDigitalAssetCount = digitalGoodsAssetStatusService.activeAssetCount(goodsId);
+		boolean formDigitalGoods = form != null && isDigitalCategory(filters, form.getCategoryId());
 		model.addAttribute("mode", mode);
+		model.addAttribute("formDigitalGoods", formDigitalGoods);
+		model.addAttribute("activeDigitalAssetCount", activeDigitalAssetCount);
 		return "admin/goods/form";
 	}
 
@@ -476,8 +500,9 @@ public class AdminGoodsPageController {
 			: exception.getReason();
 	}
 
-	private void addFormOptions(Model model) {
-		model.addAttribute("filters", goodsService.findGoodsFilters());
+	private GoodsFiltersResponse addFormOptions(Model model) {
+		GoodsFiltersResponse filters = goodsService.findGoodsFilters();
+		model.addAttribute("filters", filters);
 		model.addAttribute("salesStatuses", SALES_STATUSES);
 		model.addAttribute("salesStatusLabels", SALES_STATUS_LABELS);
 		model.addAttribute("goodsImageBucket", AdminStoragePageController.GOODS_IMAGE_BUCKET);
@@ -492,6 +517,16 @@ public class AdminGoodsPageController {
 			model.addAttribute("goodsImages", List.of());
 			model.addAttribute("imageLibraryError", exception.getMessage());
 		}
+		return filters;
+	}
+
+	private boolean isDigitalCategory(GoodsFiltersResponse filters, Long categoryId) {
+		if (filters == null || categoryId == null) {
+			return false;
+		}
+		String categoryValue = categoryId.toString();
+		return filters.categories().stream()
+			.anyMatch(category -> categoryValue.equals(category.value()) && "DIGITAL".equals(category.fulfillmentType()));
 	}
 
 	private Map<Long, Integer> stockCounts(List<GoodsSummaryResponse> goods) {

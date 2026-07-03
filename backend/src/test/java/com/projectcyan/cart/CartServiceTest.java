@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import com.projectcyan.goods.DigitalGoodsEntitlementGrantService;
 import com.projectcyan.goods.Goods;
 import com.projectcyan.goods.GoodsRepository;
 import com.projectcyan.goods.GoodsStock;
@@ -31,6 +32,7 @@ class CartServiceTest {
 	private CartItemRepository cartItemRepository;
 	private GoodsRepository goodsRepository;
 	private GoodsStockRepository goodsStockRepository;
+	private DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService;
 	private CartService service;
 
 	@BeforeEach
@@ -39,11 +41,13 @@ class CartServiceTest {
 		cartItemRepository = mock(CartItemRepository.class);
 		goodsRepository = mock(GoodsRepository.class);
 		goodsStockRepository = mock(GoodsStockRepository.class);
+		digitalGoodsEntitlementGrantService = mock(DigitalGoodsEntitlementGrantService.class);
 		service = new CartService(
 			cartRepository,
 			cartItemRepository,
 			goodsRepository,
 			goodsStockRepository,
+			digitalGoodsEntitlementGrantService,
 			Clock.fixed(NOW, ZoneOffset.UTC)
 		);
 	}

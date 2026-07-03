@@ -41,6 +41,7 @@ function PaymentPanel({
   onCancelPayment,
   onFailPayment,
   onPaymentMethodChange,
+  requiresShipping = true,
 }) {
   const paymentStatusLabel = getPaymentStatusLabel(paymentStatus)
   const visiblePaymentMethod = allowDevPayment
@@ -107,8 +108,14 @@ function PaymentPanel({
               {checkoutForm.email.trim() || '-'} /{' '}
               {checkoutForm.phone.trim() || '-'}
             </p>
-            <p>Address: {addressSummary || '-'}</p>
-            <p>Delivery request: {checkoutForm.deliveryRequest.trim() || '-'}</p>
+            {requiresShipping ? (
+              <>
+                <p>Address: {addressSummary || '-'}</p>
+                <p>Delivery request: {checkoutForm.deliveryRequest.trim() || '-'}</p>
+              </>
+            ) : (
+              <p>Delivery: 디지털 상품 저장소에서 다운로드</p>
+            )}
           </>
         )}
       </div>

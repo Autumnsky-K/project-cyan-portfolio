@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.16` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.17` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -390,6 +390,14 @@
 - 요청 header: `Authorization: Bearer <Supabase access_token>`
 - 응답: goods 요약 배열
 - 정렬: 즐겨찾기 추가일 최신순
+- 상태: [x] additive
+
+#### [GET] /api/goods/likes
+- 설명: 로그인 사용자가 하트 좋아요로 저장한 상품 목록 조회
+- 인증 필요: Y
+- 요청 header: `Authorization: Bearer <Supabase access_token>`
+- 응답: goods 요약 배열
+- 정렬: 좋아요 추가일 최신순
 - 상태: [x] additive
 
 #### [POST] /api/goods/{goodsId}/favorites
@@ -895,4 +903,5 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-07-02 | v0.2.14 | ai/navigation | additive | WebSocket `context.currentPath`와 `/goods`·`/cart` 이동 action을 추가하고 쇼핑 화면 이동 의도 라우팅 기준을 명시 | Codex |
 | 2026-07-02 | v0.2.15 | ai/goods | additive | 복수 추천을 `/goods`의 정확한 상품 집합으로 표시하는 `showRecommendations.goodsIds` action 추가 | Codex |
 | 2026-07-02 | v0.2.16 | member/goods | additive | 마이페이지 상품 활동 요약 조회 API `GET /api/members/me/goods-activity` 추가 | Codex |
+| 2026-07-03 | v0.2.17 | goods/member | additive | 로그인 회원이 하트로 저장한 상품 목록 조회 API `GET /api/goods/likes` 추가 | Codex |
 |  |  |  |  |  |  |

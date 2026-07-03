@@ -20,17 +20,61 @@ public class GoodsLikeService {
 
 	private final GoodsRepository goodsRepository;
 	private final GoodsLikeRepository goodsLikeRepository;
+	private final GoodsReviewRepository goodsReviewRepository;
 	private final Clock clock;
 
 	@Autowired
-	public GoodsLikeService(GoodsRepository goodsRepository, GoodsLikeRepository goodsLikeRepository) {
-		this(goodsRepository, goodsLikeRepository, Clock.systemUTC());
+	public GoodsLikeService(
+		GoodsRepository goodsRepository,
+		GoodsLikeRepository goodsLikeRepository,
+		GoodsReviewRepository goodsReviewRepository
+	) {
+		this(goodsRepository, goodsLikeRepository, goodsReviewRepository, Clock.systemUTC());
 	}
 
-	GoodsLikeService(GoodsRepository goodsRepository, GoodsLikeRepository goodsLikeRepository, Clock clock) {
+	GoodsLikeService(
+		GoodsRepository goodsRepository,
+		GoodsLikeRepository goodsLikeRepository,
+		GoodsReviewRepository goodsReviewRepository,
+		Clock clock
+	) {
 		this.goodsRepository = goodsRepository;
 		this.goodsLikeRepository = goodsLikeRepository;
+		this.goodsReviewRepository = goodsReviewRepository;
 		this.clock = clock;
+	}
+
+	@Transactional(readOnly = true)
+	public List<GoodsSummaryResponse> findLikedGoods(Long memberId) {
+		List<Long> likedGoodsIds = goodsLikeRepository.findByMemberIdOrderByCreatedAtDescLikeIdDesc(memberId).stream()
+			.map(GoodsLike::getGoodsId)
+			.toList();
+		if (likedGoodsIds.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, Goods> goodsById = new java.util.LinkedHashMap<>();
+		goodsRepository.findAllById(likedGoodsIds)
+			.forEach(goods -> goodsById.put(goods.getGoodsId(), goods));
+		if (goodsById.isEmpty()) {
+			return List.of();
+		}
+		Map<Long, GoodsReviewSummary> reviewSummaries = goodsReviewRepository.findSummaries(goodsById.keySet());
+		Map<Long, Long> likeCounts = goodsLikeRepository.countByGoodsIdIn(goodsById.keySet()).stream()
+			.collect(Collectors.toMap(
+				GoodsLikeRepository.GoodsLikeCount::getGoodsId,
+				GoodsLikeRepository.GoodsLikeCount::getLikeCount
+			));
+
+		return likedGoodsIds.stream()
+			.map(goodsById::get)
+			.filter(GoodsVisibility::isPubliclyVisible)
+			.map(goods -> GoodsSummaryResponse.from(
+				goods,
+				reviewSummaries.getOrDefault(goods.getGoodsId(), GoodsReviewSummary.empty()),
+				likeCounts.getOrDefault(goods.getGoodsId(), 0L)
+			))
+			.toList();
 	}
 
 	@Transactional(readOnly = true)

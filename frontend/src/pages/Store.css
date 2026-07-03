@@ -560,6 +560,26 @@ body:has(.store-page) {
   outline: 0;
 }
 
+.store-page .checkout-digital-notice {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--store-line);
+  background: #ffffff;
+  color: var(--store-ink);
+}
+
+.store-page .checkout-digital-notice strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.store-page .checkout-digital-notice span {
+  color: var(--store-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .store-page .checkout-fields label:focus-within {
   color: var(--store-ink);
 }

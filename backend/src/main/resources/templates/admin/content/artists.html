@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>아티스트 화면 내용 편집</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
-  <link rel="stylesheet" th:href="@{/admin/content-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/content-admin.css(v='artist-stacked-scroll-20260703')}">
+  <link rel="stylesheet" th:href="@{/admin/cms-puck/admin-cms-puck.css(v='inline-edit-20260703')}">
 </head>
 <body>
 <main class="admin-page"
@@ -29,7 +30,7 @@
     <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
 
     <section class="cms-workbench cms-workbench-wide">
-      <div class="cms-sheet-stack">
+      <div class="cms-artist-editor-grid">
         <form id="artistsPageForm"
               class="cms-sheet-panel"
               method="post"
@@ -37,11 +38,20 @@
               data-confirm-submit
               data-confirm-form-title="아티스트 화면">
           <div class="cms-panel-heading">
-            <h3>문구·이미지 입력</h3>
+            <div>
+              <h3>화면 고정 문구</h3>
+              <span>고객 화면의 정적 라벨과 안내 문구입니다.</span>
+            </div>
           </div>
           <input type="hidden" name="primaryColor" data-preview-input="primaryColor" th:value="${page.primaryColor()}">
           <input type="hidden" name="accentColor" data-preview-input="accentColor" th:value="${page.accentColor()}">
           <input type="hidden" name="backgroundColor" data-preview-input="backgroundColor" th:value="${page.backgroundColor()}">
+          <div class="cms-puck-host"
+               data-puck-cms-editor
+               data-page-key="artists"
+               data-form-id="artistsPageForm"></div>
+          <details class="cms-legacy-form-source">
+            <summary>기존 표 편집 열기</summary>
           <table class="cms-sheet">
             <thead>
             <tr>
@@ -50,6 +60,9 @@
             </tr>
             </thead>
             <tbody>
+            <tr class="cms-sheet-section-row">
+              <th colspan="2">랜딩</th>
+            </tr>
             <tr>
               <th>상단 보조 문구</th>
               <td><input name="eyebrow" data-preview-input="eyebrow" data-confirm-group="문구" data-confirm-label="상단 보조 문구" th:value="${page.eyebrow()}" th:data-fallback-value="${page.eyebrow()}" th:placeholder="${page.eyebrow()}"></td>
@@ -70,11 +83,127 @@
               <th>헤더 이미지</th>
               <td>
                 <input name="heroImageUrl" data-preview-input="heroImageUrl" data-confirm-group="이미지" data-confirm-label="헤더 이미지" th:value="${page.heroImageUrl()}" th:data-fallback-value="${page.heroImageUrl()}" th:placeholder="${page.heroImageUrl() ?: '현재 이미지 없음'}">
-                <input class="cms-file-input" type="file" accept="image/*" data-image-target="heroImageUrl">
               </td>
+            </tr>
+            <tr>
+              <th>방송 스트립</th>
+              <td><input name="copySettings[broadcastStrip]" th:value="${artistCopySettings['broadcastStrip']}"></td>
+            </tr>
+            <tr class="cms-sheet-section-row">
+              <th colspan="2">상단 메뉴</th>
+            </tr>
+            <tr>
+              <th>메뉴 Home</th>
+              <td><input name="copySettings[navHome]" th:value="${artistCopySettings['navHome']}"></td>
+            </tr>
+            <tr>
+              <th>메뉴 Artists</th>
+              <td><input name="copySettings[navArtists]" th:value="${artistCopySettings['navArtists']}"></td>
+            </tr>
+            <tr>
+              <th>메뉴 Goods</th>
+              <td><input name="copySettings[navGoods]" th:value="${artistCopySettings['navGoods']}"></td>
+            </tr>
+            <tr>
+              <th>메뉴 Cart</th>
+              <td><input name="copySettings[navCart]" th:value="${artistCopySettings['navCart']}"></td>
+            </tr>
+            <tr class="cms-sheet-section-row">
+              <th colspan="2">랜딩 상태·채널</th>
+            </tr>
+            <tr>
+              <th>요약 Artists</th>
+              <td><input name="copySettings[statsArtistsLabel]" th:value="${artistCopySettings['statsArtistsLabel']}"></td>
+            </tr>
+            <tr>
+              <th>요약 Mode</th>
+              <td><input name="copySettings[statsModeLabel]" th:value="${artistCopySettings['statsModeLabel']}"></td>
+            </tr>
+            <tr>
+              <th>요약 View</th>
+              <td><input name="copySettings[statsViewLabel]" th:value="${artistCopySettings['statsViewLabel']}"></td>
+            </tr>
+            <tr>
+              <th>View 값</th>
+              <td><input name="copySettings[statsViewValue]" th:value="${artistCopySettings['statsViewValue']}"></td>
+            </tr>
+            <tr>
+              <th>상태 Loading</th>
+              <td><input name="copySettings[statusLoadingLabel]" th:value="${artistCopySettings['statusLoadingLabel']}"></td>
+            </tr>
+            <tr>
+              <th>상태 Live</th>
+              <td><input name="copySettings[statusLiveLabel]" th:value="${artistCopySettings['statusLiveLabel']}"></td>
+            </tr>
+            <tr>
+              <th>상태 Preview</th>
+              <td><input name="copySettings[statusPreviewLabel]" th:value="${artistCopySettings['statusPreviewLabel']}"></td>
+            </tr>
+            <tr>
+              <th>채널 WORLD</th>
+              <td><input name="copySettings[channelWorld]" th:value="${artistCopySettings['channelWorld']}"></td>
+            </tr>
+            <tr>
+              <th>채널 AREA</th>
+              <td><input name="copySettings[channelArea]" th:value="${artistCopySettings['channelArea']}"></td>
+            </tr>
+            <tr>
+              <th>채널 CHARACTER</th>
+              <td><input name="copySettings[channelCharacter]" th:value="${artistCopySettings['channelCharacter']}"></td>
+            </tr>
+            <tr>
+              <th>채널 MUSIC</th>
+              <td><input name="copySettings[channelMusic]" th:value="${artistCopySettings['channelMusic']}"></td>
+            </tr>
+            <tr class="cms-sheet-section-row">
+              <th colspan="2">아티스트 상세 공통 라벨</th>
+            </tr>
+            <tr>
+              <th>BPM 라벨</th>
+              <td><input name="copySettings[profileBpmLabel]" th:value="${artistCopySettings['profileBpmLabel']}"></td>
+            </tr>
+            <tr>
+              <th>Debut 라벨</th>
+              <td><input name="copySettings[profileDebutLabel]" th:value="${artistCopySettings['profileDebutLabel']}"></td>
+            </tr>
+            <tr>
+              <th>Collections 라벨</th>
+              <td><input name="copySettings[profileCollectionsLabel]" th:value="${artistCopySettings['profileCollectionsLabel']}"></td>
+            </tr>
+            <tr>
+              <th>Signal 라벨</th>
+              <td><input name="copySettings[profileSignalLabel]" th:value="${artistCopySettings['profileSignalLabel']}"></td>
+            </tr>
+            <tr>
+              <th>아티스트 굿즈 버튼</th>
+              <td><input name="copySettings[artistGoodsCta]" th:value="${artistCopySettings['artistGoodsCta']}"></td>
+            </tr>
+            <tr>
+              <th>그룹 굿즈 버튼</th>
+              <td><input name="copySettings[groupGoodsCta]" th:value="${artistCopySettings['groupGoodsCta']}"></td>
+            </tr>
+            <tr class="cms-sheet-section-row">
+              <th colspan="2">인덱스</th>
+            </tr>
+            <tr>
+              <th>인덱스 보조 문구</th>
+              <td><input name="copySettings[indexEyebrow]" th:value="${artistCopySettings['indexEyebrow']}"></td>
+            </tr>
+            <tr>
+              <th>인덱스 제목</th>
+              <td><input name="copySettings[indexTitle]" th:value="${artistCopySettings['indexTitle']}"></td>
+            </tr>
+            <tr>
+              <th>인덱스 그룹 굿즈</th>
+              <td><input name="copySettings[indexGroupGoodsCta]" th:value="${artistCopySettings['indexGroupGoodsCta']}"></td>
+            </tr>
+            <tr>
+              <th>페이저 인덱스</th>
+              <td><input name="copySettings[pagerIndexLabel]" th:value="${artistCopySettings['pagerIndexLabel']}"></td>
             </tr>
             </tbody>
           </table>
+          </details>
         </form>
 
         <form id="artistRowsForm"
@@ -84,49 +213,113 @@
               data-confirm-submit
               data-confirm-form-title="아티스트 목록">
           <div class="cms-panel-heading">
-            <h3>아티스트 목록</h3>
+            <div>
+              <h3>Supabase-Spring DB 아티스트 데이터</h3>
+              <span>아티스트명, 그룹, 소개, 이미지 URL처럼 DB 행으로 저장되는 데이터입니다.</span>
+            </div>
             <button class="cms-secondary-button" type="button" data-add-artist-row>행 추가</button>
           </div>
-          <div class="cms-table-scroll">
-            <table class="cms-sheet cms-artist-sheet">
-              <thead>
-              <tr>
-                <th>노출</th>
-                <th>정렬</th>
-                <th>ID</th>
-                <th>이름</th>
-                <th>그룹</th>
-                <th>데뷔일</th>
-                <th>이미지</th>
-                <th>소개</th>
-                <th>컬렉션</th>
-              </tr>
-              </thead>
-              <tbody id="artistRows">
-              <tr th:each="artist : ${artists}">
-                <td>
-                  <input type="hidden"
-                         name="visible"
-                         data-artist-visible-value
-                         th:value="${artist.visible()}">
-                  <input type="checkbox"
-                         data-artist-visible
-                         th:checked="${artist.visible()}">
-                </td>
-                <td><input type="number" name="sortOrder" data-artist-field="sortOrder" th:value="${artist.sortOrder()}" th:data-fallback-value="${artist.sortOrder()}" th:placeholder="${artist.sortOrder()}"></td>
-                <td><input name="artistId" data-artist-field="artistId" th:value="${artist.artistId()}" readonly></td>
-                <td><input name="name" data-artist-field="name" th:value="${artist.name()}" th:data-fallback-value="${artist.name()}" th:placeholder="${artist.name()}"></td>
-                <td><input name="groupName" data-artist-field="groupName" th:value="${artist.groupName()}" th:data-fallback-value="${artist.groupName()}" th:placeholder="${artist.groupName() ?: '현재 그룹 없음'}"></td>
-                <td><input type="date" name="debutDate" data-artist-field="debutDate" th:value="${artist.debutDate()}" th:data-fallback-value="${artist.debutDate()}"></td>
-                <td>
-                  <input name="imageUrl" data-artist-field="imageUrl" th:value="${artist.imageUrl()}" th:data-fallback-value="${artist.imageUrl()}" th:placeholder="${artist.imageUrl() ?: '현재 이미지 없음'}">
-                  <input class="cms-file-input" type="file" accept="image/*" data-row-image>
-                </td>
-                <td><input name="lore" data-artist-field="lore" th:value="${artist.lore()}" th:data-fallback-value="${artist.lore()}" th:placeholder="${artist.lore() ?: '현재 소개 없음'}"></td>
-                <td><input name="collections" data-artist-field="collections" th:value="${artist.collections()}" th:data-fallback-value="${artist.collections()}" th:placeholder="${artist.collections() ?: '현재 컬렉션 없음'}"></td>
-              </tr>
-              </tbody>
-            </table>
+          <div class="cms-artist-data-layout"
+               data-cms-artist-image-editor
+               th:attr="data-upload-endpoint=@{/admin/storage/uploads},data-upload-bucket=${goodsImageBucket},data-upload-path=${goodsImagePath}">
+            <aside class="admin-goods-image-panel cms-group-image-panel cms-artist-image-panel" aria-label="아티스트 이미지 저장소">
+              <div class="admin-upload-header">
+                <div>
+                  <p class="admin-eyebrow">아티스트 이미지</p>
+                  <h3>이미지 저장소</h3>
+                </div>
+                <a th:href="@{/admin/storage}">저장소 관리</a>
+              </div>
+
+              <div class="admin-goods-direct-upload">
+                <label>
+                  <span>직접 업로드</span>
+                  <input type="file" accept="image/*" data-cms-artist-direct-file>
+                </label>
+                <small data-cms-artist-upload-status>이미지 셀을 선택하거나 저장소 이미지를 셀로 드래그하세요.</small>
+              </div>
+
+              <div class="admin-notice admin-notice-error" th:if="${imageLibraryError}" th:text="${imageLibraryError}">
+                이미지 목록을 불러오지 못했습니다.
+              </div>
+
+              <div class="admin-image-tree admin-goods-image-tree cms-group-image-tree cms-artist-image-tree"
+                   data-cms-artist-image-library
+                   data-image-tree
+                   data-empty-label="업로드된 이미지가 없습니다."
+                   th:attr="data-root-label=${goodsImageBucket}">
+                <div data-image-tree-root></div>
+                <div data-image-tree-source hidden>
+                  <button type="button"
+                          class="admin-image-library-item"
+                          draggable="true"
+                          th:each="image : ${goodsImages}"
+                          th:attr="data-image-url=${image.publicUrl()},data-image-path=${image.path()},title=${image.path()}">
+                    <img th:src="${image.publicUrl()}" alt="">
+                    <span th:text="${image.path()}">goods/example.png</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
+
+            <div class="cms-artist-table-area">
+              <div class="cms-table-scroll">
+                <table class="cms-sheet cms-artist-sheet">
+                  <thead>
+                  <tr>
+                    <th>노출</th>
+                    <th>그룹 노출</th>
+                    <th>그룹 정렬</th>
+                    <th>그룹 키</th>
+                    <th>정렬</th>
+                    <th>ID</th>
+                    <th>이름</th>
+                    <th>그룹명</th>
+                    <th>데뷔일</th>
+                    <th>이미지</th>
+                    <th>그룹 대표 이미지</th>
+                    <th>그룹 설명</th>
+                    <th>소개</th>
+                    <th>컬렉션</th>
+                  </tr>
+                  </thead>
+                  <tbody id="artistRows">
+                  <tr th:each="artist : ${artists}">
+                    <td>
+                      <input type="hidden"
+                             name="visible"
+                             data-artist-visible-value
+                             th:value="${artist.visible()}">
+                      <input type="checkbox"
+                             data-artist-visible
+                             th:checked="${artist.visible()}">
+                    </td>
+                    <td>
+                      <input type="hidden"
+                             name="groupVisible"
+                             data-artist-group-visible-value
+                             th:value="${artist.groupVisible()}">
+                      <input type="checkbox"
+                             data-artist-group-visible
+                             th:checked="${artist.groupVisible()}">
+                    </td>
+                    <td><input type="number" name="groupSortOrder" data-artist-field="groupSortOrder" th:value="${artist.groupSortOrder()}" th:data-fallback-value="${artist.groupSortOrder()}" th:placeholder="${artist.groupSortOrder()}"></td>
+                    <td><input name="groupKey" data-artist-field="groupKey" th:value="${artist.groupKey()}" th:data-fallback-value="${artist.groupKey()}" th:placeholder="${artist.groupKey() ?: '예: cyan-origin-idol'}"></td>
+                    <td><input type="number" name="sortOrder" data-artist-field="sortOrder" th:value="${artist.sortOrder()}" th:data-fallback-value="${artist.sortOrder()}" th:placeholder="${artist.sortOrder()}"></td>
+                    <td><input name="artistId" data-artist-field="artistId" th:value="${artist.artistId()}" readonly></td>
+                    <td><input name="name" data-artist-field="name" th:value="${artist.name()}" th:data-fallback-value="${artist.name()}" th:placeholder="${artist.name()}"></td>
+                    <td><input name="groupName" data-artist-field="groupName" th:value="${artist.groupName()}" th:data-fallback-value="${artist.groupName()}" th:placeholder="${artist.groupName() ?: '현재 그룹 없음'}"></td>
+                    <td><input type="date" name="debutDate" data-artist-field="debutDate" th:value="${artist.debutDate()}" th:data-fallback-value="${artist.debutDate()}"></td>
+                    <td><input name="imageUrl" data-artist-field="imageUrl" th:value="${artist.imageUrl()}" th:data-fallback-value="${artist.imageUrl()}" th:placeholder="${artist.imageUrl() ?: '현재 이미지 없음'}"></td>
+                    <td><input name="groupHeroImageUrl" data-artist-field="groupHeroImageUrl" th:value="${artist.groupHeroImageUrl()}" th:data-fallback-value="${artist.groupHeroImageUrl()}" th:placeholder="${artist.groupHeroImageUrl() ?: '현재 대표 이미지 없음'}"></td>
+                    <td><input name="groupSummary" data-artist-field="groupSummary" th:value="${artist.groupSummary()}" th:data-fallback-value="${artist.groupSummary()}" th:placeholder="${artist.groupSummary() ?: '현재 그룹 설명 없음'}"></td>
+                    <td><input name="lore" data-artist-field="lore" th:value="${artist.lore()}" th:data-fallback-value="${artist.lore()}" th:placeholder="${artist.lore() ?: '현재 소개 없음'}"></td>
+                    <td><input name="collections" data-artist-field="collections" th:value="${artist.collections()}" th:data-fallback-value="${artist.collections()}" th:placeholder="${artist.collections() ?: '현재 컬렉션 없음'}"></td>
+                  </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </form>
       </div>
@@ -134,6 +327,8 @@
     </section>
   </section>
 </main>
+<script th:src="@{/admin/image-library-tree.js}"></script>
 <script th:src="@{/admin/content-admin.js}"></script>
+<script type="module" th:src="@{/admin/cms-puck/admin-cms-puck.js(v='inline-edit-20260703')}"></script>
 </body>
 </html>

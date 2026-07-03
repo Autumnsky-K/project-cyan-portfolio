@@ -37,6 +37,7 @@ function toCartItem(item: CartApiItem): CartItem {
     imageUrl: item.imageUrl ?? null,
     artistName: item.artistName ?? 'SM Artist',
     categoryName: item.categoryName ?? 'Goods',
+    fulfillmentType: item.fulfillmentType ?? null,
     tags: item.tags ?? [],
     quantity: Number(item.quantity ?? 0),
     maxQuantity: item.stockCount == null ? null : Math.max(0, Number(item.stockCount)),

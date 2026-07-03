@@ -18,6 +18,7 @@
         <h2 th:text="${mode == 'create' ? '굿즈 등록' : '굿즈 수정'}">굿즈</h2>
       </div>
       <div class="admin-header-actions">
+        <a th:href="@{/admin/goods/classifications}">분류/태그 관리</a>
         <a th:href="@{/admin/goods}">목록으로 돌아가기</a>
       </div>
     </header>
@@ -120,7 +121,16 @@
             <select th:field="*{categoryId}"
                     th:attr="aria-invalid=${#fields.hasErrors('categoryId')}">
               <option value="" disabled>카테고리 선택</option>
-              <option th:each="category : ${filters.categories()}" th:value="${category.value()}" th:text="${category.label()}"></option>
+              <optgroup label="실물 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'PHYSICAL'])}">
+                <option th:each="category : ${filters.categories().?[fulfillmentType == 'PHYSICAL']}"
+                        th:value="${category.value()}"
+                        th:text="${category.label()}"></option>
+              </optgroup>
+              <optgroup label="디지털 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'DIGITAL'])}">
+                <option th:each="category : ${filters.categories().?[fulfillmentType == 'DIGITAL']}"
+                        th:value="${category.value()}"
+                        th:text="${category.label()}"></option>
+              </optgroup>
             </select>
           </label>
 
@@ -135,6 +145,15 @@
             <input type="hidden" th:field="*{imageUrl}" data-goods-image-url>
           </label>
         </section>
+
+        <div class="admin-notice admin-digital-asset-notice"
+             th:if="${formDigitalGoods}"
+             th:classappend="${activeDigitalAssetCount > 0} ? ' is-success' : ' is-warning'">
+          <strong th:text="${activeDigitalAssetCount > 0 ? '디지털 파일 연결됨' : '디지털 파일 없음'}">디지털 파일 상태</strong>
+          <span th:text="${activeDigitalAssetCount > 0 ? '현재 다운로드 가능한 파일 ' + activeDigitalAssetCount + '개가 연결되어 있습니다.' : '파일이 등록되지 않은 디지털 상품입니다. 판매중으로 공개하기 전에 다운로드 파일을 연결하세요.'}">
+            디지털 파일 상태 안내
+          </span>
+        </div>
 
         <section class="admin-goods-image-slots" data-goods-image-slots aria-label="굿즈 이미지 슬롯">
           <div class="admin-section-heading">

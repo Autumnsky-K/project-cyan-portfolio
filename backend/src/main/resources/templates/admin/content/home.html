@@ -6,6 +6,7 @@
   <title>홈 화면 내용 편집</title>
   <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='sidebar-rail-tuned-20260626')}">
   <link rel="stylesheet" th:href="@{/admin/content-admin.css}">
+  <link rel="stylesheet" th:href="@{/admin/cms-puck/admin-cms-puck.css(v='inline-edit-20260703')}">
 </head>
 <body>
 <main class="admin-page"
@@ -41,6 +42,13 @@
         <input type="hidden" name="accentColor" data-preview-input="accentColor" th:value="${page.accentColor()}">
         <input type="hidden" name="backgroundColor" data-preview-input="backgroundColor" th:value="${page.backgroundColor()}">
 
+        <div class="cms-puck-host"
+             data-puck-cms-editor
+             data-page-key="home"
+             data-form-id="homeContentForm"></div>
+
+        <details class="cms-legacy-form-source">
+          <summary>기존 표 편집 열기</summary>
         <table class="cms-sheet">
           <thead>
           <tr>
@@ -266,10 +274,12 @@
           </tr>
           </tbody>
         </table>
+        </details>
       </form>
     </section>
   </section>
 </main>
 <script th:src="@{/admin/content-admin.js}"></script>
+<script type="module" th:src="@{/admin/cms-puck/admin-cms-puck.js(v='inline-edit-20260703')}"></script>
 </body>
 </html>

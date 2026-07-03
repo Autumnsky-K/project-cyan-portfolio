@@ -25,7 +25,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import com.projectcyan.common.ApiErrorException;
+import com.projectcyan.goods.DigitalGoodsEntitlementGrantService;
 import com.projectcyan.goods.Goods;
+import com.projectcyan.goods.GoodsFulfillmentType;
 import com.projectcyan.goods.GoodsRepository;
 import com.projectcyan.goods.GoodsStock;
 import com.projectcyan.goods.GoodsStockRepository;
@@ -49,6 +51,7 @@ public class CheckoutService {
 	private final OrderItemRepository orderItemRepository;
 	private final PaymentRepository paymentRepository;
 	private final PaymentAttemptRepository paymentAttemptRepository;
+	private final DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService;
 	private final RestClient tossRestClient = RestClient.create();
 
 	@Value("${toss.payments.secret-key:}")
@@ -61,7 +64,8 @@ public class CheckoutService {
 		StoreOrderRepository storeOrderRepository,
 		OrderItemRepository orderItemRepository,
 		PaymentRepository paymentRepository,
-		PaymentAttemptRepository paymentAttemptRepository
+		PaymentAttemptRepository paymentAttemptRepository,
+		DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService
 	) {
 		this.memberRepository = memberRepository;
 		this.goodsRepository = goodsRepository;
@@ -70,6 +74,7 @@ public class CheckoutService {
 		this.orderItemRepository = orderItemRepository;
 		this.paymentRepository = paymentRepository;
 		this.paymentAttemptRepository = paymentAttemptRepository;
+		this.digitalGoodsEntitlementGrantService = digitalGoodsEntitlementGrantService;
 	}
 
 	@Transactional
@@ -98,6 +103,7 @@ public class CheckoutService {
 		}
 		payment.markApproved(request.providerPaymentKey(), request.paymentMethod());
 		payment.getOrder().markPaid();
+		digitalGoodsEntitlementGrantService.grantForOrder(payment.getOrder().getOrderId());
 
 		return PaymentResultResponse.from(payment, request.reason());
 	}
@@ -157,13 +163,17 @@ public class CheckoutService {
 		Member member = memberRepository.findByMemberUuid(memberUuid)
 			.orElseThrow(() -> error("MEMBER_NOT_FOUND", "Member not found.", HttpStatus.NOT_FOUND));
 		Map<Long, Integer> requestedItems = normalizeItems(request.items());
-		validateShippingAddress(request.shippingAddress());
 		List<Goods> goodsList = goodsRepository.findAllById(requestedItems.keySet());
 		Map<Long, Goods> goodsById = goodsList.stream()
 			.collect(Collectors.toMap(Goods::getGoodsId, Function.identity()));
 		validateAllGoodsFound(requestedItems.keySet(), goodsById);
 		validateGoods(goodsById.values(), requestedItems);
-		validateStocks(requestedItems);
+		validateDigitalGoodsPurchaseRules(member.getMemberId(), goodsById.values(), requestedItems);
+		validateStocks(requestedItems, goodsById);
+		boolean requiresShipping = goodsById.values().stream().anyMatch(goods -> !isDigitalGoods(goods));
+		if (requiresShipping) {
+			validateShippingAddress(request.shippingAddress());
+		}
 
 		List<Goods> orderedGoods = new ArrayList<>(goodsById.values());
 		orderedGoods.sort(Comparator.comparing(Goods::getGoodsId));
@@ -178,7 +188,7 @@ public class CheckoutService {
 			subtotal,
 			shippingAmount,
 			totalAmount,
-			request.shippingAddress()
+			requiresShipping ? request.shippingAddress() : null
 		));
 		List<OrderItem> orderItems = orderedGoods.stream()
 			.map(goods -> OrderItem.snapshot(order, goods, requestedItems.get(goods.getGoodsId())))
@@ -362,10 +372,46 @@ public class CheckoutService {
 		}
 	}
 
-	private void validateStocks(Map<Long, Integer> requestedItems) {
-		Map<Long, GoodsStock> stocksByGoodsId = goodsStockRepository.findByGoodsIdIn(requestedItems.keySet()).stream()
+	private void validateDigitalGoodsPurchaseRules(
+		Long memberId,
+		Collection<Goods> goodsList,
+		Map<Long, Integer> requestedItems
+	) {
+		for (Goods goods : goodsList) {
+			if (!isDigitalGoods(goods)) {
+				continue;
+			}
+			Integer quantity = requestedItems.get(goods.getGoodsId());
+			if (quantity != null && quantity > 1) {
+				throw error(
+					"DIGITAL_GOODS_SINGLE_PURCHASE_ONLY",
+					"Digital goods can only be purchased one at a time.",
+					HttpStatus.BAD_REQUEST
+				);
+			}
+			if (digitalGoodsEntitlementGrantService.hasActiveEntitlement(memberId, goods.getGoodsId())) {
+				throw error(
+					"DIGITAL_GOODS_ALREADY_OWNED",
+					"이미 구매한 디지털 상품입니다. 마이페이지의 디지털 제품 저장소에서 다운로드해 주세요.",
+					HttpStatus.CONFLICT
+				);
+			}
+		}
+	}
+
+	private void validateStocks(Map<Long, Integer> requestedItems, Map<Long, Goods> goodsById) {
+		Set<Long> physicalGoodsIds = requestedItems.keySet().stream()
+			.filter(goodsId -> !isDigitalGoods(goodsById.get(goodsId)))
+			.collect(Collectors.toSet());
+		if (physicalGoodsIds.isEmpty()) {
+			return;
+		}
+		Map<Long, GoodsStock> stocksByGoodsId = goodsStockRepository.findByGoodsIdIn(physicalGoodsIds).stream()
 			.collect(Collectors.toMap(GoodsStock::getGoodsId, Function.identity()));
 		for (Map.Entry<Long, Integer> entry : requestedItems.entrySet()) {
+			if (isDigitalGoods(goodsById.get(entry.getKey()))) {
+				continue;
+			}
 			GoodsStock stock = stocksByGoodsId.get(entry.getKey());
 			if (stock == null || stock.getCurrentStock() == null) {
 				continue;
@@ -376,8 +422,15 @@ public class CheckoutService {
 		}
 	}
 
+	private boolean isDigitalGoods(Goods goods) {
+		return goods != null
+			&& goods.getCategory() != null
+			&& goods.getCategory().getFulfillmentType() == GoodsFulfillmentType.DIGITAL;
+	}
+
 	private void decreaseStockForApprovedOrder(StoreOrder order) {
 		Map<Long, Integer> orderedItems = orderItemRepository.findByOrder_OrderId(order.getOrderId()).stream()
+			.filter(item -> !isDigitalGoods(item.getGoods()))
 			.filter(item -> item.getGoodsId() != null && item.getQuantity() != null && item.getQuantity() > 0)
 			.collect(Collectors.toMap(OrderItem::getGoodsId, OrderItem::getQuantity, Integer::sum));
 		if (orderedItems.isEmpty()) {

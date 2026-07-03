@@ -19,11 +19,20 @@ public class Tag {
 	protected Tag() {
 	}
 
+	Tag(Long tagId, String tagName) {
+		this.tagId = tagId;
+		this.tagName = tagName;
+	}
+
 	public Long getTagId() {
 		return tagId;
 	}
 
 	public String getTagName() {
 		return tagName;
+	}
+
+	void update(String tagName) {
+		this.tagName = tagName;
 	}
 }

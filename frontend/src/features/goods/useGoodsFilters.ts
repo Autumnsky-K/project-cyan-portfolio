@@ -6,7 +6,10 @@ export type FilterStatus = 'loading' | 'data' | 'error'
 
 function uniqueFilterOptions(options: GoodsFilterOption[] = []) {
   return [...new Map(
-    options.map((option) => [option.label.trim().toLocaleLowerCase(), option]),
+    options.map((option) => [
+      `${option.label.trim().toLocaleLowerCase()}:${option.fulfillmentType ?? ''}`,
+      option,
+    ]),
   ).values()]
 }
 

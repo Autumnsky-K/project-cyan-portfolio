@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>굿즈 분류 관리</title>
+  <link rel="stylesheet" th:href="@{/admin/goods-admin.css(v='goods-classifications-20260703')}">
+</head>
+<body>
+<main class="admin-page">
+  <aside th:replace="~{admin/fragments/sidebar :: sidebar('goods-classifications', 'admin-sidebar', 'admin-eyebrow', '관리자')}"></aside>
+
+  <section class="admin-main">
+    <header class="admin-header">
+      <div>
+        <p class="admin-eyebrow">상품 분류/옵션</p>
+        <h2>굿즈 분류 관리</h2>
+      </div>
+      <div class="admin-header-actions">
+        <a th:href="@{/admin/goods}">굿즈 정보 관리</a>
+        <a th:href="@{/admin/goods/new}">굿즈 등록</a>
+      </div>
+    </header>
+
+    <div class="admin-notice" th:if="${notice}" th:text="${notice}"></div>
+    <div class="admin-notice admin-notice-error" th:if="${error}" th:text="${error}"></div>
+
+    <section class="admin-stats" aria-label="분류 현황">
+      <article>
+        <span>카테고리</span>
+        <strong th:text="${#lists.size(categories)}">0</strong>
+      </article>
+      <article>
+        <span>태그</span>
+        <strong th:text="${#lists.size(tags)}">0</strong>
+      </article>
+      <article>
+        <span>상품 유형</span>
+        <strong th:text="${#lists.size(fulfillmentTypes)}">2</strong>
+      </article>
+    </section>
+
+    <section class="admin-classification-grid" aria-label="굿즈 분류 등록">
+      <article class="admin-data-card">
+        <div>
+          <strong>카테고리 등록</strong>
+          <p>상품이 선택하는 기존 goods_category 값을 추가합니다. 상품 유형은 현재 결제/배송을 바꾸지 않는 읽기용 분류입니다.</p>
+        </div>
+        <form class="admin-form admin-classification-create" method="post" th:action="@{/admin/goods/categories}">
+          <label>
+            <span>카테고리명</span>
+            <input type="text" name="categoryName" maxlength="50" required>
+          </label>
+          <label>
+            <span>상품 유형</span>
+            <select name="fulfillmentType" required>
+              <option th:each="type : ${fulfillmentTypes}"
+                      th:value="${type.name()}"
+                      th:text="${type.label()}"
+                      th:selected="${type.name() == defaultFulfillmentType}"></option>
+            </select>
+          </label>
+          <div class="admin-form-actions">
+            <button class="admin-primary" type="submit">카테고리 등록</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="admin-data-card" id="tags">
+        <div>
+          <strong>태그 등록</strong>
+          <p>상품 상세와 목록 필터에서 사용하는 기존 tag 값을 추가합니다. 상품에 사용 중인 태그는 삭제할 수 없습니다.</p>
+        </div>
+        <form class="admin-form admin-classification-create" method="post" th:action="@{/admin/goods/tags}">
+          <label>
+            <span>태그명</span>
+            <input type="text" name="tagName" maxlength="50" required>
+          </label>
+          <div class="admin-form-actions">
+            <button class="admin-primary" type="submit">태그 등록</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <section class="admin-table-panel" aria-label="카테고리 목록">
+      <div class="admin-section-heading">
+        <div>
+          <p class="admin-eyebrow">goods_category</p>
+          <h3>카테고리와 상품 유형</h3>
+        </div>
+      </div>
+      <div class="admin-state" th:if="${#lists.isEmpty(categories)}">등록된 카테고리가 없습니다.</div>
+      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(categories)}">
+        <table class="admin-goods-table admin-classification-table">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>카테고리명</th>
+            <th>상품 유형</th>
+            <th>사용 상품</th>
+            <th>관리</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="category : ${categories}">
+            <td th:text="'#' + ${category.categoryId()}">#1</td>
+            <td>
+              <form class="inline-form admin-classification-inline-form"
+                    method="post"
+                    th:id="'category-form-' + ${category.categoryId()}"
+                    th:action="@{/admin/goods/categories/{categoryId}(categoryId=${category.categoryId()})}">
+                <input type="text" name="categoryName" maxlength="50" required th:value="${category.categoryName()}">
+              </form>
+            </td>
+            <td>
+              <select name="fulfillmentType"
+                      th:attr="form='category-form-' + ${category.categoryId()}"
+                      required>
+                <option th:each="type : ${fulfillmentTypes}"
+                        th:value="${type.name()}"
+                        th:text="${type.label()}"
+                        th:selected="${type.name() == category.fulfillmentType()}"></option>
+              </select>
+            </td>
+            <td th:text="${category.goodsCount()} + '개'">0개</td>
+            <td>
+              <div class="admin-actions">
+                <button type="submit" th:attr="form='category-form-' + ${category.categoryId()}">저장</button>
+                <form method="post"
+                      th:action="@{/admin/goods/categories/{categoryId}/delete(categoryId=${category.categoryId()})}"
+                      onsubmit="return confirm('이 카테고리를 삭제할까요?')">
+                  <button class="admin-danger"
+                          type="submit"
+                          th:disabled="${category.goodsCount() > 0}"
+                          th:title="${category.goodsCount() > 0 ? '상품에 사용 중인 카테고리는 삭제할 수 없습니다.' : '카테고리 삭제'}">삭제</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-table-panel" aria-label="태그 목록">
+      <div class="admin-section-heading">
+        <div>
+          <p class="admin-eyebrow">tag</p>
+          <h3>태그</h3>
+        </div>
+      </div>
+      <div class="admin-state" th:if="${#lists.isEmpty(tags)}">등록된 태그가 없습니다.</div>
+      <div class="admin-table-scroll" th:if="${!#lists.isEmpty(tags)}">
+        <table class="admin-goods-table admin-classification-table">
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>태그명</th>
+            <th>사용 상품</th>
+            <th>관리</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="tag : ${tags}">
+            <td th:text="'#' + ${tag.tagId()}">#1</td>
+            <td>
+              <form class="inline-form admin-classification-inline-form"
+                    method="post"
+                    th:id="'tag-form-' + ${tag.tagId()}"
+                    th:action="@{/admin/goods/tags/{tagId}(tagId=${tag.tagId()})}">
+                <input type="text" name="tagName" maxlength="50" required th:value="${tag.tagName()}">
+              </form>
+            </td>
+            <td th:text="${tag.goodsCount()} + '개'">0개</td>
+            <td>
+              <div class="admin-actions">
+                <button type="submit" th:attr="form='tag-form-' + ${tag.tagId()}">저장</button>
+                <form method="post"
+                      th:action="@{/admin/goods/tags/{tagId}/delete(tagId=${tag.tagId()})}"
+                      onsubmit="return confirm('이 태그를 삭제할까요?')">
+                  <button class="admin-danger"
+                          type="submit"
+                          th:disabled="${tag.goodsCount() > 0}"
+                          th:title="${tag.goodsCount() > 0 ? '상품에 사용 중인 태그는 삭제할 수 없습니다.' : '태그 삭제'}">삭제</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+</body>
+</html>

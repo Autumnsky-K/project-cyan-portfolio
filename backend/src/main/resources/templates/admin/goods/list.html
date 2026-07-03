@@ -18,6 +18,7 @@
       </div>
       <div class="admin-header-actions">
         <a th:href="${frontendGoodsBaseUrl}" target="_blank" rel="noreferrer">굿즈 화면 열기</a>
+        <a th:href="@{/admin/goods/classifications}">분류/태그 관리</a>
         <a th:href="@{/admin/goods/import}">엑셀 대량 등록</a>
         <a class="admin-primary" th:href="@{/admin/goods/new}">굿즈 등록</a>
       </div>
@@ -60,10 +61,18 @@
         <span>카테고리</span>
         <select name="categoryId">
           <option value="">전체 카테고리</option>
-          <option th:each="category : ${filters.categories()}"
-                  th:value="${category.value()}"
-                  th:text="${category.label()}"
-                  th:selected="${categoryId != null and category.value() == categoryId.toString()}"></option>
+          <optgroup label="실물 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'PHYSICAL'])}">
+            <option th:each="category : ${filters.categories().?[fulfillmentType == 'PHYSICAL']}"
+                    th:value="${category.value()}"
+                    th:text="${category.label()}"
+                    th:selected="${categoryId != null and category.value() == categoryId.toString()}"></option>
+          </optgroup>
+          <optgroup label="디지털 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'DIGITAL'])}">
+            <option th:each="category : ${filters.categories().?[fulfillmentType == 'DIGITAL']}"
+                    th:value="${category.value()}"
+                    th:text="${category.label()}"
+                    th:selected="${categoryId != null and category.value() == categoryId.toString()}"></option>
+          </optgroup>
         </select>
       </label>
       <label>
@@ -120,9 +129,16 @@
               <span>카테고리 일괄 편집</span>
               <select data-goods-bulk-choice="category">
                 <option value="">카테고리 없음</option>
-                <option th:each="category : ${filters.categories()}"
-                        th:value="${category.value()}"
-                        th:text="${category.label()}"></option>
+                <optgroup label="실물 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'PHYSICAL'])}">
+                  <option th:each="category : ${filters.categories().?[fulfillmentType == 'PHYSICAL']}"
+                          th:value="${category.value()}"
+                          th:text="${category.label()}"></option>
+                </optgroup>
+                <optgroup label="디지털 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'DIGITAL'])}">
+                  <option th:each="category : ${filters.categories().?[fulfillmentType == 'DIGITAL']}"
+                          th:value="${category.value()}"
+                          th:text="${category.label()}"></option>
+                </optgroup>
               </select>
             </label>
             <button type="button" data-goods-bulk-apply-choice="category">적용</button>
@@ -289,11 +305,25 @@
                           data-choice-kind="category"
                           th:attr="data-original=${row.categoryId() == null ? '' : row.categoryId()},data-original-label=${row.categoryLabel()}">
                     <option value="" th:selected="${row.categoryId() == null}">카테고리 없음</option>
-                    <option th:each="category : ${filters.categories()}"
-                            th:value="${category.value()}"
-                            th:text="${category.label()}"
-                            th:selected="${row.categoryId() != null and category.value() == row.categoryId().toString()}"></option>
+                    <optgroup label="실물 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'PHYSICAL'])}">
+                      <option th:each="category : ${filters.categories().?[fulfillmentType == 'PHYSICAL']}"
+                              th:value="${category.value()}"
+                              th:text="${category.label()}"
+                              th:selected="${row.categoryId() != null and category.value() == row.categoryId().toString()}"></option>
+                    </optgroup>
+                    <optgroup label="디지털 굿즈" th:if="${!#lists.isEmpty(filters.categories().?[fulfillmentType == 'DIGITAL'])}">
+                      <option th:each="category : ${filters.categories().?[fulfillmentType == 'DIGITAL']}"
+                              th:value="${category.value()}"
+                              th:text="${category.label()}"
+                              th:selected="${row.categoryId() != null and category.value() == row.categoryId().toString()}"></option>
+                    </optgroup>
                   </select>
+                  <div class="admin-digital-asset-status"
+                       th:if="${row.digital()}"
+                       th:classappend="${row.missingActiveDigitalAsset()} ? ' is-warning' : ' is-ready'">
+                    <strong th:text="${row.missingActiveDigitalAsset() ? '디지털 파일 없음' : '디지털 파일 ' + row.activeDigitalAssetCount() + '개'}">디지털 파일 상태</strong>
+                    <small th:if="${row.missingActiveDigitalAsset() and row.salesStatus() == 'ON_SALE'}">판매중 전환 전 파일 필요</small>
+                  </div>
                   <span class="admin-bulk-original" data-original-preview hidden></span>
                 </div>
               </td>

@@ -17,6 +17,11 @@ export type CmsArtistProfile = {
   artistId: number
   name: string
   groupName?: string | null
+  groupKey?: string | null
+  groupSortOrder?: number | null
+  groupVisible?: boolean | null
+  groupHeroImageUrl?: string | null
+  groupSummary?: string | null
   imageUrl?: string | null
   lore?: string | null
   debutDate?: string | null

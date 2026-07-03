@@ -75,6 +75,33 @@ describe('useVtuberWebSocket', () => {
     })
   })
 
+  it('returns normalized behavior motion metadata from the latest full-text message', () => {
+    const { result } = renderHook(() => useVtuberWebSocket('처음'))
+    const socket = FakeWebSocket.instances[0]
+
+    act(() => {
+      socket.emit('open')
+      socket.emit('message', new MessageEvent('message', {
+        data: JSON.stringify({
+          type: 'full-text',
+          text: '장바구니에 담았어요.',
+          actions: [],
+          metadata: {
+            behavior: {
+              motionKey: 'nod',
+              source: 'llm',
+            },
+          },
+        }),
+      }))
+    })
+
+    expect(result.current.metadata.behavior).toEqual({
+      motionKey: 'nod',
+      source: 'llm',
+    })
+  })
+
   it('does not resend the same auth token before every text message', () => {
     const { result } = renderHook(() => useVtuberWebSocket('처음', [], 7, 'token'))
     const socket = FakeWebSocket.instances[0]

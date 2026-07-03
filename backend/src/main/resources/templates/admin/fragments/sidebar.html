@@ -29,8 +29,7 @@
        th:href="@{/admin}"
        th:attr="aria-current=${current == 'dashboard'} ? 'page' : null">관리자 대시보드</a>
 
-    <details class="admin-nav-group"
-             th:attr="open=${#strings.startsWith(current, 'ui-')} ? 'open' : null">
+    <details class="admin-nav-group" open>
       <summary class="admin-nav-parent">사용자 화면 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -55,8 +54,7 @@
       </div>
     </details>
 
-    <details class="admin-nav-group"
-             th:attr="open=${#strings.startsWith(current, 'content-')} ? 'open' : null">
+    <details class="admin-nav-group" open>
       <summary class="admin-nav-parent">화면 내용 편집</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -72,7 +70,7 @@
     </details>
 
     <details class="admin-nav-group"
-             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'members' or current == 'inquiries' or current == 'storage' or current == 'payment'} ? 'open' : null">
+             th:attr="open=${current == 'data-overview' or current == 'goods' or current == 'goods-reviews' or current == 'goods-classifications' or current == 'members' or current == 'inquiries' or current == 'storage' or current == 'payment'} ? 'open' : null">
       <summary class="admin-nav-parent">데이터 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -81,6 +79,12 @@
         <a class="admin-nav-child"
            th:href="@{/admin/goods}"
            th:attr="aria-current=${current == 'goods'} ? 'page' : null">굿즈 정보 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/goods/reviews}"
+           th:attr="aria-current=${current == 'goods-reviews'} ? 'page' : null">리뷰 관리</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/goods/classifications}"
+           th:attr="aria-current=${current == 'goods-classifications'} ? 'page' : null">굿즈 분류 관리</a>
         <a class="admin-nav-child"
            th:href="@{/admin/members}"
            th:attr="aria-current=${current == 'members'} ? 'page' : null">회원 정보 관리</a>
@@ -96,8 +100,19 @@
       </div>
     </details>
 
-    <details class="admin-nav-group"
-             th:attr="open=${#strings.startsWith(current, 'ai')} ? 'open' : null">
+    <details class="admin-nav-group" open>
+      <summary class="admin-nav-parent">운영 지원</summary>
+      <div class="admin-nav-children">
+        <a class="admin-nav-child"
+           th:href="@{/admin/support}"
+           th:attr="aria-current=${current == 'support'} ? 'page' : null">고객센터/FAQ/이용약관</a>
+        <a class="admin-nav-child"
+           th:href="@{/admin/security}"
+           th:attr="aria-current=${current == 'security'} ? 'page' : null">고객접속통계/보안</a>
+      </div>
+    </details>
+
+    <details class="admin-nav-group" open>
       <summary class="admin-nav-parent">AI 챗봇 관리</summary>
       <div class="admin-nav-children">
         <a class="admin-nav-child"
@@ -156,6 +171,14 @@
     <a th:href="@{/admin/payment}" title="결제 관리" aria-label="결제 관리">
       <span class="admin-rail-icon admin-rail-icon-payment" aria-hidden="true"></span>
       <span class="admin-rail-label">결제 관리</span>
+    </a>
+    <a th:href="@{/admin/support}" title="고객센터/FAQ/이용약관" aria-label="고객센터/FAQ/이용약관">
+      <span class="admin-rail-icon admin-rail-icon-data" aria-hidden="true"></span>
+      <span class="admin-rail-label">고객센터</span>
+    </a>
+    <a th:href="@{/admin/security}" title="고객접속통계/보안" aria-label="고객접속통계/보안">
+      <span class="admin-rail-icon admin-rail-icon-storage" aria-hidden="true"></span>
+      <span class="admin-rail-label">보안</span>
     </a>
   </nav>
 

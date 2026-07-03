@@ -22,7 +22,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.projectcyan.common.ApiErrorException;
+import com.projectcyan.goods.DigitalGoodsEntitlementGrantService;
 import com.projectcyan.goods.Goods;
+import com.projectcyan.goods.GoodsCategory;
+import com.projectcyan.goods.GoodsFulfillmentType;
 import com.projectcyan.goods.GoodsRepository;
 import com.projectcyan.goods.GoodsStock;
 import com.projectcyan.goods.GoodsStockRepository;
@@ -38,6 +41,7 @@ class CheckoutServiceTest {
 	private OrderItemRepository orderItemRepository;
 	private PaymentRepository paymentRepository;
 	private PaymentAttemptRepository paymentAttemptRepository;
+	private DigitalGoodsEntitlementGrantService digitalGoodsEntitlementGrantService;
 	private CheckoutService checkoutService;
 	private StoreOrder savedOrder;
 	private Payment savedPayment;
@@ -52,6 +56,7 @@ class CheckoutServiceTest {
 		orderItemRepository = mock(OrderItemRepository.class);
 		paymentRepository = mock(PaymentRepository.class);
 		paymentAttemptRepository = mock(PaymentAttemptRepository.class);
+		digitalGoodsEntitlementGrantService = mock(DigitalGoodsEntitlementGrantService.class);
 		checkoutService = new CheckoutService(
 			memberRepository,
 			goodsRepository,
@@ -59,7 +64,8 @@ class CheckoutServiceTest {
 			storeOrderRepository,
 			orderItemRepository,
 			paymentRepository,
-			paymentAttemptRepository
+			paymentAttemptRepository,
+			digitalGoodsEntitlementGrantService
 		);
 
 		when(storeOrderRepository.existsByOrderNo(any())).thenReturn(false);
@@ -250,6 +256,23 @@ class CheckoutServiceTest {
 	}
 
 	@Test
+	void preparesDigitalOnlyCheckoutWithoutShippingAddress() {
+		Member member = member();
+		Goods goods = digitalGoods(2001L, "Digital Voice Pack", 12000, "ON_SALE");
+		when(memberRepository.findByMemberUuid(member.getMemberUuid())).thenReturn(Optional.of(member));
+		when(goodsRepository.findAllById(Set.of(2001L))).thenReturn(List.of(goods));
+
+		CheckoutPrepareResponse response = checkoutService.prepare(
+			member.getMemberUuid(),
+			new CheckoutPrepareRequest(List.of(item(2001L, 1)), null, "TOSS")
+		);
+
+		assertThat(response.amount()).isEqualByComparingTo(BigDecimal.valueOf(12000));
+		assertThat(ReflectionTestUtils.getField(savedOrder, "address")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "recipientName")).isNull();
+	}
+
+	@Test
 	void approvePaymentDecreasesStockOnlyOnce() {
 		Member member = member();
 		Goods goods = goods(1001L, "Test Goods", 35000, "ON_SALE");
@@ -399,6 +422,14 @@ class CheckoutServiceTest {
 		ReflectionTestUtils.setField(goods, "price", price);
 		ReflectionTestUtils.setField(goods, "salesStatus", salesStatus);
 		ReflectionTestUtils.setField(goods, "mainImageUrl", "https://example.test/goods.png");
+		return goods;
+	}
+
+	private Goods digitalGoods(Long goodsId, String goodsName, int price, String salesStatus) {
+		Goods goods = goods(goodsId, goodsName, price, salesStatus);
+		GoodsCategory category = mock(GoodsCategory.class);
+		when(category.getFulfillmentType()).thenReturn(GoodsFulfillmentType.DIGITAL);
+		ReflectionTestUtils.setField(goods, "category", category);
 		return goods;
 	}
 

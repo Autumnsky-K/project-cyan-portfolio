@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AsyncState from '../../shared/components/AsyncState'
+import type { DigitalLibraryItem } from '../../api/digitalLibrary'
+import { fetchMyDigitalGoodsPurchase, purchaseDigitalGoods } from '../../api/goods'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsDetailTabs, { type DetailTab } from './GoodsDetailTabs'
 import GoodsGallery from './GoodsGallery'
@@ -16,9 +18,30 @@ import './goods-detail.css'
 function readGoodsListUrl(state: unknown) {
   if (typeof state !== 'object' || state === null) return '/goods'
   const goodsListUrl = (state as { goodsListUrl?: unknown }).goodsListUrl
-  return typeof goodsListUrl === 'string' && goodsListUrl.startsWith('/goods')
+  return typeof goodsListUrl === 'string' && (
+    goodsListUrl.startsWith('/goods') ||
+    goodsListUrl.startsWith('/likes/goods')
+  )
     ? goodsListUrl
     : '/goods'
+}
+
+function readRequestedDetailTab(search: string, hash: string): DetailTab {
+  const normalizedHash = hash.toLowerCase()
+  if (normalizedHash === '#reviews') {
+    return 'reviews'
+  }
+
+  const tab = new URLSearchParams(search).get('tab')?.toLowerCase()
+  return tab === 'reviews' ? 'reviews' : 'intro'
+}
+
+function digitalPurchaseErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (!message || /not found/i.test(message)) {
+    return '상품 정보와 구매 대상이 일치하지 않습니다. 새로고침 후 다시 시도해주세요.'
+  }
+  return message
 }
 
 function GoodsDetailPage() {
@@ -27,10 +50,15 @@ function GoodsDetailPage() {
   const navigate = useNavigate()
   const { goods, setGoods, status, error } = useGoodsDetail(goodsId)
   const relatedGoods = useRelatedGoods(goodsId)
-  const [activeTab, setActiveTab] = useState<DetailTab>('intro')
+  const [activeTab, setActiveTab] = useState<DetailTab>(() => readRequestedDetailTab(location.search, location.hash))
   const [shareFeedback, setShareFeedback] = useState('')
+  const [digitalEntitlement, setDigitalEntitlement] = useState<DigitalLibraryItem | null>(null)
+  const [digitalClaimFeedback, setDigitalClaimFeedback] = useState('')
+  const [isClaimingFreeDigitalGoods, setIsClaimingFreeDigitalGoods] = useState(false)
   const shareFeedbackTimerRef = useRef<number | null>(null)
+  const digitalClaimFeedbackTimerRef = useRef<number | null>(null)
   const detailTabsRef = useRef<HTMLElement | null>(null)
+  const lastReviewDeepLinkRef = useRef('')
   const loginReturnTo = `${location.pathname}${location.search}${location.hash}`
   const goodsListUrl = readGoodsListUrl(location.state)
 
@@ -46,10 +74,64 @@ function GoodsDetailPage() {
   } = useGoodsDetailLike(goods, goodsId, setGoods, navigateToLogin)
   useDetailScrollRestore(goodsId, location.search, status, goods?.goodsId)
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadDigitalEntitlement() {
+      if (status !== 'data' || !goods || goods.fulfillmentType !== 'DIGITAL') {
+        setDigitalEntitlement(null)
+        return
+      }
+
+      try {
+        const item = await fetchMyDigitalGoodsPurchase(goods.goodsId)
+        if (isMounted) {
+          setDigitalEntitlement(item)
+        }
+      } catch (loadError) {
+        console.warn(loadError)
+        if (isMounted) {
+          setDigitalEntitlement(null)
+        }
+      }
+    }
+
+    void loadDigitalEntitlement()
+
+    return () => {
+      isMounted = false
+    }
+  }, [goods, status])
+
+  useEffect(() => {
+    const nextTab = readRequestedDetailTab(location.search, location.hash)
+    const timerId = window.setTimeout(() => setActiveTab(nextTab), 0)
+    return () => window.clearTimeout(timerId)
+  }, [location.hash, location.search])
+
+  useEffect(() => {
+    if (status !== 'data' || activeTab !== 'reviews' || location.hash.toLowerCase() !== '#reviews') {
+      return
+    }
+
+    const reviewDeepLinkKey = `${location.pathname}${location.search}${location.hash}`
+    if (lastReviewDeepLinkRef.current === reviewDeepLinkKey) {
+      return
+    }
+
+    lastReviewDeepLinkRef.current = reviewDeepLinkKey
+    window.requestAnimationFrame(() => {
+      detailTabsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+  }, [activeTab, location.hash, location.pathname, location.search, status])
+
   useEffect(
     () => () => {
       if (shareFeedbackTimerRef.current !== null) {
         window.clearTimeout(shareFeedbackTimerRef.current)
+      }
+      if (digitalClaimFeedbackTimerRef.current !== null) {
+        window.clearTimeout(digitalClaimFeedbackTimerRef.current)
       }
     },
     [],
@@ -75,6 +157,35 @@ function GoodsDetailPage() {
     window.requestAnimationFrame(() => {
       detailTabsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
     })
+  }
+
+  function showDigitalClaimFeedback(message: string) {
+    setDigitalClaimFeedback(message)
+    if (digitalClaimFeedbackTimerRef.current !== null) {
+      window.clearTimeout(digitalClaimFeedbackTimerRef.current)
+    }
+    digitalClaimFeedbackTimerRef.current = window.setTimeout(() => setDigitalClaimFeedback(''), 2200)
+  }
+
+  async function handleFreeDigitalClaim() {
+    if (!goods || isClaimingFreeDigitalGoods) {
+      return
+    }
+    setIsClaimingFreeDigitalGoods(true)
+    try {
+      const entitlement = await purchaseDigitalGoods(goods.goodsId)
+      setDigitalEntitlement(entitlement)
+      showDigitalClaimFeedback('구매 완료 처리했습니다.')
+    } catch (claimError) {
+      const message = digitalPurchaseErrorMessage(claimError)
+      if (message.includes('로그인')) {
+        navigateToLogin()
+        return
+      }
+      showDigitalClaimFeedback(message)
+    } finally {
+      setIsClaimingFreeDigitalGoods(false)
+    }
   }
 
   return (
@@ -116,6 +227,10 @@ function GoodsDetailPage() {
               onLikeToggle={() => void handleLikeToggle()}
               shareFeedback={shareFeedback}
               onShare={handleShare}
+              digitalEntitlement={digitalEntitlement}
+              digitalClaimFeedback={digitalClaimFeedback}
+              isClaimingFreeDigitalGoods={isClaimingFreeDigitalGoods}
+              onFreeDigitalClaim={() => void handleFreeDigitalClaim()}
             />
           </section>
 

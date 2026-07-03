@@ -1,9 +1,11 @@
 package com.projectcyan.goods;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -93,6 +95,69 @@ public class GoodsReviewRepository {
 		return new PageResponse<>(reviews, page, size, totalElements, totalPages);
 	}
 
+	public PageResponse<AdminGoodsReviewRow> findAdminReviews(String q, int page, int size) {
+		if (!hasReviewTable()) {
+			return new PageResponse<>(List.of(), page, size, 0, 0);
+		}
+
+		String whereClause = "";
+		List<Object> parameters = new ArrayList<>();
+		if (q != null && !q.isBlank()) {
+			String normalizedQuery = q.trim().toLowerCase(Locale.ROOT);
+			String likeQuery = "%" + escapeLike(normalizedQuery) + "%";
+			whereClause = """
+				where cast(gr.review_id as text) = ?
+				   or cast(gr.goods_id as text) = ?
+				   or lower(g.goods_name) like ? escape '\\'
+				   or lower(gr.author_name) like ? escape '\\'
+				   or lower(gr.content) like ? escape '\\'
+				""";
+			parameters.add(normalizedQuery);
+			parameters.add(normalizedQuery);
+			parameters.add(likeQuery);
+			parameters.add(likeQuery);
+			parameters.add(likeQuery);
+		}
+
+		long totalElements = jdbcTemplate.queryForObject(
+			"""
+			select count(*)
+			from goods_review gr
+			join goods g on g.goods_id = gr.goods_id
+			%s
+			""".formatted(whereClause),
+			Long.class,
+			parameters.toArray()
+		);
+		int offset = page * size;
+		List<Object> pageParameters = new ArrayList<>(parameters);
+		pageParameters.add(size);
+		pageParameters.add(offset);
+		List<AdminGoodsReviewRow> reviews = jdbcTemplate.query(
+			"""
+			select gr.review_id,
+			       gr.goods_id,
+			       g.goods_name,
+			       gr.member_id,
+			       gr.rating,
+			       gr.author_name,
+			       gr.option_label,
+			       gr.content,
+			       gr.created_at,
+			       gr.updated_at
+			from goods_review gr
+			join goods g on g.goods_id = gr.goods_id
+			%s
+			order by gr.created_at desc, gr.review_id desc
+			limit ? offset ?
+			""".formatted(whereClause),
+			(resultSet, rowNumber) -> mapAdminReview(resultSet),
+			pageParameters.toArray()
+		);
+		int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+		return new PageResponse<>(reviews, page, size, totalElements, totalPages);
+	}
+
 	public Optional<GoodsReviewResponse> findMemberReview(Long goodsId, Long memberId) {
 		if (!hasReviewTable()) {
 			return Optional.empty();
@@ -171,6 +236,14 @@ public class GoodsReviewRepository {
 		) > 0;
 	}
 
+	public boolean deleteReviewById(Long reviewId) {
+		if (!hasReviewTable()) {
+			return false;
+		}
+
+		return jdbcTemplate.update("delete from goods_review where review_id = ?", reviewId) > 0;
+	}
+
 	private boolean hasReviewTable() {
 		return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
 			"select to_regclass('public.goods_review') is not null",
@@ -193,5 +266,29 @@ public class GoodsReviewRepository {
 			updatedAt == null ? null : updatedAt.toInstant(),
 			currentMemberId != null && currentMemberId.equals(memberId)
 		);
+	}
+
+	private AdminGoodsReviewRow mapAdminReview(java.sql.ResultSet resultSet) throws java.sql.SQLException {
+		Timestamp createdAt = resultSet.getTimestamp("created_at");
+		Timestamp updatedAt = resultSet.getTimestamp("updated_at");
+		return new AdminGoodsReviewRow(
+			resultSet.getLong("review_id"),
+			resultSet.getLong("goods_id"),
+			resultSet.getString("goods_name"),
+			resultSet.getObject("member_id", Long.class),
+			resultSet.getInt("rating"),
+			resultSet.getString("author_name"),
+			resultSet.getString("option_label"),
+			resultSet.getString("content"),
+			createdAt == null ? null : createdAt.toInstant(),
+			updatedAt == null ? null : updatedAt.toInstant()
+		);
+	}
+
+	private String escapeLike(String value) {
+		return value
+			.replace("\\", "\\\\")
+			.replace("%", "\\%")
+			.replace("_", "\\_");
 	}
 }

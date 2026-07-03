@@ -50,7 +50,7 @@ public class CmsContentService {
 		);
 
 		if (!pages.isEmpty()) {
-			return normalizeLegacyHomePage(pages.get(0));
+			return normalizeLegacyPage(pages.get(0));
 		}
 		return defaultPage(normalizedPageKey);
 	}
@@ -123,13 +123,14 @@ public class CmsContentService {
 	public List<CmsArtistProfileResponse> findArtists(boolean includeHidden) {
 		ensureSchema();
 		seedArtistsFromArtistTable();
-		String visibleClause = includeHidden ? "" : "where visible = true ";
+		String visibleClause = includeHidden ? "" : "where visible = true and group_visible = true ";
 		return jdbcTemplate.query(
 			"""
-			select artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible
+			select artist_id, name, group_name, group_key, group_sort_order, group_visible, group_hero_image_url, group_summary,
+				image_url, lore, debut_date, collections, sort_order, visible
 			from cms_artist_profile
 			""" + visibleClause + """
-			order by sort_order asc, name asc
+			order by group_sort_order asc, sort_order asc, name asc
 			""",
 			this::mapArtist
 		);
@@ -146,14 +147,23 @@ public class CmsContentService {
 			Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
 			String name = valueOrDefault(artist.name(), "Artist " + artistId);
 			String groupName = blankToNull(artist.groupName());
+			String groupKey = normalizedGroupKey(artist.groupKey(), groupName, name);
+			Integer groupSortOrder = artist.groupSortOrder() == null ? 999 : artist.groupSortOrder();
+			Boolean groupVisible = artist.groupVisible() == null ? Boolean.TRUE : artist.groupVisible();
 			jdbcTemplate.update(
 				"""
 				insert into cms_artist_profile (
-					artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible, updated_at
-				) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+					artist_id, name, group_name, group_key, group_sort_order, group_visible, group_hero_image_url, group_summary,
+					image_url, lore, debut_date, collections, sort_order, visible, updated_at
+				) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
 				on conflict (artist_id) do update set
 					name = excluded.name,
 					group_name = excluded.group_name,
+					group_key = excluded.group_key,
+					group_sort_order = excluded.group_sort_order,
+					group_visible = excluded.group_visible,
+					group_hero_image_url = excluded.group_hero_image_url,
+					group_summary = excluded.group_summary,
 					image_url = excluded.image_url,
 					lore = excluded.lore,
 					debut_date = excluded.debut_date,
@@ -166,6 +176,11 @@ public class CmsContentService {
 					artistId,
 					name,
 					groupName,
+					groupKey,
+					groupSortOrder,
+					groupVisible,
+					blankToNull(artist.groupHeroImageUrl()),
+					blankToNull(artist.groupSummary()),
 					blankToNull(artist.imageUrl()),
 					blankToNull(artist.lore()),
 					parseDate(artist.debutDate()),
@@ -175,6 +190,11 @@ public class CmsContentService {
 				},
 				new int[] {
 					Types.BIGINT,
+					Types.VARCHAR,
+					Types.VARCHAR,
+					Types.VARCHAR,
+					Types.INTEGER,
+					Types.BOOLEAN,
 					Types.VARCHAR,
 					Types.VARCHAR,
 					Types.VARCHAR,
@@ -199,16 +219,25 @@ public class CmsContentService {
 		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + artistId);
 		String groupName = blankToNull(artist.groupName());
+		String groupKey = normalizedGroupKey(artist.groupKey(), groupName, name);
+		Integer groupSortOrder = artist.groupSortOrder() == null ? 999 : artist.groupSortOrder();
+		Boolean groupVisible = artist.groupVisible() == null ? Boolean.TRUE : artist.groupVisible();
 		jdbcTemplate.update(
 			"""
 			insert into cms_artist_profile (
-				artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible, updated_at
-			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+				artist_id, name, group_name, group_key, group_sort_order, group_visible, group_hero_image_url, group_summary,
+				image_url, lore, debut_date, collections, sort_order, visible, updated_at
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
 			""",
 			new Object[] {
 				artistId,
 				name,
 				groupName,
+				groupKey,
+				groupSortOrder,
+				groupVisible,
+				blankToNull(artist.groupHeroImageUrl()),
+				blankToNull(artist.groupSummary()),
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -218,6 +247,11 @@ public class CmsContentService {
 			},
 			new int[] {
 				Types.BIGINT,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.INTEGER,
+				Types.BOOLEAN,
 				Types.VARCHAR,
 				Types.VARCHAR,
 				Types.VARCHAR,
@@ -234,6 +268,11 @@ public class CmsContentService {
 			artistId,
 			name,
 			groupName,
+			groupKey,
+			groupSortOrder,
+			groupVisible,
+			blankToNull(artist.groupHeroImageUrl()),
+			blankToNull(artist.groupSummary()),
 			blankToNull(artist.imageUrl()),
 			blankToNull(artist.lore()),
 			artist.debutDate(),
@@ -283,16 +322,25 @@ public class CmsContentService {
 		Long artistId = artist.artistId() == null ? nextArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + artistId);
 		String groupName = blankToNull(artist.groupName());
+		String groupKey = normalizedGroupKey(artist.groupKey(), groupName, name);
+		Integer groupSortOrder = artist.groupSortOrder() == null ? 999 : artist.groupSortOrder();
+		Boolean groupVisible = artist.groupVisible() == null ? Boolean.TRUE : artist.groupVisible();
 		jdbcTemplate.update(
 			"""
 			insert into cms_artist_profile (
-				artist_id, name, group_name, image_url, lore, debut_date, collections, sort_order, visible, updated_at
-			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+				artist_id, name, group_name, group_key, group_sort_order, group_visible, group_hero_image_url, group_summary,
+				image_url, lore, debut_date, collections, sort_order, visible, updated_at
+			) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
 			""",
 			new Object[] {
 				artistId,
 				name,
 				groupName,
+				groupKey,
+				groupSortOrder,
+				groupVisible,
+				blankToNull(artist.groupHeroImageUrl()),
+				blankToNull(artist.groupSummary()),
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -309,12 +357,20 @@ public class CmsContentService {
 		Long nextArtistId = artist.artistId() == null ? artist.originalArtistId() : artist.artistId();
 		String name = valueOrDefault(artist.name(), "Artist " + nextArtistId);
 		String groupName = blankToNull(artist.groupName());
+		String groupKey = normalizedGroupKey(artist.groupKey(), groupName, name);
+		Integer groupSortOrder = artist.groupSortOrder() == null ? 999 : artist.groupSortOrder();
+		Boolean groupVisible = artist.groupVisible() == null ? Boolean.TRUE : artist.groupVisible();
 		int updated = jdbcTemplate.update(
 			"""
 			update cms_artist_profile
 			set artist_id = ?,
 				name = ?,
 				group_name = ?,
+				group_key = ?,
+				group_sort_order = ?,
+				group_visible = ?,
+				group_hero_image_url = ?,
+				group_summary = ?,
 				image_url = ?,
 				lore = ?,
 				debut_date = ?,
@@ -328,6 +384,11 @@ public class CmsContentService {
 				nextArtistId,
 				name,
 				groupName,
+				groupKey,
+				groupSortOrder,
+				groupVisible,
+				blankToNull(artist.groupHeroImageUrl()),
+				blankToNull(artist.groupSummary()),
 				blankToNull(artist.imageUrl()),
 				blankToNull(artist.lore()),
 				parseDate(artist.debutDate()),
@@ -338,6 +399,11 @@ public class CmsContentService {
 			},
 			new int[] {
 				Types.BIGINT,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.VARCHAR,
+				Types.INTEGER,
+				Types.BOOLEAN,
 				Types.VARCHAR,
 				Types.VARCHAR,
 				Types.VARCHAR,
@@ -427,6 +493,11 @@ public class CmsContentService {
 			Types.VARCHAR,
 			Types.VARCHAR,
 			Types.VARCHAR,
+			Types.INTEGER,
+			Types.BOOLEAN,
+			Types.VARCHAR,
+			Types.VARCHAR,
+			Types.VARCHAR,
 			Types.VARCHAR,
 			Types.DATE,
 			Types.VARCHAR,
@@ -476,6 +547,11 @@ public class CmsContentService {
 				artist_id bigint primary key,
 				name varchar(160) not null,
 				group_name varchar(160),
+				group_key varchar(120),
+				group_sort_order integer not null default 999,
+				group_visible boolean not null default true,
+				group_hero_image_url text,
+				group_summary varchar(700),
 				image_url text,
 				lore varchar(700),
 				debut_date date,
@@ -484,6 +560,24 @@ public class CmsContentService {
 				visible boolean not null default true,
 				updated_at timestamptz not null default now()
 			)
+			"""
+		);
+		jdbcTemplate.execute("alter table cms_artist_profile add column if not exists group_key varchar(120)");
+		jdbcTemplate.execute("alter table cms_artist_profile add column if not exists group_sort_order integer not null default 999");
+		jdbcTemplate.execute("alter table cms_artist_profile add column if not exists group_visible boolean not null default true");
+		jdbcTemplate.execute("alter table cms_artist_profile add column if not exists group_hero_image_url text");
+		jdbcTemplate.execute("alter table cms_artist_profile add column if not exists group_summary varchar(700)");
+		jdbcTemplate.execute(
+			"""
+			update cms_artist_profile
+			set group_key = lower(regexp_replace(trim(coalesce(group_name, name, 'project-cyan')), '\\s+', '-', 'g'))
+			where group_key is null or trim(group_key) = ''
+			"""
+		);
+		jdbcTemplate.execute(
+			"""
+			create index if not exists idx_cms_artist_profile_group_sort
+			on cms_artist_profile (group_sort_order, group_key, sort_order)
 			"""
 		);
 	}
@@ -496,8 +590,19 @@ public class CmsContentService {
 
 		jdbcTemplate.update(
 			"""
-			insert into cms_artist_profile (artist_id, name, group_name, lore, collections, sort_order, visible)
-			select artist_id, artist_name, group_name, 'Artist profile is ready for CMS editing.', coalesce(group_name, artist_name), row_number() over (order by artist_name), true
+			insert into cms_artist_profile (
+				artist_id, name, group_name, group_key, group_sort_order, group_visible, lore, collections, sort_order, visible
+			)
+			select artist_id,
+				artist_name,
+				group_name,
+				lower(regexp_replace(trim(coalesce(group_name, artist_name, 'project-cyan')), '\\s+', '-', 'g')),
+				row_number() over (order by coalesce(group_name, artist_name), artist_name),
+				true,
+				'Artist profile is ready for CMS editing.',
+				coalesce(group_name, artist_name),
+				row_number() over (order by artist_name),
+				true
 			from artist
 			on conflict (artist_id) do nothing
 			"""
@@ -525,6 +630,11 @@ public class CmsContentService {
 			resultSet.getLong("artist_id"),
 			resultSet.getString("name"),
 			resultSet.getString("group_name"),
+			resultSet.getString("group_key"),
+			resultSet.getInt("group_sort_order"),
+			resultSet.getBoolean("group_visible"),
+			resultSet.getString("group_hero_image_url"),
+			resultSet.getString("group_summary"),
 			resultSet.getString("image_url"),
 			resultSet.getString("lore"),
 			debutDate == null ? "" : debutDate.toLocalDate().toString(),
@@ -546,15 +656,15 @@ public class CmsContentService {
 		if ("artists".equals(pageKey)) {
 			return new CmsPageResponse(
 				"artists",
-				"SM Universe Store",
-				"Artists",
-				"Artist Universe",
-				"Showing artist profiles",
-				"#111111",
-				"#2f6f64",
-				"#ffffff",
+				"Cyan Character Area",
+				"CHARACTER",
+				"CYAN",
+				"A full-screen character signal map for virtual idols, stage districts, music energy, and future-pop worlds.",
+				"#f7fbff",
+				"#00d5ff",
+				"#070815",
 				null,
-				Map.of()
+				defaultArtistCopySettings()
 			);
 		}
 		return new CmsPageResponse(
@@ -571,14 +681,19 @@ public class CmsContentService {
 		);
 	}
 
-	private CmsPageResponse normalizeLegacyHomePage(CmsPageResponse page) {
-		if (!"home".equals(page.pageKey())) {
-			return page;
+	private CmsPageResponse normalizeLegacyPage(CmsPageResponse page) {
+		if ("home".equals(page.pageKey()) && isLegacyHomePage(page)) {
+			CmsPageResponse fallback = defaultPage("home");
+			return legacyPageWithFallback(page, fallback);
 		}
-		if (!isLegacyHomePage(page)) {
-			return page;
+		if ("artists".equals(page.pageKey()) && isLegacyArtistsPage(page)) {
+			CmsPageResponse fallback = defaultPage("artists");
+			return legacyPageWithFallback(page, fallback);
 		}
-		CmsPageResponse fallback = defaultPage("home");
+		return page;
+	}
+
+	private CmsPageResponse legacyPageWithFallback(CmsPageResponse page, CmsPageResponse fallback) {
 		return new CmsPageResponse(
 			page.pageKey(),
 			fallback.eyebrow(),
@@ -589,7 +704,7 @@ public class CmsContentService {
 			fallback.accentColor(),
 			fallback.backgroundColor(),
 			page.heroImageUrl(),
-			fallback.copySettings()
+			page.copySettings().isEmpty() ? fallback.copySettings() : page.copySettings()
 		);
 	}
 
@@ -599,6 +714,14 @@ public class CmsContentService {
 			&& "Goods".equals(page.title())
 			&& "Featured Goods".equals(page.summaryTitle())
 			&& "Showing store items".equals(page.summaryBody());
+	}
+
+	private boolean isLegacyArtistsPage(CmsPageResponse page) {
+		return page.copySettings().isEmpty()
+			&& "SM Universe Store".equals(page.eyebrow())
+			&& "Artists".equals(page.title())
+			&& "Artist Universe".equals(page.summaryTitle())
+			&& "Showing artist profiles".equals(page.summaryBody());
 	}
 
 	private Map<String, String> defaultHomeCopySettings() {
@@ -651,6 +774,37 @@ public class CmsContentService {
 		return settings;
 	}
 
+	private Map<String, String> defaultArtistCopySettings() {
+		Map<String, String> settings = new LinkedHashMap<>();
+		settings.put("navHome", "Home");
+		settings.put("navArtists", "Artists");
+		settings.put("navGoods", "Goods");
+		settings.put("navCart", "Cart");
+		settings.put("broadcastStrip", "CYAN IDOL NETWORK // AREA STREAM // MUSIC MEDIA MIX // CHARACTER SIGNAL");
+		settings.put("statsArtistsLabel", "Artists");
+		settings.put("statsModeLabel", "Mode");
+		settings.put("statsViewLabel", "View");
+		settings.put("statsViewValue", "Stage");
+		settings.put("statusLoadingLabel", "Loading");
+		settings.put("statusLiveLabel", "Live");
+		settings.put("statusPreviewLabel", "Preview");
+		settings.put("channelWorld", "WORLD");
+		settings.put("channelArea", "AREA");
+		settings.put("channelCharacter", "CHARACTER");
+		settings.put("channelMusic", "MUSIC");
+		settings.put("profileBpmLabel", "BPM");
+		settings.put("profileDebutLabel", "Debut");
+		settings.put("profileCollectionsLabel", "Collections");
+		settings.put("profileSignalLabel", "Signal");
+		settings.put("artistGoodsCta", "이 아티스트 굿즈 보기");
+		settings.put("groupGoodsCta", "그룹 굿즈 보기");
+		settings.put("indexEyebrow", "Roster");
+		settings.put("indexTitle", "Artist Index");
+		settings.put("indexGroupGoodsCta", "그룹 굿즈 보기");
+		settings.put("pagerIndexLabel", "All");
+		return settings;
+	}
+
 	private Map<String, String> normalizeCopySettings(
 		Map<String, String> requestedSettings,
 		Map<String, String> fallbackSettings
@@ -700,6 +854,16 @@ public class CmsContentService {
 	private String valueOrDefault(String value, String fallback) {
 		String normalized = blankToNull(value);
 		return normalized == null ? fallback : normalized;
+	}
+
+	private String normalizedGroupKey(String rawGroupKey, String groupName, String artistName) {
+		String explicitGroupKey = blankToNull(rawGroupKey);
+		if (explicitGroupKey != null) {
+			return explicitGroupKey;
+		}
+		return valueOrDefault(groupName, valueOrDefault(artistName, "project-cyan"))
+			.toLowerCase(Locale.ROOT)
+			.replaceAll("\\s+", "-");
 	}
 
 	private String colorOrDefault(String value, String fallback) {
