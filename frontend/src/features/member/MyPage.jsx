@@ -5,6 +5,7 @@ import Button from '../../shared/components/Button'
 import AsyncState from '../../shared/components/AsyncState'
 import Modal from '../../shared/components/Modal'
 import {
+  createSupportInquiry,
   getArtistOptions,
   getMyPageSummary,
   logoutMember,
@@ -105,7 +106,7 @@ function DashboardItemCard({ item, isLikedGoods = false, isLikeSelected = true, 
         {item.imageUrl ? (
           <img src={item.imageUrl} alt="" />
         ) : (
-          <span aria-hidden="true">이미지</span>
+          <span className="mypage-image-fallback" aria-hidden="true" />
         )}
       </div>
       <div className="mypage-item-body">
@@ -137,16 +138,23 @@ function OrderHistoryCard({ item }) {
   )
 }
 
-function DashboardSection({ id, title, items, onMore, actionLabel = '더보기' }) {
+function DashboardSection({ id, title, items, onMore, actionLabel = '더보기', onWrite, writeLabel = '문의하기' }) {
   const startIndex = 0
   const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
   return (
     <section className="account-panel mypage-section" aria-label={title}>
       <div className="mypage-section-heading">
         <h2>{title}</h2>
-        <button className="mypage-more-button" type="button" onClick={onMore}>
-          {actionLabel}
-        </button>
+        <div className="mypage-section-actions">
+          {onWrite && (
+            <button className="mypage-more-button" type="button" onClick={onWrite}>
+              {writeLabel}
+            </button>
+          )}
+          <button className="mypage-more-button" type="button" onClick={onMore}>
+            {actionLabel}
+          </button>
+        </div>
       </div>
 
       <div className="mypage-carousel">
@@ -385,6 +393,67 @@ function ProfileEditModal({
   )
 }
 
+function SupportInquiryModal({ form, isSaving, onChange, onClose, onSubmit, orders }) {
+  if (!form) {
+    return null
+  }
+
+  return (
+    <Modal
+      ariaLabelledBy="mypage-support-inquiry-modal-title"
+      className="mypage-modal mypage-profile-modal"
+      open
+      overlayClassName="mypage-modal-backdrop"
+      onClose={onClose}
+    >
+        <form className="account-form mypage-profile-form" onSubmit={onSubmit}>
+          <div className="mypage-modal-heading">
+            <h2 id="mypage-support-inquiry-modal-title">1:1 문의하기</h2>
+            <button type="submit" disabled={isSaving}>
+              {isSaving ? '등록 중...' : '등록하기'}
+            </button>
+          </div>
+
+          <label className="account-field">
+            <span>제목</span>
+            <input
+              type="text"
+              name="title"
+              value={form.title}
+              onChange={onChange}
+              maxLength={100}
+              required
+            />
+          </label>
+
+          <label className="account-field">
+            <span>관련 주문 (선택)</span>
+            <select name="orderId" value={form.orderId} onChange={onChange}>
+              <option value="">선택 안 함</option>
+              {orders.map((order) => (
+                <option key={order.orderId} value={order.orderId}>
+                  {order.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="account-field">
+            <span>내용</span>
+            <textarea
+              name="content"
+              value={form.content}
+              onChange={onChange}
+              rows={6}
+              maxLength={1000}
+              required
+            />
+          </label>
+        </form>
+    </Modal>
+  )
+}
+
 function MyPage() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
@@ -400,6 +469,8 @@ function MyPage() {
   const [profileModalMode, setProfileModalMode] = useState('edit')
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [supportInquiryForm, setSupportInquiryForm] = useState(null)
+  const [isSavingSupportInquiry, setIsSavingSupportInquiry] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -537,6 +608,53 @@ function MyPage() {
     }
   }
 
+  const openSupportInquiryForm = () => {
+    setError('')
+    setMessage('')
+    setSupportInquiryForm({ title: '', content: '', orderId: '' })
+  }
+
+  const closeSupportInquiryForm = () => {
+    setSupportInquiryForm(null)
+  }
+
+  const handleSupportInquiryChange = (event) => {
+    const { name, value } = event.target
+
+    setSupportInquiryForm((currentForm) => ({
+      ...currentForm,
+      [name]: value,
+    }))
+  }
+
+  const handleSubmitSupportInquiry = async (event) => {
+    event.preventDefault()
+
+    if (!supportInquiryForm) {
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setIsSavingSupportInquiry(true)
+
+    try {
+      await createSupportInquiry(
+        supportInquiryForm.title.trim(),
+        supportInquiryForm.content.trim(),
+        supportInquiryForm.orderId ? Number(supportInquiryForm.orderId) : null,
+      )
+      const nextSummary = await getMyPageSummary()
+      setSummary(nextSummary)
+      setSupportInquiryForm(null)
+      setMessage('문의가 등록되었습니다.')
+    } catch (submitError) {
+      console.error(submitError)
+      setError(submitError.message || '문의를 등록하지 못했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setIsSavingSupportInquiry(false)
+    }
+  }
 
   const openSection = async (section) => {
     setError('')
@@ -760,11 +878,20 @@ function MyPage() {
                 items={section.items}
                 onMore={() => openSection(section)}
                 actionLabel={section.id === 'favoriteArtists' ? '수정하기' : '더보기'}
+                onWrite={section.id === 'supportInquiries' ? openSupportInquiryForm : undefined}
               />
             ))}
           </section>
         </div>
       </div>
+      <SupportInquiryModal
+        form={supportInquiryForm}
+        isSaving={isSavingSupportInquiry}
+        onChange={handleSupportInquiryChange}
+        onClose={closeSupportInquiryForm}
+        onSubmit={handleSubmitSupportInquiry}
+        orders={summary.orders}
+      />
       <SectionModal
         allArtistOptions={allArtistOptions}
         draftFavoriteArtistIds={draftFavoriteArtistIds}
