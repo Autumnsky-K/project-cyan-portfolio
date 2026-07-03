@@ -23,11 +23,33 @@ public class GoodsRecommendationService {
 		"artist",
 		"goods",
 		"product",
+		"내",
+		"내가",
+		"그냥",
+		"아무거나",
+		"좋아하는",
+		"선호하는",
+		"아티스트",
+		"연예인",
+		"기준",
+		"기반",
+		"관련",
 		"상품",
 		"굿즈",
 		"추천",
+		"추천해",
 		"추천해줘",
+		"추천해주세요",
+		"해줘",
+		"해주세요",
+		"좀",
+		"뭐",
+		"살까",
 		"보여줘"
+	);
+	private static final List<String> KOREAN_PARTICLES = List.of(
+		"에서는", "에게서", "으로", "에서", "에게", "한테",
+		"은", "는", "이", "가", "을", "를", "의", "에", "로", "과", "와", "도", "만"
 	);
 
 	private final GoodsRepository goodsRepository;
@@ -101,7 +123,9 @@ public class GoodsRecommendationService {
 		Set<Long> groupIds = new LinkedHashSet<>();
 		Set<Long> categoryIds = new LinkedHashSet<>();
 		Set<String> tagNames = new LinkedHashSet<>();
-		Set<String> expandedTerms = new LinkedHashSet<>(rawTerms);
+		Set<String> expandedTerms = rawTerms.stream()
+			.filter(term -> !isGenericSearchTerm(term))
+			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 
 		for (SearchAliasMatch alias : aliases) {
 			if (alias.artistId() != null) {
@@ -320,8 +344,15 @@ public class GoodsRecommendationService {
 		terms.add(normalized);
 		String[] tokens = normalized.split("[\\s,]+");
 		for (String token : tokens) {
-			if (token.length() >= 2 && !SEARCH_STOP_WORDS.contains(token)) {
-				terms.add(token);
+			String cleanToken = trimSearchPunctuation(token);
+			if (cleanToken.length() >= 2 && !SEARCH_STOP_WORDS.contains(cleanToken)) {
+				terms.add(cleanToken);
+			}
+			String strippedToken = SEARCH_STOP_WORDS.contains(cleanToken)
+				? cleanToken
+				: stripKoreanParticle(cleanToken);
+			if (strippedToken.length() >= 2 && !SEARCH_STOP_WORDS.contains(strippedToken)) {
+				terms.add(strippedToken);
 			}
 		}
 		for (int start = 0; start < tokens.length; start++) {
@@ -336,6 +367,33 @@ public class GoodsRecommendationService {
 				}
 			}
 		}
+	}
+
+	private boolean isGenericSearchTerm(String term) {
+		String[] tokens = normalize(term).split("[\\s,]+");
+		for (String token : tokens) {
+			String cleanToken = trimSearchPunctuation(token);
+			String strippedToken = SEARCH_STOP_WORDS.contains(cleanToken)
+				? cleanToken
+				: stripKoreanParticle(cleanToken);
+			if (!strippedToken.isBlank() && !SEARCH_STOP_WORDS.contains(strippedToken)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private String trimSearchPunctuation(String token) {
+		return token.replaceAll("^[\\p{P}\\p{S}]+|[\\p{P}\\p{S}]+$", "");
+	}
+
+	private String stripKoreanParticle(String token) {
+		for (String particle : KOREAN_PARTICLES) {
+			if (token.endsWith(particle) && token.length() - particle.length() >= 2) {
+				return token.substring(0, token.length() - particle.length());
+			}
+		}
+		return token;
 	}
 
 	private List<String> splitCommaSeparated(String rawValues) {
