@@ -1,6 +1,9 @@
 .quantity-stepper {
+  --quantity-stepper-height: 30px;
+
   display: inline-grid;
   grid-template-columns: auto minmax(34px, auto) auto;
+  grid-auto-rows: var(--quantity-stepper-height);
   align-items: center;
   width: fit-content;
   overflow: hidden;
@@ -10,10 +13,20 @@
 }
 
 .quantity-stepper .ui-icon-button {
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
   border: 0;
   border-radius: 0;
   background: #ffffff;
   color: inherit;
+}
+
+.quantity-stepper .ui-icon-button__icon,
+.quantity-stepper .ui-icon-button__icon > span {
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
 
 .quantity-stepper .ui-icon-button:not(:disabled):hover,
@@ -25,8 +38,11 @@
 .quantity-stepper output,
 .quantity-stepper input {
   box-sizing: border-box;
+  align-self: stretch;
   width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
   padding: 0 4px;
   border: 0;
   background: #ffffff;
@@ -38,6 +54,12 @@
   appearance: textfield;
 }
 
+.quantity-stepper output {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
 .quantity-stepper input::-webkit-inner-spin-button,
 .quantity-stepper input::-webkit-outer-spin-button {
   margin: 0;
@@ -47,20 +69,10 @@
 .quantity-stepper--compact .ui-icon-button {
   width: 30px;
   min-width: 30px;
-  height: 30px;
-  min-height: 30px;
 }
 
-.quantity-stepper--compact output,
-.quantity-stepper--compact input {
-  height: 30px;
-}
-
-.quantity-stepper--medium .ui-icon-button,
-.quantity-stepper--medium output,
-.quantity-stepper--medium input {
-  height: 34px;
-  min-height: 34px;
+.quantity-stepper--medium {
+  --quantity-stepper-height: 34px;
 }
 
 .quantity-stepper .ui-icon-button:disabled,
