@@ -7,7 +7,7 @@
   color: #202124;
 }
 
-.cart-access-gate section {
+.cart-access-gate .async-state {
   display: grid;
   width: min(100%, 440px);
   gap: 14px;
@@ -15,23 +15,4 @@
   border: 1px solid #d8dadd;
   border-radius: 8px;
   text-align: center;
-}
-
-.cart-access-gate h1,
-.cart-access-gate p {
-  margin: 0;
-}
-
-.cart-access-gate p {
-  color: #666a70;
-}
-
-.cart-access-gate button {
-  min-height: 42px;
-  border: 1px solid #111111;
-  border-radius: 4px;
-  background: #111111;
-  color: #ffffff;
-  font: inherit;
-  cursor: pointer;
 }

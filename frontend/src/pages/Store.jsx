@@ -7,7 +7,6 @@ import { useStoreFlow } from '../features/store/hooks/useStoreFlow'
 import { requestCartLogin } from '../features/cart/requestCartLogin'
 import { updateMemberProfile } from '../features/member/member'
 import { useCurrentMemberAccess } from '../features/member/useCurrentMemberAccess'
-import Header from '../shared/components/Header'
 import { useNavigate } from 'react-router-dom'
 import './Store.css'
 
@@ -90,19 +89,16 @@ function Store({ mode = 'checkout' }) {
 
   if (isCheckoutMode && access.isLoading) {
     return (
-      <main className="store-page">
-        <Header />
+      <div className="store-page">
         <section className="store-section cart-loading-state">
           <p>Loading checkout...</p>
         </section>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className={`store-page ${isCheckoutMode ? 'is-checkout-mode' : 'is-cart-mode'}`}>
-      <Header />
-
+    <div className={`store-page ${isCheckoutMode ? 'is-checkout-mode' : 'is-cart-mode'}`}>
       <section className="store-toolbar" aria-label="Cart summary">
         <div className="cart-total">
           <span>Items</span>
@@ -253,7 +249,7 @@ function Store({ mode = 'checkout' }) {
           </aside>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 

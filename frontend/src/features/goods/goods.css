@@ -6,10 +6,7 @@
   --goods-panel: #ffffff;
   --goods-ink: #111111;
 
-  min-height: 100svh;
   color: var(--goods-text);
-  background: #ffffff;
-  text-align: left;
 }
 
 .store-toolbar input,
@@ -724,27 +721,6 @@ button.goods-rating-summary {
     align-items: stretch;
     flex-direction: column;
   }
-}
-
-.goods-state {
-  display: grid;
-  gap: 8px;
-  place-items: center;
-  min-height: 240px;
-  padding: 32px;
-  border: 1px dashed var(--goods-line);
-  border-radius: 6px;
-  color: var(--goods-muted);
-  background: var(--goods-soft);
-  text-align: center;
-}
-
-.goods-state strong {
-  color: var(--goods-ink);
-}
-
-.error-state {
-  border-style: solid;
 }
 
 .goods-pagination {

@@ -90,13 +90,8 @@
 }
 
 .mobile-filter-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
   align-items: flex-end;
-  justify-content: center;
-  padding-top: 48px;
+  padding: 48px 0 0;
   background: rgb(0 0 0 / 45%);
 }
 
@@ -235,30 +230,6 @@
 .skeleton-line-title {
   width: 85%;
   height: 22px;
-}
-
-.goods-state-mark {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--goods-line);
-  border-radius: 50%;
-  background: #ffffff;
-  color: var(--goods-ink);
-  font-weight: 900;
-}
-
-.goods-state button {
-  min-height: 40px;
-  padding: 7px 14px;
-  border: 1px solid var(--goods-ink);
-  border-radius: 4px;
-  background: var(--goods-ink);
-  color: #ffffff;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 @keyframes goods-skeleton {

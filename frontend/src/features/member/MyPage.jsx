@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { removeGoodsLike } from '../../api/goods'
-import Header from '../../shared/components/Header'
+import Button from '../../shared/components/Button'
+import AsyncState from '../../shared/components/AsyncState'
+import Modal from '../../shared/components/Modal'
 import {
   getArtistOptions,
   getMyPageSummary,
@@ -268,20 +270,6 @@ function SectionModal({
   onToggleLikedGoods,
   section,
 }) {
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
   if (!section) {
     return null
   }
@@ -290,18 +278,13 @@ function SectionModal({
   const isLikedGoodsSection = section.id === 'likedGoods'
 
   return (
-    <div
-      className="mypage-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
+    <Modal
+      ariaLabelledBy="mypage-modal-title"
+      className="mypage-modal"
+      open
+      overlayClassName="mypage-modal-backdrop"
+      onClose={onClose}
     >
-      <section
-        className="mypage-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mypage-modal-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
         <div className="mypage-modal-heading">
           <h2 id="mypage-modal-title">{section.title}</h2>
           <button
@@ -362,8 +345,7 @@ function SectionModal({
             ))}
           </div>
         )}
-      </section>
-    </div>
+    </Modal>
   )
 }
 
@@ -381,38 +363,19 @@ function ProfileEditModal({
   onShowWithdraw,
   onChangePassword,
 }) {
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
   if (!form) {
     return null
   }
 
   if (mode === 'withdraw') {
     return (
-      <div
-        className="mypage-modal-backdrop"
-        role="presentation"
-        onMouseDown={onClose}
+      <Modal
+        ariaLabelledBy="mypage-withdraw-modal-title"
+        className="mypage-modal mypage-profile-modal"
+        open
+        overlayClassName="mypage-modal-backdrop"
+        onClose={onClose}
       >
-        <section
-          className="mypage-modal mypage-profile-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="mypage-withdraw-modal-title"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
           <div className="mypage-modal-heading">
             <h2 id="mypage-withdraw-modal-title">회원 탈퇴</h2>
             <button type="button" onClick={onShowEdit}>
@@ -439,24 +402,18 @@ function ProfileEditModal({
               {isWithdrawing ? '탈퇴 처리 중...' : '탈퇴하기'}
             </button>
           </div>
-        </section>
-      </div>
+      </Modal>
     )
   }
 
   return (
-    <div
-      className="mypage-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
+    <Modal
+      ariaLabelledBy="mypage-profile-modal-title"
+      className="mypage-modal mypage-profile-modal"
+      open
+      overlayClassName="mypage-modal-backdrop"
+      onClose={onClose}
     >
-      <section
-        className="mypage-modal mypage-profile-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="mypage-profile-modal-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
         <form className="account-form mypage-profile-form" onSubmit={onSubmit}>
           <div className="mypage-modal-heading">
             <h2 id="mypage-profile-modal-title">개인정보 수정</h2>
@@ -511,8 +468,7 @@ function ProfileEditModal({
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </Modal>
   )
 }
 
@@ -785,30 +741,27 @@ function MyPage() {
 
   if (isLoading) {
     return (
-      <main className="account-page mypage-page">
-        <Header />
-        <section className="account-shell account-card account-panel">
-          <p className="mypage-empty">마이페이지 정보를 불러오는 중입니다.</p>
-        </section>
-      </main>
+      <AsyncState
+        className="account-shell account-card account-panel"
+        kind="loading"
+        title="마이페이지 정보를 불러오는 중입니다."
+      />
     )
   }
 
   if (!summary) {
     return (
-      <main className="account-page mypage-page">
-        <Header />
-        <section className="account-shell account-card account-panel">
-          <p className="account-feedback account-feedback-error" role="alert">
-            {error || '마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'}
-          </p>
-          <div className="account-actions">
-            <button className="account-button" type="button" onClick={() => navigate('/login')}>
+      <AsyncState
+        actions={<div className="account-actions">
+            <Button className="account-button" shape="pill" size="large" onClick={() => navigate('/login')}>
               로그인으로 이동
-            </button>
-          </div>
-        </section>
-      </main>
+            </Button>
+          </div>}
+        className="account-shell account-card account-panel"
+        kind="error"
+        message={error || '잠시 후 다시 시도해주세요.'}
+        title="마이페이지 정보를 불러오지 못했습니다."
+      />
     )
   }
 
@@ -856,14 +809,13 @@ function MyPage() {
   ]
 
   return (
-    <main className="account-page mypage-page">
+    <>
       <AccountFeedbackPopup message={error} onDone={() => setError('')} />
       <AccountFeedbackPopup
         message={message}
         type="success"
         onDone={() => setMessage('')}
       />
-      <Header />
       <div className="account-shell">
         <div className="mypage-layout">
           <section className="account-card">
@@ -956,7 +908,7 @@ function MyPage() {
         onSubmit={handleSaveProfile}
         onShowWithdraw={showWithdrawConfirmation}
       />
-    </main>
+    </>
   )
 }
 

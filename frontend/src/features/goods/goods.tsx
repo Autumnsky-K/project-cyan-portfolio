@@ -11,7 +11,6 @@ import { useGoodsListQueryState } from './useGoodsListQueryState'
 import { useGoodsScrollRestoration } from './useGoodsScrollRestoration'
 import './goods.css'
 import './goods-list-ui.css'
-import Header from '../../shared/components/Header'
 
 function GoodsPage() {
   const location = useLocation()
@@ -136,9 +135,7 @@ function GoodsPage() {
   const closeMobileFilters = useCallback(() => setIsMobileFilterOpen(false), [])
 
   return (
-    <main className="goods-page">
-      <Header />
-
+    <>
       <GoodsAllSection
         clearRecommendations={clearRecommendations}
         currentPage={currentPage}
@@ -181,7 +178,7 @@ function GoodsPage() {
         visibleGoods={visibleGoods}
       />
       <GoodsCartSidePanel />
-    </main>
+    </>
   )
 }
 

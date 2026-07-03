@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import CartNavLink from '../../features/cart/CartNavLink'
+import IconButton from './IconButton'
 import './Header.css'
 
 const NAV_ITEMS = [
@@ -11,55 +12,56 @@ const NAV_ITEMS = [
 ]
 
 function isCurrentPath(pathname: string, to: string) {
+  if (to === '/') return pathname === '/'
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
-export default function Header() {
-  const { pathname } = useLocation()
-  const currentItem = NAV_ITEMS.find((item) => isCurrentPath(pathname, item.to))
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+type HeaderProps = {
+  tone?: 'surface' | 'immersive'
+}
 
-  useEffect(() => {
-    setIsMenuOpen(false)
-  }, [pathname])
+export default function Header({ tone = 'surface' }: HeaderProps) {
+  const { pathname } = useLocation()
+  const [openMenuPath, setOpenMenuPath] = useState<string | null>(null)
+  const isMenuOpen = openMenuPath === pathname
 
   return (
-    <header className="site-header">
-      <div>
-        <p className="site-eyebrow">Cyan</p>
-        <h1>
-          {currentItem?.to === '/goods' ? (
-            <Link className="site-title-link" to="/goods" state={{ resetGoodsList: Date.now() }}>Goods</Link>
-          ) : (
-            currentItem?.label ?? 'Store'
-          )}
-        </h1>
+    <header className="site-header" data-tone={tone}>
+      <div className="site-header-inner">
+        <div className="site-brand">
+          <Link className="site-brand-home" to="/" aria-label="Project Cyan 홈으로 이동">
+            <img src="/favicon.svg" alt="" />
+            <span>PROJECT CYAN</span>
+          </Link>
+          {/* <p className="site-page-title">
+            {currentItem?.label}
+          </p> */}
+        </div>
+        <IconButton
+          className="site-menu-button"
+          aria-expanded={isMenuOpen}
+          aria-controls="site-navigation"
+          icon={<span className="site-menu-icon" />}
+          label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+          onClick={() => setOpenMenuPath((currentPath) => currentPath === pathname ? null : pathname)}
+          size="medium"
+        />
+        <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="Primary navigation">
+          {NAV_ITEMS.map((item) => {
+            const isCurrent = isCurrentPath(pathname, item.to)
+
+            if (item.to === '/cart') {
+              return <CartNavLink key={item.to} current={isCurrent} />
+            }
+
+            return (
+              <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to}>
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
-      <button
-        className="site-menu-button"
-        type="button"
-        aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
-        aria-expanded={isMenuOpen}
-        aria-controls="site-navigation"
-        onClick={() => setIsMenuOpen((value) => !value)}
-      >
-        <span aria-hidden="true" />
-      </button>
-      <nav className="site-nav" id="site-navigation" data-open={isMenuOpen} aria-label="Store navigation">
-        {NAV_ITEMS.map((item) => {
-          const isCurrent = isCurrentPath(pathname, item.to)
-
-          if (item.to === '/cart') {
-            return <CartNavLink key={item.to} current={isCurrent} />
-          }
-
-          return (
-            <Link key={item.to} aria-current={isCurrent ? 'page' : undefined} to={item.to}>
-              {item.label}
-            </Link>
-          )
-        })}
-      </nav>
     </header>
   )
 }

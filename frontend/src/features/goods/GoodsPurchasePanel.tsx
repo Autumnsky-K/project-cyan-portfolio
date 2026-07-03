@@ -1,4 +1,6 @@
 import type { GoodsDetail } from '../../api/goods'
+import Button from '../../shared/components/Button'
+import QuantityStepper from '../../shared/components/QuantityStepper'
 import { formatGoodsPrice } from './goodsFormatters'
 import GoodsRatingSummary from './GoodsRatingSummary'
 import GoodsStatusBadge from './GoodsStatusBadge'
@@ -56,32 +58,13 @@ function GoodsPurchasePanel({
 
       <div className="purchase-selection">
         <span>수량</span>
-        <div className="detail-quantity" aria-label="수량">
-          <button
-            disabled={selectedQuantity <= 1}
-            type="button"
-            onClick={() => updateQuantity(selectedQuantity - 1)}
-          >
-            -
-          </button>
-          <input
-            aria-label="수량 직접 입력"
-            disabled={!canAdd}
-            inputMode="numeric"
-            max={maxQuantity || 1}
-            min={1}
-            type="number"
-            value={selectedQuantity}
-            onChange={(event) => updateQuantity(event.currentTarget.valueAsNumber)}
-          />
-          <button
-            disabled={!maxQuantity || selectedQuantity >= maxQuantity}
-            type="button"
-            onClick={() => updateQuantity(selectedQuantity + 1)}
-          >
-            +
-          </button>
-        </div>
+        <QuantityStepper
+          disabled={!canAdd}
+          editable
+          max={maxQuantity || 1}
+          value={selectedQuantity}
+          onChange={updateQuantity}
+        />
         <small>재고 {maxQuantity.toLocaleString()}개</small>
       </div>
 
@@ -95,15 +78,17 @@ function GoodsPurchasePanel({
           {goods.purchaseMessage || '구매 가능한 상품이 아닙니다.'}
         </p>
       )}
-      <button
+      <Button
         className="purchase-button"
         data-add-to-cart={goods.goodsId}
         disabled={!canAdd || isAddingCart}
-        type="button"
+        fullWidth
+        size="large"
+        variant="primary"
         onClick={() => void addSelectedQuantityToCart()}
       >
         {isAddingCart ? '담는 중...' : '장바구니 담기'}
-      </button>
+      </Button>
       <div className="purchase-secondary-actions">
         <button
           className="detail-like-button"

@@ -1,4 +1,5 @@
 import { formatPrice } from '../utils/storeUtils'
+import QuantityStepper from '../../../shared/components/QuantityStepper'
 
 function CartPanel({
   className = '',
@@ -49,13 +50,15 @@ function CartPanel({
                   )}
                 </div>
                 <div className="cart-controls">
-                  <button type="button" onClick={() => onDecreaseQuantity(cartItemKey)}>
-                    -
-                  </button>
-                  <span>{item.quantity}</span>
-                  <button type="button" onClick={() => onIncreaseQuantity(cartItemKey)}>
-                    +
-                  </button>
+                  <QuantityStepper
+                    label={`${item.name} 수량`}
+                    max={item.maxQuantity ?? null}
+                    value={item.quantity}
+                    onChange={(nextQuantity) => {
+                      if (nextQuantity < item.quantity) onDecreaseQuantity(cartItemKey)
+                      if (nextQuantity > item.quantity) onIncreaseQuantity(cartItemKey)
+                    }}
+                  />
                   <button type="button" onClick={() => onRemoveFromCart(cartItemKey)}>
                     Remove
                   </button>

@@ -19,23 +19,6 @@
   color: #ffffff;
 }
 
-.account-page .site-nav a {
-  border-color: #5f5f5f;
-  background: #151515;
-  color: #f5f5f5;
-}
-
-.account-page .site-nav a:hover,
-.account-page .site-nav a:focus {
-  border-color: #ffffff;
-}
-
-.account-page .site-nav a[aria-current='page'] {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #111111;
-}
-
 .account-shell {
   width: min(960px, 100%);
   margin: 0 auto;
@@ -273,42 +256,6 @@
   border-color: #ffffff;
   outline: 2px solid #ffffff;
   outline-offset: 2px;
-}
-
-.account-button,
-.account-secondary {
-  min-height: 46px;
-  padding: 0 20px;
-  border: 1px solid #111111;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #111111;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.account-button:hover,
-.account-button:focus,
-.account-secondary:hover,
-.account-secondary:focus,
-.account-button:active,
-.account-secondary:active {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
-}
-
-.account-button:disabled,
-.account-secondary:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
-
-.account-secondary {
-  border-color: #7f7f7f;
 }
 
 .account-feedback {
@@ -972,6 +919,7 @@
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: inherit;
 }
 
 .mypage-payment-product p {
@@ -991,6 +939,7 @@
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: inherit;
 }
 
 .mypage-item-card p,
@@ -1063,27 +1012,17 @@
 }
 
 .mypage-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
   background: rgba(0, 0, 0, 0.72);
-  box-sizing: border-box;
 }
 
 .mypage-modal {
   width: min(900px, 100%);
   max-height: min(760px, 90vh);
-  overflow: auto;
   padding: 28px;
   border: 1px solid #8c8c8c;
   border-radius: 8px;
   background: #111111;
   box-shadow: 0 22px 56px rgba(0, 0, 0, 0.48);
-  box-sizing: border-box;
 }
 
 .mypage-profile-modal {
@@ -1212,38 +1151,12 @@
   color: #111111;
 }
 
-.account-page .site-header {
-  margin: 0 -40px 44px;
-  border-bottom: 1px solid #dededb;
-  background: #ffffff;
-  color: #111111;
-}
-
 .account-page .site-eyebrow {
   color: #777777;
 }
 
 .account-page .site-header h1 {
   color: #111111;
-}
-
-.account-page .site-nav a {
-  border-color: transparent;
-  border-radius: 0;
-  background: transparent;
-  color: #111111;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-
-.account-page .site-nav a:hover,
-.account-page .site-nav a:focus,
-.account-page .site-nav a[aria-current='page'] {
-  border-color: #111111;
-  background: #111111;
-  color: #ffffff;
 }
 
 .account-shell {
@@ -1665,11 +1578,6 @@
 
   .account-page .site-menu-button span::after {
     top: 6px;
-  }
-
-  .account-page .site-nav {
-    top: 58px;
-    right: 11px;
   }
 
 }

@@ -1,3 +1,5 @@
+import AsyncState from '../../shared/components/AsyncState'
+
 type GoodsListStateProps = {
   kind: 'empty' | 'error'
   message?: string
@@ -27,20 +29,15 @@ function GoodsListState({ kind, message, onAction }: GoodsListStateProps) {
   const isError = kind === 'error'
 
   return (
-    <div className={`goods-state ${isError ? 'error-state' : ''}`} role={isError ? 'alert' : 'status'}>
-      <span className="goods-state-mark" aria-hidden="true">
-        {isError ? '!' : '0'}
-      </span>
-      <strong>{isError ? '굿즈를 불러오지 못했습니다' : '조건에 맞는 상품이 없습니다'}</strong>
-      <span>
-        {isError
-          ? message || '잠시 후 다시 시도해 주세요.'
-          : '다른 검색어를 입력하거나 적용된 필터를 초기화해 주세요.'}
-      </span>
-      <button type="button" onClick={onAction}>
-        {isError ? '다시 시도' : '필터 초기화'}
-      </button>
-    </div>
+    <AsyncState
+      actionLabel={isError ? '다시 시도' : '필터 초기화'}
+      kind={kind}
+      message={isError
+        ? message || '잠시 후 다시 시도해 주세요.'
+        : '다른 검색어를 입력하거나 적용된 필터를 초기화해 주세요.'}
+      onAction={onAction}
+      title={isError ? '굿즈를 불러오지 못했습니다' : '조건에 맞는 상품이 없습니다'}
+    />
   )
 }
 
