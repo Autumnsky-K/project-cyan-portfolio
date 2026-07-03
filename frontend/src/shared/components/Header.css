@@ -137,6 +137,7 @@
 
 .site-menu-icon {
   position: relative;
+  transform: translateX(-8px);
 }
 
 .site-menu-icon::before,

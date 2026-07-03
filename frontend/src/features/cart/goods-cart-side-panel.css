@@ -4,7 +4,7 @@
 
   position: fixed;
   top: 96px;
-  right: max(24px, calc((100vw - 1126px) / 2 - var(--cart-panel-width) - var(--cart-panel-gap)));
+  right: max(12px, calc((100vw - 1380px) / 2 - var(--cart-panel-width) - var(--cart-panel-gap)));
   z-index: 20;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
