@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { removeGoodsLike } from '../../api/goods'
 import Button from '../../shared/components/Button'
+import AsyncState from '../../shared/components/AsyncState'
 import Modal from '../../shared/components/Modal'
 import {
   getArtistOptions,
@@ -740,28 +741,27 @@ function MyPage() {
 
   if (isLoading) {
     return (
-      <>
-        <section className="account-shell account-card account-panel">
-          <p className="mypage-empty">마이페이지 정보를 불러오는 중입니다.</p>
-        </section>
-      </>
+      <AsyncState
+        className="account-shell account-card account-panel"
+        kind="loading"
+        title="마이페이지 정보를 불러오는 중입니다."
+      />
     )
   }
 
   if (!summary) {
     return (
-      <>
-        <section className="account-shell account-card account-panel">
-          <p className="account-feedback account-feedback-error" role="alert">
-            {error || '마이페이지 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'}
-          </p>
-          <div className="account-actions">
+      <AsyncState
+        actions={<div className="account-actions">
             <Button className="account-button" shape="pill" size="large" onClick={() => navigate('/login')}>
               로그인으로 이동
             </Button>
-          </div>
-        </section>
-      </>
+          </div>}
+        className="account-shell account-card account-panel"
+        kind="error"
+        message={error || '잠시 후 다시 시도해주세요.'}
+        title="마이페이지 정보를 불러오지 못했습니다."
+      />
     )
   }
 

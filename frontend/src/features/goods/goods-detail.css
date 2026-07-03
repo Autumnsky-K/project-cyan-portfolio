@@ -125,7 +125,6 @@
 .related-card-topline p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .related-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail-state { margin: 32px; }
-.detail-error-state > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .detail-error-state button { min-height: 40px; padding: 7px 14px; border: 1px solid var(--goods-line); border-radius: 4px; background: #fff; font: inherit; cursor: pointer; }
 @media (max-width: 960px) {
   .goods-detail-page { padding-bottom: 250px; }

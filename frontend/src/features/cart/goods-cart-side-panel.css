@@ -77,13 +77,6 @@
   opacity: .45;
 }
 
-.goods-cart-panel-state {
-  margin: 0;
-  padding: 22px 16px;
-  color: #666a70;
-  font-size: 14px;
-}
-
 .goods-cart-panel-list {
   display: grid;
   gap: 0;

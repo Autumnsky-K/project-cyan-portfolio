@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import AsyncState from '../../shared/components/AsyncState'
 import GoodsCartSidePanel from '../cart/GoodsCartSidePanel'
 import GoodsDetailTabs, { type DetailTab } from './GoodsDetailTabs'
 import GoodsGallery from './GoodsGallery'
@@ -82,20 +83,22 @@ function GoodsDetailPage() {
         <Link className="detail-action" to={goodsListUrl}>← 상품 목록</Link>
       </section>
 
-      {status === 'loading' && <div className="goods-state detail-state">상품 정보를 불러오는 중입니다...</div>}
+      {status === 'loading' && (
+        <AsyncState className="detail-state" kind="loading" title="상품 정보를 불러오는 중입니다..." />
+      )}
       {status === 'error' && (
-        <div className="goods-state detail-state error-state detail-error-state">
-          <strong>{isNotFound ? '상품을 찾을 수 없습니다.' : '상품 정보를 불러오지 못했습니다.'}</strong>
-          <span>
-            {isNotFound
-              ? '삭제되었거나 주소가 변경된 상품입니다. 상품 목록에서 다른 굿즈를 확인해 주세요.'
-              : error}
-          </span>
-          <div>
+        <AsyncState
+          actions={<>
             <Link className="detail-action" to={goodsListUrl}>상품 목록으로 이동</Link>
             <button type="button" onClick={() => window.history.back()}>이전 페이지</button>
-          </div>
-        </div>
+          </>}
+          className="detail-state detail-error-state"
+          kind="error"
+          message={isNotFound
+            ? '삭제되었거나 주소가 변경된 상품입니다. 상품 목록에서 다른 굿즈를 확인해 주세요.'
+            : error}
+          title={isNotFound ? '상품을 찾을 수 없습니다.' : '상품 정보를 불러오지 못했습니다.'}
+        />
       )}
 
       {status === 'data' && goods && (

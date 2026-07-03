@@ -232,18 +232,6 @@
   height: 22px;
 }
 
-.goods-state-mark {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--goods-line);
-  border-radius: 50%;
-  background: #ffffff;
-  color: var(--goods-ink);
-  font-weight: 900;
-}
-
 @keyframes goods-skeleton {
   from {
     background-position: 200% 0;

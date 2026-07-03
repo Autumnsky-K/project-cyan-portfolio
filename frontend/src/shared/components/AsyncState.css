@@ -1,0 +1,57 @@
+.async-state {
+  display: grid;
+  min-height: 240px;
+  padding: 32px;
+  border: 1px dashed var(--goods-line, #d8dadd);
+  border-radius: 6px;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  background: var(--goods-soft, #f7f7f5);
+  color: var(--goods-muted, #666a70);
+  text-align: center;
+}
+
+.async-state--error {
+  border-style: solid;
+}
+
+.async-state--compact {
+  min-height: 0;
+  padding: 22px 16px;
+  border: 0;
+  background: transparent;
+}
+
+.async-state__marker {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--goods-line, #d8dadd);
+  border-radius: 50%;
+  place-items: center;
+  background: #ffffff;
+  color: var(--goods-ink, #202124);
+  font-weight: 900;
+}
+
+.async-state--compact .async-state__marker {
+  width: 32px;
+  height: 32px;
+}
+
+.async-state__title {
+  color: var(--goods-ink, #202124);
+}
+
+.async-state__message {
+  max-width: 52ch;
+}
+
+.async-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}

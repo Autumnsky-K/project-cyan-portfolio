@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../../shared/components/Button'
+import AsyncState from '../../shared/components/AsyncState'
 
 import { requestCartLogin } from './requestCartLogin'
 import { useCart } from './useCart'
@@ -17,9 +18,7 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
   if (authLoading) {
     return (
       <main className="cart-access-gate">
-        <section aria-live="polite">
-          <p>Checking your login status...</p>
-        </section>
+        <AsyncState kind="loading" title="Checking your login status..." />
       </main>
     )
   }
@@ -27,13 +26,12 @@ export default function CartAccessGate({ children }: CartAccessGateProps) {
   if (!isAuthenticated) {
     return (
       <main className="cart-access-gate">
-        <section>
-          <h1>Login required</h1>
-          <p>Please log in to continue checkout.</p>
-          <Button variant="primary" onClick={() => requestCartLogin(navigate)}>
-            Go to login
-          </Button>
-        </section>
+        <AsyncState
+          actions={<Button variant="primary" onClick={() => requestCartLogin(navigate)}>Go to login</Button>}
+          kind="info"
+          message="Please log in to continue checkout."
+          title="Login required"
+        />
       </main>
     )
   }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../../shared/components/Button'
+import AsyncState from '../../shared/components/AsyncState'
 import {
   getArtistOptions,
   getCurrentMember,
@@ -110,9 +111,11 @@ function LikePage() {
   if (isLoading) {
     return (
       <main className="account-page like-page">
-        <section className="account-shell like-shell like-panel">
-          <p className="mypage-empty">관심 아티스트 정보를 불러오는 중입니다.</p>
-        </section>
+        <AsyncState
+          className="account-shell like-shell like-panel"
+          kind="loading"
+          title="관심 아티스트 정보를 불러오는 중입니다."
+        />
       </main>
     )
   }

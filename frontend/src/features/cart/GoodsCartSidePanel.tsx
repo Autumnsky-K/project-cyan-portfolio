@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import AsyncState from '../../shared/components/AsyncState'
 import QuantityStepper from '../../shared/components/QuantityStepper'
 import { useCart } from './useCart'
 import './goods-cart-side-panel.css'
@@ -36,11 +37,11 @@ function GoodsCartSidePanel() {
       </div>
 
       {status === 'loading' ? (
-        <p className="goods-cart-panel-state">Loading cart...</p>
+        <AsyncState kind="loading" size="compact" title="Loading cart..." />
       ) : status === 'error' ? (
-        <p className="goods-cart-panel-state">{error || 'Unable to load cart.'}</p>
+        <AsyncState kind="error" size="compact" title={error || 'Unable to load cart.'} />
       ) : isEmpty ? (
-        <p className="goods-cart-panel-state">Your cart is empty.</p>
+        <AsyncState kind="empty" size="compact" title="Your cart is empty." />
       ) : (
         <ul className="goods-cart-panel-list">
           {items.map((item) => (
