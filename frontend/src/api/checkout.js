@@ -24,7 +24,7 @@ export async function prepareCheckout(payload) {
     })
   } catch (error) {
     if (isAbortError(error)) {
-      throw new Error('Toss Payments preparation timed out. No payment result was received.', {
+      throw new Error('Toss Payments 결제 준비 시간이 초과되어 결과를 받지 못했습니다.', {
         cause: error,
       })
     }
@@ -34,7 +34,7 @@ export async function prepareCheckout(payload) {
     globalThis.clearTimeout(timeoutId)
   }
 
-  return parseApiResponse(response, 'Failed to prepare checkout.')
+  return parseApiResponse(response, '결제를 준비하지 못했습니다.')
 }
 
 export async function approveCheckoutPayment(payload) {
@@ -43,7 +43,7 @@ export async function approveCheckoutPayment(payload) {
     body: JSON.stringify(payload),
   })
 
-  return parseApiResponse(response, 'Failed to approve checkout payment.')
+  return parseApiResponse(response, '결제를 승인하지 못했습니다.')
 }
 
 export async function recoverKakaoPaymentAttempt(orderId) {
@@ -54,7 +54,7 @@ export async function recoverKakaoPaymentAttempt(orderId) {
 
   const response = await apiFetch(`/checkout/payments/kakao/attempt?${query.toString()}`)
 
-  return parseApiResponse(response, 'Failed to recover KakaoPay payment attempt.')
+  return parseApiResponse(response, 'KakaoPay 결제 시도를 복구하지 못했습니다.')
 }
 
 export async function cancelCheckoutPayment(payload) {
@@ -63,7 +63,7 @@ export async function cancelCheckoutPayment(payload) {
     body: JSON.stringify(payload),
   })
 
-  return parseApiResponse(response, 'Failed to cancel checkout payment.')
+  return parseApiResponse(response, '결제를 취소하지 못했습니다.')
 }
 
 export async function failCheckoutPayment(payload) {
@@ -72,5 +72,5 @@ export async function failCheckoutPayment(payload) {
     body: JSON.stringify(payload),
   })
 
-  return parseApiResponse(response, 'Failed to record checkout payment failure.')
+  return parseApiResponse(response, '결제 실패 상태를 기록하지 못했습니다.')
 }

@@ -2,6 +2,7 @@ package com.projectcyan.inquiry;
 
 public record InquirySupportRequest(
 	String title,
-	String content
+	String content,
+	Long orderId
 ) {
 }

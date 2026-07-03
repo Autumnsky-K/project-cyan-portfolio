@@ -260,10 +260,10 @@ export async function resolvePaymentApproval({
       const kakaoPayment = await recoverKakaoPaymentFromServer(targetOrderId, pendingPayment)
 
       if (!targetOrderId || !pgToken || !kakaoPayment?.tid) {
-        throw new Error('Missing KakaoPay approval data.')
+        throw new Error('KakaoPay 승인 정보가 없습니다.')
       }
       if (!kakaoPayment.partnerOrderId || !kakaoPayment.partnerUserId) {
-        throw new Error('Missing KakaoPay merchant approval identifiers.')
+        throw new Error('KakaoPay 가맹점 승인 식별 정보가 없습니다.')
       }
 
       const data = await approveKakaoPay({
@@ -304,7 +304,7 @@ export async function resolvePaymentApproval({
       })
     }
 
-    throw new Error('Missing persisted payment data. Payment result cannot be verified.')
+    throw new Error('저장된 결제 정보가 없어 결제 결과를 확인할 수 없습니다.')
   })
 }
 

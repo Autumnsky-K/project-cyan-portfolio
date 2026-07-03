@@ -68,6 +68,7 @@ export interface InquirySummary {
   name: string
   status: string
   description: string
+  imageUrl?: string
 }
 
 export interface MyPageSummary {
@@ -182,6 +183,8 @@ interface InquiryApiItem {
   inquiryId: number
   inquiryType: string
   goodsId: number | null
+  orderId: number | null
+  orderNo: string | null
   title: string
   content: string | null
   secret: boolean
@@ -602,9 +605,13 @@ async function getMyPageGoodsActivity(memberId: number): Promise<{
   }
 }
 
-function normalizeInquirySummary(inquiry: InquiryApiItem): InquirySummary {
+function normalizeInquirySummary(inquiry: InquiryApiItem, goods?: GoodsRow): InquirySummary {
   const createdAt = formatDateLabel(inquiry.createdAt)
-  const descriptionParts = [createdAt, inquiry.content]
+  const descriptionParts = [
+    createdAt,
+    inquiry.orderNo ? `주문번호 ${inquiry.orderNo}` : null,
+    inquiry.content,
+  ]
 
   if (inquiry.status === 'ANSWERED' && inquiry.answerContent) {
     descriptionParts.push(`답변: ${inquiry.answerContent}`)
@@ -615,6 +622,7 @@ function normalizeInquirySummary(inquiry: InquiryApiItem): InquirySummary {
     name: inquiry.title,
     status: INQUIRY_STATUS_LABELS[inquiry.status] ?? inquiry.status,
     description: descriptionParts.filter(Boolean).join(' · '),
+    imageUrl: goods?.main_image_url ?? goods?.image_url ?? goods?.imageUrl ?? goods?.image ?? undefined,
   }
 }
 
@@ -623,9 +631,16 @@ async function getMyPageInquiries(inquiryType: 'PRODUCT' | 'SUPPORT'): Promise<I
     const page = await parseApiResponse<InquiryPageResponse>(
       await apiFetch(`/inquiries/me?type=${inquiryType}&size=${MY_PAGE_SECTION_LIMIT}`),
       '문의 내역을 불러오지 못했습니다.',
+      { silent: true },
     )
+    const items = page?.content ?? []
 
-    return (page?.content ?? []).map(normalizeInquirySummary)
+    if (inquiryType === 'PRODUCT') {
+      const goodsById = await getGoodsByIds(items.map((item) => item.goodsId))
+      return items.map((item) => normalizeInquirySummary(item, goodsById.get(String(item.goodsId))))
+    }
+
+    return items.map((item) => normalizeInquirySummary(item))
   } catch (error) {
     console.warn(error)
     return []
@@ -652,6 +667,25 @@ function digitalLibraryItemToDashboardItem(item: DigitalLibraryItem): GoodsSumma
           : '등록된 다운로드 파일 확인 필요',
     ].filter(Boolean).join(' · '),
   }
+}
+
+export async function createSupportInquiry(
+  title: string,
+  content: string,
+  orderId?: number | null,
+): Promise<InquiryApiItem> {
+  const response = await apiFetch('/inquiries/support', {
+    method: 'POST',
+    body: JSON.stringify({ title, content, orderId: orderId ?? null }),
+  })
+
+  const inquiry = await parseApiResponse<InquiryApiItem>(response, '문의를 등록하지 못했습니다.')
+
+  if (!inquiry) {
+    throw new Error('문의를 등록하지 못했습니다.')
+  }
+
+  return inquiry
 }
 
 async function getMemberGradeFromTable(userId: string): Promise<string> {

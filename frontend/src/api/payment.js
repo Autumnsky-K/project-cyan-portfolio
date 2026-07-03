@@ -103,7 +103,7 @@ export function getKakaoPayReadyDebugInfo() {
 function buildKakaoReadyPayload(order) {
   const memberId = order.memberId ?? order.customer?.memberId
   if (!Number.isInteger(Number(memberId)) || Number(memberId) <= 0) {
-    throw new Error('The logged-in member profile is unavailable.')
+    throw new Error('로그인한 회원 정보를 확인할 수 없습니다.')
   }
   const partnerUserId =
     typeof order.partnerUserId === 'string' && order.partnerUserId.trim()
@@ -150,7 +150,7 @@ export async function requestKakaoPayReady(order, options = {}) {
     })
   } catch (error) {
     if (isAbortError(error)) {
-      throw new Error('KakaoPay preparation timed out. No payment result was received.', {
+      throw new Error('KakaoPay 결제 준비 시간이 초과되어 결과를 받지 못했습니다.', {
         cause: error,
       })
     }
@@ -160,7 +160,7 @@ export async function requestKakaoPayReady(order, options = {}) {
     globalThis.clearTimeout(timeoutId)
   }
 
-  return parseResponse(response, 'Failed to prepare KakaoPay payment.')
+  return parseResponse(response, 'KakaoPay 결제를 준비하지 못했습니다.')
 }
 
 export async function approveKakaoPay({ orderId, tid, pgToken, partnerOrderId, partnerUserId }, options = {}) {
@@ -183,7 +183,7 @@ export async function approveKakaoPay({ orderId, tid, pgToken, partnerOrderId, p
     )
   }
 
-  return parseResponse(response, 'Failed to approve KakaoPay payment.')
+  return parseResponse(response, 'KakaoPay 결제를 승인하지 못했습니다.')
 }
 
 export async function cancelKakaoPay(orderId, payment = {}, options = {}) {
@@ -200,7 +200,7 @@ export async function cancelKakaoPay(orderId, payment = {}, options = {}) {
     ...options,
   })
 
-  return parseResponse(response, 'Failed to cancel KakaoPay payment.')
+  return parseResponse(response, 'KakaoPay 결제를 취소하지 못했습니다.')
 }
 
 export async function failKakaoPay(orderId, reason, options = {}) {
@@ -211,5 +211,5 @@ export async function failKakaoPay(orderId, reason, options = {}) {
     ...options,
   })
 
-  return parseResponse(response, 'Failed to record failed KakaoPay payment.')
+  return parseResponse(response, 'KakaoPay 결제 실패 상태를 기록하지 못했습니다.')
 }

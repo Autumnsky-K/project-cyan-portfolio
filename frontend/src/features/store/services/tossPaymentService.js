@@ -20,7 +20,7 @@ function loadTossSdk() {
 
     if (existingScript) {
       existingScript.addEventListener('load', () => resolve(window.TossPayments), { once: true })
-      existingScript.addEventListener('error', () => reject(new Error('Failed to load Toss Payments SDK.')), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Toss Payments 결제 모듈을 불러오지 못했습니다.')), { once: true })
       return
     }
 
@@ -28,7 +28,7 @@ function loadTossSdk() {
     script.src = TOSS_SDK_URL
     script.async = true
     script.onload = () => resolve(window.TossPayments)
-    script.onerror = () => reject(new Error('Failed to load Toss Payments SDK.'))
+    script.onerror = () => reject(new Error('Toss Payments 결제 모듈을 불러오지 못했습니다.'))
     document.head.appendChild(script)
   })
 
@@ -41,7 +41,7 @@ function digitsOnly(value) {
 
 export async function requestTossPayment(tossReady, order) {
   if (!TOSS_CLIENT_KEY) {
-    throw new Error('Toss Payments client key is not configured.')
+    throw new Error('Toss Payments 클라이언트 키가 설정되지 않았습니다.')
   }
 
   const TossPayments = await loadTossSdk()

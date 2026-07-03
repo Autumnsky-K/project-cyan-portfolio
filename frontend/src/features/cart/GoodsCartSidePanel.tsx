@@ -23,7 +23,7 @@ function GoodsCartSidePanel() {
   const isEmpty = items.length === 0
 
   return (
-    <aside className="goods-cart-side-panel" aria-label="Cart">
+    <aside className="goods-cart-side-panel" aria-label="카트">
       <div className="goods-cart-panel-heading">
         <div>
           <span>Cart</span>
@@ -31,17 +31,17 @@ function GoodsCartSidePanel() {
         </div>
         {!isEmpty && (
           <button type="button" onClick={() => void clearCart()}>
-            Clear
+            비우기
           </button>
         )}
       </div>
 
       {status === 'loading' ? (
-        <AsyncState kind="loading" size="compact" title="Loading cart..." />
+        <AsyncState kind="loading" size="compact" title="카트를 불러오는 중입니다..." />
       ) : status === 'error' ? (
-        <AsyncState kind="error" size="compact" title={error || 'Unable to load cart.'} />
+        <AsyncState kind="error" size="compact" title={error || '카트를 불러오지 못했습니다.'} />
       ) : isEmpty ? (
-        <AsyncState kind="empty" size="compact" title="Your cart is empty." />
+        <AsyncState kind="empty" size="compact" title="카트가 비어 있습니다." />
       ) : (
         <ul className="goods-cart-panel-list">
           {items.map((item) => (
@@ -60,7 +60,7 @@ function GoodsCartSidePanel() {
                     onChange={(nextQuantity) => void updateCartItemQuantity(item.cartItemKey, nextQuantity)}
                   />
                   <button type="button" onClick={() => void removeCartItem(item.cartItemKey)}>
-                    Remove
+                    삭제
                   </button>
                 </div>
               </div>
@@ -71,11 +71,11 @@ function GoodsCartSidePanel() {
 
       <div className="goods-cart-panel-footer">
         <div>
-          <span>Total</span>
+          <span>합계</span>
           <strong>{formatCartPrice(totalPrice)}</strong>
         </div>
         <Link className="goods-cart-panel-checkout" aria-disabled={isEmpty} to="/cart">
-          View cart
+          카트 보기
         </Link>
       </div>
     </aside>

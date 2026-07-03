@@ -153,12 +153,12 @@ export async function fetchGoods(
 
   const query = searchParams.toString()
   const response = await apiFetch(`/goods${query ? `?${query}` : ''}`, options)
-  return await parseApiResponse<PageResponse<GoodsSummary>>(response, 'Failed to load goods.') as PageResponse<GoodsSummary>
+  return await parseApiResponse<PageResponse<GoodsSummary>>(response, '상품을 불러오지 못했습니다.') as PageResponse<GoodsSummary>
 }
 
 export async function fetchGoodsDetail(goodsId: string | number | undefined, options: FetchOptions = {}): Promise<GoodsDetail> {
   const response = await apiFetch(`/goods/${goodsId}`, options)
-  return await parseApiResponse<GoodsDetail>(response, 'Failed to load goods detail.') as GoodsDetail
+  return await parseApiResponse<GoodsDetail>(response, '상품 상세 정보를 불러오지 못했습니다.') as GoodsDetail
 }
 
 export async function recordGoodsView(goodsId: string | number): Promise<void> {
@@ -167,7 +167,7 @@ export async function recordGoodsView(goodsId: string | number): Promise<void> {
   }
 
   const response = await apiFetch(`/goods/${goodsId}/views`, { method: 'POST' })
-  await parseApiResponse(response, 'Failed to record goods view.', { silent: true })
+  await parseApiResponse(response, '상품 조회 기록을 저장하지 못했습니다.', { silent: true })
 }
 
 export async function fetchMyGoodsLike(goodsId: string | number | undefined): Promise<GoodsLikeResponse | null> {
@@ -176,7 +176,7 @@ export async function fetchMyGoodsLike(goodsId: string | number | undefined): Pr
   }
 
   const response = await apiFetch(`/goods/${goodsId}/likes/my`)
-  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to load goods like.')
+  return await parseApiResponse<GoodsLikeResponse>(response, '상품 좋아요 상태를 불러오지 못했습니다.')
 }
 
 export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promise<GoodsLikeItemResponse[]> {
@@ -187,7 +187,7 @@ export async function fetchMyGoodsLikes(goodsIds: Array<string | number>): Promi
   const params = new URLSearchParams()
   params.set('goodsIds', goodsIds.join(','))
   const response = await apiFetch(`/goods/likes/my?${params.toString()}`)
-  return await parseApiResponse<GoodsLikeItemResponse[]>(response, 'Failed to load goods likes.') ?? []
+  return await parseApiResponse<GoodsLikeItemResponse[]>(response, '상품 좋아요 목록을 불러오지 못했습니다.') ?? []
 }
 
 export async function fetchLikedGoods(): Promise<GoodsSummary[]> {
@@ -197,12 +197,12 @@ export async function fetchLikedGoods(): Promise<GoodsSummary[]> {
 
 export async function addGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
   const response = await apiFetch(`/goods/${goodsId}/likes`, { method: 'POST' })
-  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to add goods like.') as GoodsLikeResponse
+  return await parseApiResponse<GoodsLikeResponse>(response, '상품에 좋아요를 추가하지 못했습니다.') as GoodsLikeResponse
 }
 
 export async function removeGoodsLike(goodsId: string | number): Promise<GoodsLikeResponse> {
   const response = await apiFetch(`/goods/${goodsId}/likes`, { method: 'DELETE' })
-  return await parseApiResponse<GoodsLikeResponse>(response, 'Failed to remove goods like.') as GoodsLikeResponse
+  return await parseApiResponse<GoodsLikeResponse>(response, '상품 좋아요를 취소하지 못했습니다.') as GoodsLikeResponse
 }
 
 export async function fetchRelatedGoods(
@@ -211,7 +211,7 @@ export async function fetchRelatedGoods(
   options: FetchOptions = {},
 ): Promise<GoodsSummary[]> {
   const response = await apiFetch(`/goods/${goodsId}/related?size=${size}`, options)
-  return await parseApiResponse<GoodsSummary[]>(response, 'Failed to load related goods.') ?? []
+  return await parseApiResponse<GoodsSummary[]>(response, '연관 상품을 불러오지 못했습니다.') ?? []
 }
 
 export async function fetchGoodsReviews(
@@ -223,7 +223,7 @@ export async function fetchGoodsReviews(
 ): Promise<PageResponse<GoodsReview>> {
   const searchParams = new URLSearchParams({ page: String(page), size: String(size), sort })
   const response = await apiFetch(`/goods/${goodsId}/reviews?${searchParams.toString()}`, options)
-  return await parseApiResponse<PageResponse<GoodsReview>>(response, 'Failed to load goods reviews.') as PageResponse<GoodsReview>
+  return await parseApiResponse<PageResponse<GoodsReview>>(response, '상품 리뷰를 불러오지 못했습니다.') as PageResponse<GoodsReview>
 }
 
 export async function fetchGoodsReviewSummary(
@@ -231,7 +231,7 @@ export async function fetchGoodsReviewSummary(
   options: FetchOptions = {},
 ): Promise<GoodsReviewSummary> {
   const response = await apiFetch(`/goods/${goodsId}/reviews/summary`, options)
-  return await parseApiResponse<GoodsReviewSummary>(response, 'Failed to load review summary.') as GoodsReviewSummary
+  return await parseApiResponse<GoodsReviewSummary>(response, '리뷰 요약을 불러오지 못했습니다.') as GoodsReviewSummary
 }
 
 export async function fetchMyGoodsReview(goodsId: string | number | undefined): Promise<GoodsReview | null> {
@@ -240,7 +240,7 @@ export async function fetchMyGoodsReview(goodsId: string | number | undefined): 
   }
 
   const response = await apiFetch(`/goods/${goodsId}/reviews/my`)
-  return await parseApiResponse<GoodsReview>(response, 'Failed to load my review.')
+  return await parseApiResponse<GoodsReview>(response, '내 리뷰를 불러오지 못했습니다.')
 }
 
 export async function createGoodsReview(
@@ -251,7 +251,7 @@ export async function createGoodsReview(
     method: 'POST',
     body: JSON.stringify(payload),
   })
-  return await parseApiResponse<GoodsReview>(response, 'Failed to create review.') as GoodsReview
+  return await parseApiResponse<GoodsReview>(response, '리뷰를 등록하지 못했습니다.') as GoodsReview
 }
 
 export async function updateGoodsReview(
@@ -263,7 +263,7 @@ export async function updateGoodsReview(
     method: 'PATCH',
     body: JSON.stringify(payload),
   })
-  return await parseApiResponse<GoodsReview>(response, 'Failed to update review.') as GoodsReview
+  return await parseApiResponse<GoodsReview>(response, '리뷰를 수정하지 못했습니다.') as GoodsReview
 }
 
 export async function deleteGoodsReview(
@@ -271,7 +271,7 @@ export async function deleteGoodsReview(
   reviewId: string | number,
 ): Promise<void> {
   const response = await apiFetch(`/goods/${goodsId}/reviews/${reviewId}`, { method: 'DELETE' })
-  await parseApiResponse(response, 'Failed to delete review.')
+  await parseApiResponse(response, '리뷰를 삭제하지 못했습니다.')
 }
 
 export async function fetchGoodsInquiries(
@@ -282,7 +282,7 @@ export async function fetchGoodsInquiries(
 ): Promise<PageResponse<GoodsInquiry>> {
   const searchParams = new URLSearchParams({ page: String(page), size: String(size) })
   const response = await apiFetch(`/goods/${goodsId}/inquiries?${searchParams.toString()}`, options)
-  return await parseApiResponse<PageResponse<GoodsInquiry>>(response, 'Failed to load goods inquiries.') as PageResponse<GoodsInquiry>
+  return await parseApiResponse<PageResponse<GoodsInquiry>>(response, '상품 문의를 불러오지 못했습니다.') as PageResponse<GoodsInquiry>
 }
 
 export async function createGoodsInquiry(
@@ -293,12 +293,12 @@ export async function createGoodsInquiry(
     method: 'POST',
     body: JSON.stringify(payload),
   })
-  return await parseApiResponse<GoodsInquiry>(response, 'Failed to create inquiry.') as GoodsInquiry
+  return await parseApiResponse<GoodsInquiry>(response, '상품 문의를 등록하지 못했습니다.') as GoodsInquiry
 }
 
 export async function fetchGoodsFilters(options: FetchOptions = {}): Promise<GoodsFiltersResponse> {
   const response = await apiFetch('/goods/filters', options)
-  return await parseApiResponse<GoodsFiltersResponse>(response, 'Failed to load goods filters.') as GoodsFiltersResponse
+  return await parseApiResponse<GoodsFiltersResponse>(response, '상품 필터를 불러오지 못했습니다.') as GoodsFiltersResponse
 }
 
 export async function fetchGoodsHomeDiscovery(options: FetchOptions = {}): Promise<GoodsHomeDiscovery> {

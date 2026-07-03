@@ -6,6 +6,8 @@ public record InquiryResponse(
 	Long inquiryId,
 	String inquiryType,
 	Long goodsId,
+	Long orderId,
+	String orderNo,
 	String title,
 	String content,
 	boolean secret,
@@ -15,11 +17,13 @@ public record InquiryResponse(
 	Instant createdAt
 ) {
 
-	public static InquiryResponse forOwner(Inquiry inquiry) {
+	public static InquiryResponse forOwner(Inquiry inquiry, String orderNo) {
 		return new InquiryResponse(
 			inquiry.getInquiryId(),
 			inquiry.getInquiryType().name(),
 			inquiry.getGoodsId(),
+			inquiry.getOrderId(),
+			orderNo,
 			inquiry.getTitle(),
 			inquiry.getContent(),
 			inquiry.isSecret(),
@@ -37,6 +41,8 @@ public record InquiryResponse(
 			inquiry.getInquiryId(),
 			inquiry.getInquiryType().name(),
 			inquiry.getGoodsId(),
+			null,
+			null,
 			inquiry.getTitle(),
 			masked ? null : inquiry.getContent(),
 			inquiry.isSecret(),

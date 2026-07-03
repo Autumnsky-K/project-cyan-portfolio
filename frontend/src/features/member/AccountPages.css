@@ -644,6 +644,12 @@
   margin-bottom: 18px;
 }
 
+.mypage-section-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .mypage-section-heading h2,
 .mypage-modal-heading h2 {
   margin: 0;
@@ -730,6 +736,15 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mypage-image-fallback {
+  display: block;
+  width: 34%;
+  max-width: 72px;
+  aspect-ratio: 1;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238f8f8f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='9' cy='10' r='1.5'/%3E%3Cpath d='M21 16l-5.5-5.5a1 1 0 0 0-1.4 0L4 20'/%3E%3C/svg%3E");
+  opacity: .7;
 }
 
 .mypage-like-toggle {

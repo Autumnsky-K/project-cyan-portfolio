@@ -29,7 +29,7 @@ export type CartApiResponse = {
 
 export async function fetchCart(): Promise<CartApiResponse> {
   const response = await apiFetch('/cart')
-  return await parseApiResponse<CartApiResponse>(response, 'Failed to load cart.') ?? {
+  return await parseApiResponse<CartApiResponse>(response, '카트를 불러오지 못했습니다.') ?? {
     cartId: null,
     items: [],
     totalQuantity: 0,
@@ -46,7 +46,7 @@ export async function addCartItem(goodsId: string | number, quantity = 1): Promi
     }),
   })
 
-  return await parseApiResponse<CartApiResponse>(response, 'Failed to add cart item.') ?? {
+  return await parseApiResponse<CartApiResponse>(response, '상품을 카트에 담지 못했습니다.') ?? {
     cartId: null,
     items: [],
     totalQuantity: 0,
@@ -63,7 +63,7 @@ export async function updateCartItemQuantity(
     body: JSON.stringify({ quantity }),
   })
 
-  return await parseApiResponse<CartApiResponse>(response, 'Failed to update cart item.') ?? {
+  return await parseApiResponse<CartApiResponse>(response, '카트 상품 수량을 변경하지 못했습니다.') ?? {
     cartId: null,
     items: [],
     totalQuantity: 0,
@@ -73,10 +73,10 @@ export async function updateCartItemQuantity(
 
 export async function removeCartItem(cartItemId: string | number): Promise<void> {
   const response = await apiFetch(`/cart/items/${cartItemId}`, { method: 'DELETE' })
-  await parseApiResponse(response, 'Failed to remove cart item.')
+  await parseApiResponse(response, '카트 상품을 삭제하지 못했습니다.')
 }
 
 export async function clearCart(): Promise<void> {
   const response = await apiFetch('/cart/items', { method: 'DELETE' })
-  await parseApiResponse(response, 'Failed to clear cart.')
+  await parseApiResponse(response, '카트를 비우지 못했습니다.')
 }

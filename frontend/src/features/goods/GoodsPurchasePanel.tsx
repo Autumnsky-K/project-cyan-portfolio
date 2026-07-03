@@ -127,7 +127,7 @@ function GoodsPurchasePanel({
               variant="primary"
               onClick={() => void addSelectedQuantityToCart()}
             >
-              {isAddingCart ? '담는 중...' : isDigitalGoods ? '디지털 굿즈 담기' : '장바구니 담기'}
+              {isAddingCart ? '담는 중...' : isDigitalGoods ? '디지털 굿즈 담기' : '카트에 담기'}
             </Button>
           )}
         </>

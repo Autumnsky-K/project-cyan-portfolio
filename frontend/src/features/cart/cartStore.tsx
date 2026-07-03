@@ -96,13 +96,13 @@ export function CartProvider({ children }: CartProviderProps) {
       const result = await mergeGuestCartIntoRemoteCart()
       setItems(toCartItems(result.cart))
       if (result.failedItems.length > 0) {
-        setError('일부 게스트 장바구니 상품을 옮기지 못했습니다. 다시 로그인하면 재시도합니다.')
+        setError('일부 비회원 카트 상품을 옮기지 못했습니다. 다시 로그인하면 재시도합니다.')
         setStatus('error')
       } else {
         setStatus('data')
       }
     } catch (cartError) {
-      setError(getCartErrorMessage(cartError, 'Failed to load cart.'))
+      setError(getCartErrorMessage(cartError, '카트를 불러오지 못했습니다.'))
       setStatus('error')
     }
   }, [mergeGuestCartIntoRemoteCart])
@@ -148,7 +148,7 @@ export function CartProvider({ children }: CartProviderProps) {
       setItems(toCartItems(cart))
       setStatus('data')
     } catch (cartError) {
-      setError(getCartErrorMessage(cartError, 'Failed to add cart item.'))
+      setError(getCartErrorMessage(cartError, '상품을 카트에 담지 못했습니다.'))
       setStatus('error')
       throw cartError
     }
@@ -175,7 +175,7 @@ export function CartProvider({ children }: CartProviderProps) {
         await removeRemoteCartItem(cartItemKey)
         await refreshCart()
       } catch (cartError) {
-        setError(getCartErrorMessage(cartError, 'Failed to remove cart item.'))
+        setError(getCartErrorMessage(cartError, '카트 상품을 삭제하지 못했습니다.'))
         setStatus('error')
         throw cartError
       }
@@ -187,7 +187,7 @@ export function CartProvider({ children }: CartProviderProps) {
       setItems(toCartItems(cart))
       setStatus('data')
     } catch (cartError) {
-      setError(getCartErrorMessage(cartError, 'Failed to update cart item.'))
+      setError(getCartErrorMessage(cartError, '카트 상품 수량을 변경하지 못했습니다.'))
       setStatus('error')
       throw cartError
     }
@@ -213,7 +213,7 @@ export function CartProvider({ children }: CartProviderProps) {
       await removeRemoteCartItem(cartItemKey)
       await refreshCart()
     } catch (cartError) {
-      setError(getCartErrorMessage(cartError, 'Failed to remove cart item.'))
+      setError(getCartErrorMessage(cartError, '카트 상품을 삭제하지 못했습니다.'))
       setStatus('error')
       throw cartError
     }
@@ -236,7 +236,7 @@ export function CartProvider({ children }: CartProviderProps) {
       setItems([])
       setStatus('data')
     } catch (cartError) {
-      setError(getCartErrorMessage(cartError, 'Failed to clear cart.'))
+      setError(getCartErrorMessage(cartError, '카트를 비우지 못했습니다.'))
       setStatus('error')
       throw cartError
     }

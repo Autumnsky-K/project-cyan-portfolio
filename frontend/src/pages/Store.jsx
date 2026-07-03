@@ -91,7 +91,7 @@ function Store({ mode = 'checkout' }) {
     return (
       <div className="store-page">
         <section className="store-section cart-loading-state">
-          <p>Loading checkout...</p>
+          <p>결제 정보를 불러오는 중입니다...</p>
         </section>
       </div>
     )
@@ -99,20 +99,20 @@ function Store({ mode = 'checkout' }) {
 
   return (
     <div className={`store-page ${isCheckoutMode ? 'is-checkout-mode' : 'is-cart-mode'}`}>
-      <section className="store-toolbar" aria-label="Cart summary">
+      <section className="store-toolbar" aria-label="카트 요약">
         <div className="cart-total">
-          <span>Items</span>
+          <span>상품 수</span>
           <strong>{store.totalQuantity}</strong>
         </div>
         <div className="cart-total">
-          <span>Total</span>
+          <span>합계</span>
           <strong>{store.totalPrice.toLocaleString('ko-KR')} KRW</strong>
         </div>
       </section>
 
       <div className={isCheckoutMode ? 'checkout-layout-shell' : 'cart-layout-shell'}>
         <section className="store-layout">
-          <aside className="filter-panel" aria-label="Cart steps">
+          <aside className="filter-panel" aria-label="카트 결제 단계">
             <div className="panel-heading">
               <h2>{isCheckoutMode ? 'Checkout' : 'Cart'}</h2>
             </div>
@@ -185,8 +185,8 @@ function Store({ mode = 'checkout' }) {
                     <h2 id="cart-checkout-title">Checkout</h2>
                     <p>
                       {store.isCartSignedIn
-                        ? 'Continue to payment with the items in your cart.'
-                        : 'Log in to continue checkout with the items in this cart.'}
+                        ? '카트에 담긴 상품의 결제를 진행할 수 있습니다.'
+                        : '카트 상품을 결제하려면 로그인해 주세요.'}
                     </p>
                   </div>
                   <button
@@ -194,7 +194,7 @@ function Store({ mode = 'checkout' }) {
                     disabled={store.isCartEmpty}
                     onClick={handleCheckoutEntry}
                   >
-                    {store.isCartSignedIn ? 'Go to checkout' : 'Log in and checkout'}
+                    {store.isCartSignedIn ? '결제하러 가기' : '로그인하고 결제하기'}
                   </button>
                 </section>
               </>
@@ -235,7 +235,7 @@ function Store({ mode = 'checkout' }) {
         </section>
 
         {isCheckoutMode && (
-          <aside className="checkout-cart-summary" aria-label="Cart summary">
+          <aside className="checkout-cart-summary" aria-label="카트 요약">
             <CartPanel
               className="checkout-cart-panel"
               cartError={store.cartError}

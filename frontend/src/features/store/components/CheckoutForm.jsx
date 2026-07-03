@@ -71,7 +71,7 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
         disabled={isSaving}
         onClick={() => void handleFieldAction(field)}
       >
-        {isEditing(field) ? (isSaving ? 'Saving' : '확인') : '변경하기'}
+        {isEditing(field) ? (isSaving ? '저장 중' : '확인') : '변경하기'}
       </button>
     )
   }
@@ -99,20 +99,20 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
   return (
     <div className="checkout-fields">
       <div className="checkout-field">
-        <span>Name</span>
+        <span>이름</span>
         <div className={inputRowClassName('name')}>
           <input
             readOnly={isLocked('name')}
             value={checkoutForm.name}
             onChange={(event) => onChange('name', event.target.value)}
-            placeholder="Customer name"
+            placeholder="주문자 이름"
           />
           {renderFieldAction('name')}
         </div>
       </div>
 
       <div className="checkout-field">
-        <span>Email</span>
+        <span>이메일</span>
         <div className={inputRowClassName('email')}>
           <input
             readOnly={isLocked('email')}
@@ -126,7 +126,7 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
       </div>
 
       <div className="checkout-field">
-        <span>Phone</span>
+        <span>전화번호</span>
         <div className={inputRowClassName('phone')}>
           <input
             readOnly={isLocked('phone')}
@@ -143,13 +143,13 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
       {requiresShipping ? (
         <>
       <div className="checkout-field full-width">
-        <span>Address</span>
+        <span>주소</span>
         <div className={inputRowClassName('address')}>
           <textarea
             readOnly={isLocked('address')}
             value={checkoutForm.address}
             onChange={(event) => onChange('address', event.target.value)}
-            placeholder="Shipping address"
+            placeholder="배송지 주소"
             rows="3"
           />
           {renderFieldAction('address')}
@@ -157,7 +157,7 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
       </div>
 
       <div className="checkout-field full-width">
-        <span>Address detail</span>
+        <span>상세 주소</span>
         <div className={inputRowClassName('addressDetail')}>
           <input
             readOnly={isLocked('addressDetail')}
@@ -166,14 +166,14 @@ function CheckoutForm({ checkoutForm, errors, onChange, onConfirmField, requires
             onBlur={() => {
               if (onConfirmField) void onConfirmField('addressDetail')
             }}
-            placeholder="Apartment, suite, unit"
+            placeholder="상세 주소를 입력해 주세요"
           />
           {renderFieldAction('addressDetail')}
         </div>
       </div>
 
       <div className="checkout-field full-width">
-        <span>Delivery request</span>
+        <span>배송 요청사항</span>
         <div className="checkout-input-row delivery-request-row" onBlur={handleDeliveryRequestBlur}>
           <input
             readOnly={!isDeliveryRequestEditable}

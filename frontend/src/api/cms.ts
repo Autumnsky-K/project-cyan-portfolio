@@ -39,7 +39,7 @@ export async function fetchCmsPage(pageKey: 'home' | 'artists', options: Request
   const response = await fetch(`${API_BASE_URL}/cms/pages/${pageKey}`, options)
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load CMS page.'))
+    throw new Error(await readErrorMessage(response, '페이지 정보를 불러오지 못했습니다.'))
   }
 
   return response.json()
@@ -49,7 +49,7 @@ export async function fetchCmsArtists(options: RequestInit = {}): Promise<CmsArt
   const response = await fetch(`${API_BASE_URL}/cms/artists`, options)
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load CMS artists.'))
+    throw new Error(await readErrorMessage(response, '아티스트 정보를 불러오지 못했습니다.'))
   }
 
   return response.json()

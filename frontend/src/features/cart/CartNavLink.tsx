@@ -30,9 +30,9 @@ function CartNavLink({ current = false, label = 'Cart', onClick }: CartNavLinkPr
         {label}{items.length > 0 ? ` ${items.length}` : ''}
       </Link>
       <span className="cart-preview" role="status">
-        <strong>{isAuthenticated ? 'Cart' : 'Guest cart'}</strong>
+        <strong>{isAuthenticated ? '카트' : '비회원 카트'}</strong>
         {items.length === 0 ? (
-          <span className="cart-preview-empty">Cart is empty</span>
+          <span className="cart-preview-empty">카트가 비어 있습니다</span>
         ) : (
           <>
             <span className="cart-preview-list">
@@ -42,10 +42,10 @@ function CartNavLink({ current = false, label = 'Cart', onClick }: CartNavLinkPr
                   <span>x {item.quantity}</span>
                 </span>
               ))}
-              {hiddenItemCount > 0 && <span className="cart-preview-more">+{hiddenItemCount} more</span>}
+              {hiddenItemCount > 0 && <span className="cart-preview-more">외 {hiddenItemCount}개</span>}
             </span>
             <span className="cart-preview-total">
-              <span>Total</span>
+              <span>합계</span>
               <strong>{formatPrice(subtotal)}</strong>
             </span>
           </>

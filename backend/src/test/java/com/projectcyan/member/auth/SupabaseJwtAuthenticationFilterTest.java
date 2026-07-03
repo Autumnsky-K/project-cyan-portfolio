@@ -61,6 +61,40 @@ class SupabaseJwtAuthenticationFilterTest {
 	}
 
 	@Test
+	void protectsBatchGoodsLikesRequest() throws Exception {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/goods/likes/my");
+		request.setQueryString("goodsIds=1078%2C1076");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(response.getContentAsString()).contains("AUTH_UNAUTHORIZED");
+		verifyNoInteractions(jwtVerifier, memberRepository, filterChain);
+	}
+
+	@Test
+	void exposesAuthenticatedMemberForBatchGoodsLikesRequest() throws Exception {
+		UUID userId = UUID.randomUUID();
+		Member member = Member.emailMember(userId, "user@example.com", "User", "010-0000-0000");
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/goods/likes/my");
+		request.setQueryString("goodsIds=1078%2C1076");
+		request.addHeader("Authorization", "Bearer valid-token");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		FilterChain filterChain = mock(FilterChain.class);
+		when(jwtVerifier.verify("valid-token")).thenReturn(new VerifiedSupabaseJwt(userId));
+		when(memberRepository.findByMemberUuid(userId)).thenReturn(Optional.of(member));
+
+		filter.doFilter(request, response, filterChain);
+
+		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(request.getAttribute(SupabaseJwtAuthenticationFilter.AUTHENTICATED_MEMBER_ATTRIBUTE))
+			.isInstanceOf(AuthenticatedMember.class);
+		verify(filterChain).doFilter(request, response);
+	}
+
+	@Test
 	void protectsCheckoutPrepareRequest() throws Exception {
 		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/checkout/prepare");
 		MockHttpServletResponse response = new MockHttpServletResponse();
