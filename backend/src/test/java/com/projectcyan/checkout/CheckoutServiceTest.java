@@ -268,8 +268,12 @@ class CheckoutServiceTest {
 		);
 
 		assertThat(response.amount()).isEqualByComparingTo(BigDecimal.valueOf(12000));
-		assertThat(ReflectionTestUtils.getField(savedOrder, "address")).isNull();
 		assertThat(ReflectionTestUtils.getField(savedOrder, "recipientName")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "recipientPhone")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "postalCode")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "address")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "addressDetail")).isNull();
+		assertThat(ReflectionTestUtils.getField(savedOrder, "deliveryRequest")).isNull();
 	}
 
 	@Test

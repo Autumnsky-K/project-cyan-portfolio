@@ -5,7 +5,6 @@ import {
   requestDigitalDownload,
   type DigitalLibraryItem,
 } from '../../api/digitalLibrary'
-import Header from '../../shared/components/Header'
 import './AccountPages.css'
 
 function formatDate(value?: string | null) {
@@ -100,7 +99,6 @@ function DigitalLibraryPage() {
 
   return (
     <main className="account-page mypage-page digital-library-page">
-      <Header />
       <div className="account-shell">
         <section className="account-card digital-library-shell">
           <div className="account-panel digital-library-hero">

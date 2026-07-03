@@ -322,7 +322,7 @@ function CustomerInfoPage({ kind }: CustomerInfoPageProps) {
   }, [kind])
 
   return (
-    <main className="customer-info-page">
+    <div className="customer-info-page">
       <section className="customer-info-hero" aria-labelledby="customer-info-title">
         <p>{meta.eyebrow}</p>
         <h1 id="customer-info-title">{meta.title}</h1>
@@ -434,7 +434,7 @@ function CustomerInfoPage({ kind }: CustomerInfoPageProps) {
           )}
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 

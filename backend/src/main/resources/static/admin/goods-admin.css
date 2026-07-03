@@ -64,6 +64,8 @@ body {
   gap: 24px;
   height: 100svh;
   box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 24px 14px;
   border-right: 1px solid rgb(0 0 0 / 12%);
   background: var(--admin-sidebar-bg);
@@ -4286,6 +4288,8 @@ button.admin-primary {
   .admin-sidebar {
     position: static;
     height: auto;
+    overflow-y: visible;
+    overscroll-behavior-y: auto;
     border-right: 0;
     border-bottom: 1px solid var(--admin-line);
   }
@@ -4354,6 +4358,51 @@ button.admin-primary {
   background: #f8fbff;
 }
 
+.admin-ai-vault-gate {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 0.8fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #b9ccdc;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.admin-ai-vault-gate > div,
+.admin-ai-vault-gate label,
+.admin-ai-connection-console {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-ai-vault-gate > div span,
+.admin-ai-vault-gate > span,
+.admin-ai-vault-session {
+  color: #526779;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-ai-vault-gate > span {
+  grid-column: 1 / -1;
+}
+
+.admin-ai-vault-gate[hidden],
+.admin-ai-connection-console[hidden] {
+  display: none;
+}
+
+.admin-ai-vault-session {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #cfe2d8;
+  border-radius: 8px;
+  background: #f3fbf6;
+  color: #24613f;
+  font-weight: 800;
+}
+
 .admin-ai-connection-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -4382,6 +4431,12 @@ button.admin-primary {
 .admin-ai-sensitive-actions label,
 .admin-ai-connection-rollbacks label { min-width: 280px; }
 .admin-ai-oauth-warning { color: #9a3412; font-weight: 750; }
+
+@media (max-width: 900px) {
+  .admin-ai-vault-gate {
+    grid-template-columns: 1fr;
+  }
+}
 
 .admin-classification-grid {
   display: grid;

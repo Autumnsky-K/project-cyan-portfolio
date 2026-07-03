@@ -55,46 +55,53 @@
           <p class="admin-eyebrow">Server-side Credential Vault</p>
           <h3>모델 연결 프로필</h3>
         </div>
-        <span data-ai-connection-status>연결 프로필을 불러오는 중입니다.</span>
+        <span data-ai-connection-status>관리자 비밀번호 확인이 필요합니다.</span>
       </header>
-      <div class="admin-ai-connection-grid">
-        <label>프로필
-          <select data-ai-connection-profile><option value="">새 프로필</option></select>
+      <form class="admin-ai-vault-gate" data-ai-vault-gate>
+        <div>
+          <strong>보호된 설정입니다.</strong>
+          <span>관리자 비밀번호를 확인한 뒤 모델 연결 프로필을 표시합니다.</span>
+        </div>
+        <label>관리자 비밀번호
+          <input type="password" data-ai-reauth-password autocomplete="current-password" required>
         </label>
-        <label>프로필 이름<input data-ai-connection-name maxlength="100" placeholder="운영 OpenAI"></label>
-        <label>Provider
-          <select data-ai-connection-provider>
-            <option value="OPENAI">OPENAI</option>
-            <option value="CLAUDE">CLAUDE</option>
-            <option value="CODEX_OAUTH">CODEX_OAUTH (Experimental)</option>
-            <option value="MOCK">MOCK</option>
-          </select>
+        <button type="submit" data-ai-reauth disabled>확인하고 열기</button>
+        <span data-ai-reauth-status role="status">보안 토큰을 준비하고 있습니다.</span>
+      </form>
+      <div class="admin-ai-connection-console" data-ai-connection-console hidden>
+        <p class="admin-ai-vault-session" data-ai-vault-session-status>승인된 관리자 세션 · 5분 동안 접근할 수 있습니다.</p>
+        <div class="admin-ai-connection-grid">
+          <label>프로필
+            <select data-ai-connection-profile><option value="">새 프로필</option></select>
+          </label>
+          <label>프로필 이름<input data-ai-connection-name maxlength="100" placeholder="운영 OpenAI"></label>
+          <label>Provider
+            <select data-ai-connection-provider>
+              <option value="OPENAI">OPENAI</option>
+              <option value="CLAUDE">CLAUDE</option>
+              <option value="CODEX_OAUTH">CODEX_OAUTH (Experimental)</option>
+              <option value="MOCK">MOCK</option>
+            </select>
+          </label>
+          <label data-ai-connection-base-field>Base URL<input data-ai-connection-base-url value="https://api.openai.com/v1"></label>
+          <label>Model<input data-ai-connection-model value="gpt-5.4-mini"></label>
+          <label data-ai-api-key-field>API Key<input type="password" data-ai-connection-api-key autocomplete="new-password" placeholder="저장 후 다시 표시되지 않습니다."></label>
+        </div>
+        <div class="admin-ai-connection-actions">
+          <button type="button" data-ai-connection-save>초안 저장</button>
+          <button type="button" data-ai-credential-save>API Key 교체</button>
+          <button type="button" data-ai-connection-test>연결 시험</button>
+          <button type="button" data-ai-oauth-connect hidden>Codex OAuth 연결</button>
+          <button type="button" data-ai-oauth-clear hidden>OAuth 해제</button>
+        </div>
+        <label class="admin-ai-oauth-warning" data-ai-oauth-warning hidden>
+          <input type="checkbox" data-ai-oauth-warning-ack>
+          CODEX_OAUTH는 공개 운영 API가 아닌 변경 가능성이 높은 실험적 연결임을 확인했습니다.
         </label>
-        <label data-ai-connection-base-field>Base URL<input data-ai-connection-base-url value="https://api.openai.com/v1"></label>
-        <label>Model<input data-ai-connection-model value="gpt-5.4-mini"></label>
-        <label data-ai-api-key-field>API Key<input type="password" data-ai-connection-api-key autocomplete="new-password" placeholder="저장 후 다시 표시되지 않습니다."></label>
-      </div>
-      <div class="admin-ai-connection-actions">
-        <button type="button" data-ai-connection-save>초안 저장</button>
-        <button type="button" data-ai-credential-save>API Key 교체</button>
-        <button type="button" data-ai-connection-test>연결 시험</button>
-        <button type="button" data-ai-oauth-connect hidden>Codex OAuth 연결</button>
-        <button type="button" data-ai-oauth-clear hidden>OAuth 해제</button>
-      </div>
-      <div class="admin-ai-sensitive-actions">
-        <label>관리자 비밀번호 재인증
-          <input type="password" data-ai-reauth-password autocomplete="current-password">
-        </label>
-        <button type="button" data-ai-reauth>5분 승인</button>
-        <span data-ai-reauth-status>비밀 변경·OAuth·발행·롤백 전에 필요합니다.</span>
-      </div>
-      <label class="admin-ai-oauth-warning" data-ai-oauth-warning hidden>
-        <input type="checkbox" data-ai-oauth-warning-ack>
-        CODEX_OAUTH는 공개 운영 API가 아닌 변경 가능성이 높은 실험적 연결임을 확인했습니다.
-      </label>
-      <div class="admin-ai-connection-rollbacks">
-        <label>발행 이력<select data-ai-publication-history><option value="">이전 발행 선택</option></select></label>
-        <button type="button" data-ai-connection-rollback>선택 버전 롤백</button>
+        <div class="admin-ai-connection-rollbacks">
+          <label>발행 이력<select data-ai-publication-history><option value="">이전 발행 선택</option></select></label>
+          <button type="button" data-ai-connection-rollback>선택 버전 롤백</button>
+        </div>
       </div>
     </section>
 

@@ -310,6 +310,92 @@ class GoodsRecommendationServiceTest {
 			.contains("preferredArtist");
 	}
 
+	@Test
+	void genericRecommendationUsesPreferredArtistsWithoutTreatingIntentWordsAsFilters() {
+		Goods preferred = goods(
+			10L, "Artist A Lightstick", 55_000, "ON_SALE",
+			1L, "Artist A", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods other = goods(
+			11L, "Artist B Photocard", 20_000, "ON_SALE",
+			2L, "Artist B", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock otherStock = new GoodsStock(other, 5);
+		GoodsStock preferredStock = new GoodsStock(preferred, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(other, preferred));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(otherStock, preferredStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		for (String request : List.of(
+			"상품 추천해줘",
+			"그냥 추천해줘.",
+			"추천 좀 해줘!",
+			"내가 좋아하는 아티스트를 기준으로 굿즈 추천해주세요"
+		)) {
+			PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+				request, null, null, null, null, null, "1", 0, 10, "relevance,desc"
+			);
+
+			assertThat(response.content())
+				.extracting(GoodsRecommendationResponse::goodsId)
+				.as(request)
+				.containsExactly(10L, 11L);
+			assertThat(response.content().getFirst().matchedFields()).contains("preferredArtist");
+		}
+	}
+
+	@Test
+	void genericRecommendationWithoutPreferencesReturnsSaleableDefaults() {
+		Goods defaultPick = goods(
+			10L, "Artist A Lightstick", 55_000, "ON_SALE",
+			1L, "Artist A", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		when(defaultPick.getAiPickDefault()).thenReturn(true);
+		GoodsStock defaultPickStock = new GoodsStock(defaultPick, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(defaultPick));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(10L)))
+			.thenReturn(List.of(defaultPickStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"추천해줘", null, null, null, null, null, null, 0, 10, "relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(10L);
+	}
+
+	@Test
+	void explicitArtistOverridesDifferentPreferredArtist() {
+		Goods requestedArtist = goods(
+			10L, "Artist A Photocard", 20_000, "ON_SALE",
+			1L, "Artist A", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		Goods preferredArtist = goods(
+			11L, "Artist B Photocard", 20_000, "ON_SALE",
+			2L, "Artist B", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock requestedArtistStock = new GoodsStock(requestedArtist, 5);
+		GoodsStock preferredArtistStock = new GoodsStock(preferredArtist, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(requestedArtist, preferredArtist));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(requestedArtistStock, preferredArtistStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(new SearchAliasMatch("artist a", 1L, null, null, null, null)));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+			"Artist A 굿즈 추천해줘", null, null, null, null, null, "2", 0, 10, "relevance,desc"
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(10L);
+	}
+
 	private Goods goods(
 		long goodsId,
 		String name,
