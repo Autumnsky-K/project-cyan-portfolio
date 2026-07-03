@@ -1,4 +1,4 @@
-import { type ChangeEvent } from 'react'
+import { type ChangeEvent, type FocusEvent, useEffect, useState } from 'react'
 import IconButton from './IconButton'
 import './QuantityStepper.css'
 
@@ -29,8 +29,13 @@ export default function QuantityStepper({
   value,
 }: QuantityStepperProps) {
   const normalizedValue = clampQuantity(Number.isFinite(value) ? value : min, min, max)
+  const [inputValue, setInputValue] = useState(String(normalizedValue))
   const canDecrease = !disabled && normalizedValue > min
   const canIncrease = !disabled && (max === null || normalizedValue < max)
+
+  useEffect(() => {
+    setInputValue(String(normalizedValue))
+  }, [normalizedValue])
 
   function updateValue(nextValue: number) {
     if (!disabled && Number.isFinite(nextValue)) {
@@ -39,7 +44,21 @@ export default function QuantityStepper({
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextValue = event.currentTarget.value
+    setInputValue(nextValue)
+
+    if (nextValue.trim() === '') {
+      return
+    }
+
     updateValue(event.currentTarget.valueAsNumber)
+  }
+
+  function handleInputBlur(event: FocusEvent<HTMLInputElement>) {
+    if (event.currentTarget.value.trim() === '') {
+      updateValue(min)
+      setInputValue(String(min))
+    }
   }
 
   return (
@@ -61,7 +80,8 @@ export default function QuantityStepper({
           max={max ?? undefined}
           min={min}
           type="number"
-          value={normalizedValue}
+          value={inputValue}
+          onBlur={handleInputBlur}
           onChange={handleInputChange}
         />
       ) : (
