@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { label: 'Artists', to: '/artists' },
   { label: 'Goods', to: '/goods' },
   { label: 'Cart', to: '/cart' },
-  { label: 'Help', to: '/partnership' },
+  { label: 'Help', to: '/support' },
   { label: 'Mypage', to: '/mypage' },
 ]
 
