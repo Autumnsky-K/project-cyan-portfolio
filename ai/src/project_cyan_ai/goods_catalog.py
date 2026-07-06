@@ -28,6 +28,7 @@ from project_cyan_ai.schemas.ws import (
 GOODS_SEARCH_TIMEOUT_SECONDS = 2.0
 GOODS_CATALOG_TIMEOUT_SECONDS = 2.0
 DEFAULT_CANDIDATE_SIZE = 10
+MAX_RECOMMENDATION_HISTORY_TURNS = 10
 PRODUCT_INTENT_KEYWORDS = (
     "상품",
     "굿즈",
@@ -393,9 +394,11 @@ class CatalogGroundedChatResponseProvider:
         self.catalog_client = catalog_client
         self.filter_extraction_provider = filter_extraction_provider
         self.recent_recommendation_candidates: list[dict[str, Any]] = []
+        self.recommendation_history: list[dict[str, Any]] = []
 
     def clear_connection_context(self) -> None:
         self.recent_recommendation_candidates = []
+        self.recommendation_history = []
 
     def build_response(
         self,
@@ -459,6 +462,11 @@ class CatalogGroundedChatResponseProvider:
         recommended_candidates = candidates[:3]
         self.recent_recommendation_candidates = normalize_recent_candidates(
             recommended_candidates
+        )
+        self.recommendation_history = append_recommendation_history_turn(
+            self.recommendation_history,
+            text,
+            self.recent_recommendation_candidates,
         )
 
         if isinstance(self.delegate, MockChatResponseProvider):
@@ -540,6 +548,23 @@ def recent_candidates_from_context(
             candidate["rankOrder"] if candidate["rankOrder"] is not None else 0,
         ),
     )
+
+
+def append_recommendation_history_turn(
+    history: list[dict[str, Any]],
+    request_text: str,
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not candidates:
+        return history
+    next_history = [
+        *history,
+        {
+            "requestText": request_text,
+            "candidates": [dict(candidate) for candidate in candidates],
+        },
+    ]
+    return next_history[-MAX_RECOMMENDATION_HISTORY_TURNS:]
 
 
 def has_product_intent(text: str) -> bool:

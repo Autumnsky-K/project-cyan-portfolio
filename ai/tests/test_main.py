@@ -897,6 +897,43 @@ def test_catalog_grounding_adds_all_recent_candidates_to_cart_on_follow_up():
     }
 
 
+def test_catalog_grounding_records_recommendation_turn_history():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("Artist C 포토카드 추천해줘")
+
+    assert [
+        turn["requestText"]
+        for turn in provider.recommendation_history
+    ] == [
+        "추천하는 상품 있어?",
+        "Artist C 포토카드 추천해줘",
+    ]
+    assert [
+        candidate["goodsId"]
+        for candidate in provider.recommendation_history[0]["candidates"]
+    ] == [1005, 1006, 1007]
+
+
+def test_catalog_grounding_clears_recommendation_history_with_connection_context():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.clear_connection_context()
+
+    assert provider.recent_recommendation_candidates == []
+    assert provider.recommendation_history == []
+
+
 def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up():
     catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
     provider = CatalogGroundedChatResponseProvider(
