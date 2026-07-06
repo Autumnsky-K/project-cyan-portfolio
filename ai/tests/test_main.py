@@ -3037,6 +3037,60 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
     }
 
 
+def test_client_ws_recalls_first_recommendation_turn_without_search(monkeypatch):
+    class SequentialWebSocketGoodsCatalogClient:
+        instances = []
+
+        def __init__(self, spring_api_url, *args, **kwargs):
+            self.candidate_batches = [
+                FakeWebSocketGoodsCatalogClient.candidates,
+                THREE_RECENT_CANDIDATES,
+            ]
+            self.received_texts = []
+            SequentialWebSocketGoodsCatalogClient.instances.append(self)
+
+        def search_candidates(self, text, favorite_artists=None, category_name=None, artist_name=None):
+            self.received_texts.append(text)
+            return self.candidate_batches.pop(0)
+
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_semantic_or_fallback_goods_catalog_client",
+        SequentialWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "추천하는 상품 있어?"})
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "내가 좋아하는 아티스트 기반으로 추천해줘"}
+        )
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "처음에 추천한 상품 다시 보여줘"}
+        )
+        recall_response = websocket.receive_json()
+
+    assert SequentialWebSocketGoodsCatalogClient.instances[0].received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert recall_response == {
+        "type": "full-text",
+        "text": "처음 추천드린 2개 상품을 다시 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006"],
+            }
+        ],
+    }
+
+
 def test_client_ws_routes_navigation_with_current_path_context(monkeypatch):
     monkeypatch.setattr(
         "project_cyan_ai.api.websocket.build_semantic_or_fallback_goods_catalog_client",
