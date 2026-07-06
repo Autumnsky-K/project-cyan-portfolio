@@ -133,7 +133,7 @@ function GoodsAllSection({
               <span className="active-filter-label">
                 AI 추천 상품 {recommendedGoodsIds.length}개
               </span>
-              <button type="button" onClick={clearRecommendations}>전체 상품 보기</button>
+              <button type="button" className='ui-button ui-button--outline ui-button--small ui-button--rounded' onClick={clearRecommendations}>전체 상품 보기</button>
             </div>
           )}
           <div className="result-summary" ref={resultsStartRef}>
