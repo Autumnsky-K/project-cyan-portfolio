@@ -128,6 +128,7 @@ type ArtistDeckPointerState = {
 }
 
 type ArtistDeckLayout = {
+  cardHeight: number
   cardWidth: number
   depth: number
   labelAngle: number
@@ -273,6 +274,10 @@ type GoodsFilterUrlParam = 'categories' | 'artists' | 'tags'
 
 function formatPrice(value: number | null | undefined) {
   return `KRW ${Number(value ?? 0).toLocaleString()}`
+}
+
+function cssUrl(value: string) {
+  return `url("${value.replace(/["\\]/g, '\\$&')}")`
 }
 
 function initials(name: string) {
@@ -516,25 +521,44 @@ function wrapDeckIndex(index: number, count: number) {
   return ((index % count) + count) % count
 }
 
+/*
+ * Previous compact deck sizing kept for reference:
+ * card width 136/168..252px at 16vw, open step card+24px, stack height 62svh/590px.
+ * The active version below is roughly 1.5x the artist page compact cards and allows heavy overlap.
+ */
 function artistDeckCardWidthForViewport(viewportWidth: number) {
-  const minimumCardWidth = viewportWidth < 480 ? 136 : 168
+  const minimumCardWidth = viewportWidth < 480 ? 204 : 252
 
-  return Math.min(252, Math.max(minimumCardWidth, viewportWidth * 0.16))
+  return Math.min(378, Math.max(minimumCardWidth, viewportWidth * 0.197))
+}
+
+function artistDeckCardHeightForViewport(viewportHeight: number, cardWidth: number) {
+  const naturalCardHeight = cardWidth / 0.48
+  const titleSafeHeight = Math.min(760, Math.max(520, viewportHeight * 0.7))
+
+  return Math.min(naturalCardHeight, titleSafeHeight)
 }
 
 function artistDeckStepForViewport(viewportWidth: number, count: number, cardWidth: number) {
-  const sideGuard = viewportWidth < 480 ? 24 : Math.min(180, Math.max(60, viewportWidth * 0.12))
+  const sideGuard = viewportWidth < 480 ? 16 : Math.min(48, Math.max(16, viewportWidth * 0.025))
   const gapCount = Math.max(count - 1, 1)
-  const openStep = cardWidth + 24
-  const minStep = cardWidth * 0.34
+  const maxDenseStep = cardWidth * (viewportWidth < 480 ? 0.26 : 0.82)
+  const minStep = cardWidth * (viewportWidth < 480 ? 0.12 : 0.18)
   const fitStep = (viewportWidth - sideGuard - cardWidth) / gapCount
-  const fittedStep = Math.min(openStep, fitStep)
+  const fittedStep = Math.min(maxDenseStep, fitStep)
 
   if (viewportWidth < 480) {
-    return Math.max(18, fittedStep)
+    return Math.max(minStep, fittedStep)
   }
 
   return Math.max(minStep, fittedStep)
+}
+
+function artistDeckStackHeightForViewport(viewportHeight: number) {
+  const targetHeight = Math.min(viewportHeight * 0.82, 820)
+  const minimumHeight = Math.min(760, Math.max(0, viewportHeight - 96))
+
+  return Math.max(targetHeight, minimumHeight)
 }
 
 function estimateArtistLabelWidthInEm(value: string, wideWeight = 1) {
@@ -578,12 +602,19 @@ function fixedDeckSlot(index: number, count: number) {
   return index - (count - 1) / 2
 }
 
-function getArtistDeckLayout(index: number, count: number, viewportWidth: number, artist: Pick<HomeArtist, 'groupName' | 'name'>): ArtistDeckLayout {
+function getArtistDeckLayout(index: number, count: number, viewportWidth: number, viewportHeight: number, artist: Pick<HomeArtist, 'groupName' | 'name'>): ArtistDeckLayout {
   const cardWidth = artistDeckCardWidthForViewport(viewportWidth)
-  const cardHeight = cardWidth / 0.48
+  const cardHeight = artistDeckCardHeightForViewport(viewportHeight, cardWidth)
   const step = artistDeckStepForViewport(viewportWidth, count, cardWidth)
   const slot = fixedDeckSlot(index, count)
   const depth = Math.abs(slot)
+  const maxSlotDepth = Math.max(1, (count - 1) / 2)
+  const stackHeight = artistDeckStackHeightForViewport(viewportHeight)
+  const verticalRoom = Math.max(0, stackHeight - cardHeight)
+  const horizontalOverlap = Math.max(0, cardWidth - step)
+  const overlapRatio = horizontalOverlap / cardWidth
+  const verticalSpread = Math.min(240, verticalRoom * 0.9) * Math.min(1, overlapRatio / 0.5)
+  const yStep = horizontalOverlap > 0 ? verticalSpread / maxSlotDepth : 0
   const sideInsetRatio = 0.17
   const sideOffset = cardWidth * sideInsetRatio
   const labelOnRight = slot > 0
@@ -597,6 +628,7 @@ function getArtistDeckLayout(index: number, count: number, viewportWidth: number
   const railLength = Math.max(80, cardHeight - labelBottom - 32)
 
   return {
+    cardHeight,
     cardWidth,
     depth,
     labelAngle,
@@ -607,7 +639,7 @@ function getArtistDeckLayout(index: number, count: number, viewportWidth: number
     slot,
     tilt: 0,
     x: slot * step,
-    y: slot * 11,
+    y: slot * yStep,
     zIndex: Math.round(120 + index),
   }
 }
@@ -647,8 +679,8 @@ function toHomeArtistGroups(artists: CmsArtistProfile[]): HomeArtist[] {
       const representative = sortedGroup[0]
       const fallback = fallbackArtists[index % fallbackArtists.length]
       const groupName = homeGroupLabel(groupKey, representative.groupName || representative.name)
-      const heroImageUrl = sortedGroup.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl
-        || representative.imageUrl
+      const heroImageUrl = representative.imageUrl
+        || sortedGroup.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl
         || fallback.imageUrl
 
       return {
@@ -691,12 +723,96 @@ function toHomeCategories(groups: GoodsHomeDiscoveryGroup[] = []): HomeCategory[
   }))
 }
 
-function homeCubeCardSizeClassName(index: number) {
-  const sizes = ['wide', 'tall', 'small', 'large', 'small', 'wide']
-  return `home-cube-card-${sizes[index % sizes.length]}`
+function hashHomeCubeValue(value: string) {
+  let hash = 2166136261
+
+  for (const character of value) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return hash >>> 0
+}
+
+function seededHomeCubeShuffle(cards: HomeCubeCard[], seed: number, pass: number) {
+  const shuffled = [...cards]
+  let state = hashHomeCubeValue(`${seed}:${pass}:${cards.length}`)
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    const targetIndex = state % (index + 1)
+    const current = shuffled[index]
+    shuffled[index] = shuffled[targetIndex]
+    shuffled[targetIndex] = current
+  }
+
+  return shuffled
+}
+
+function buildHomeCubeRail(cards: HomeCubeCard[], seed: number) {
+  const targetCount = Math.max(32, cards.length)
+  const entries: Array<{ card: HomeCubeCard; key: string }> = []
+  let pass = 0
+
+  while (entries.length < targetCount) {
+    seededHomeCubeShuffle(cards, seed, pass).forEach((card, index) => {
+      entries.push({
+        card,
+        key: `${pass}-${index}-${card.key}`,
+      })
+    })
+    pass += 1
+  }
+
+  return entries.slice(0, targetCount)
+}
+
+function HomeCubeTile({ card, isClone }: { card: HomeCubeCard; isClone: boolean }) {
+  const content = (
+    <>
+      {card.imageUrl ? <img src={card.imageUrl} alt={card.title} /> : <span className="home-cube-fallback">{card.eyebrow}</span>}
+      <span className="home-cube-card-text">
+        <em>{card.eyebrow}</em>
+        <strong>{card.title}</strong>
+        <small>{card.meta}</small>
+      </span>
+    </>
+  )
+
+  return card.href ? (
+    <Link className="home-cube-card" tabIndex={isClone ? -1 : undefined} to={card.href}>
+      {content}
+    </Link>
+  ) : (
+    <div className="home-cube-card">
+      {content}
+    </div>
+  )
+}
+
+function setAnimationPlaybackRate(element: HTMLElement | null, playbackRate: number) {
+  element?.getAnimations().forEach((animation) => {
+    animation.updatePlaybackRate(playbackRate)
+  })
+}
+
+function useSlowerHoverAnimation<T extends HTMLElement>(hoverPlaybackRate = 0.28) {
+  const elementRef = useRef<T | null>(null)
+
+  useEffect(() => () => {
+    setAnimationPlaybackRate(elementRef.current, 1)
+  }, [])
+
+  return {
+    ref: elementRef,
+    onPointerEnter: () => setAnimationPlaybackRate(elementRef.current, hoverPlaybackRate),
+    onPointerLeave: () => setAnimationPlaybackRate(elementRef.current, 1),
+  }
 }
 
 function HomeDiagonalProductRail({ items }: { items: GoodsSummary[] }) {
+  const railHoverProps = useSlowerHoverAnimation<HTMLDivElement>()
+
   if (!items.length) {
     return null
   }
@@ -706,7 +822,7 @@ function HomeDiagonalProductRail({ items }: { items: GoodsSummary[] }) {
   return (
     <div className="home-diagonal-product-viewport" aria-label="Physical goods diagonal product rail">
       <div className="home-diagonal-product-track">
-        <div className="home-diagonal-product-rail">
+        <div className="home-diagonal-product-rail" {...railHoverProps}>
           {repeatedGroups.map((groupId) => (
             <div className="home-diagonal-product-sequence" key={groupId}>
               {items.map((item, index) => (
@@ -727,35 +843,29 @@ function HomeDiagonalProductRail({ items }: { items: GoodsSummary[] }) {
 }
 
 function HomeCubeShowcase({ cards }: { cards: HomeCubeCard[] }) {
+  const seedRef = useRef(Math.random())
+  const railHoverProps = useSlowerHoverAnimation<HTMLDivElement>()
+  const railCards = useMemo(() => cards.length ? buildHomeCubeRail(cards, seedRef.current) : [], [cards])
+  const railDuration = `${Math.max(38, Math.min(120, railCards.length * 1.6))}s`
+
   if (!cards.length) {
     return null
   }
 
   return (
     <div className="home-cube-showcase" aria-label="Digital goods cube showcase">
-      <div className="home-cube-grid">
-        {cards.map((card, index) => {
-          const content = (
-            <>
-              {card.imageUrl ? <img src={card.imageUrl} alt={card.title} /> : <span className="home-cube-fallback">{card.eyebrow}</span>}
-              <span className="home-cube-card-text">
-                <em>{card.eyebrow}</em>
-                <strong>{card.title}</strong>
-                <small>{card.meta}</small>
-              </span>
-            </>
-          )
-
-          return card.href ? (
-            <Link className={`home-cube-card ${homeCubeCardSizeClassName(index)}`} key={card.key} to={card.href}>
-              {content}
-            </Link>
-          ) : (
-            <div className={`home-cube-card ${homeCubeCardSizeClassName(index)}`} key={card.key}>
-              {content}
-            </div>
-          )
-        })}
+      <div className="home-cube-grid" style={{ '--home-cube-rail-duration': railDuration } as CSSProperties} {...railHoverProps}>
+        {[0, 1].map((cycleIndex) => (
+          <div className="home-cube-sequence" key={`cycle-${cycleIndex}`} aria-hidden={cycleIndex === 0 ? undefined : true}>
+            {railCards.map((entry, index) => (
+              <HomeCubeTile
+                card={entry.card}
+                isClone={cycleIndex > 0 || index >= cards.length}
+                key={`${cycleIndex}-${entry.key}`}
+              />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -782,6 +892,7 @@ function HomePage() {
   const [artistDeckActiveIndex, setArtistDeckActiveIndex] = useState(0)
   const [artistDeckPaused, setArtistDeckPaused] = useState(false)
   const [artistDeckViewportWidth, setArtistDeckViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth))
+  const [artistDeckViewportHeight, setArtistDeckViewportHeight] = useState(() => (typeof window === 'undefined' ? 720 : window.innerHeight))
 
   useEffect(() => {
     const controller = new AbortController()
@@ -888,24 +999,26 @@ function HomePage() {
   }, [])
 
   useEffect(() => {
-    function updateArtistDeckViewportWidth() {
+    function updateArtistDeckViewportSize() {
       const deckWidth = artistDeckStackRef.current?.getBoundingClientRect().width
       const nextWidth = Math.max(0, Math.round(deckWidth || window.innerWidth))
+      const nextHeight = Math.max(0, Math.round(window.innerHeight))
       setArtistDeckViewportWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth)
+      setArtistDeckViewportHeight((currentHeight) => currentHeight === nextHeight ? currentHeight : nextHeight)
     }
 
-    updateArtistDeckViewportWidth()
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateArtistDeckViewportWidth)
+    updateArtistDeckViewportSize()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateArtistDeckViewportSize)
     const deckStack = artistDeckStackRef.current
     if (deckStack) {
       observer?.observe(deckStack)
     }
 
-    window.addEventListener('resize', updateArtistDeckViewportWidth)
+    window.addEventListener('resize', updateArtistDeckViewportSize)
 
     return () => {
       observer?.disconnect()
-      window.removeEventListener('resize', updateArtistDeckViewportWidth)
+      window.removeEventListener('resize', updateArtistDeckViewportSize)
     }
   }, [])
 
@@ -1003,8 +1116,12 @@ function HomePage() {
 
   const artistGroups = useMemo<HomeArtist[]>(() => {
     const managedArtistGroups = toHomeArtistGroups(artists)
+    if (status === 'loading' && !managedArtistGroups.length) {
+      return []
+    }
+
     return (managedArtistGroups.length ? managedArtistGroups : fallbackArtists).slice(0, 5)
-  }, [artists])
+  }, [artists, status])
   const artistImageUrls = useMemo(() => artistGroups.map((artist) => artist.imageUrl), [artistGroups])
   const artistTextColorsByUrl = useAdaptiveArtistTextColors(artistImageUrls)
   const normalizedArtistDeckActiveIndex = wrapDeckIndex(artistDeckActiveIndex, artistGroups.length)
@@ -1089,6 +1206,14 @@ function HomePage() {
       imageUrl: null,
     }))
   }, [digitalDrops, digitalGoods])
+  const digitalHeroCard = digitalCubeCards.find((card) => card.imageUrl) ?? digitalCubeCards[0] ?? null
+  const digitalHeroStyle = digitalHeroCard?.imageUrl
+    ? ({ '--home-digital-hero-image': cssUrl(digitalHeroCard.imageUrl) } as CSSProperties)
+    : undefined
+  const digitalHeroDescription = copy('digitalFeatureDescription').replace(
+    '{artistName}',
+    digitalHeroCard?.title ?? digitalHeroCard?.eyebrow ?? 'Project Cyan',
+  )
 
   const artistGoodsGroups = useMemo(() => toArtistGoodsGroups(goodsDiscovery.artists), [goodsDiscovery.artists])
 
@@ -1130,7 +1255,7 @@ function HomePage() {
     let closestDistance = Number.POSITIVE_INFINITY
 
     artistGroups.forEach((artist, index) => {
-      const layout = getArtistDeckLayout(index, artistGroups.length, artistDeckViewportWidth, artist)
+      const layout = getArtistDeckLayout(index, artistGroups.length, artistDeckViewportWidth, artistDeckViewportHeight, artist)
       const distance = Math.abs(clientX - (deckCenterX + layout.x))
       if (distance < closestDistance) {
         closestDistance = distance
@@ -1335,12 +1460,12 @@ function HomePage() {
           <div className="home-artist-deck-stack" ref={artistDeckStackRef} aria-label="Artist signals">
             {artistGroups.map((artist, index) => {
               const count = artistGroups.length
-              const layout = getArtistDeckLayout(index, count, artistDeckViewportWidth, artist)
+              const layout = getArtistDeckLayout(index, count, artistDeckViewportWidth, artistDeckViewportHeight, artist)
               const isActive = wrapDeckIndex(index, count) === normalizedArtistDeckActiveIndex
               const deckOpacity = isActive ? 1 : layout.opacity
               const deckZ = isActive ? 180 : layout.zIndex
-              const deckFaceLift = isActive ? '-18px' : '0px'
-              const deckFaceScale = isActive ? 1.065 : 1
+              const deckFaceLift = '0px'
+              const deckFaceScale = isActive ? 1.02 : 1
               const adaptiveTextColor = artist.imageUrl ? artistTextColorsByUrl[artist.imageUrl] : undefined
 
               return (
@@ -1363,6 +1488,7 @@ function HomePage() {
                       '--deck-x': `${layout.x.toFixed(2)}px`,
                       '--deck-y': `${layout.y.toFixed(2)}px`,
                       '--deck-z': deckZ,
+                      '--artist-deck-card-height': `${layout.cardHeight}px`,
                       '--artist-label-angle': `${layout.labelAngle.toFixed(2)}deg`,
                       '--artist-label-bottom': `${Math.round(layout.labelBottom)}px`,
                       '--artist-label-edge-inset': `${layout.labelInset}px`,
@@ -1378,6 +1504,12 @@ function HomePage() {
                     ) : (
                       <span className="home-artist-card-fallback">{initials(artist.name)}</span>
                     )}
+                    <span className="home-artist-card-border" aria-hidden="true">
+                      <span className="home-artist-card-border-edge home-artist-card-border-edge-top" />
+                      <span className="home-artist-card-border-edge home-artist-card-border-edge-right" />
+                      <span className="home-artist-card-border-edge home-artist-card-border-edge-bottom" />
+                      <span className="home-artist-card-border-edge home-artist-card-border-edge-left" />
+                    </span>
                   </span>
                   <small>{artist.signal}</small>
                   <span className="home-artist-label">
@@ -1401,9 +1533,12 @@ function HomePage() {
       </section>
 
       <section className="home-panel home-digital-panel" id="home-4" aria-labelledby="home-digital-title">
-        <div className="home-section-heading">
-          <p className="home-eyebrow">{copy('digitalEyebrow')}</p>
-          <h2 id="home-digital-title">{copy('digitalTitle')}</h2>
+        <div className="home-digital-hero" style={digitalHeroStyle}>
+          <div className="home-digital-hero-copy">
+            <p className="home-eyebrow">{copy('digitalEyebrow')}</p>
+            <h2 id="home-digital-title">{copy('digitalTitle')}</h2>
+            <p>{digitalHeroDescription}</p>
+          </div>
           {digitalGoodsHref ? (
             <Link to={digitalGoodsHref}>{copy('digitalCta')}</Link>
           ) : (
@@ -1440,7 +1575,6 @@ function HomePage() {
           {(categories.length ? categories : [{ code: 'GD', label: 'Goods', count: totalGoods, href: '/goods', imageUrl: null }]).map((category) => (
             <Link className="home-category-card" key={category.label} to={category.href}>
               {category.imageUrl ? <img src={category.imageUrl} alt="" /> : <span className="home-category-card-fallback">{category.code}</span>}
-              <strong>{category.code}</strong>
               <span>{category.label}</span>
               <small>{category.count} items</small>
             </Link>

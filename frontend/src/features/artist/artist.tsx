@@ -53,6 +53,30 @@ type ArtistGroupPanel = {
   stationCode: string
 }
 
+type ArtistCompactDeckItem = {
+  key: string
+  name: string
+  groupName: string
+  signal: string
+  imageUrl: string | null
+  href?: string
+  accentColor: string
+  glowColor: string
+}
+
+type ArtistCompactDeckLayout = {
+  cardWidth: number
+  labelAngle: number
+  labelBottom: number
+  labelFontSize: number
+  labelInset: number
+  opacity: number
+  slot: number
+  x: number
+  y: number
+  zIndex: number
+}
+
 const defaultArtistCopySettings = {
   navHome: 'Home',
   navArtists: 'Artists',
@@ -275,6 +299,176 @@ function uniqueStrings(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))]
 }
 
+function artistCompactCardWidthForViewport(viewportWidth: number) {
+  const minimumCardWidth = viewportWidth < 480 ? 136 : 168
+
+  return Math.min(252, Math.max(minimumCardWidth, viewportWidth * 0.16))
+}
+
+function artistCompactStepForViewport(viewportWidth: number, count: number, cardWidth: number) {
+  const sideGuard = viewportWidth < 480 ? 24 : Math.min(180, Math.max(60, viewportWidth * 0.12))
+  const gapCount = Math.max(count - 1, 1)
+  const openStep = cardWidth + 24
+  const minStep = cardWidth * 0.34
+  const fitStep = (viewportWidth - sideGuard - cardWidth) / gapCount
+  const fittedStep = Math.min(openStep, fitStep)
+
+  if (viewportWidth < 480) {
+    return Math.max(18, fittedStep)
+  }
+
+  return Math.max(minStep, fittedStep)
+}
+
+function estimateCompactLabelWidthInEm(value: string, wideWeight = 1) {
+  return Array.from(value).reduce((width, character) => {
+    if (/[\u3131-\u318e\uac00-\ud7a3\u3040-\u30ff\u3400-\u9fff]/u.test(character)) {
+      return width + 0.96 * wideWeight
+    }
+
+    if (/[A-Z0-9]/.test(character)) {
+      return width + 0.66
+    }
+
+    if (/[a-z]/.test(character)) {
+      return width + 0.55
+    }
+
+    return width + 0.38
+  }, 0)
+}
+
+function compactLabelFontSize(name: string, groupName: string, baseFontSize: number, railLength: number) {
+  const minimumFontSize = 13
+  const estimatedLabelWidth = (
+    estimateCompactLabelWidthInEm(groupName, 0.48) * baseFontSize
+    + 8
+    + estimateCompactLabelWidthInEm(name) * baseFontSize
+  )
+
+  if (estimatedLabelWidth <= railLength) {
+    return baseFontSize
+  }
+
+  return Math.max(minimumFontSize, baseFontSize * (railLength / estimatedLabelWidth))
+}
+
+function compactDeckSlot(index: number, count: number) {
+  if (!count) {
+    return 0
+  }
+
+  return index - (count - 1) / 2
+}
+
+function getArtistCompactDeckLayout(index: number, count: number, viewportWidth: number, item: Pick<ArtistCompactDeckItem, 'groupName' | 'name'>): ArtistCompactDeckLayout {
+  const cardWidth = artistCompactCardWidthForViewport(viewportWidth)
+  const cardHeight = cardWidth / 0.48
+  const step = artistCompactStepForViewport(viewportWidth, count, cardWidth)
+  const slot = compactDeckSlot(index, count)
+  const depth = Math.abs(slot)
+  const sideInsetRatio = 0.17
+  const sideOffset = cardWidth * sideInsetRatio
+  const labelOnRight = slot > 0
+  const labelAngle = -(Math.atan2(cardHeight, sideOffset) * 180) / Math.PI
+  const labelBottom = Math.min(62, Math.max(44, cardWidth * 0.24))
+  const edgeAtBottom = sideOffset * (labelBottom / cardHeight)
+  const baseFontSize = Math.min(24, Math.max(18, cardWidth * 0.11))
+  const leftLabelInset = edgeAtBottom + baseFontSize + 8
+  const rightEdgeAtBottom = cardWidth - sideOffset + edgeAtBottom
+  const rightLabelInset = Math.max(baseFontSize, rightEdgeAtBottom - baseFontSize - 10)
+  const railLength = Math.max(80, cardHeight - labelBottom - 32)
+
+  return {
+    cardWidth,
+    labelAngle,
+    labelBottom,
+    labelFontSize: compactLabelFontSize(item.name, item.groupName, baseFontSize, railLength),
+    labelInset: Math.ceil(labelOnRight ? rightLabelInset : leftLabelInset),
+    opacity: Math.max(0.76, 0.96 - depth * 0.04),
+    slot,
+    x: slot * step,
+    y: slot * 11,
+    zIndex: Math.round(120 + index),
+  }
+}
+
+function ArtistCompactDeck({ ariaLabel, className = '', items }: { ariaLabel: string; className?: string; items: ArtistCompactDeckItem[] }) {
+  const stackRef = useRef<HTMLDivElement | null>(null)
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth))
+
+  useEffect(() => {
+    function updateDeckWidth() {
+      const deckWidth = stackRef.current?.getBoundingClientRect().width
+      const nextWidth = Math.max(0, Math.round(deckWidth || window.innerWidth))
+      setViewportWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth)
+    }
+
+    updateDeckWidth()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateDeckWidth)
+    const stack = stackRef.current
+    if (stack) {
+      observer?.observe(stack)
+    }
+
+    window.addEventListener('resize', updateDeckWidth)
+
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', updateDeckWidth)
+    }
+  }, [])
+
+  if (!items.length) {
+    return null
+  }
+
+  return (
+    <div className={`artist-compact-deck ${className}`.trim()} aria-label={ariaLabel}>
+      <div className="artist-compact-deck-stack" ref={stackRef}>
+        {items.map((item, index) => {
+          const layout = getArtistCompactDeckLayout(index, items.length, viewportWidth, item)
+          const style = {
+            '--artist-compact-accent': item.accentColor,
+            '--artist-compact-card-width': `${layout.cardWidth}px`,
+            '--artist-compact-glow': item.glowColor,
+            '--artist-compact-label-angle': `${layout.labelAngle.toFixed(2)}deg`,
+            '--artist-compact-label-bottom': `${Math.round(layout.labelBottom)}px`,
+            '--artist-compact-label-edge-inset': `${layout.labelInset}px`,
+            '--artist-compact-label-font-size': `${layout.labelFontSize.toFixed(2)}px`,
+            '--artist-compact-opacity': layout.opacity,
+            '--artist-compact-x': `${layout.x.toFixed(2)}px`,
+            '--artist-compact-y': `${layout.y.toFixed(2)}px`,
+            '--artist-compact-z': layout.zIndex,
+          } as CSSProperties
+          const content = (
+            <>
+              <span className="artist-compact-card-face">
+                {item.imageUrl ? <img src={item.imageUrl} alt={item.name} draggable={false} /> : <strong>{initials(item.name)}</strong>}
+              </span>
+              <small>{item.signal}</small>
+              <span className="artist-compact-card-label">
+                <em>{item.groupName}</em>
+                <strong>{item.name}</strong>
+              </span>
+            </>
+          )
+
+          return item.href ? (
+            <a className="artist-compact-card" href={item.href} key={item.key} style={style}>
+              {content}
+            </a>
+          ) : (
+            <article className="artist-compact-card" key={item.key} style={style}>
+              {content}
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function buildArtistGroupPanels(artists: ArtistProfile[], goodsGroups: ReturnType<typeof buildArtistGoodsGroups>): ArtistGroupPanel[] {
   const groupedArtists = new Map<string, { groupName: string; artists: ArtistProfile[] }>()
 
@@ -289,19 +483,23 @@ function buildArtistGroupPanels(artists: ArtistProfile[], goodsGroups: ReturnTyp
   const goodsGroupByName = new Map(goodsGroups.map((group) => [group.groupKey, group]))
 
   return [...groupedArtists.entries()].map(([groupLookupKey, group], index) => {
-    const representative = group.artists[0]
+    const sortedArtists = [...group.artists].sort((left, right) => (
+      (left.sortOrder ?? 999) - (right.sortOrder ?? 999)
+      || left.name.localeCompare(right.name)
+    ))
+    const representative = sortedArtists[0]
     const goodsGroup = goodsGroupByName.get(groupLookupKey)
-    const collections = uniqueStrings(group.artists.flatMap((artist) => artist.collections))
+    const collections = uniqueStrings(sortedArtists.flatMap((artist) => artist.collections))
     const groupKey = safePanelKey(groupLookupKey, `group-${index + 1}`)
-    const groupSortOrder = group.artists.reduce((minOrder, artist) => Math.min(minOrder, artist.groupSortOrder ?? artist.sortOrder ?? 999), 999)
-    const heroImageUrl = group.artists.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl || representative.imageUrl
-    const summary = group.artists.find((artist) => artist.groupSummary)?.groupSummary || representative.lore
+    const groupSortOrder = sortedArtists.reduce((minOrder, artist) => Math.min(minOrder, artist.groupSortOrder ?? artist.sortOrder ?? 999), 999)
+    const heroImageUrl = representative.imageUrl || sortedArtists.find((artist) => artist.groupHeroImageUrl)?.groupHeroImageUrl || null
+    const summary = sortedArtists.find((artist) => artist.groupSummary)?.groupSummary || representative.lore
 
     return {
       groupKey,
       groupName: group.groupName,
-      artists: group.artists,
-      artistAnchors: group.artists.map((artist) => `artist-${artist.artistId}`),
+      artists: sortedArtists,
+      artistAnchors: sortedArtists.map((artist) => `artist-${artist.artistId}`),
       goodsPath: goodsGroup?.goodsPath ?? createArtistGoodsPath(representative),
       groupSortOrder,
       heroImageUrl,
@@ -309,12 +507,51 @@ function buildArtistGroupPanels(artists: ArtistProfile[], goodsGroups: ReturnTyp
       accentColor: representative.accentColor,
       glowColor: representative.glowColor,
       area: representative.area,
-      signal: uniqueStrings(group.artists.map((artist) => artist.signal)).slice(0, 3).join(' / ') || representative.signal,
+      signal: uniqueStrings(sortedArtists.map((artist) => artist.signal)).slice(0, 3).join(' / ') || representative.signal,
       debutDate: representative.debutDate,
       collections: collections.length ? collections : [group.groupName],
       stationCode: `GR-${String(index + 1).padStart(2, '0')}`,
     }
   }).sort((left, right) => left.groupSortOrder - right.groupSortOrder || left.groupName.localeCompare(right.groupName))
+}
+
+function toLandingDeckItem(group: ArtistGroupPanel, index: number): ArtistCompactDeckItem {
+  return {
+    key: group.groupKey,
+    name: group.groupName,
+    groupName: 'GROUP',
+    signal: `CY-${String(index + 1).padStart(2, '0')}`,
+    imageUrl: group.heroImageUrl,
+    href: `#artist-${index + 1}`,
+    accentColor: group.accentColor,
+    glowColor: group.glowColor,
+  }
+}
+
+function toGroupDeckItems(group: ArtistGroupPanel): ArtistCompactDeckItem[] {
+  if (group.artists.length <= 1) {
+    const representative = group.artists[0]
+
+    return [{
+      key: group.groupKey,
+      name: group.groupName,
+      groupName: 'GROUP',
+      signal: group.stationCode,
+      imageUrl: group.heroImageUrl || representative?.imageUrl || null,
+      accentColor: group.accentColor,
+      glowColor: group.glowColor,
+    }]
+  }
+
+  return group.artists.map((artist) => ({
+    key: String(artist.artistId),
+    name: artist.name,
+    groupName: artist.groupName || group.groupName,
+    signal: artist.stationCode,
+    imageUrl: artist.imageUrl,
+    accentColor: artist.accentColor,
+    glowColor: artist.glowColor,
+  }))
 }
 
 function ArtistPage() {
@@ -643,17 +880,11 @@ function ArtistPage() {
               <span>{copy('channelMusic')}</span>
             </div>
           </div>
-          <div className="artist-intro-gallery" aria-label="Artist visuals">
-            {artistGroups.slice(0, 4).map((group, index) => {
-              return (
-                <a className="artist-gallery-tile" href={`#artist-${index + 1}`} key={group.groupKey} data-featured={index === 0 ? 'true' : undefined}>
-                  {group.heroImageUrl ? <img src={group.heroImageUrl} alt={group.groupName} /> : <span>{initials(group.groupName)}</span>}
-                  <small>Group</small>
-                  <strong>{group.groupName}</strong>
-                </a>
-              )
-            })}
-          </div>
+          <ArtistCompactDeck
+            ariaLabel="Artist group compact deck"
+            className="artist-intro-gallery"
+            items={artistGroups.map(toLandingDeckItem)}
+          />
         </section>
 
         {artistGroups.map((group, index) => {
@@ -710,30 +941,11 @@ function ArtistPage() {
                 </div>
               </div>
               <div className="artist-group-stage" aria-label={`${group.groupName} group visual`}>
-                <div className="artist-group-roster" aria-label={`${group.groupName} artist cards`}>
-                  {(group.artists.length > 1 ? group.artists : [{
-                    ...group.artists[0],
-                    imageUrl: group.heroImageUrl || group.artists[0]?.imageUrl,
-                    name: group.groupName,
-                    stationCode: group.stationCode,
-                  }]).map((artist, artistIndex) => (
-                    <article
-                      className="artist-group-card"
-                      id={`artist-card-${artist.artistId}`}
-                      key={`${artist.artistId}-${artistIndex}`}
-                      data-featured={artistIndex === 0 ? 'true' : undefined}
-                    >
-                      <div className="artist-group-card-image">
-                        {artist.imageUrl ? <img src={artist.imageUrl} alt={artist.name} /> : <strong>{initials(artist.name)}</strong>}
-                      </div>
-                      <span className="artist-group-card-number">{String(index + 1).padStart(2, '0')}</span>
-                      <div className="artist-group-card-copy">
-                        <small>{artist.stationCode}</small>
-                        <h3>{artist.name}</h3>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                <ArtistCompactDeck
+                  ariaLabel={`${group.groupName} artist compact deck`}
+                  className="artist-group-roster"
+                  items={toGroupDeckItems(group)}
+                />
               </div>
             </article>
           )
