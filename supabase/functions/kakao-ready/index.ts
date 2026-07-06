@@ -183,23 +183,44 @@ async function patchPaymentAttempt(
   return Array.isArray(data) ? data as Record<string, unknown>[] : []
 }
 
-async function updatePaymentAttemptReady(orderId: string, partnerUserId: string, tid: string) {
+type PaymentAttemptReadyUpdate = {
+  orderId: number
+  paymentId: number
+  partnerOrderId: string
+  partnerUserId: string
+  tid: string
+}
+
+async function updatePaymentAttemptReady({
+  orderId,
+  paymentId,
+  partnerOrderId,
+  partnerUserId,
+  tid,
+}: PaymentAttemptReadyUpdate) {
   const payload = {
     tid,
-    partner_order_id: orderId,
+    partner_order_id: partnerOrderId,
     partner_user_id: partnerUserId,
     attempt_status: 'IN_PROGRESS',
     payment_method: 'KAKAO_PAY',
     provider: 'KAKAO',
   }
   const failures: string[] = []
+  const candidates = [
+    paymentId > 0 ? { column: 'payment_id', value: String(paymentId) } : null,
+    orderId > 0 ? { column: 'order_id', value: String(orderId) } : null,
+    partnerOrderId ? { column: 'provider_order_id', value: partnerOrderId } : null,
+    partnerOrderId ? { column: 'partner_order_id', value: partnerOrderId } : null,
+  ].filter((candidate): candidate is { column: string; value: string } => Boolean(candidate))
 
-  for (const matchColumn of ['provider_order_id', 'partner_order_id']) {
+  for (const { column, value } of candidates) {
     try {
-      const rows = await patchPaymentAttempt(matchColumn, orderId, payload)
+      const rows = await patchPaymentAttempt(column, value, payload)
       if (rows.length > 0) {
         return {
           status: 'SYNCED',
+          matchColumn: column,
           message: 'Supabase KakaoPay attempt was updated.',
           failures,
           rows,
@@ -213,7 +234,8 @@ async function updatePaymentAttemptReady(orderId: string, partnerUserId: string,
 
   return {
     status: 'NOT_SYNCED',
-    message: `No Supabase payment_attempt row matched KakaoPay order ${orderId}.`,
+    matchColumn: '',
+    message: `No Supabase payment_attempt row matched KakaoPay order ${partnerOrderId}.`,
     failures,
     rows: [],
   }
@@ -312,6 +334,8 @@ Deno.serve(async (request) => {
     logReady('entry', { method: request.method, url: request.url })
     const body = await readJson(request)
     const items = Array.isArray(body.items) ? body.items as OrderItem[] : []
+    const orderId = Math.floor(numberValue(body.orderId))
+    const paymentId = Math.floor(numberValue(body.paymentId))
     const totalAmount = positiveInteger(body.totalAmount ?? body.totalPrice, 'totalAmount')
     const memberId = stringValue(body.memberId ?? (body.customer as { memberId?: unknown } | undefined)?.memberId)
     const partnerOrderId = stringValue(body.partnerOrderId ?? body.orderNumber ?? body.orderId)
@@ -376,13 +400,23 @@ Deno.serve(async (request) => {
       )
     }
 
-    const supabaseAttemptResult = await updatePaymentAttemptReady(partnerOrderId, partnerUserId, tid)
+    const supabaseAttemptResult = await updatePaymentAttemptReady({
+      orderId,
+      paymentId,
+      partnerOrderId,
+      partnerUserId,
+      tid,
+    })
 
     logReady('return_success', {
       orderId: partnerOrderId,
+      numericOrderId: orderId,
+      paymentId,
       hasTid: Boolean(tid),
       hasRedirectUrl: Boolean(paymentPageUrl),
       supabaseAttemptStatus: supabaseAttemptResult.status,
+      supabaseAttemptMatchColumn: supabaseAttemptResult.matchColumn ?? '',
+      supabaseAttemptFailures: supabaseAttemptResult.failures,
     })
 
     return jsonResponse({

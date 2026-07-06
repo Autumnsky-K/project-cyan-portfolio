@@ -136,7 +136,7 @@ function PaymentSuccess() {
           )}
         </div>
         <div className="payment-actions">
-          <Link className="button-link" to="/cart#order-history">
+          <Link className="button-link" to="/mypage">
             주문 내역 보기
           </Link>
           <Link className="button-link" to="/cart">
