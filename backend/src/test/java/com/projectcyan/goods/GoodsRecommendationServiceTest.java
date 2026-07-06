@@ -2,6 +2,7 @@ package com.projectcyan.goods;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashSet;
@@ -16,6 +17,8 @@ class GoodsRecommendationServiceTest {
 	private GoodsRepository goodsRepository;
 	private GoodsStockRepository goodsStockRepository;
 	private SearchAliasRepository searchAliasRepository;
+	private GoodsEmbeddingRepository goodsEmbeddingRepository;
+	private ArtistEmbeddingRepository artistEmbeddingRepository;
 	private GoodsRecommendationService service;
 
 	@BeforeEach
@@ -23,10 +26,14 @@ class GoodsRecommendationServiceTest {
 		goodsRepository = mock(GoodsRepository.class);
 		goodsStockRepository = mock(GoodsStockRepository.class);
 		searchAliasRepository = mock(SearchAliasRepository.class);
+		goodsEmbeddingRepository = mock(GoodsEmbeddingRepository.class);
+		artistEmbeddingRepository = mock(ArtistEmbeddingRepository.class);
 		service = new GoodsRecommendationService(
 			goodsRepository,
 			goodsStockRepository,
-			searchAliasRepository
+			searchAliasRepository,
+			goodsEmbeddingRepository,
+			artistEmbeddingRepository
 		);
 	}
 
@@ -332,7 +339,11 @@ class GoodsRecommendationServiceTest {
 			"상품 추천해줘",
 			"그냥 추천해줘.",
 			"추천 좀 해줘!",
-			"내가 좋아하는 아티스트를 기준으로 굿즈 추천해주세요"
+			"내가 좋아하는 아티스트를 기준으로 굿즈 추천해주세요",
+			"추천하고 싶은 상품 있어?",
+			"추천하고 싶은 상품 있나요?",
+			"굿즈 찾아줘",
+			"장바구니 굿즈 추천해줘"
 		)) {
 			PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
 				request, null, null, null, null, null, "1", 0, 10, "relevance,desc"
@@ -369,6 +380,71 @@ class GoodsRecommendationServiceTest {
 			.containsExactly(10L);
 	}
 
+	// 필러성 어근/어미 조합으로 커버 가능한 실사용 문구들. "뭘 사야 할지 모르겠어요 추천해줘"처럼
+	// 실제 의미를 가진 동사(사다, 모르다 등)가 섞인 자유 문장은 형태소 분석기 없이는
+	// 커버할 수 없는 별개 한계로 간주하고 이 목록에서 제외했다.
+	@Test
+	void variousConversationalGenericRequestsDoNotReportNoMatches() {
+		Goods defaultPick = goods(
+			10L, "Artist A Lightstick", 55_000, "ON_SALE",
+			1L, "Artist A", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		when(defaultPick.getAiPickDefault()).thenReturn(true);
+		GoodsStock defaultPickStock = new GoodsStock(defaultPick, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(defaultPick));
+		when(goodsStockRepository.findByGoodsIdIn(List.of(10L)))
+			.thenReturn(List.of(defaultPickStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+
+		for (String request : List.of(
+			"추천해",
+			"추천해줘",
+			"추천해주세요",
+			"추천해줄래?",
+			"추천해줄래요?",
+			"추천 좀 해줘",
+			"추천좀해줘",
+			"추천 좀 부탁해",
+			"추천 부탁드려요",
+			"추천 부탁드립니다",
+			"뭐 추천해?",
+			"뭐 추천해줄래?",
+			"뭐 있어?",
+			"뭐 있나요?",
+			"뭐 있을까요?",
+			"괜찮은거 있어?",
+			"괜찮은 거 있나요?",
+			"쓸만한거 있을까요?",
+			"살만한거 있어?",
+			"아무거나 좋아요",
+			"아무거나 보여줘",
+			"뭐 좀 보여줘",
+			"아무거나 찾아줘",
+			"굿즈 찾아줘",
+			"상품 찾아줘",
+			"장바구니 굿즈 추천해줘",
+			"추천해줘~",
+			"추천해줘!!!",
+			"추천좀...",
+			"추천 좀요",
+			"추천해주실 수 있나요?",
+			"추천할 만한 상품 있어?",
+			"추천할만한 상품 있어?",
+			"추천 좀 해줄 수 있어?",
+			"내가 좋아할만한 다른 상품은 없어?"
+		)) {
+			PageResponse<GoodsRecommendationResponse> response = service.findCandidates(
+				request, null, null, null, null, null, null, 0, 10, "relevance,desc"
+			);
+
+			assertThat(response.content())
+				.extracting(GoodsRecommendationResponse::goodsId)
+				.as(request)
+				.containsExactly(10L);
+		}
+	}
+
 	@Test
 	void explicitArtistOverridesDifferentPreferredArtist() {
 		Goods requestedArtist = goods(
@@ -394,6 +470,162 @@ class GoodsRecommendationServiceTest {
 		assertThat(response.content())
 			.extracting(GoodsRecommendationResponse::goodsId)
 			.containsExactly(10L);
+	}
+
+	@Test
+	void findSemanticCandidatesRanksByCosineDistanceFromEmbeddingRepository() {
+		Goods closer = goods(
+			20L, "Artist A Lightstick", 45_000, "ON_SALE",
+			1L, "Artist A", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods farther = goods(
+			10L, "Artist A Photocard", 20_000, "ON_SALE",
+			1L, "Artist A", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock fartherStock = new GoodsStock(farther, 5);
+		GoodsStock closerStock = new GoodsStock(closer, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(farther, closer));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(fartherStock, closerStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+		when(goodsEmbeddingRepository.findNearestByCandidateIds(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		)).thenReturn(List.of(
+			new GoodsEmbeddingSimilarityRow(20L, 0.05),
+			new GoodsEmbeddingSimilarityRow(10L, 0.4)
+		));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findSemanticCandidates(
+			new SemanticSearchRequest(List.of(0.1f, 0.2f), null, null, null, null, null, null)
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(20L, 10L);
+	}
+
+	@Test
+	void findSemanticCandidatesExcludesIneligibleGoodsFromCandidateIds() {
+		Goods available = goods(
+			20L, "Artist A Lightstick", 45_000, "ON_SALE",
+			1L, "Artist A", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods soldOut = goods(
+			21L, "Artist A Poster", 15_000, "ON_SALE",
+			1L, "Artist A", null, null, 4L, "Poster", "POSTER"
+		);
+		Goods overBudget = goods(
+			22L, "Artist A Hoodie", 90_000, "ON_SALE",
+			1L, "Artist A", null, null, 5L, "Hoodie", "HOODIE"
+		);
+		GoodsStock availableStock = new GoodsStock(available, 5);
+		GoodsStock soldOutStock = new GoodsStock(soldOut, 0);
+		GoodsStock overBudgetStock = new GoodsStock(overBudget, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(available, soldOut, overBudget));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(availableStock, soldOutStock, overBudgetStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+		when(goodsEmbeddingRepository.findNearestByCandidateIds(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		)).thenReturn(List.of(new GoodsEmbeddingSimilarityRow(20L, 0.1)));
+
+		service.findSemanticCandidates(
+			new SemanticSearchRequest(List.of(0.1f), null, null, 50_000, List.of(21L), null, null)
+		);
+
+		org.mockito.ArgumentCaptor<java.util.Collection<Long>> candidateIdsCaptor =
+			org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
+		verify(goodsEmbeddingRepository).findNearestByCandidateIds(
+			candidateIdsCaptor.capture(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		);
+		assertThat(candidateIdsCaptor.getValue()).containsExactly(20L);
+	}
+
+	@Test
+	void findSemanticCandidatesBreaksCosineTiesWithPreferredArtist() {
+		Goods preferred = goods(
+			20L, "Artist B Lightstick", 45_000, "ON_SALE",
+			2L, "Artist B", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods notPreferred = goods(
+			10L, "Artist A Photocard", 20_000, "ON_SALE",
+			1L, "Artist A", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock notPreferredStock = new GoodsStock(notPreferred, 5);
+		GoodsStock preferredStock = new GoodsStock(preferred, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(notPreferred, preferred));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(notPreferredStock, preferredStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+		when(goodsEmbeddingRepository.findNearestByCandidateIds(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		)).thenReturn(List.of(
+			new GoodsEmbeddingSimilarityRow(10L, 0.2),
+			new GoodsEmbeddingSimilarityRow(20L, 0.2)
+		));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findSemanticCandidates(
+			new SemanticSearchRequest(List.of(0.1f), null, null, null, null, List.of(2L), null)
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(20L, 10L);
+	}
+
+	@Test
+	void findSemanticCandidatesBreaksCosineTiesWithArtistEmbeddingSimilarity() {
+		Goods similarArtist = goods(
+			20L, "Artist B Lightstick", 45_000, "ON_SALE",
+			2L, "Artist B", null, null, 3L, "Lightstick", "LIGHTSTICK"
+		);
+		Goods dissimilarArtist = goods(
+			10L, "Artist C Photocard", 20_000, "ON_SALE",
+			3L, "Artist C", null, null, 1L, "Photocard", "PHOTOCARD"
+		);
+		GoodsStock similarArtistStock = new GoodsStock(similarArtist, 5);
+		GoodsStock dissimilarArtistStock = new GoodsStock(dissimilarArtist, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(dissimilarArtist, similarArtist));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(dissimilarArtistStock, similarArtistStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+		when(goodsEmbeddingRepository.findNearestByCandidateIds(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		)).thenReturn(List.of(
+			new GoodsEmbeddingSimilarityRow(10L, 0.2),
+			new GoodsEmbeddingSimilarityRow(20L, 0.2)
+		));
+		// Preferred artist 1L (Artist A) has no exact-match goods here, but its embedding is
+		// closer to Artist B (goods_id 20) than to Artist C (goods_id 10), so 20 should rank first.
+		when(artistEmbeddingRepository.findBestSimilarityToPreferredArtists(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.eq(Set.of(1L))
+		)).thenReturn(List.of(
+			new ArtistSimilarityRow(2L, 0.1),
+			new ArtistSimilarityRow(3L, 0.9)
+		));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findSemanticCandidates(
+			new SemanticSearchRequest(List.of(0.1f), null, null, null, null, List.of(1L), null)
+		);
+
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(20L, 10L);
 	}
 
 	private Goods goods(

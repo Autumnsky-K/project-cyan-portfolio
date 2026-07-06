@@ -103,6 +103,13 @@ public class GoodsController {
 		);
 	}
 
+	@PostMapping("/recommendation-candidates/semantic-search")
+	public PageResponse<GoodsRecommendationResponse> findSemanticRecommendationCandidates(
+		@RequestBody SemanticSearchRequest request
+	) {
+		return goodsRecommendationService.findSemanticCandidates(request);
+	}
+
 	@GetMapping("/filters")
 	public GoodsFiltersResponse findGoodsFilters() {
 		return goodsService.findGoodsFilters();
