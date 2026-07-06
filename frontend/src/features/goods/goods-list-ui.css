@@ -237,6 +237,10 @@
   height: 22px;
 }
 
+.active-filter-label {
+  margin: 0 16px 0 0;
+}
+
 @keyframes goods-skeleton {
   from {
     background-position: 200% 0;

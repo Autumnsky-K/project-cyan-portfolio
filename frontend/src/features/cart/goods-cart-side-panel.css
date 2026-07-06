@@ -1,15 +1,16 @@
 .goods-cart-side-panel {
   --cart-panel-width: 304px;
   --cart-panel-gap: 22px;
+  --cart-panel-top: 96px;
 
   position: fixed;
-  top: 96px;
+  top: var(--cart-panel-top);
   right: max(24px, calc((95vw - 1126px) / 2 - var(--cart-panel-width) - var(--cart-panel-gap)));
   z-index: 20;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: var(--cart-panel-width);
-  max-height: min(620px, calc(100svh - 144px));
+  max-height: min(620px, calc(100svh - var(--cart-panel-top) - 48px));
   border: 1px solid #d8dadd;
   border-radius: 0;
   background: #ffffff;

@@ -68,6 +68,9 @@ const CART_PANEL_GAP_PX = 16
 const CHAT_SIDEBAR_MIN_HEIGHT_PX = 260
 const CHAT_SIDEBAR_MAX_HEIGHT_PX = 640
 const CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX = 8
+const SITE_HEADER_SELECTOR = '.site-header'
+const CHATBOT_CONTROL_DESKTOP_GAP_PX = 16
+const CHATBOT_CONTROL_MOBILE_GAP_PX = 8
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   isHidden: false,
@@ -194,6 +197,7 @@ function VtuberChatbotShell({
     useState<VtuberCharacterRenderStatus>('loading')
   const [isCharacterBubbleVisible, setIsCharacterBubbleVisible] = useState(true)
   const [characterBubbleNudgeX, setCharacterBubbleNudgeX] = useState(0)
+  const [controlTopOffset, setControlTopOffset] = useState(CHATBOT_CONTROL_DESKTOP_GAP_PX)
   const [sidebarDockStyle, setSidebarDockStyle] = useState<CSSProperties | undefined>(undefined)
   const [message, setMessage] = useState('')
   const trimmedMessage = message.trim()
@@ -205,6 +209,9 @@ function VtuberChatbotShell({
   })
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
+  } as CSSProperties
+  const controlStyle = {
+    '--vtuber-control-top': `${controlTopOffset}px`,
   } as CSSProperties
   const chatbotStyle: CSSProperties | undefined = shouldUseCustomPosition
     ? {
@@ -221,6 +228,74 @@ function VtuberChatbotShell({
       JSON.stringify(settings),
     )
   }, [settings])
+
+  useEffect(() => {
+    let resizeObserver: ResizeObserver | null = null
+    let animationFrameId: number | null = null
+
+    function getControlGap() {
+      return window.innerWidth <= 720
+        ? CHATBOT_CONTROL_MOBILE_GAP_PX
+        : CHATBOT_CONTROL_DESKTOP_GAP_PX
+    }
+
+    function updateControlTopOffset() {
+      const controlGap = getControlGap()
+      const headerElement = document.querySelector<HTMLElement>(SITE_HEADER_SELECTOR)
+
+      if (!headerElement) {
+        setControlTopOffset(controlGap)
+        return
+      }
+
+      const headerRect = headerElement.getBoundingClientRect()
+      const headerStyle = window.getComputedStyle(headerElement)
+      const isHeaderVisible =
+        headerRect.width > 0 &&
+        headerRect.height > 0 &&
+        headerStyle.display !== 'none' &&
+        headerStyle.visibility !== 'hidden' &&
+        headerRect.bottom > 0
+
+      setControlTopOffset(
+        isHeaderVisible
+          ? Math.round(Math.max(controlGap, headerRect.bottom + controlGap))
+          : controlGap,
+      )
+    }
+
+    function scheduleControlTopOffsetUpdate() {
+      if (animationFrameId !== null) {
+        return
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null
+        updateControlTopOffset()
+      })
+    }
+
+    updateControlTopOffset()
+
+    const headerElement = document.querySelector<HTMLElement>(SITE_HEADER_SELECTOR)
+    if (headerElement) {
+      resizeObserver = new ResizeObserver(scheduleControlTopOffsetUpdate)
+      resizeObserver.observe(headerElement)
+    }
+
+    window.addEventListener('resize', scheduleControlTopOffsetUpdate)
+    window.addEventListener('scroll', scheduleControlTopOffsetUpdate, { passive: true })
+
+    return () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', scheduleControlTopOffsetUpdate)
+      window.removeEventListener('scroll', scheduleControlTopOffsetUpdate)
+    }
+  }, [])
 
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null
@@ -643,7 +718,11 @@ function VtuberChatbotShell({
       style={chatbotStyle}
     >
       {settings.isHidden ? (
-        <div className="vtuber-controls" aria-label="챗봇 제어">
+        <div
+          className="vtuber-controls"
+          aria-label="챗봇 제어"
+          style={controlStyle}
+        >
           <IconButton
             className="vtuber-restore-button"
             icon={<span className="vtuber-restore-icon" />}
@@ -659,7 +738,11 @@ function VtuberChatbotShell({
         </div>
       ) : (
         <>
-          <div className="vtuber-controls" aria-label="챗봇 제어">
+          <div
+            className="vtuber-controls"
+            aria-label="챗봇 제어"
+            style={controlStyle}
+          >
             <IconButton
               className="vtuber-hide-button"
               icon={<span className="vtuber-hide-icon" />}

@@ -65,7 +65,7 @@
 .vtuber-controls {
   display: inline-flex;
   position: fixed;
-  top: 16px;
+  top: var(--vtuber-control-top, 16px);
   right: 16px;
   justify-self: end;
 }
@@ -690,7 +690,7 @@
   }
 
   .vtuber-controls {
-    top: 8px;
+    top: var(--vtuber-control-top, 8px);
     right: 8px;
     justify-self: end;
   }
