@@ -28,7 +28,7 @@ class FakeProvider:
 
 
 class FakeCatalogClient:
-    def search_candidates(self, text, favorite_artists=None):
+    def search_candidates(self, text, favorite_artists=None, category_name=None, artist_name=None):
         return [{"goodsId": 42, "name": "포토카드", "price": 10000}]
 
 

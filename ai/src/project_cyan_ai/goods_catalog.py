@@ -8,7 +8,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from project_cyan_ai.embeddings import OpenAiEmbeddingsClient
 from project_cyan_ai.favorite_artists import favorite_artist_ids
+from project_cyan_ai.goods_filter_extraction import GoodsFilterExtractionProvider
 from project_cyan_ai.navigation_intent import build_navigation_response
 from project_cyan_ai.personalization_context import build_personalized_prompt
 from project_cyan_ai.providers.chat_response import (
@@ -144,6 +146,8 @@ class GoodsCatalogClient(Protocol):
         self,
         text: str,
         favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
     ) -> list[dict[str, Any]] | None:
         """Return candidates, an empty result, or None when Spring is unavailable."""
         ...
@@ -162,11 +166,17 @@ class HttpGoodsCatalogClient:
         self,
         text: str,
         favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
     ) -> list[dict[str, Any]] | None:
         query = {"q": text, "page": 0, "size": 10, "sort": "relevance,desc"}
         max_price = extract_max_price(text)
         if max_price is not None:
             query["maxPrice"] = max_price
+        if category_name:
+            query["categoryName"] = category_name
+        if artist_name:
+            query["artistName"] = artist_name
         preferred_artist_ids = favorite_artist_ids(favorite_artists)
         if preferred_artist_ids:
             query["preferredArtistIds"] = ",".join(
@@ -193,6 +203,82 @@ def build_runtime_goods_catalog_client(spring_api_url: str) -> HttpGoodsCatalogC
     return HttpGoodsCatalogClient(spring_api_url)
 
 
+class HttpSemanticGoodsCatalogClient:
+    def __init__(
+        self,
+        spring_api_url: str,
+        embeddings_client: OpenAiEmbeddingsClient,
+        timeout_seconds: float = GOODS_SEARCH_TIMEOUT_SECONDS,
+        candidate_size: int = DEFAULT_CANDIDATE_SIZE,
+    ):
+        self.spring_api_url = spring_api_url.rstrip("/")
+        self.embeddings_client = embeddings_client
+        self.timeout_seconds = timeout_seconds
+        self.candidate_size = candidate_size
+
+    def search_candidates(
+        self,
+        text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
+    ) -> list[dict[str, Any]] | None:
+        query_embedding = self.embeddings_client.embed(text)
+        if query_embedding is None:
+            return None
+
+        payload: dict[str, Any] = {
+            "queryEmbedding": query_embedding,
+            "size": self.candidate_size,
+        }
+        if category_name:
+            payload["categoryName"] = category_name
+        if artist_name:
+            payload["artistName"] = artist_name
+        max_price = extract_max_price(text)
+        if max_price is not None:
+            payload["maxPrice"] = max_price
+        preferred_artist_ids = favorite_artist_ids(favorite_artists)
+        if preferred_artist_ids:
+            payload["preferredArtistIds"] = preferred_artist_ids
+
+        request = Request(
+            f"{self.spring_api_url}/goods/recommendation-candidates/semantic-search",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                response_payload = json.loads(response.read().decode("utf-8"))
+        except (HTTPError, TimeoutError, URLError, OSError, ValueError):
+            return None
+
+        content = response_payload.get("content") if isinstance(response_payload, dict) else None
+        return content if isinstance(content, list) else []
+
+
+def build_semantic_or_fallback_goods_catalog_client(
+    spring_api_url: str,
+    openai_embeddings_api_key: str | None,
+    openai_embeddings_base_url: str,
+    openai_embeddings_model: str,
+) -> GoodsCatalogClient:
+    """Use semantic search when an embeddings API key is configured, else fall back
+    to the existing keyword-matching endpoint with no code changes needed to roll back."""
+    if not openai_embeddings_api_key:
+        return build_runtime_goods_catalog_client(spring_api_url)
+    embeddings_client = OpenAiEmbeddingsClient(
+        base_url=openai_embeddings_base_url,
+        api_key=openai_embeddings_api_key,
+        model=openai_embeddings_model,
+    )
+    return HttpSemanticGoodsCatalogClient(spring_api_url, embeddings_client)
+
+
 class TsvGoodsCatalogClient:
     def __init__(
         self,
@@ -212,6 +298,8 @@ class TsvGoodsCatalogClient:
         self,
         text: str,
         favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
     ) -> list[dict[str, Any]] | None:
         try:
             candidates = self._load_candidates()
@@ -224,6 +312,10 @@ class TsvGoodsCatalogClient:
             self.candidate_size,
             favorite_artists,
         )
+
+    def load_all_candidates(self) -> list[dict[str, Any]]:
+        """Return the full unfiltered catalog, for batch jobs rather than chat search."""
+        return self._load_candidates()
 
     def _load_candidates(self) -> list[dict[str, Any]]:
         now = time.monotonic()
@@ -295,9 +387,11 @@ class CatalogGroundedChatResponseProvider:
         self,
         delegate: ChatResponseProvider,
         catalog_client: GoodsCatalogClient,
+        filter_extraction_provider: GoodsFilterExtractionProvider | None = None,
     ):
         self.delegate = delegate
         self.catalog_client = catalog_client
+        self.filter_extraction_provider = filter_extraction_provider
         self.recent_recommendation_candidates: list[dict[str, Any]] = []
 
     def clear_connection_context(self) -> None:
@@ -338,7 +432,17 @@ class CatalogGroundedChatResponseProvider:
                 context,
             )
 
-        candidates = self.catalog_client.search_candidates(text, favorite_artists)
+        extracted_filters = (
+            self.filter_extraction_provider.extract_filters(text)
+            if self.filter_extraction_provider is not None
+            else {}
+        )
+        candidates = self.catalog_client.search_candidates(
+            text,
+            favorite_artists,
+            category_name=extracted_filters.get("categoryName"),
+            artist_name=extracted_filters.get("artistName"),
+        )
         if candidates is None:
             return self.delegate.build_response(
                 self._with_instruction(

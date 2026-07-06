@@ -60,6 +60,18 @@ class ProjectCyanAiSettings(BaseSettings):
         default=None,
         alias="PROJECT_CYAN_INTERNAL_SERVICE_TOKEN",
     )
+    openai_embeddings_api_key: str | None = Field(
+        default=None,
+        alias="PROJECT_CYAN_OPENAI_API_KEY",
+    )
+    openai_embeddings_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        alias="PROJECT_CYAN_OPENAI_EMBEDDINGS_BASE_URL",
+    )
+    openai_embeddings_model: str = Field(
+        default="text-embedding-3-small",
+        alias="PROJECT_CYAN_OPENAI_EMBEDDINGS_MODEL",
+    )
 
 
 def get_settings() -> ProjectCyanAiSettings:
