@@ -309,22 +309,6 @@ function Live2DCharacter({
       aria-label={`${character.name} Live2D 캐릭터`}
     >
       <div ref={containerRef} className="vtuber-live2d-container" aria-hidden="true" />
-      <div
-        className="vtuber-avatar"
-        data-display-state={displayState}
-        data-motion-key={motionKey ?? undefined}
-        data-motion-trigger-id={motionTriggerId || undefined}
-        aria-hidden="true"
-      >
-        <span className="vtuber-avatar-face" />
-        {displayState === 'thinking' || renderStatus === 'loading' ? (
-          <span className="vtuber-thinking-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-        ) : null}
-      </div>
       <span className="vtuber-status">{statusLabel}</span>
     </div>
   )
