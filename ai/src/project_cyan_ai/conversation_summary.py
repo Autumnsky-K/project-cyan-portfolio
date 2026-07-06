@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+from project_cyan_ai.json_extraction import bounded_text, decode_json_object, strip_code_fence
 from project_cyan_ai.providers import ChatResponseProvider
 
 MAX_MESSAGES = 100
@@ -68,12 +69,7 @@ def build_summary_prompt(messages: list[dict]) -> str:
 def parse_summary_json(raw_text: str) -> dict | None:
     if not isinstance(raw_text, str):
         return None
-    candidate = raw_text.strip()
-    if candidate.startswith("```"):
-        first_newline = candidate.find("\n")
-        last_fence = candidate.rfind("```")
-        if first_newline >= 0 and last_fence > first_newline:
-            candidate = candidate[first_newline + 1:last_fence].strip()
+    candidate = strip_code_fence(raw_text)
     payload = decode_json_object(candidate)
     if payload is None:
         return None
@@ -85,32 +81,6 @@ def parse_summary_json(raw_text: str) -> dict | None:
         result[field] = bounded_text_list(payload.get(field))
     result["mentionedGoodsIds"] = bounded_goods_ids(payload.get("mentionedGoodsIds"))
     return result
-
-
-def decode_json_object(candidate: str) -> dict | None:
-    try:
-        payload = json.loads(candidate)
-        return payload if isinstance(payload, dict) else None
-    except (json.JSONDecodeError, TypeError):
-        pass
-
-    decoder = json.JSONDecoder()
-    for index, character in enumerate(candidate):
-        if character != "{":
-            continue
-        try:
-            payload, _ = decoder.raw_decode(candidate[index:])
-        except json.JSONDecodeError:
-            continue
-        if isinstance(payload, dict):
-            return payload
-    return None
-
-
-def bounded_text(value: object, max_length: int) -> str | None:
-    if not isinstance(value, str) or not value.strip():
-        return None
-    return value.strip()[:max_length]
 
 
 def bounded_text_list(value: object) -> list[str]:

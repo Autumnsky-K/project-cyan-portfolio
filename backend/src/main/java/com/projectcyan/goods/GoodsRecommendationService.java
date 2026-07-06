@@ -43,27 +43,94 @@ public class GoodsRecommendationService {
 		"해줘",
 		"해주세요",
 		"좀",
+		"좀요",
 		"뭐",
 		"살까",
-		"보여줘"
+		"보여줘",
+		"찾아줘",
+		"찾아줄래",
+		"찾아줄래요",
+		"찾아주세요",
+		"찾아봐",
+		"찾아봐요",
+		"장바구니",
+		"거",
+		"것",
+		"쓸만한",
+		"쓸만한거",
+		"살만한",
+		"살만한거",
+		"수",
+		// "-(으)ㄹ 만하다"는 어떤 동사에나 붙는 범용 보조 구문이라 앞 동사와 무관하게 걸러낸다.
+		"만한",
+		"만한거",
+		"만합니다",
+		"만해요",
+		"만할까요",
+		"만할까",
+		// "-아/어 주다"도 마찬가지로 앞 동사와 무관한 범용 보조 동사다.
+		"해줄",
+		"해줄까",
+		"해줄까요",
+		"해줄게",
+		"해줄게요",
+		"해줄래",
+		"해줄래요",
+		"다른"
 	);
 	private static final List<String> KOREAN_PARTICLES = List.of(
 		"에서는", "에게서", "으로", "에서", "에게", "한테",
 		"은", "는", "이", "가", "을", "를", "의", "에", "로", "과", "와", "도", "만"
 	);
+	// 검색 의도와 무관한 동사/보조용언 어근. 활용형(어미 변화)이 무한하므로
+	// 어근 + 어미 조합으로 판정해 개별 활용형을 일일이 등록하지 않아도 되게 한다.
+	private static final Set<String> INTENT_VERB_STEMS = Set.of(
+		"추천",
+		"있",
+		"없",
+		"싶",
+		// "하다"를 포함한 어근을 그대로 등록하면 "-(으)ㄹ" 계열 어미가 붙을 때
+		// "하"+"ㄹ"이 "할"로 축약되어 startsWith 매칭이 깨진다("좋아할만한" != "좋아하"+...).
+		// 그래서 "하"를 뗀 어근을 등록하고, "하는"/"할" 등 "하"를 포함한 어미로 매칭한다.
+		"좋아",
+		"선호",
+		"부탁",
+		"괜찮",
+		"좋"
+	);
+	private static final List<String> KOREAN_VERB_ENDINGS = List.of(
+		"하고싶어요", "하고싶어", "고싶어요", "고싶은", "고싶어", "고싶다",
+		"해주세요", "해줄래요", "해줄래", "해줘요", "해줘", "해주실",
+		"하는", "하고", "하지만", "하지", "하면", "하니까",
+		"할래요", "할래", "할까요", "할까", "할게요", "할", "할만한", "을만한",
+		"하나요", "하나", "합니다", "해요", "해", "함",
+		"습니다", "네요", "네", "음",
+		"을까요", "을까", "을래요", "을래",
+		"어서", "어도", "어요", "어", "아요", "아",
+		"나요", "나", "다면", "다", "은", "는", "은거", "는거",
+		"드려요", "드립니다", "드릴게요", "드릴까요", "드려", "드림"
+	);
+
+	private static final int DEFAULT_SEMANTIC_CANDIDATE_SIZE = 10;
 
 	private final GoodsRepository goodsRepository;
 	private final GoodsStockRepository goodsStockRepository;
 	private final SearchAliasRepository searchAliasRepository;
+	private final GoodsEmbeddingRepository goodsEmbeddingRepository;
+	private final ArtistEmbeddingRepository artistEmbeddingRepository;
 
 	public GoodsRecommendationService(
 		GoodsRepository goodsRepository,
 		GoodsStockRepository goodsStockRepository,
-		SearchAliasRepository searchAliasRepository
+		SearchAliasRepository searchAliasRepository,
+		GoodsEmbeddingRepository goodsEmbeddingRepository,
+		ArtistEmbeddingRepository artistEmbeddingRepository
 	) {
 		this.goodsRepository = goodsRepository;
 		this.goodsStockRepository = goodsStockRepository;
 		this.searchAliasRepository = searchAliasRepository;
+		this.goodsEmbeddingRepository = goodsEmbeddingRepository;
+		this.artistEmbeddingRepository = artistEmbeddingRepository;
 	}
 
 	public PageResponse<GoodsRecommendationResponse> findCandidates(
@@ -102,6 +169,157 @@ public class GoodsRecommendationService {
 		long totalElements = scoredGoods.size();
 		int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / safeSize);
 		return new PageResponse<>(content, safePage, safeSize, totalElements, totalPages);
+	}
+
+	public PageResponse<GoodsRecommendationResponse> findSemanticCandidates(SemanticSearchRequest request) {
+		int safeSize = Math.max(1, Math.min(
+			request.size() == null ? DEFAULT_SEMANTIC_CANDIDATE_SIZE : request.size(),
+			20
+		));
+		Set<Long> excludedIds = request.excludeGoodsIds() == null
+			? Set.of()
+			: new LinkedHashSet<>(request.excludeGoodsIds());
+		Set<Long> preferredIds = request.preferredArtistIds() == null
+			? Set.of()
+			: new LinkedHashSet<>(request.preferredArtistIds());
+		SearchContext context = buildSearchContext(null, request.artistName(), request.categoryName(), null);
+
+		List<Goods> goods = goodsRepository.findAllForRecommendation();
+		Map<Long, Integer> stocks = loadStocks(goods);
+		Map<Long, Goods> eligibleGoodsById = goods.stream()
+			.filter(item -> isEligible(item, stocks.get(item.getGoodsId()), request.maxPrice(), excludedIds))
+			.filter(item -> matchesAliasDimensions(item, context))
+			.collect(java.util.stream.Collectors.toMap(Goods::getGoodsId, item -> item));
+
+		if (eligibleGoodsById.isEmpty()) {
+			return new PageResponse<>(List.of(), 0, safeSize, 0, 0);
+		}
+
+		float[] queryEmbedding = toFloatArray(request.queryEmbedding());
+		List<GoodsEmbeddingSimilarityRow> nearest = goodsEmbeddingRepository.findNearestByCandidateIds(
+			eligibleGoodsById.keySet(),
+			queryEmbedding,
+			safeSize
+		);
+
+		Map<Long, Double> artistBoostDistanceById = loadArtistBoostDistances(eligibleGoodsById, nearest, preferredIds);
+
+		List<GoodsRecommendationResponse> content = nearest.stream()
+			.sorted(
+				Comparator.comparingDouble(GoodsEmbeddingSimilarityRow::cosineDistance)
+					.thenComparingDouble(row -> artistBoostDistance(
+						eligibleGoodsById.get(row.goodsId()),
+						preferredIds,
+						artistBoostDistanceById
+					))
+			)
+			.map(row -> semanticResponse(
+				eligibleGoodsById.get(row.goodsId()),
+				stocks.get(row.goodsId()),
+				context,
+				preferredIds
+			))
+			.toList();
+
+		return new PageResponse<>(content, 0, safeSize, content.size(), content.isEmpty() ? 0 : 1);
+	}
+
+	/**
+	 * Cosine distance (via pgvector) is a different unit than the goods-embedding distance used
+	 * for the primary ranking, so it is only ever used as a secondary tie-break, never mixed into
+	 * the primary score. Falls back to a boolean exact-match boost when no artist embeddings are
+	 * populated yet, so this stays a no-op until the Part 3 batch job runs.
+	 */
+	private Map<Long, Double> loadArtistBoostDistances(
+		Map<Long, Goods> eligibleGoodsById,
+		List<GoodsEmbeddingSimilarityRow> nearest,
+		Set<Long> preferredArtistIds
+	) {
+		if (preferredArtistIds.isEmpty()) {
+			return Map.of();
+		}
+		Set<Long> candidateArtistIds = nearest.stream()
+			.map(row -> eligibleGoodsById.get(row.goodsId()))
+			.filter(goods -> goods != null && goods.getArtist() != null)
+			.map(goods -> goods.getArtist().getArtistId())
+			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		if (candidateArtistIds.isEmpty()) {
+			return Map.of();
+		}
+		return artistEmbeddingRepository.findBestSimilarityToPreferredArtists(candidateArtistIds, preferredArtistIds)
+			.stream()
+			.collect(java.util.stream.Collectors.toMap(
+				ArtistSimilarityRow::candidateArtistId,
+				ArtistSimilarityRow::bestCosineDistance
+			));
+	}
+
+	private double artistBoostDistance(
+		Goods goods,
+		Set<Long> preferredArtistIds,
+		Map<Long, Double> artistBoostDistanceById
+	) {
+		if (goods == null || goods.getArtist() == null) {
+			return Double.MAX_VALUE;
+		}
+		Long artistId = goods.getArtist().getArtistId();
+		if (preferredArtistIds.contains(artistId)) {
+			return 0.0;
+		}
+		return artistBoostDistanceById.getOrDefault(artistId, Double.MAX_VALUE);
+	}
+
+	private boolean isPreferredArtist(Goods goods, Set<Long> preferredArtistIds) {
+		return goods.getArtist() != null && preferredArtistIds.contains(goods.getArtist().getArtistId());
+	}
+
+	private GoodsRecommendationResponse semanticResponse(
+		Goods goods,
+		Integer stockCount,
+		SearchContext context,
+		Set<Long> preferredArtistIds
+	) {
+		Set<String> matchedFields = new LinkedHashSet<>();
+		if (goods.getArtist() != null && context.artistIds().contains(goods.getArtist().getArtistId())) {
+			matchedFields.add("artistName");
+		}
+		if (goods.getArtist() != null
+			&& goods.getArtist().getArtistGroup() != null
+			&& context.groupIds().contains(goods.getArtist().getArtistGroup().getGroupId())) {
+			matchedFields.add("artistGroup");
+		}
+		if (goods.getCategory() != null && context.categoryIds().contains(goods.getCategory().getCategoryId())) {
+			matchedFields.add("categoryName");
+		}
+		if (isPreferredArtist(goods, preferredArtistIds)) {
+			matchedFields.add("preferredArtist");
+		}
+		List<String> matched = List.copyOf(matchedFields);
+		return new GoodsRecommendationResponse(
+			goods.getGoodsId(),
+			goods.getGoodsName(),
+			goods.getPrice(),
+			goods.getMainImageUrl(),
+			goods.getTags().stream().map(Tag::getTagName).toList(),
+			goods.getArtist() == null ? null : goods.getArtist().getArtistId(),
+			goods.getArtist() == null ? null : goods.getArtist().getArtistName(),
+			goods.getCategory() == null ? null : goods.getCategory().getCategoryName(),
+			goods.getSalesStatus(),
+			stockCount,
+			recommendationReason(matched),
+			matched
+		);
+	}
+
+	private float[] toFloatArray(List<Float> values) {
+		if (values == null || values.isEmpty()) {
+			return new float[0];
+		}
+		float[] array = new float[values.size()];
+		for (int index = 0; index < values.size(); index++) {
+			array[index] = values.get(index);
+		}
+		return array;
 	}
 
 	private SearchContext buildSearchContext(
@@ -345,13 +563,13 @@ public class GoodsRecommendationService {
 		String[] tokens = normalized.split("[\\s,]+");
 		for (String token : tokens) {
 			String cleanToken = trimSearchPunctuation(token);
-			if (cleanToken.length() >= 2 && !SEARCH_STOP_WORDS.contains(cleanToken)) {
+			if (cleanToken.length() >= 2 && !isStopWord(cleanToken)) {
 				terms.add(cleanToken);
 			}
-			String strippedToken = SEARCH_STOP_WORDS.contains(cleanToken)
+			String strippedToken = isStopWord(cleanToken)
 				? cleanToken
 				: stripKoreanParticle(cleanToken);
-			if (strippedToken.length() >= 2 && !SEARCH_STOP_WORDS.contains(strippedToken)) {
+			if (strippedToken.length() >= 2 && !isStopWord(strippedToken)) {
 				terms.add(strippedToken);
 			}
 		}
@@ -373,14 +591,34 @@ public class GoodsRecommendationService {
 		String[] tokens = normalize(term).split("[\\s,]+");
 		for (String token : tokens) {
 			String cleanToken = trimSearchPunctuation(token);
-			String strippedToken = SEARCH_STOP_WORDS.contains(cleanToken)
+			String strippedToken = isStopWord(cleanToken)
 				? cleanToken
 				: stripKoreanParticle(cleanToken);
-			if (!strippedToken.isBlank() && !SEARCH_STOP_WORDS.contains(strippedToken)) {
+			if (!strippedToken.isBlank() && !isStopWord(strippedToken)) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	private boolean isStopWord(String token) {
+		return SEARCH_STOP_WORDS.contains(token) || isIntentVerbForm(token);
+	}
+
+	private boolean isIntentVerbForm(String token) {
+		for (String stem : INTENT_VERB_STEMS) {
+			if (token.length() <= stem.length() || !token.startsWith(stem)) {
+				continue;
+			}
+			String ending = token.substring(stem.length());
+			if (ending.startsWith("좀")) {
+				ending = ending.substring(1);
+			}
+			if (ending.isEmpty() || KOREAN_VERB_ENDINGS.contains(ending)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private String trimSearchPunctuation(String token) {

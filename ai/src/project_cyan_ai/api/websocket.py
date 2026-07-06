@@ -15,9 +15,10 @@ from project_cyan_ai.favorite_artists import (
 )
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
-    build_runtime_goods_catalog_client,
+    build_semantic_or_fallback_goods_catalog_client,
     has_product_intent,
 )
+from project_cyan_ai.goods_filter_extraction import GoodsFilterExtractionProvider
 from project_cyan_ai.guest_chat_policy import (
     GuestChatState,
     build_auth_required_response,
@@ -70,15 +71,22 @@ async def client_ws(websocket: WebSocket):
             )
         except (OSError, TimeoutError, ValueError, KeyError):
             runtime_connection_failed = True
-    catalog_client = build_runtime_goods_catalog_client(settings.spring_api_url)
+    catalog_client = build_semantic_or_fallback_goods_catalog_client(
+        settings.spring_api_url,
+        settings.openai_embeddings_api_key,
+        settings.openai_embeddings_base_url,
+        settings.openai_embeddings_model,
+    )
     base_response_provider = (
         OpenAiChatResponseProvider(client=None)
         if runtime_connection_failed
         else get_chat_response_provider(enable_shopping_tools=False, runtime_connection=runtime_connection)
     )
+    filter_extraction_provider = GoodsFilterExtractionProvider(base_response_provider)
     response_provider = CatalogGroundedChatResponseProvider(
         delegate=base_response_provider,
         catalog_client=catalog_client,
+        filter_extraction_provider=filter_extraction_provider,
     )
     summary_provider = ConversationSummaryProvider(
         OpenAiChatResponseProvider(client=None)
