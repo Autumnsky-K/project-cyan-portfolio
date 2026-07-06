@@ -2,7 +2,7 @@
 
 > **이 문서가 팀의 단일 진실(single source of truth)이다. 코드보다 이 문서가 먼저다.**
 > 저장 위치: `/docs/api-contract.md`
-> 버전: `v0.2.17` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
+> 버전: `v0.2.19` · 버전 규칙: 주.부.수 (§0.1) · 동결 목표일: `2026-06-18`
 
 ---
 
@@ -442,6 +442,24 @@
   - 결과가 없으면 `200`과 빈 페이지를 반환한다.
 - 상태: [x] additive
 
+#### [POST] /api/goods/recommendation-candidates/semantic-search
+- 설명: 임베딩 기반 시맨틱 상품 검색. 한국어 활용형/어미 문제를 근본적으로 회피하기 위해 `q` 키워드 매칭 대신 문장 전체를 임베딩해 코사인 유사도로 후보를 가져온다. 기존 `GET /recommendation-candidates`는 삭제하지 않고 그대로 병행 운영한다
+- 인증 필요: N
+- 요청 body:
+  - `queryEmbedding`: 사용자 발화 임베딩 벡터 (`text-embedding-3-small`, 1536차원)
+  - `categoryName`, `artistName`: AI가 명시적으로 언급된 경우에만 채우는 구조화 필드. 애매하면 `null`
+  - `maxPrice`: 최대 가격 KRW
+  - `excludeGoodsIds`: 제외 상품 ID 배열
+  - `preferredArtistIds`: 선호 아티스트 ID 배열. 필터가 아니라 관련도 가산점으로만 사용
+  - `size`: 기본 `10`, 최대 `20`
+- 응답: 페이지 객체, content는 `GET /recommendation-candidates`와 동일한 필드
+- 동작:
+  - `categoryName`/`artistName`은 `search_alias`로 해석하고, 가격·재고·판매상태·제외 ID는 `GET /recommendation-candidates`와 동일하게 hard filter로 적용한다.
+  - hard filter를 통과한 후보 중에서만 pgvector 코사인 거리(`goods_embedding`)로 순위를 매긴다.
+  - `preferredArtistIds`는 코사인 거리와 단위가 달라 점수에 섞지 않고, 별도의 2차 정렬 기준(동률 시 우선순위 조정)으로만 사용한다.
+  - `goods_embedding`에 임베딩이 없는 상품은 후보에서 제외된다.
+- 상태: [x] additive
+
 ---
 
 ### 3.3 장바구니 (cart) — 담당: `__________`
@@ -605,6 +623,22 @@
   - `fileSizeBytes`: TSV byte 크기
   - `storageBucket`: Storage bucket
   - `storagePath`: Storage object path
+- 상태: [x] additive
+
+#### [POST] /api/ai/goods-embeddings
+- 설명: FastAPI 배치 잡이 상품 카탈로그 임베딩을 계산해 Spring `goods_embedding` 테이블에 upsert
+- 인증 필요: 서비스 토큰 (`X-Project-Cyan-Service-Token`), `AiBehaviorRuntimeConfigController`와 동일한 검증 패턴
+- 요청 body: 배열, 각 항목 `{ goodsId, embedding, embeddingModel, sourceTextHash }`
+- 응답: `{ upsertedCount }`
+- 비고: `sourceTextHash`(SHA-256)는 변경되지 않은 상품의 재임베딩을 건너뛰기 위한 캐시 무효화용
+- 상태: [x] additive
+
+#### [POST] /api/ai/artist-embeddings
+- 설명: (옵션, Part 3) FastAPI 배치 잡이 아티스트 임베딩을 계산해 Spring `artist_embedding` 테이블에 upsert. `preferredArtistIds` 정확 일치 가산점을 유사 아티스트까지 포함하는 연속 유사도 가산점으로 일반화하는 데 사용
+- 인증 필요: 서비스 토큰 (`X-Project-Cyan-Service-Token`)
+- 요청 body: 배열, 각 항목 `{ artistId, embedding, embeddingModel, sourceTextHash }`
+- 응답: `{ upsertedCount }`
+- 비고: 배포하지 않아도 `POST /recommendation-candidates/semantic-search`의 `preferredArtistIds` 정확 일치 가산점이 fallback으로 계속 동작한다
 - 상태: [x] additive
 
 #### [GET] /api/ai/hooks
@@ -904,4 +938,6 @@ LLM 응답 텍스트 안에 인라인으로 삽입 → 캐릭터 아일랜드가
 | 2026-07-02 | v0.2.15 | ai/goods | additive | 복수 추천을 `/goods`의 정확한 상품 집합으로 표시하는 `showRecommendations.goodsIds` action 추가 | Codex |
 | 2026-07-02 | v0.2.16 | member/goods | additive | 마이페이지 상품 활동 요약 조회 API `GET /api/members/me/goods-activity` 추가 | Codex |
 | 2026-07-03 | v0.2.17 | goods/member | additive | 로그인 회원이 하트로 저장한 상품 목록 조회 API `GET /api/goods/likes` 추가 | Codex |
+| 2026-07-06 | v0.2.18 | goods/ai | additive | 임베딩 기반 시맨틱 상품 검색 `POST /api/goods/recommendation-candidates/semantic-search`와 카탈로그 임베딩 push `POST /api/ai/goods-embeddings` 추가. 기존 `GET /recommendation-candidates`는 유지 | 강승민 |
+| 2026-07-06 | v0.2.19 | ai | additive | (옵션) 아티스트 임베딩 push `POST /api/ai/artist-embeddings` 추가, 시맨틱 검색의 선호 아티스트 가산점을 정확 일치에서 유사 아티스트 연속 가산점으로 일반화 | 강승민 |
 |  |  |  |  |  |  |
