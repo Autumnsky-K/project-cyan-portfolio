@@ -88,6 +88,8 @@ export type GoodsFilterOption = {
   label: string
   value: string
   fulfillmentType?: 'PHYSICAL' | 'DIGITAL' | string | null
+  groupName?: string | null
+  groupValue?: string | null
 }
 
 export type GoodsFiltersResponse = {

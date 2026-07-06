@@ -30,6 +30,13 @@ const CATEGORY_FILTER_SECTIONS = [
   { type: 'DIGITAL', label: '디지털 굿즈' },
 ]
 
+type FilterOptionSection = {
+  key: string
+  label: string
+  options: GoodsFilterOption[]
+  order: number
+}
+
 function copySelectedFilters(selectedFilters: GoodsSelectedFilters): GoodsSelectedFilters {
   return {
     categoryIds: [...selectedFilters.categoryIds],
@@ -40,6 +47,65 @@ function copySelectedFilters(selectedFilters: GoodsSelectedFilters): GoodsSelect
 
 function optionFulfillmentType(option: GoodsFilterOption) {
   return (option.fulfillmentType ?? 'PHYSICAL').toUpperCase()
+}
+
+function artistGroupName(option: GoodsFilterOption) {
+  const groupName = option.groupName?.trim()
+  return groupName || '기타'
+}
+
+function artistGroupKey(option: GoodsFilterOption) {
+  const groupValue = option.groupValue?.trim()
+  return groupValue || artistGroupName(option).toLocaleLowerCase()
+}
+
+function normalizedArtistGroupName(section: FilterOptionSection) {
+  return section.label.trim().toLocaleLowerCase()
+}
+
+function artistGroupRank(section: FilterOptionSection) {
+  const normalizedName = normalizedArtistGroupName(section)
+  if (normalizedName === 'project cyan') return -1
+  if (section.key === '기타' || normalizedName === '기타') return 1
+  return 0
+}
+
+function buildArtistFilterSections(options: GoodsFilterOption[]) {
+  const sectionMap = new Map<string, FilterOptionSection>()
+
+  options.forEach((option, index) => {
+    const key = artistGroupKey(option)
+    const section = sectionMap.get(key) ?? { key, label: artistGroupName(option), options: [], order: index }
+    section.options.push(option)
+    sectionMap.set(key, section)
+  })
+
+  return [...sectionMap.values()]
+    .sort((left, right) => (
+      artistGroupRank(left) - artistGroupRank(right)
+      || left.order - right.order
+      || left.label.localeCompare(right.label, 'ko')
+    ))
+}
+
+function renderSectionedFilterOptions(
+  group: GoodsFilterGroup,
+  sections: FilterOptionSection[],
+  selectedFilters: GoodsSelectedFilters,
+  onToggle: (param: GoodsFilterParam, value: string) => void,
+) {
+  return (
+    <div className="filter-options filter-options-sectioned">
+      {sections
+        .filter((section) => section.options.length > 0)
+        .map((section) => (
+          <div className="filter-option-section" key={section.key}>
+            <div className="filter-option-divider"><span>{section.label}</span></div>
+            {section.options.map((option) => renderFilterOption(group, option, selectedFilters, onToggle))}
+          </div>
+        ))}
+    </div>
+  )
 }
 
 function renderFilterOption(
@@ -74,20 +140,24 @@ function FilterContents({
         <fieldset className="filter-group" key={group.title}>
           <legend>{group.title}</legend>
           {group.param === 'categoryIds' ? (
-            <div className="filter-options filter-options-sectioned">
-              {CATEGORY_FILTER_SECTIONS
-                .map((section) => ({
-                  ...section,
-                  options: group.options.filter((option) => optionFulfillmentType(option) === section.type),
-                }))
-                .filter((section) => section.options.length > 0)
-                .map((section) => (
-                  <div className="filter-option-section" key={section.type}>
-                    <div className="filter-option-divider"><span>{section.label}</span></div>
-                    {section.options.map((option) => renderFilterOption(group, option, selectedFilters, onToggle))}
-                  </div>
-                ))}
-            </div>
+            renderSectionedFilterOptions(
+              group,
+              CATEGORY_FILTER_SECTIONS.map((section, index) => ({
+                key: section.type,
+                label: section.label,
+                options: group.options.filter((option) => optionFulfillmentType(option) === section.type),
+                order: index,
+              })),
+              selectedFilters,
+              onToggle,
+            )
+          ) : group.param === 'artistIds' ? (
+            renderSectionedFilterOptions(
+              group,
+              buildArtistFilterSections(group.options),
+              selectedFilters,
+              onToggle,
+            )
           ) : (
             <div className="filter-options">
               {group.options.map((option) => renderFilterOption(group, option, selectedFilters, onToggle))}

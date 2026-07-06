@@ -659,11 +659,7 @@ public class GoodsService {
 
 	public GoodsFiltersResponse findGoodsFilters() {
 		return new GoodsFiltersResponse(
-			groupFilterOptions(
-				artistRepository.findAllByOrderByArtistNameAsc(),
-				Artist::getArtistName,
-				artist -> artist.getArtistId().toString()
-			),
+			artistFilterOptions(artistRepository.findAllByOrderByArtistNameAsc()),
 			categoryFilterOptions(goodsCategoryRepository.findAllByOrderByCategoryNameAsc()),
 			groupFilterOptions(
 				tagRepository.findAllByOrderByTagNameAsc(),
@@ -671,6 +667,36 @@ public class GoodsService {
 				Tag::getTagName
 			)
 		);
+	}
+
+	private List<GoodsFilterOptionResponse> artistFilterOptions(List<Artist> artists) {
+		Map<String, ArtistFilterOptionGroup> grouped = new LinkedHashMap<>();
+		for (Artist artist : artists) {
+			String label = artist.getArtistName().trim();
+			String groupName = normalizeArtistGroupName(artist.getGroupName());
+			String groupValue = artist.getArtistGroup() == null ? null : artist.getArtistGroup().getGroupId().toString();
+			String key = "%s:%s".formatted(label.toLowerCase(Locale.ROOT), groupName.toLowerCase(Locale.ROOT));
+			ArtistFilterOptionGroup group = grouped.computeIfAbsent(
+				key,
+				ignored -> new ArtistFilterOptionGroup(label, groupName, groupValue, new ArrayList<>())
+			);
+			group.values().add(artist.getArtistId().toString());
+		}
+		return grouped.values().stream()
+			.map(group -> GoodsFilterOptionResponse.artist(
+				group.label(),
+				String.join("|", group.values()),
+				group.groupName(),
+				group.groupValue()
+			))
+			.toList();
+	}
+
+	private String normalizeArtistGroupName(String groupName) {
+		if (groupName == null || groupName.isBlank()) {
+			return "기타";
+		}
+		return groupName.trim();
 	}
 
 	private <T> List<GoodsFilterOptionResponse> groupFilterOptions(
@@ -821,6 +847,9 @@ public class GoodsService {
 	}
 
 	private record FilterOptionGroup(String label, List<String> values) {
+	}
+
+	private record ArtistFilterOptionGroup(String label, String groupName, String groupValue, List<String> values) {
 	}
 
 	private static final class HomeDiscoveryGroup {

@@ -16,6 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
 class GoodsServiceTest {
 
 	private GoodsRepository goodsRepository;
+	private ArtistRepository artistRepository;
+	private GoodsCategoryRepository goodsCategoryRepository;
+	private TagRepository tagRepository;
 	private GoodsStockRepository goodsStockRepository;
 	private GoodsReviewRepository goodsReviewRepository;
 	private GoodsExtraImageRepository goodsExtraImageRepository;
@@ -24,14 +27,17 @@ class GoodsServiceTest {
 	@BeforeEach
 	void setUp() {
 		goodsRepository = mock(GoodsRepository.class);
+		artistRepository = mock(ArtistRepository.class);
+		goodsCategoryRepository = mock(GoodsCategoryRepository.class);
+		tagRepository = mock(TagRepository.class);
 		goodsStockRepository = mock(GoodsStockRepository.class);
 		goodsReviewRepository = mock(GoodsReviewRepository.class);
 		goodsExtraImageRepository = mock(GoodsExtraImageRepository.class);
 		goodsService = new GoodsService(
 			goodsRepository,
-			mock(ArtistRepository.class),
-			mock(GoodsCategoryRepository.class),
-			mock(TagRepository.class),
+			artistRepository,
+			goodsCategoryRepository,
+			tagRepository,
 			goodsStockRepository,
 			goodsReviewRepository,
 			mock(GoodsLikeRepository.class),
@@ -77,6 +83,27 @@ class GoodsServiceTest {
 			.hasMessageContaining("404");
 	}
 
+	@Test
+	void includesArtistGroupMetadataInGoodsFilters() {
+		List<Artist> artists = List.of(
+			artist(1L, "Hiena", 10L, "Mirage Core"),
+			artist(2L, "Manase", 11L, "Sweet Wave"),
+			artist(3L, "Rikane", 10L, "Mirage Core")
+		);
+		when(artistRepository.findAllByOrderByArtistNameAsc()).thenReturn(artists);
+		when(goodsCategoryRepository.findAllByOrderByCategoryNameAsc()).thenReturn(List.of());
+		when(tagRepository.findAllByOrderByTagNameAsc()).thenReturn(List.of());
+
+		GoodsFiltersResponse filters = goodsService.findGoodsFilters();
+
+		assertThat(filters.artists()).hasSize(3);
+		assertThat(filters.artists().get(0).label()).isEqualTo("Hiena");
+		assertThat(filters.artists().get(0).groupName()).isEqualTo("Mirage Core");
+		assertThat(filters.artists().get(0).groupValue()).isEqualTo("10");
+		assertThat(filters.artists().get(1).groupName()).isEqualTo("Sweet Wave");
+		assertThat(filters.artists().get(2).groupName()).isEqualTo("Mirage Core");
+	}
+
 	private GoodsDetailResponse findDetail(Goods goods, int stockCount) {
 		GoodsStock stock = new GoodsStock(goods, stockCount);
 		when(goodsRepository.findById(goods.getGoodsId())).thenReturn(Optional.of(goods));
@@ -102,6 +129,18 @@ class GoodsServiceTest {
 			new LinkedHashSet<>()
 		);
 		return goods;
+	}
+
+	private Artist artist(Long artistId, String artistName, Long groupId, String groupName) {
+		Artist artist = mock(Artist.class);
+		ArtistGroup artistGroup = mock(ArtistGroup.class);
+		when(artist.getArtistId()).thenReturn(artistId);
+		when(artist.getArtistName()).thenReturn(artistName);
+		when(artist.getGroupName()).thenReturn(groupName);
+		when(artist.getArtistGroup()).thenReturn(artistGroup);
+		when(artistGroup.getGroupId()).thenReturn(groupId);
+		when(artistGroup.getGroupName()).thenReturn(groupName);
+		return artist;
 	}
 
 }

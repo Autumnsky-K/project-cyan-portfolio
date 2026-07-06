@@ -13,6 +13,10 @@ function formatCartPrice(value: number): string {
   return `${Number(value ?? 0).toLocaleString('ko-KR')} KRW`
 }
 
+function formatCompactCartPrice(value: number): string {
+  return String(Number(value ?? 0))
+}
+
 function GoodsCartSidePanel() {
   const [panelTopOffset, setPanelTopOffset] = useState(CART_PANEL_DEFAULT_TOP_PX)
   const {
@@ -96,6 +100,20 @@ function GoodsCartSidePanel() {
 
   return (
     <aside className="goods-cart-side-panel" aria-label="카트" style={panelStyle}>
+      <Link
+        className="goods-cart-panel-compact-summary"
+        to="/cart"
+        aria-label={`Cart ${totalQuantity}, ${formatCompactCartPrice(totalPrice)}`}
+      >
+        <span className="goods-cart-panel-compact-heading">
+          <span className="goods-cart-panel-compact-icon" aria-hidden="true" />
+          <strong>{totalQuantity}</strong>
+        </span>
+        <span className="goods-cart-panel-compact-price">
+          {formatCompactCartPrice(totalPrice)}
+        </span>
+      </Link>
+
       <div className="goods-cart-panel-heading">
         <div>
           <span>Cart</span>

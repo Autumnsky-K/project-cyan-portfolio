@@ -1,7 +1,6 @@
 import {
   type CSSProperties,
   type FormEvent,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
   useEffect,
@@ -46,7 +45,7 @@ type ChatbotPosition = {
 }
 
 type ChatbotSettings = {
-  isHidden: boolean
+  isChatCollapsed: boolean
   position: ChatbotPosition | null
 }
 
@@ -65,15 +64,15 @@ const CHARACTER_BUBBLE_VISIBLE_MS = 5000
 const DEFAULT_CHARACTER_GREETING = '안녕! 궁금한거 있어?'
 const CART_PANEL_SELECTOR = '.goods-cart-side-panel'
 const CART_PANEL_GAP_PX = 16
-const CHAT_SIDEBAR_MIN_HEIGHT_PX = 260
-const CHAT_SIDEBAR_MAX_HEIGHT_PX = 640
+const CHAT_SIDEBAR_MIN_HEIGHT_PX = 208
+const CHAT_SIDEBAR_MAX_HEIGHT_PX = 512
+const CHAT_SIDEBAR_DEFAULT_WIDTH_PX = 304
+const CHAT_SIDEBAR_VIEWPORT_MARGIN_PX = 16
+const CHAT_SIDEBAR_COLLAPSED_BOTTOM_PX = 16
 const CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX = 8
-const SITE_HEADER_SELECTOR = '.site-header'
-const CHATBOT_CONTROL_DESKTOP_GAP_PX = 16
-const CHATBOT_CONTROL_MOBILE_GAP_PX = 8
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
-  isHidden: false,
+  isChatCollapsed: false,
   position: null,
 }
 
@@ -126,6 +125,7 @@ function loadChatbotSettings(): ChatbotSettings {
     }
 
     const parsedSettings = JSON.parse(storedSettings) as Partial<ChatbotSettings>
+      & { isHidden?: boolean }
     const parsedPosition = parsedSettings.position
     const hasValidPosition =
       parsedPosition &&
@@ -133,7 +133,7 @@ function loadChatbotSettings(): ChatbotSettings {
       Number.isFinite(parsedPosition.y)
 
     return {
-      isHidden: parsedSettings.isHidden === true,
+      isChatCollapsed: parsedSettings.isChatCollapsed === true || parsedSettings.isHidden === true,
       position: hasValidPosition
         ? { x: parsedPosition.x, y: parsedPosition.y }
         : null,
@@ -163,13 +163,6 @@ function isDesktopDragViewport(): boolean {
   )
 }
 
-function isDragExcludedTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element &&
-    Boolean(target.closest('button, input, textarea, select, a, [data-vtuber-drag-excluded="true"]'))
-  )
-}
-
 function VtuberChatbotShell({
   actionsCount,
   authNotice = null,
@@ -189,7 +182,6 @@ function VtuberChatbotShell({
   const messageListRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<DragState | null>(null)
   const removeDragListenersRef = useRef<(() => void) | null>(null)
-  const shouldSuppressRestoreClickRef = useRef(false)
   const [settings, setSettings] = useState<ChatbotSettings>(loadChatbotSettings)
   const [isDesktopViewport, setIsDesktopViewport] = useState(isDesktopDragViewport)
   const [isDragging, setIsDragging] = useState(false)
@@ -197,7 +189,6 @@ function VtuberChatbotShell({
     useState<VtuberCharacterRenderStatus>('loading')
   const [isCharacterBubbleVisible, setIsCharacterBubbleVisible] = useState(true)
   const [characterBubbleNudgeX, setCharacterBubbleNudgeX] = useState(0)
-  const [controlTopOffset, setControlTopOffset] = useState(CHATBOT_CONTROL_DESKTOP_GAP_PX)
   const [sidebarDockStyle, setSidebarDockStyle] = useState<CSSProperties | undefined>(undefined)
   const [message, setMessage] = useState('')
   const trimmedMessage = message.trim()
@@ -209,9 +200,6 @@ function VtuberChatbotShell({
   })
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
-  } as CSSProperties
-  const controlStyle = {
-    '--vtuber-control-top': `${controlTopOffset}px`,
   } as CSSProperties
   const chatbotStyle: CSSProperties | undefined = shouldUseCustomPosition
     ? {
@@ -231,74 +219,6 @@ function VtuberChatbotShell({
 
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null
-    let animationFrameId: number | null = null
-
-    function getControlGap() {
-      return window.innerWidth <= 720
-        ? CHATBOT_CONTROL_MOBILE_GAP_PX
-        : CHATBOT_CONTROL_DESKTOP_GAP_PX
-    }
-
-    function updateControlTopOffset() {
-      const controlGap = getControlGap()
-      const headerElement = document.querySelector<HTMLElement>(SITE_HEADER_SELECTOR)
-
-      if (!headerElement) {
-        setControlTopOffset(controlGap)
-        return
-      }
-
-      const headerRect = headerElement.getBoundingClientRect()
-      const headerStyle = window.getComputedStyle(headerElement)
-      const isHeaderVisible =
-        headerRect.width > 0 &&
-        headerRect.height > 0 &&
-        headerStyle.display !== 'none' &&
-        headerStyle.visibility !== 'hidden' &&
-        headerRect.bottom > 0
-
-      setControlTopOffset(
-        isHeaderVisible
-          ? Math.round(Math.max(controlGap, headerRect.bottom + controlGap))
-          : controlGap,
-      )
-    }
-
-    function scheduleControlTopOffsetUpdate() {
-      if (animationFrameId !== null) {
-        return
-      }
-
-      animationFrameId = window.requestAnimationFrame(() => {
-        animationFrameId = null
-        updateControlTopOffset()
-      })
-    }
-
-    updateControlTopOffset()
-
-    const headerElement = document.querySelector<HTMLElement>(SITE_HEADER_SELECTOR)
-    if (headerElement) {
-      resizeObserver = new ResizeObserver(scheduleControlTopOffsetUpdate)
-      resizeObserver.observe(headerElement)
-    }
-
-    window.addEventListener('resize', scheduleControlTopOffsetUpdate)
-    window.addEventListener('scroll', scheduleControlTopOffsetUpdate, { passive: true })
-
-    return () => {
-      if (animationFrameId !== null) {
-        window.cancelAnimationFrame(animationFrameId)
-      }
-
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', scheduleControlTopOffsetUpdate)
-      window.removeEventListener('scroll', scheduleControlTopOffsetUpdate)
-    }
-  }, [])
-
-  useEffect(() => {
-    let resizeObserver: ResizeObserver | null = null
 
     function findVisibleCartPanel(): HTMLElement | null {
       const cartPanel = document.querySelector<HTMLElement>(CART_PANEL_SELECTOR)
@@ -309,10 +229,36 @@ function VtuberChatbotShell({
 
       const rect = cartPanel.getBoundingClientRect()
       const style = window.getComputedStyle(cartPanel)
+      const isCartPanelVisible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden'
 
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none'
-        ? cartPanel
-        : null
+      if (!isCartPanelVisible) {
+        return null
+      }
+
+      return cartPanel
+    }
+
+    function getSidebarDockLeft(cartRect: DOMRect) {
+      const viewportWidth = document.documentElement.clientWidth
+      const sidebarWidth = Math.min(
+        CHAT_SIDEBAR_DEFAULT_WIDTH_PX,
+        Math.max(0, viewportWidth - CHAT_SIDEBAR_VIEWPORT_MARGIN_PX * 2),
+      )
+      const minLeft = CHAT_SIDEBAR_VIEWPORT_MARGIN_PX
+      const maxLeft = Math.max(
+        minLeft,
+        viewportWidth - sidebarWidth - CHAT_SIDEBAR_VIEWPORT_MARGIN_PX,
+      )
+      const isCompactCartPanel = cartRect.width < CHAT_SIDEBAR_DEFAULT_WIDTH_PX / 2
+      const preferredLeft = isCompactCartPanel
+        ? cartRect.left - sidebarWidth - CART_PANEL_GAP_PX
+        : cartRect.left
+
+      return Math.min(Math.max(Math.round(preferredLeft), minLeft), maxLeft)
     }
 
     function updateSidebarDock() {
@@ -324,6 +270,18 @@ function VtuberChatbotShell({
       }
 
       const rect = cartPanel.getBoundingClientRect()
+      const left = getSidebarDockLeft(rect)
+
+      if (settings.isChatCollapsed) {
+        setSidebarDockStyle({
+          bottom: CHAT_SIDEBAR_COLLAPSED_BOTTOM_PX,
+          left,
+          right: 'auto',
+          top: 'auto',
+        })
+        return
+      }
+
       const top = Math.round(rect.bottom + CART_PANEL_GAP_PX)
       const availableHeight = Math.floor(window.innerHeight - top - 24)
 
@@ -333,10 +291,11 @@ function VtuberChatbotShell({
       }
 
       setSidebarDockStyle({
+        bottom: 'auto',
         height: Math.min(CHAT_SIDEBAR_MAX_HEIGHT_PX, availableHeight),
-        right: Math.max(0, Math.round(document.documentElement.clientWidth - rect.right)),
+        left,
+        right: 'auto',
         top,
-        width: Math.round(rect.width),
       })
     }
 
@@ -356,7 +315,7 @@ function VtuberChatbotShell({
       window.removeEventListener('resize', updateSidebarDock)
       window.removeEventListener('scroll', updateSidebarDock)
     }
-  }, [])
+  }, [settings.isChatCollapsed])
 
   useEffect(() => {
     const messageList = messageListRef.current
@@ -425,7 +384,7 @@ function VtuberChatbotShell({
 
     setSettings((currentSettings) => ({
       ...currentSettings,
-      isHidden: false,
+      isChatCollapsed: false,
       position: null,
     }))
   }, [])
@@ -504,26 +463,26 @@ function VtuberChatbotShell({
     }
   }
 
-  function handleHideClick() {
-    setSettings((currentSettings) => ({ ...currentSettings, isHidden: true }))
+  function collapseChat() {
+    setSettings((currentSettings) => ({ ...currentSettings, isChatCollapsed: true }))
   }
 
-  function showChatbot() {
+  function expandChat() {
     const chatbotElement = chatbotRef.current
 
     if (!chatbotElement) {
-      setSettings((currentSettings) => ({ ...currentSettings, isHidden: false }))
+      setSettings((currentSettings) => ({ ...currentSettings, isChatCollapsed: false }))
       return
     }
 
     setSettings((currentSettings) => {
       if (!currentSettings.position || !isDesktopViewport) {
-        return { ...currentSettings, isHidden: false }
+        return { ...currentSettings, isChatCollapsed: false }
       }
 
       return {
         ...currentSettings,
-        isHidden: false,
+        isChatCollapsed: false,
         position: clampChatbotPosition(currentSettings.position, chatbotElement),
       }
     })
@@ -562,10 +521,6 @@ function VtuberChatbotShell({
 
   function stopDragging(): boolean {
     const didMove = dragStateRef.current?.didMove === true
-
-    if (didMove) {
-      shouldSuppressRestoreClickRef.current = true
-    }
 
     removeDragListenersRef.current?.()
     removeDragListenersRef.current = null
@@ -624,14 +579,6 @@ function VtuberChatbotShell({
     }
   }
 
-  function handleDragPointerDown(event: ReactPointerEvent<HTMLElement>) {
-    if (settings.isHidden || isDragExcludedTarget(event.target)) {
-      return
-    }
-
-    startDragging(event)
-  }
-
   function handleDragPointerMove(event: ReactPointerEvent<HTMLElement>) {
     if (!isDragging || !dragStateRef.current) {
       return
@@ -640,62 +587,61 @@ function VtuberChatbotShell({
     updateChatbotPosition(event.nativeEvent)
   }
 
-  function handleDragPointerUp(event: ReactPointerEvent<HTMLElement>) {
+  function handleExpandClick() {
+    expandChat()
+  }
+
+  function clickThroughCharacter(event: ReactPointerEvent<HTMLElement>) {
+    const characterStage = event.currentTarget
+    const previousPointerEvents = characterStage.style.pointerEvents
+    characterStage.style.pointerEvents = 'none'
+
+    const target = document.elementFromPoint(event.clientX, event.clientY)
+    characterStage.style.pointerEvents = previousPointerEvents
+
+    if (!(target instanceof HTMLElement) || characterStage.contains(target)) {
+      return
+    }
+
+    target.dispatchEvent(new window.MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    }))
+  }
+
+  function handleCharacterPointerDown(event: ReactPointerEvent<HTMLElement>) {
+    startDragging(event)
+  }
+
+  function handleCharacterPointerUp(event: ReactPointerEvent<HTMLElement>) {
     if (!isDragging) {
       return
     }
 
-    stopDragging()
+    const didMove = stopDragging()
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
-  }
 
-  function handleRestorePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    startDragging(event, { preventDefault: false })
-  }
-
-  function handleRestorePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    handleDragPointerMove(event)
-  }
-
-  function handleRestorePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-
-    if (isDragging) {
-      stopDragging()
-    }
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  function handleRestorePointerCancel(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-
-    if (!isDragging) {
-      return
-    }
-
-    stopDragging()
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  function handleRestoreClick(event: ReactMouseEvent<HTMLButtonElement>) {
-    if (shouldSuppressRestoreClickRef.current) {
-      shouldSuppressRestoreClickRef.current = false
+    if (!didMove) {
       event.preventDefault()
+      clickThroughCharacter(event)
+    }
+  }
+
+  function handleCharacterPointerCancel(event: ReactPointerEvent<HTMLElement>) {
+    if (!isDragging) {
       return
     }
 
-    showChatbot()
+    stopDragging()
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
   }
 
   return (
@@ -706,53 +652,14 @@ function VtuberChatbotShell({
       aria-label="버추얼 캐릭터 챗봇"
       data-character-id={character.id}
       data-display-state={displayState}
-      data-is-hidden={settings.isHidden}
+      data-chat-collapsed={settings.isChatCollapsed}
       data-model-url={character.modelUrl}
       data-motion-key={motionKey ?? undefined}
       data-render-mode={character.renderMode ?? 'live2d'}
       data-position-mode={shouldUseCustomPosition ? 'custom' : 'default'}
-      onPointerDown={handleDragPointerDown}
-      onPointerMove={handleDragPointerMove}
-      onPointerUp={handleDragPointerUp}
-      onPointerCancel={handleDragPointerUp}
       style={chatbotStyle}
     >
-      {settings.isHidden ? (
-        <div
-          className="vtuber-controls"
-          aria-label="챗봇 제어"
-          style={controlStyle}
-        >
-          <IconButton
-            className="vtuber-restore-button"
-            icon={<span className="vtuber-restore-icon" />}
-            label="챗봇 보기"
-            onClick={handleRestoreClick}
-            onPointerDown={handleRestorePointerDown}
-            onPointerMove={handleRestorePointerMove}
-            onPointerUp={handleRestorePointerUp}
-            onPointerCancel={handleRestorePointerCancel}
-            size="small"
-            title="챗봇 보기"
-          />
-        </div>
-      ) : (
-        <>
-          <div
-            className="vtuber-controls"
-            aria-label="챗봇 제어"
-            style={controlStyle}
-          >
-            <IconButton
-              className="vtuber-hide-button"
-              icon={<span className="vtuber-hide-icon" />}
-              label="챗봇 숨기기"
-              onClick={handleHideClick}
-              size="small"
-              title="챗봇 숨기기"
-            />
-          </div>
-
+      <>
           <div
             className="vtuber-character-stack"
             aria-label={`${character.name} 캐릭터`}
@@ -774,6 +681,10 @@ function VtuberChatbotShell({
             <div
               className="vtuber-stage"
               aria-label={`${character.name} 캐릭터 영역`}
+              onPointerDown={handleCharacterPointerDown}
+              onPointerMove={handleDragPointerMove}
+              onPointerUp={handleCharacterPointerUp}
+              onPointerCancel={handleCharacterPointerCancel}
             >
               {character.renderMode === 'three3d' ? (
                 <ThreeDCharacter
@@ -800,35 +711,45 @@ function VtuberChatbotShell({
           <section
             className="vtuber-chat-sidebar"
             aria-label="Chatbot conversation"
+            data-chat-collapsed={settings.isChatCollapsed}
             data-vtuber-drag-excluded="true"
             style={sidebarDockStyle}
           >
-            <header className="vtuber-chat-sidebar-header">
-              <strong>{character.name}</strong>
-              <span>쇼핑 도우미</span>
-            </header>
+            {settings.isChatCollapsed ? null : (
+              <header className="vtuber-chat-sidebar-header">
+                <strong>{character.name}</strong>
+                <span>쇼핑 도우미</span>
+                <IconButton
+                  className="vtuber-chat-toggle-button"
+                  icon={<span className="vtuber-minimize-icon" />}
+                  label="채팅창 줄이기"
+                  onClick={collapseChat}
+                  size="small"
+                  title="채팅창 줄이기"
+                />
+              </header>
+            )}
 
-            <div
-              ref={messageListRef}
-              className="vtuber-message-list"
-              role="log"
-              aria-live="polite"
-              aria-relevant="additions text"
-            >
-              {messages.map((conversationMessage) => (
-                <article
-                  key={conversationMessage.id}
-                  className={`vtuber-message is-${conversationMessage.role}`}
-                >
-                  <span className="vtuber-message-author">
-                    {conversationMessage.role === 'assistant' ? character.name : 'You'}
-                  </span>
-                  <p>{conversationMessage.text}</p>
-                </article>
-              ))}
-            </div>
+            {settings.isChatCollapsed ? null : (
+              <div
+                ref={messageListRef}
+                className="vtuber-message-list"
+                role="log"
+                aria-live="polite"
+                aria-relevant="additions text"
+              >
+                {messages.map((conversationMessage) => (
+                  <article
+                    key={conversationMessage.id}
+                    className={`vtuber-message is-${conversationMessage.role}`}
+                  >
+                    <p>{conversationMessage.text}</p>
+                  </article>
+                ))}
+              </div>
+            )}
 
-            {authNotice ? (
+            {!settings.isChatCollapsed && authNotice ? (
               <div className="vtuber-auth-notice" role="status">
                 <p>{authNotice.message}</p>
                 <button type="button" onClick={authNotice.onAction}>
@@ -851,16 +772,26 @@ function VtuberChatbotShell({
                 onChange={(event) => setMessage(event.target.value)}
               />
               <button
+                className="vtuber-send-button"
                 type="submit"
                 disabled={isSendDisabled || trimmedMessage.length === 0}
                 aria-label="메시지 보내기"
               >
                 보내기
               </button>
+              {settings.isChatCollapsed ? (
+                <IconButton
+                  className="vtuber-chat-toggle-button"
+                  icon={<span className="vtuber-window-icon" />}
+                  label="채팅창 펼치기"
+                  onClick={handleExpandClick}
+                  size="small"
+                  title="채팅창 펼치기"
+                />
+              ) : null}
             </form>
           </section>
         </>
-      )}
     </aside>
   )
 }
