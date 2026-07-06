@@ -96,6 +96,7 @@ UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
 FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
 FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
 FOLLOW_UP_NAVIGATION_EMPTY_TEXT = "먼저 추천받을 상품을 알려주세요."
+RECOMMENDATION_RECALL_EMPTY_TEXT = "아직 다시 보여드릴 추천 이력이 없어요. 원하시면 지금 상품을 추천해드릴게요."
 KOREAN_NUMBER_WORDS = {
     "첫": 1,
     "한": 1,
@@ -416,6 +417,12 @@ class CatalogGroundedChatResponseProvider:
         )
         if numbered_follow_up_response is not None:
             return numbered_follow_up_response
+        recall_response = build_recommendation_recall_response(
+            text,
+            self.recommendation_history,
+        )
+        if recall_response is not None:
+            return recall_response
         navigation_response = build_navigation_response(text, context, self.delegate)
         if navigation_response is not None:
             return navigation_response
@@ -1076,6 +1083,55 @@ def build_numbered_follow_up_response(
         text=f"선택한 {len(goods_ids)}개 추천 상품을 보여드릴게요.",
         actions=[ShowRecommendationsAction(goodsIds=goods_ids)],
     )
+
+
+def build_recommendation_recall_response(
+    text: str,
+    recommendation_history: list[dict[str, Any]],
+) -> FullTextMessage | None:
+    reference = recommendation_recall_reference(text)
+    if reference is None:
+        return None
+    if not recommendation_history:
+        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[])
+
+    turn = recommendation_history[0] if reference == "first" else recommendation_history[-1]
+    candidates = [
+        candidate
+        for candidate in turn.get("candidates", [])
+        if isinstance(candidate, dict) and candidate.get("goodsId") is not None
+    ]
+    if not candidates:
+        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[])
+
+    count = len(candidates)
+    label = "처음" if reference == "first" else "마지막으로"
+    text_count = "상품을" if count == 1 else f"{count}개 상품을"
+    return FullTextMessage(
+        text=f"{label} 추천드린 {text_count} 다시 보여드릴게요.",
+        actions=default_candidate_actions(candidates),
+    )
+
+
+def recommendation_recall_reference(text: str) -> str | None:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    if not is_recommendation_recall_text(normalized_text):
+        return None
+    if any(keyword in normalized_text for keyword in ("처음", "맨 처음", "첫 추천")):
+        return "first"
+    if any(keyword in normalized_text for keyword in ("방금", "최근", "마지막", "아까")):
+        return "latest"
+    return None
+
+
+def is_recommendation_recall_text(normalized_text: str) -> bool:
+    has_recommendation_reference = (
+        "추천" in normalized_text
+        and any(keyword in normalized_text for keyword in ("처음", "맨 처음", "첫", "방금", "최근", "마지막", "아까"))
+    )
+    has_show_request = any(keyword in normalized_text for keyword in ("다시", "보여", "알려", "꺼내"))
+    has_cart_request = is_cart_add_text(normalized_text) or "장바구니" in normalized_text
+    return has_recommendation_reference and has_show_request and not has_cart_request
 
 
 def select_follow_up_candidates(
