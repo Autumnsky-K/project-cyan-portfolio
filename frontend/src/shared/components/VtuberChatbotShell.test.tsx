@@ -240,7 +240,7 @@ describe('VtuberChatbotShell', () => {
 
     await waitFor(() => {
       expect(sidebar?.getAttribute('data-chat-collapsed')).toBe('true')
-      expect(sidebar?.style.left).toBe('797px')
+      expect(sidebar?.style.left).toBe('853px')
     })
     expect(sidebar?.style.right).toBe('auto')
     expect(sidebar?.style.width).toBe('')

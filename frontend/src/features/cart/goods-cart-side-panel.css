@@ -174,7 +174,7 @@
   opacity: .45;
 }
 
-@media (max-width: 1813px) {
+@media (max-width: 1600px) {
   .goods-cart-side-panel {
     top: var(--cart-panel-top);
     right: 16px;
