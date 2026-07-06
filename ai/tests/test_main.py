@@ -266,6 +266,18 @@ class FakeGoodsCatalogClient:
         return self.candidates
 
 
+class SequentialFakeGoodsCatalogClient:
+    def __init__(self, candidate_batches):
+        self.candidate_batches = list(candidate_batches)
+        self.received_texts = []
+
+    def search_candidates(self, text, favorite_artists=None, category_name=None, artist_name=None):
+        self.received_texts.append(text)
+        if not self.candidate_batches:
+            return []
+        return self.candidate_batches.pop(0)
+
+
 class FakeHookPolicyClient:
     def __init__(self, policies):
         self.policies = policies
@@ -894,6 +906,153 @@ def test_catalog_grounding_adds_all_recent_candidates_to_cart_on_follow_up():
             {"type": "addToCart", "goodsId": "1005"},
             {"type": "addToCart", "goodsId": "1006"},
         ],
+    }
+
+
+def test_catalog_grounding_records_recommendation_turn_history():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("Artist C 포토카드 추천해줘")
+
+    assert [
+        turn["requestText"]
+        for turn in provider.recommendation_history
+    ] == [
+        "추천하는 상품 있어?",
+        "Artist C 포토카드 추천해줘",
+    ]
+    assert [
+        candidate["goodsId"]
+        for candidate in provider.recommendation_history[0]["candidates"]
+    ] == [1005, 1006, 1007]
+
+
+def test_catalog_grounding_clears_recommendation_history_with_connection_context():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.clear_connection_context()
+
+    assert provider.recent_recommendation_candidates == []
+    assert provider.recommendation_history == []
+
+
+def test_catalog_grounding_shows_first_recommendation_turn_without_new_search():
+    first_candidates = FakeWebSocketGoodsCatalogClient.candidates
+    latest_candidates = THREE_RECENT_CANDIDATES
+    catalog = SequentialFakeGoodsCatalogClient([first_candidates, latest_candidates])
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("내가 좋아하는 아티스트 기반으로 추천해줘")
+    response = provider.build_response("처음에 추천한 상품 다시 보여줘")
+
+    assert catalog.received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "처음 추천드린 2개 상품을 다시 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006"],
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["방금 추천한 상품 다시 보여줘", "마지막에 추천한 상품 보여줘"],
+)
+def test_catalog_grounding_shows_latest_recommendation_turn_without_new_search(text):
+    first_candidates = FakeWebSocketGoodsCatalogClient.candidates
+    latest_candidates = THREE_RECENT_CANDIDATES
+    catalog = SequentialFakeGoodsCatalogClient([first_candidates, latest_candidates])
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("내가 좋아하는 아티스트 기반으로 추천해줘")
+    response = provider.build_response(text)
+
+    assert catalog.received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "마지막으로 추천드린 3개 상품을 다시 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006", "1007"],
+            }
+        ],
+    }
+
+
+def test_catalog_grounding_reports_empty_recommendation_history_for_recall():
+    catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response("처음 추천한 상품 다시 보여줘")
+
+    assert catalog.received_texts == []
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "아직 다시 보여드릴 추천 이력이 없어요. 원하시면 지금 상품을 추천해드릴게요.",
+        "actions": [],
+    }
+
+
+def test_catalog_grounding_uses_recalled_turn_for_numbered_follow_up():
+    first_candidates = [
+        {"goodsId": 2001, "name": "First Recommendation A"},
+        {"goodsId": 2002, "name": "First Recommendation B"},
+    ]
+    latest_candidates = [
+        {"goodsId": 3001, "name": "Latest Recommendation A"},
+        {"goodsId": 3002, "name": "Latest Recommendation B"},
+    ]
+    catalog = SequentialFakeGoodsCatalogClient([first_candidates, latest_candidates])
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("내가 좋아하는 아티스트 기반으로 추천해줘")
+    provider.build_response("처음에 추천한 상품들 보여줘")
+    response = provider.build_response("두번째 상품 자세히 보여줘")
+
+    assert catalog.received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 추천 상품으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods/2002"}],
     }
 
 
@@ -2905,6 +3064,60 @@ def test_client_ws_remembers_recent_candidates_within_same_connection(monkeypatc
         "actions": [
             {"type": "addToCart", "goodsId": "1005"},
             {"type": "addToCart", "goodsId": "1006"},
+        ],
+    }
+
+
+def test_client_ws_recalls_first_recommendation_turn_without_search(monkeypatch):
+    class SequentialWebSocketGoodsCatalogClient:
+        instances = []
+
+        def __init__(self, spring_api_url, *args, **kwargs):
+            self.candidate_batches = [
+                FakeWebSocketGoodsCatalogClient.candidates,
+                THREE_RECENT_CANDIDATES,
+            ]
+            self.received_texts = []
+            SequentialWebSocketGoodsCatalogClient.instances.append(self)
+
+        def search_candidates(self, text, favorite_artists=None, category_name=None, artist_name=None):
+            self.received_texts.append(text)
+            return self.candidate_batches.pop(0)
+
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_semantic_or_fallback_goods_catalog_client",
+        SequentialWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+
+        websocket.send_json({"type": "text-input", "text": "추천하는 상품 있어?"})
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "내가 좋아하는 아티스트 기반으로 추천해줘"}
+        )
+        websocket.receive_json()
+
+        websocket.send_json(
+            {"type": "text-input", "text": "처음에 추천한 상품 다시 보여줘"}
+        )
+        recall_response = websocket.receive_json()
+
+    assert SequentialWebSocketGoodsCatalogClient.instances[0].received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert recall_response == {
+        "type": "full-text",
+        "text": "처음 추천드린 2개 상품을 다시 보여드릴게요.",
+        "actions": [
+            {
+                "type": "showRecommendations",
+                "goodsIds": ["1005", "1006"],
+            }
         ],
     }
 
