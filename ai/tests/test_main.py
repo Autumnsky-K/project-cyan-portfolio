@@ -1025,6 +1025,37 @@ def test_catalog_grounding_reports_empty_recommendation_history_for_recall():
     }
 
 
+def test_catalog_grounding_uses_recalled_turn_for_numbered_follow_up():
+    first_candidates = [
+        {"goodsId": 2001, "name": "First Recommendation A"},
+        {"goodsId": 2002, "name": "First Recommendation B"},
+    ]
+    latest_candidates = [
+        {"goodsId": 3001, "name": "Latest Recommendation A"},
+        {"goodsId": 3002, "name": "Latest Recommendation B"},
+    ]
+    catalog = SequentialFakeGoodsCatalogClient([first_candidates, latest_candidates])
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    provider.build_response("추천하는 상품 있어?")
+    provider.build_response("내가 좋아하는 아티스트 기반으로 추천해줘")
+    provider.build_response("처음에 추천한 상품들 보여줘")
+    response = provider.build_response("두번째 상품 자세히 보여줘")
+
+    assert catalog.received_texts == [
+        "추천하는 상품 있어?",
+        "내가 좋아하는 아티스트 기반으로 추천해줘",
+    ]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "선택한 추천 상품으로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/goods/2002"}],
+    }
+
+
 def test_catalog_grounding_adds_selected_recent_candidate_to_cart_on_follow_up():
     catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
     provider = CatalogGroundedChatResponseProvider(

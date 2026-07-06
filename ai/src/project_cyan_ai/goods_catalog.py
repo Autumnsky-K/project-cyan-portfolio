@@ -417,11 +417,16 @@ class CatalogGroundedChatResponseProvider:
         )
         if numbered_follow_up_response is not None:
             return numbered_follow_up_response
-        recall_response = build_recommendation_recall_response(
+        recall_result = build_recommendation_recall_response(
             text,
             self.recommendation_history,
         )
-        if recall_response is not None:
+        if recall_result is not None:
+            recall_response, recalled_candidates = recall_result
+            if recalled_candidates:
+                self.recent_recommendation_candidates = normalize_recent_candidates(
+                    recalled_candidates
+                )
             return recall_response
         navigation_response = build_navigation_response(text, context, self.delegate)
         if navigation_response is not None:
@@ -1088,12 +1093,12 @@ def build_numbered_follow_up_response(
 def build_recommendation_recall_response(
     text: str,
     recommendation_history: list[dict[str, Any]],
-) -> FullTextMessage | None:
+) -> tuple[FullTextMessage, list[dict[str, Any]]] | None:
     reference = recommendation_recall_reference(text)
     if reference is None:
         return None
     if not recommendation_history:
-        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[])
+        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[]), []
 
     turn = recommendation_history[0] if reference == "first" else recommendation_history[-1]
     candidates = [
@@ -1102,14 +1107,17 @@ def build_recommendation_recall_response(
         if isinstance(candidate, dict) and candidate.get("goodsId") is not None
     ]
     if not candidates:
-        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[])
+        return FullTextMessage(text=RECOMMENDATION_RECALL_EMPTY_TEXT, actions=[]), []
 
     count = len(candidates)
     label = "처음" if reference == "first" else "마지막으로"
     text_count = "상품을" if count == 1 else f"{count}개 상품을"
-    return FullTextMessage(
-        text=f"{label} 추천드린 {text_count} 다시 보여드릴게요.",
-        actions=default_candidate_actions(candidates),
+    return (
+        FullTextMessage(
+            text=f"{label} 추천드린 {text_count} 다시 보여드릴게요.",
+            actions=default_candidate_actions(candidates),
+        ),
+        candidates,
     )
 
 
