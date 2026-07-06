@@ -503,22 +503,6 @@ function ThreeDCharacter({
       aria-label={`${character.name} 3D 캐릭터`}
     >
       <div ref={containerRef} className="vtuber-three-container" aria-hidden="true" />
-      <div
-        className="vtuber-avatar"
-        data-display-state={displayState}
-        data-motion-key={motionKey ?? undefined}
-        data-motion-trigger-id={motionTriggerId || undefined}
-        aria-hidden="true"
-      >
-        <span className="vtuber-avatar-face" />
-        {displayState === 'thinking' || renderStatus === 'loading' ? (
-          <span className="vtuber-thinking-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-        ) : null}
-      </div>
       <span className="vtuber-status">{statusLabel}</span>
     </div>
   )
