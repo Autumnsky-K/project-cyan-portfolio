@@ -26,6 +26,80 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
 
+      - name: Verify Cloud Run config
+        env:
+          SERVICE_NAME: project-cyan-backend
+          REGION: asia-northeast3
+          REQUIRED_ENV_NAMES: >-
+            SUPABASE_DB_URL
+            SUPABASE_DB_USERNAME
+            SUPABASE_DB_PASSWORD
+            SUPABASE_SERVICE_ROLE_KEY
+            SUPABASE_PROJECT_URL
+            SUPABASE_JWT_ISSUER
+            SUPABASE_JWKS_URL
+            SUPABASE_JWT_AUDIENCE
+            ADMIN_AUTH_USERNAME
+            ADMIN_AUTH_PASSWORD
+            FRONTEND_BASE_URL
+            AI_GOODS_CATALOG_EXPORT_ENABLED
+            AI_GOODS_CATALOG_BUCKET
+            AI_GOODS_CATALOG_FILE_NAME
+            AI_GOODS_CATALOG_CRON
+            AI_GOODS_CATALOG_SIGNED_URL_TTL_SECONDS
+            PROJECT_CYAN_AI_SERVICE_URL
+            PROJECT_CYAN_INTERNAL_SERVICE_TOKEN
+            PROJECT_CYAN_CREDENTIAL_MASTER_KEY
+            PROJECT_CYAN_LLM_ALLOWED_HOSTS
+        run: |
+          set -euo pipefail
+          config_file="$(mktemp)"
+          trap 'rm -f "$config_file"' EXIT
+
+          gcloud run services describe "$SERVICE_NAME" \
+            --region "$REGION" \
+            --format=json > "$config_file"
+
+          python3 - "$config_file" $REQUIRED_ENV_NAMES <<'PY'
+          import json
+          import sys
+
+          config_path = sys.argv[1]
+          required_names = sys.argv[2:]
+
+          with open(config_path, encoding="utf-8") as config:
+              service = json.load(config)
+
+          knative_template_spec = (
+              service.get("spec", {})
+              .get("template", {})
+              .get("spec", {})
+          )
+          v2_template = service.get("template", {})
+          containers = (
+              knative_template_spec.get("containers")
+              or v2_template.get("containers")
+              or []
+          )
+          configured_names = {
+              env.get("name")
+              for container in containers
+              for env in (container.get("env") or [])
+              if env.get("name")
+          }
+          missing_names = [
+              name for name in required_names if name not in configured_names
+          ]
+
+          if missing_names:
+              print("Missing Cloud Run env/secret bindings:")
+              for name in missing_names:
+                  print(f"- {name}")
+              sys.exit(1)
+
+          print(f"Verified {len(required_names)} Cloud Run env/secret bindings.")
+          PY
+
       - name: Build and Push
         run: |
           docker build --platform linux/amd64 \
