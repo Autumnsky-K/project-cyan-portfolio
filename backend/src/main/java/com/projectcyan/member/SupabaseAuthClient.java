@@ -64,8 +64,8 @@ public class SupabaseAuthClient {
 				.headers(this::applyAuthHeaders)
 				.retrieve()
 				.toBodilessEntity();
-		} catch (RestClientResponseException ignored) {
-			// Signup returns the original DB error; auth cleanup failure should not hide it.
+		} catch (RestClientResponseException exception) {
+			throw new SupabaseAuthException(authErrorMessage(exception), exception.getStatusCode().value());
 		}
 	}
 

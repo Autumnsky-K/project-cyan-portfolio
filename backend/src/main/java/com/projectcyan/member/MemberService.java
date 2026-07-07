@@ -127,7 +127,11 @@ public class MemberService {
 			));
 			return SignupResponse.from(member);
 		} catch (DataAccessException exception) {
-			supabaseAuthClient.deleteUser(authUser.id());
+			try {
+				supabaseAuthClient.deleteUser(authUser.id());
+			} catch (SupabaseAuthException ignored) {
+				// Signup should report the original member DB write failure.
+			}
 			throw new ApiErrorException("MEMBER_SIGNUP_FAILED", "회원 정보를 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -269,7 +273,16 @@ public class MemberService {
 
 		memberAddressRepository.deleteByMemberMemberId(member.getMemberId());
 		member.withdraw();
-		supabaseAuthClient.deleteUser(member.getMemberUuid());
+		memberRepository.flush();
+		try {
+			supabaseAuthClient.deleteUser(member.getMemberUuid());
+		} catch (SupabaseAuthException exception) {
+			throw new ApiErrorException(
+				"MEMBER_AUTH_FAILED",
+				"회원 탈퇴 중 인증 계정을 삭제하지 못했습니다.",
+				HttpStatus.BAD_GATEWAY
+			);
+		}
 	}
 
 	@Transactional(readOnly = true)
