@@ -44,3 +44,30 @@ Windows 환경은 이번 루트 개발 서버 통합 범위에 포함하지 않�
 실제 secret, API key, Supabase/Kakao/OpenAI 키, token, password, private server URL은 커밋하지 않습니다. 로컬 비밀값이나 개인 서버 주소는 필요한 경우 `.env` 또는 `.env.local`에만 보관하고, 해당 파일은 커밋하지 않습니다. `frontend/.env.development`에는 커밋 가능한 로컬 기본값만 둡니다.
 
 PostgreSQL은 Supabase를 사용합니다. 온라인 Supabase에 직접 연결하지 않는 로컬 개발 흐름은 `docs/supabase-local-setup.md`를 참고합니다.
+
+## Cloud Run 배포 설정
+
+코드에 남아 있는 `localhost` URL은 로컬 개발용 fallback입니다. Cloud Run 같은 배포 환경에서는 서비스 간 호출과 사용자-facing 링크가 실제 배포 주소를 보도록 환경변수 또는 Secret Manager 값으로 override해야 합니다.
+
+백엔드 Cloud Run 설정을 갱신할 때는 `deploy-backend-config.sh`가 `backend/.env.cloudrun`의 필수 값을 검사하고 Secret Manager에 반영합니다. 실제 값은 커밋하지 말고 로컬 설정 파일이나 배포 환경의 secret으로만 관리합니다.
+
+```env
+FRONTEND_BASE_URL=https://<frontend-domain>
+PROJECT_CYAN_AI_SERVICE_URL=https://<ai-cloud-run-url>
+PROJECT_CYAN_INTERNAL_SERVICE_TOKEN=<shared-internal-token>
+```
+
+AI Cloud Run에는 Spring API를 실제 백엔드 서비스로 향하게 하는 값이 필요합니다.
+
+```env
+PROJECT_CYAN_SPRING_API_URL=https://<backend-cloud-run-url>/api
+PROJECT_CYAN_GOODS_API_BASE_URL=https://<backend-cloud-run-url>/api
+PROJECT_CYAN_INTERNAL_SERVICE_TOKEN=<shared-internal-token>
+```
+
+프론트엔드 배포 빌드는 브라우저가 사용자 기기의 localhost를 호출하지 않도록 실제 API/WebSocket 주소를 주입해야 합니다.
+
+```env
+VITE_API_BASE_URL=https://<backend-cloud-run-url>/api
+VITE_VTUBER_WS_URL=wss://<ai-cloud-run-url>/client-ws
+```
