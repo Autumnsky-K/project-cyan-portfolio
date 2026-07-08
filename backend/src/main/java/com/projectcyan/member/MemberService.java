@@ -10,20 +10,29 @@ import java.time.Clock;
 import java.time.Instant;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+import java.util.function.Supplier;
 
 import com.projectcyan.common.ApiErrorException;
 import com.projectcyan.member.auth.AuthenticatedMember;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 @Service
 public class MemberService {
+
+	private static final Logger log = LoggerFactory.getLogger(MemberService.class);
+	private static final int AUTH_DELETE_MAX_ATTEMPTS = 2;
 
 	private final SupabaseAuthClient supabaseAuthClient;
 	private final MemberRepository memberRepository;
@@ -31,6 +40,7 @@ public class MemberService {
 	private final PasswordResetTokenRepository passwordResetTokenRepository;
 	private final PasswordResetMailService passwordResetMailService;
 	private final PasswordResetProperties passwordResetProperties;
+	private final TransactionTemplate transactionTemplate;
 	private final SecureRandom secureRandom;
 	private final Clock clock;
 
@@ -41,7 +51,8 @@ public class MemberService {
 		MemberAddressRepository memberAddressRepository,
 		PasswordResetTokenRepository passwordResetTokenRepository,
 		PasswordResetMailService passwordResetMailService,
-		PasswordResetProperties passwordResetProperties
+		PasswordResetProperties passwordResetProperties,
+		PlatformTransactionManager transactionManager
 	) {
 		this(
 			supabaseAuthClient,
@@ -50,6 +61,7 @@ public class MemberService {
 			passwordResetTokenRepository,
 			passwordResetMailService,
 			passwordResetProperties,
+			new TransactionTemplate(transactionManager),
 			new SecureRandom(),
 			Clock.systemUTC()
 		);
@@ -65,12 +77,37 @@ public class MemberService {
 		SecureRandom secureRandom,
 		Clock clock
 	) {
+		this(
+			supabaseAuthClient,
+			memberRepository,
+			memberAddressRepository,
+			passwordResetTokenRepository,
+			passwordResetMailService,
+			passwordResetProperties,
+			null,
+			secureRandom,
+			clock
+		);
+	}
+
+	MemberService(
+		SupabaseAuthClient supabaseAuthClient,
+		MemberRepository memberRepository,
+		MemberAddressRepository memberAddressRepository,
+		PasswordResetTokenRepository passwordResetTokenRepository,
+		PasswordResetMailService passwordResetMailService,
+		PasswordResetProperties passwordResetProperties,
+		TransactionTemplate transactionTemplate,
+		SecureRandom secureRandom,
+		Clock clock
+	) {
 		this.supabaseAuthClient = supabaseAuthClient;
 		this.memberRepository = memberRepository;
 		this.memberAddressRepository = memberAddressRepository;
 		this.passwordResetTokenRepository = passwordResetTokenRepository;
 		this.passwordResetMailService = passwordResetMailService;
 		this.passwordResetProperties = passwordResetProperties;
+		this.transactionTemplate = transactionTemplate;
 		this.secureRandom = secureRandom;
 		this.clock = clock;
 	}
@@ -266,23 +303,67 @@ public class MemberService {
 		return MemberProfileResponse.from(member, memberAddress);
 	}
 
-	@Transactional
 	public void withdrawCurrentMember(Long memberId) {
+		WithdrawnMember withdrawnMember = runInTransaction(() -> withdrawLocalMember(memberId));
+		deleteSupabaseAuthUser(withdrawnMember);
+	}
+
+	private WithdrawnMember withdrawLocalMember(Long memberId) {
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new ApiErrorException("MEMBER_NOT_FOUND", "회원 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
 
 		memberAddressRepository.deleteByMemberMemberId(member.getMemberId());
 		member.withdraw();
 		memberRepository.flush();
-		try {
-			supabaseAuthClient.deleteUser(member.getMemberUuid());
-		} catch (SupabaseAuthException exception) {
-			throw new ApiErrorException(
-				"MEMBER_AUTH_FAILED",
-				"회원 탈퇴 중 인증 계정을 삭제하지 못했습니다.",
-				HttpStatus.BAD_GATEWAY
-			);
+		return new WithdrawnMember(member.getMemberId(), member.getMemberUuid());
+	}
+
+	private void deleteSupabaseAuthUser(WithdrawnMember withdrawnMember) {
+		for (int attempt = 1; attempt <= AUTH_DELETE_MAX_ATTEMPTS; attempt++) {
+			try {
+				supabaseAuthClient.deleteUser(withdrawnMember.memberUuid());
+				return;
+			} catch (SupabaseAuthException exception) {
+				log.warn(
+					"Supabase Auth user delete failed. memberId={}, status={}, attempt={}/{}, message={}, responseBody={}",
+					withdrawnMember.memberId(),
+					exception.getStatus(),
+					attempt,
+					AUTH_DELETE_MAX_ATTEMPTS,
+					exception.getMessage(),
+					loggableResponseBody(exception.getResponseBody())
+				);
+				if (attempt == AUTH_DELETE_MAX_ATTEMPTS || !isRetryableAuthFailure(exception)) {
+					throw new ApiErrorException(
+						"MEMBER_AUTH_FAILED",
+						"회원 탈퇴 중 인증 계정을 삭제하지 못했습니다.",
+						HttpStatus.BAD_GATEWAY
+					);
+				}
+			}
 		}
+	}
+
+	private boolean isRetryableAuthFailure(SupabaseAuthException exception) {
+		return exception.getStatus() >= 500;
+	}
+
+	private String loggableResponseBody(String responseBody) {
+		if (!StringUtils.hasText(responseBody)) {
+			return "(empty)";
+		}
+		String normalized = responseBody.replaceAll("\\s+", " ").trim();
+		return normalized.length() > 500 ? normalized.substring(0, 500) + "...(truncated)" : normalized;
+	}
+
+	private <T> T runInTransaction(Supplier<T> action) {
+		if (transactionTemplate == null) {
+			return action.get();
+		}
+		return transactionTemplate.execute(status -> action.get());
+	}
+
+	private record WithdrawnMember(Long memberId, UUID memberUuid) {
 	}
 
 	@Transactional(readOnly = true)
@@ -346,7 +427,6 @@ public class MemberService {
 		memberAddress.updateDefaultAddress(name, phone, address);
 	}
 
-	@Transactional
 	public void deleteAdminMember(Long memberId) {
 		withdrawCurrentMember(memberId);
 	}

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.security.SecureRandom;
@@ -64,5 +66,21 @@ class MemberServiceTest {
 			.isInstanceOf(ApiErrorException.class)
 			.extracting("code")
 			.isEqualTo("MEMBER_AUTH_FAILED");
+	}
+
+	@Test
+	void retriesWhenSupabaseAuthUserDeletionTemporarilyFails() {
+		UUID memberUuid = UUID.randomUUID();
+		Member member = Member.emailMember(memberUuid, "user@example.com", "User", "010-0000-0000");
+		ReflectionTestUtils.setField(member, "memberId", 970L);
+		when(memberRepository.findById(970L)).thenReturn(Optional.of(member));
+		doThrow(new SupabaseAuthException("upstream request timeout", 504))
+			.doNothing()
+			.when(supabaseAuthClient)
+			.deleteUser(memberUuid);
+
+		memberService.withdrawCurrentMember(970L);
+
+		verify(supabaseAuthClient, times(2)).deleteUser(memberUuid);
 	}
 }
