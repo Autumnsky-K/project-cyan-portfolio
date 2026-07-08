@@ -1,6 +1,7 @@
 package com.projectcyan.member;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -51,6 +52,19 @@ class MemberServiceTest {
 		order.verify(memberAddressRepository).deleteByMemberMemberId(970L);
 		order.verify(memberRepository).flush();
 		order.verify(supabaseAuthClient).deleteUser(memberUuid);
+	}
+
+	@Test
+	void keepsWithdrawnLoginIdWithinSchemaLimit() {
+		UUID memberUuid = UUID.randomUUID();
+		Member member = Member.emailMember(memberUuid, "user@example.com", "User", "010-0000-0000");
+		ReflectionTestUtils.setField(member, "memberId", 123456789012345L);
+
+		member.withdraw();
+
+		String loginId = (String) ReflectionTestUtils.getField(member, "loginId");
+		assertThat(loginId).isEqualTo("withdrawn-123456789012345");
+		assertThat(loginId).hasSizeLessThanOrEqualTo(50);
 	}
 
 	@Test
