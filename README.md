@@ -43,7 +43,7 @@ Windows 환경은 이번 루트 개발 서버 통합 범위에 포함하지 않�
 
 실제 secret, API key, Supabase/Kakao/OpenAI 키, token, password, private server URL은 커밋하지 않습니다. 로컬 비밀값이나 개인 서버 주소는 필요한 경우 `.env` 또는 `.env.local`에만 보관하고, 해당 파일은 커밋하지 않습니다. `frontend/.env.development`에는 커밋 가능한 로컬 기본값만 둡니다.
 
-PostgreSQL은 Supabase를 사용합니다. 온라인 Supabase에 직접 연결하지 않는 로컬 개발 흐름은 `docs/supabase-local-setup.md`를 참고합니다.
+PostgreSQL은 개발 환경에서도 팀 Supabase 원격 프로젝트를 사용합니다. 백엔드 연결 값은 `docs/supabase-remote-setup.md`를 참고해 개인 환경변수 또는 커밋하지 않는 로컬 설정 파일에만 둡니다.
 
 ## Cloud Run 배포 설정
 

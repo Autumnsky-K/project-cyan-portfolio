@@ -10,9 +10,11 @@ export default function StoreLayout() {
       ? 'cart-page'
       : pathname === '/checkout'
         ? 'checkout-page'
-      : pathname === '/mypage'
-        ? 'account-page mypage-page'
-        : 'goods-page'
+        : pathname === '/mypage'
+          ? 'account-page mypage-page'
+          : pathname === '/payment/success'
+            ? 'payment-success-page'
+            : 'goods-page'
 
   return (
     <div className="store-shell">

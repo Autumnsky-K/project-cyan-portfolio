@@ -1,6 +1,7 @@
 package com.projectcyan.member;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import com.projectcyan.common.ApiErrorException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class MemberServiceTest {
@@ -53,6 +55,19 @@ class MemberServiceTest {
 	}
 
 	@Test
+	void keepsWithdrawnLoginIdWithinSchemaLimit() {
+		UUID memberUuid = UUID.randomUUID();
+		Member member = Member.emailMember(memberUuid, "user@example.com", "User", "010-0000-0000");
+		ReflectionTestUtils.setField(member, "memberId", 123456789012345L);
+
+		member.withdraw();
+
+		String loginId = (String) ReflectionTestUtils.getField(member, "loginId");
+		assertThat(loginId).isEqualTo("withdrawn-123456789012345");
+		assertThat(loginId).hasSizeLessThanOrEqualTo(50);
+	}
+
+	@Test
 	void reportsFailureWhenSupabaseAuthUserDeletionFails() {
 		UUID memberUuid = UUID.randomUUID();
 		Member member = Member.emailMember(memberUuid, "user@example.com", "User", "010-0000-0000");
@@ -66,6 +81,17 @@ class MemberServiceTest {
 			.isInstanceOf(ApiErrorException.class)
 			.extracting("code")
 			.isEqualTo("MEMBER_AUTH_FAILED");
+	}
+
+	@Test
+	void reportsFailureWhenLocalWithdrawFails() {
+		when(memberRepository.findById(970L))
+			.thenThrow(new DataIntegrityViolationException("member schema constraint failed"));
+
+		assertThatThrownBy(() -> memberService.withdrawCurrentMember(970L))
+			.isInstanceOf(ApiErrorException.class)
+			.extracting("code")
+			.isEqualTo("MEMBER_WITHDRAW_FAILED");
 	}
 
 	@Test

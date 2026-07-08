@@ -633,6 +633,7 @@
 
 .mypage-section {
   overflow: hidden;
+  scroll-margin-top: 96px;
 }
 
 .mypage-section-heading,

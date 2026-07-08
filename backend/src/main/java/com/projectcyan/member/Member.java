@@ -135,7 +135,7 @@ public class Member {
 	}
 
 	public void withdraw() {
-		String withdrawnId = "withdrawn-" + memberId + "-" + memberUuid;
+		String withdrawnId = "withdrawn-" + memberId;
 		this.email = null;
 		this.name = "탈퇴 회원";
 		this.phone = null;

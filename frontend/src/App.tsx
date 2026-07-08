@@ -126,10 +126,10 @@ function AppShell() {
             <Route path="/terms" element={<CustomerInfoPage kind="terms" />} />
             <Route path="/privacy" element={<CustomerInfoPage kind="privacy" />} />
             <Route path="/partnership" element={<CustomerInfoPage kind="partnership" />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
           </Route>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
           <Route path="/payment/fail" element={<PaymentFail />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />

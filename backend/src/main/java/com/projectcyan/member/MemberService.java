@@ -304,7 +304,17 @@ public class MemberService {
 	}
 
 	public void withdrawCurrentMember(Long memberId) {
-		WithdrawnMember withdrawnMember = runInTransaction(() -> withdrawLocalMember(memberId));
+		WithdrawnMember withdrawnMember;
+		try {
+			withdrawnMember = runInTransaction(() -> withdrawLocalMember(memberId));
+		} catch (DataAccessException exception) {
+			log.error("Member local withdraw failed. memberId={}", memberId, exception);
+			throw new ApiErrorException(
+				"MEMBER_WITHDRAW_FAILED",
+				"회원 탈퇴 중 회원 정보를 정리하지 못했습니다.",
+				HttpStatus.INTERNAL_SERVER_ERROR
+			);
+		}
 		deleteSupabaseAuthUser(withdrawnMember);
 	}
 
