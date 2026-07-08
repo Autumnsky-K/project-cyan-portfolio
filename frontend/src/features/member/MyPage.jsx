@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { removeGoodsLike } from '../../api/goods'
 import Button from '../../shared/components/Button'
 import AsyncState from '../../shared/components/AsyncState'
@@ -142,7 +142,7 @@ function DashboardSection({ id, title, items, onMore, actionLabel = '더보기',
   const startIndex = 0
   const visibleItems = items.slice(startIndex, startIndex + SECTION_PAGE_SIZE)
   return (
-    <section className="account-panel mypage-section" aria-label={title}>
+    <section className="account-panel mypage-section" id={id} aria-label={title}>
       <div className="mypage-section-heading">
         <h2>{title}</h2>
         <div className="mypage-section-actions">
@@ -455,6 +455,7 @@ function SupportInquiryModal({ form, isSaving, onChange, onClose, onSubmit, orde
 }
 
 function MyPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -506,6 +507,21 @@ function MyPage() {
       isMounted = false
     }
   }, [navigate])
+
+  useEffect(() => {
+    if (!summary || location.hash !== '#orders') {
+      return undefined
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('orders')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [location.hash, summary])
 
   const handleEditProfile = () => {
     setError('')
