@@ -147,6 +147,7 @@ interface GoodsFavoriteRow {
 interface ArtistRow {
   artist_id: number
   artist_name: string
+  profile_image_url?: string | null
 }
 
 interface MemberAddressRow {
@@ -962,7 +963,7 @@ export async function getArtistOptions(): Promise<ArtistOption[]> {
 
   const { data, error } = await requireSupabase()
     .from('artist')
-    .select('artist_id, artist_name')
+    .select('artist_id, artist_name, profile_image_url')
     .order('artist_id', { ascending: true })
 
   if (error) {
@@ -981,7 +982,7 @@ export async function getArtistOptions(): Promise<ArtistOption[]> {
   return (data as ArtistRow[]).map((artist) => ({
     artistId: artist.artist_id,
     name: artist.artist_name,
-    imageUrl: '',
+    imageUrl: artist.profile_image_url ?? '',
   }))
 }
 
