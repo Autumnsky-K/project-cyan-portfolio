@@ -20,10 +20,12 @@ from project_cyan_ai.conversation_summary import (
 from project_cyan_ai.goods_catalog import (
     CatalogGroundedChatResponseProvider,
     HttpGoodsCatalogClient,
+    HttpSemanticGoodsCatalogClient,
     MetadataTsvGoodsCatalogClient,
     TsvGoodsCatalogClient,
     build_runtime_goods_catalog_client,
     build_catalog_prompt,
+    exact_goods_name_queries,
     extract_max_price,
     filter_tsv_candidates,
     parse_goods_catalog_tsv,
@@ -266,6 +268,16 @@ class FakeGoodsCatalogClient:
         return self.candidates
 
 
+class FakeEmbeddingsClient:
+    def __init__(self, embedding=None):
+        self.embedding = embedding or [0.1, 0.2, 0.3]
+        self.calls = []
+
+    def embed(self, text):
+        self.calls.append(text)
+        return self.embedding
+
+
 class SequentialFakeGoodsCatalogClient:
     def __init__(self, candidate_batches):
         self.candidate_batches = list(candidate_batches)
@@ -497,6 +509,87 @@ def test_http_goods_catalog_client_calls_recommendation_candidates(monkeypatch):
             "stockCount": 5,
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ("text", "queries"),
+    [
+        ("[양양 미니 인형] 보여줘", ["양양 미니 인형"]),
+        ('"양양 미니 인형" 열어줘', ["양양 미니 인형"]),
+        ("양양 미니 인형 보여줘", ["양양 미니 인형"]),
+        ("히에나 우산 보여줘", ["히에나 우산"]),
+    ],
+)
+def test_exact_goods_name_queries_extracts_direct_lookup_names(text, queries):
+    assert exact_goods_name_queries(text) == queries
+
+
+def test_semantic_goods_catalog_prefers_exact_name_match(monkeypatch):
+    captured_requests = []
+    embeddings_client = FakeEmbeddingsClient()
+
+    def fake_urlopen(request, timeout):
+        captured_requests.append({"url": request.full_url, "timeout": timeout})
+        assert "/semantic-search" not in request.full_url
+        return FakeHttpResponse(
+            {
+                "content": [
+                    {"goodsId": 101, "name": "미니 인형"},
+                    {"goodsId": 102, "name": "양양 미니 인형"},
+                    {"goodsId": 103, "name": "루루 미니 인형"},
+                ],
+            }
+        )
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+
+    response = HttpSemanticGoodsCatalogClient(
+        "http://backend.test/api",
+        embeddings_client,
+    ).search_candidates("[양양 미니 인형] 보여줘")
+
+    parsed_url = urlparse(captured_requests[0]["url"])
+    assert parsed_url.path == "/api/goods/recommendation-candidates"
+    assert parse_qs(parsed_url.query)["q"] == ["양양 미니 인형"]
+    assert response == [{"goodsId": 102, "name": "양양 미니 인형"}]
+    assert embeddings_client.calls == []
+
+
+def test_semantic_goods_catalog_falls_back_to_embedding_when_no_exact_match(monkeypatch):
+    captured_requests = []
+    embeddings_client = FakeEmbeddingsClient([0.4, 0.5])
+
+    def fake_urlopen(request, timeout):
+        captured_requests.append({"url": request.full_url, "data": request.data})
+        if request.full_url.endswith("/semantic-search"):
+            return FakeHttpResponse(
+                {
+                    "content": [
+                        {"goodsId": 201, "name": "비슷한 미니 인형"},
+                    ],
+                }
+            )
+        return FakeHttpResponse(
+            {
+                "content": [
+                    {"goodsId": 101, "name": "미니 인형"},
+                ],
+            }
+        )
+
+    monkeypatch.setattr("project_cyan_ai.goods_catalog.urlopen", fake_urlopen)
+
+    response = HttpSemanticGoodsCatalogClient(
+        "http://backend.test/api",
+        embeddings_client,
+    ).search_candidates("양양 미니 인형 보여줘")
+
+    assert [urlparse(request["url"]).path for request in captured_requests] == [
+        "/api/goods/recommendation-candidates",
+        "/api/goods/recommendation-candidates/semantic-search",
+    ]
+    assert embeddings_client.calls == ["양양 미니 인형 보여줘"]
+    assert response == [{"goodsId": 201, "name": "비슷한 미니 인형"}]
 
 
 def test_runtime_catalog_factory_always_uses_spring_recommendation_api():
@@ -1184,7 +1277,7 @@ def test_catalog_grounding_restores_recent_candidates_from_client_context():
 
 @pytest.mark.parametrize(
     "text",
-    ["굿즈 리스트로 돌아가줘", "상품 목록 보여줘", "굿즈 페이지로 가줘"],
+    ["굿즈 리스트로 돌아가줘", "상품 목록 보여줘", "굿즈 페이지로 가줘", "굿즈 페이지 보여줘"],
 )
 def test_catalog_grounding_routes_explicit_goods_list_navigation(text):
     catalog = FakeGoodsCatalogClient(THREE_RECENT_CANDIDATES)
@@ -1203,7 +1296,70 @@ def test_catalog_grounding_routes_explicit_goods_list_navigation(text):
     assert catalog.received_texts == []
 
 
-@pytest.mark.parametrize("text", ["카트 보여줘", "장바구니로 가줘"])
+def test_catalog_grounding_prioritizes_direct_goods_lookup_over_navigation():
+    catalog = FakeGoodsCatalogClient(
+        [{"goodsId": 102, "name": "히에나 우산"}]
+    )
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response(
+        "히에나 우산 보여줘",
+        context={"currentPath": "/goods"},
+    )
+
+    assert catalog.received_texts == ["히에나 우산 보여줘"]
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "히에나 우산을 추천해요.",
+        "actions": [
+            {"type": "navigate", "path": "/goods/102"},
+            {"type": "highlight", "selector": "[data-goods-id='102']"},
+        ],
+        "metadata": {
+            "recommendations": [
+                {
+                    "goodsId": 102,
+                    "recommendationReason": None,
+                    "rankOrder": 0,
+                }
+            ]
+        },
+    }
+
+
+def test_catalog_grounding_adds_current_detail_goods_to_cart():
+    catalog = FakeGoodsCatalogClient([])
+    provider = CatalogGroundedChatResponseProvider(
+        delegate=MockChatResponseProvider(),
+        catalog_client=catalog,
+    )
+
+    response = provider.build_response(
+        "응 카트에 담아줘",
+        context={"currentPath": "/goods/42"},
+    )
+
+    assert catalog.received_texts == []
+    assert response.model_dump() == {
+        "type": "full-text",
+        "text": "현재 보고 있는 상품을 장바구니에 담을게요.",
+        "actions": [{"type": "addToCart", "goodsId": "42"}],
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "카트 보여줘",
+        "장바구니로 가줘",
+        "그러 결제하자",
+        "결제로 이동해",
+        "결제 페이지로 이동해",
+    ],
+)
 def test_catalog_grounding_routes_explicit_cart_navigation(text):
     provider = CatalogGroundedChatResponseProvider(
         delegate=MockChatResponseProvider(),
@@ -1241,6 +1397,7 @@ def test_catalog_grounding_routes_back_from_goods_detail_to_goods_list():
         ("상품 목록 보여줘", "/goods", "이미 굿즈 목록에 있어요."),
         ("뒤로 가줘", "/goods", "이미 굿즈 목록에 있어요."),
         ("카트 보여줘", "/cart", "이미 장바구니에 있어요."),
+        ("결제 페이지로 이동해", "/cart", "이미 장바구니에 있어요."),
         ("뒤로 가줘", "/cart", "이미 장바구니에 있어요."),
     ],
 )
@@ -2628,7 +2785,7 @@ def test_client_ws_sends_initial_messages():
 
     assert greeting == {
         "type": "full-text",
-        "text": "안녕! 저는 당신의 쇼핑을 도와줄 cyan이에요! 원하시는 상품이 있으면 말해주세요! 추천이랑 카트 담기까지 모두 해드릴게요!",
+        "text": "안녕! Hiena에요! 당신의 쇼핑을 도와줄게요!\n원하시는 상품이 있으면 말해주세요!\n추천이랑 카트 담기까지 모두 해드릴게요!",
         "actions": [],
     }
 
@@ -3144,6 +3301,57 @@ def test_client_ws_routes_navigation_with_current_path_context(monkeypatch):
         "type": "full-text",
         "text": "굿즈 목록으로 이동할게요.",
         "actions": [{"type": "navigate", "path": "/goods"}],
+    }
+
+
+@pytest.mark.parametrize("text", ["그러 결제하자", "결제 페이지로 이동해"])
+def test_client_ws_routes_payment_navigation_to_cart(monkeypatch, text):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_semantic_or_fallback_goods_catalog_client",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json(
+            {
+                "type": "text-input",
+                "text": text,
+                "context": {"currentPath": "/goods"},
+            }
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "장바구니로 이동할게요.",
+        "actions": [{"type": "navigate", "path": "/cart"}],
+    }
+
+
+def test_client_ws_adds_current_detail_goods_to_cart(monkeypatch):
+    monkeypatch.setattr(
+        "project_cyan_ai.api.websocket.build_semantic_or_fallback_goods_catalog_client",
+        FakeWebSocketGoodsCatalogClient,
+    )
+
+    with client.websocket_connect("/client-ws") as websocket:
+        websocket.receive_json()
+        websocket.receive_json()
+        websocket.send_json(
+            {
+                "type": "text-input",
+                "text": "응 카트에 담아줘",
+                "context": {"currentPath": "/goods/42"},
+            }
+        )
+        response = websocket.receive_json()
+
+    assert response == {
+        "type": "full-text",
+        "text": "현재 보고 있는 상품을 장바구니에 담을게요.",
+        "actions": [{"type": "addToCart", "goodsId": "42"}],
     }
 
 

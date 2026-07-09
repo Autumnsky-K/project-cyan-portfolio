@@ -31,6 +31,7 @@ type VtuberChatbotProps = {
   characterBubbleSequence: number
   character: VtuberCharacterConfig
   displayState: VtuberDisplayState
+  inputPlaceholder: string
   isSendDisabled: boolean
   messages: VtuberConversationMessage[]
   motionKey: VtuberMotionKey | null
@@ -170,6 +171,7 @@ function VtuberChatbotShell({
   characterBubbleSequence,
   character,
   displayState,
+  inputPlaceholder,
   isSendDisabled,
   messages,
   motionKey,
@@ -766,7 +768,7 @@ function VtuberChatbotShell({
                 id="vtuber-message"
                 type="text"
                 value={message}
-                placeholder="굿즈를 물어보세요"
+                placeholder={inputPlaceholder}
                 autoComplete="off"
                 disabled={isSendDisabled}
                 onChange={(event) => setMessage(event.target.value)}
