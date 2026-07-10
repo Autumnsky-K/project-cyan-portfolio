@@ -258,6 +258,35 @@ describe('VtuberChatbotShell', () => {
     })
   })
 
+  it('uses an explicit ready greeting without needing an initial chat message', async () => {
+    const onReadyGreeting = vi.fn()
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        characterBubbleSequence={0}
+        characterBubbleText="캐릭터 소개 문구"
+        messages={[]}
+        onReadyGreeting={onReadyGreeting}
+        readyGreetingText="필요한 굿즈를 찾을 때 여기에서 도와드릴게요."
+      />,
+    )
+    const character = container.querySelector<HTMLElement>('[data-testid="three-character"]')
+    const readyButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="three-character-ready"]',
+    )
+    const bubbleText = container.querySelector<HTMLElement>('.vtuber-character-bubble p')
+
+    fireEvent.click(readyButton!)
+
+    await waitFor(() => {
+      expect(bubbleText?.textContent).toBe('필요한 굿즈를 찾을 때 여기에서 도와드릴게요.')
+      expect(character?.getAttribute('data-greeting-speech-trigger-id')).toBe('1')
+      expect(onReadyGreeting).toHaveBeenCalledWith(
+        '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.',
+      )
+    })
+  })
+
   it('shows a greeting bubble when a seated 3D helper starts waving', async () => {
     const { container } = renderShell()
     const character = container.querySelector<HTMLButtonElement>(

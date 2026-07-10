@@ -69,7 +69,9 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
     motionKey,
     motionTriggerId,
     onCharacterChange,
+    onReadyGreeting,
     onSendMessage,
+    readyGreetingText,
     selectedCharacterId,
   }: {
     authNotice?: { message: string; actionLabel: string; onAction: () => void } | null
@@ -81,7 +83,9 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
     motionKey?: string | null
     motionTriggerId?: number
     onCharacterChange?: (characterId: string) => void
+    onReadyGreeting?: (message: string) => void
     onSendMessage: (message: string) => boolean | Promise<boolean>
+    readyGreetingText?: string
     selectedCharacterId?: string
   }) => (
     <div>
@@ -118,6 +122,13 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
         }}
       >
         Send mock
+      </button>
+      <button
+        type="button"
+        aria-label="mock ready greeting"
+        onClick={() => onReadyGreeting?.(readyGreetingText ?? '')}
+      >
+        Ready mock
       </button>
       {authNotice && (
         <div>
@@ -173,6 +184,22 @@ describe('VtuberChatbot auth notice', () => {
       expect(screen.getByText('user:테스트 질문')).toBeTruthy()
     })
     expect(mocks.sendText).toHaveBeenCalledWith('테스트 질문', null)
+  })
+
+  it('adds the default guide when the character ready greeting fires', async () => {
+    renderChatbot()
+
+    expect(
+      screen.queryByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock ready greeting' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
+      ).toHaveLength(1)
+    })
   })
 
   it('does not append the legacy connection greeting as a chat reply', () => {

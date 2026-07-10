@@ -42,7 +42,9 @@ type VtuberChatbotProps = {
   motionKey: VtuberMotionKey | null
   motionTriggerId: number
   onCharacterChange?: (characterId: string) => void
+  onReadyGreeting?: (message: string) => void
   onSendMessage: (message: string) => boolean | Promise<boolean>
+  readyGreetingText?: string
   selectedCharacterId?: string
   statusLabel: string
 }
@@ -424,7 +426,9 @@ function VtuberChatbotShell({
   motionKey,
   motionTriggerId,
   onCharacterChange,
+  onReadyGreeting,
   onSendMessage,
+  readyGreetingText,
   selectedCharacterId = character.id,
   statusLabel,
 }: VtuberChatbotProps): ReactElement {
@@ -463,8 +467,9 @@ function VtuberChatbotShell({
       : undefined,
     [character.renderMode],
   )
-  const defaultAssistantGreeting =
-    messages.find((conversationMessage) => conversationMessage.role === 'assistant')
+  const defaultAssistantGreeting = readyGreetingText !== undefined
+    ? readyGreetingText.trim()
+    : messages.find((conversationMessage) => conversationMessage.role === 'assistant')
       ?.text.trim() || ''
   const visibleCharacterBubbleText = interactionBubbleText || buildVisibleCharacterBubbleText({
     characterRenderStatus,
@@ -496,7 +501,6 @@ function VtuberChatbotShell({
     !interactionBubbleText &&
     characterRenderStatus === 'ready' &&
     displayState === 'ready' &&
-    messages.length === 0 &&
     characterBubbleSequence === 0
   const shouldShowCharacterBubble =
     isCharacterBubbleVisible &&
@@ -599,7 +603,8 @@ function VtuberChatbotShell({
     setCharacterBubbleVisibleLength(0)
     setIsCharacterBubbleVisible(true)
     setGreetingSpeechTriggerId((currentTriggerId) => currentTriggerId + 1)
-  }, [character.id, defaultAssistantGreeting])
+    onReadyGreeting?.(defaultAssistantGreeting)
+  }, [character.id, defaultAssistantGreeting, onReadyGreeting])
 
   useEffect(() => {
     window.localStorage.setItem(

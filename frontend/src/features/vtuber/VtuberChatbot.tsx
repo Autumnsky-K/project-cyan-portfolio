@@ -26,10 +26,10 @@ import {
 } from './types'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
+const DEFAULT_GUIDE_ID = 1
 const LEGACY_SERVER_GREETING_TEXT =
   '안녕하세요. 필요한 굿즈를 찾을 때 여기에서 도와드릴게요.\n원하시는 상품이 있으면 말씀해주세요.\n추천과 카트 담기까지 도와드릴게요.'
 const SPEAKING_STATE_DURATION_MS = 2400
-const DEFAULT_GUIDE_ID = 1
 const TOKEN_REFRESH_SKEW_MS = 60_000
 const AUTH_REQUIRED_MESSAGES: Record<VtuberAuthReason, string> = {
   accountPersonalization: '찜·구매 이력을 활용한 추천은 로그인 후 이용할 수 있어요.',
@@ -431,6 +431,10 @@ function VtuberChatbot(): ReactElement {
     return didSend
   }
 
+  function handleReadyGreeting(greetingText: string) {
+    appendConversationMessage('assistant', greetingText)
+  }
+
   function handleReauthClick() {
     const returnTo = `${location.pathname}${location.search}${location.hash}`
     window.sessionStorage.setItem('project-cyan:login-return-to', returnTo)
@@ -505,7 +509,9 @@ function VtuberChatbot(): ReactElement {
       motionKey={motionKey}
       motionTriggerId={actionBatchId}
       onCharacterChange={handleCharacterChange}
+      onReadyGreeting={handleReadyGreeting}
       onSendMessage={handleSendMessage}
+      readyGreetingText={INITIAL_BUBBLE_TEXT}
       selectedCharacterId={selectedCharacterId}
       statusLabel={VTUBER_DISPLAY_STATE_LABELS[displayState]}
     />
