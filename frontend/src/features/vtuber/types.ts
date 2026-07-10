@@ -51,6 +51,7 @@ export type VtuberThreeMotionLibrary = {
 
 export type VtuberCharacterConfig = {
   id: string
+  introText?: string
   name: string
   modelUrl: string
   renderMode?: 'live2d' | 'three3d'

@@ -72,7 +72,9 @@ function VtuberChatbot(): ReactElement {
   const [chatAccessToken, setChatAccessToken] = useState<string | null>(null)
   const [chatAuthStatus, setChatAuthStatus] = useState<ChatAuthStatus>('anonymous')
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
-  const [characterBubbleText, setCharacterBubbleText] = useState('')
+  const [characterBubbleText, setCharacterBubbleText] = useState(
+    DEFAULT_VTUBER_CHARACTER.introText ?? INITIAL_BUBBLE_TEXT,
+  )
   const [characterBubbleSequence, setCharacterBubbleSequence] = useState(0)
   const [selectedCharacterId, setSelectedCharacterId] =
     useState<VtuberCharacterId>(DEFAULT_VTUBER_CHARACTER_ID)
@@ -406,7 +408,13 @@ function VtuberChatbot(): ReactElement {
 
   function handleCharacterChange(characterId: string) {
     if (characterId in VTUBER_CHARACTERS) {
-      setSelectedCharacterId(characterId as VtuberCharacterId)
+      const nextCharacterId = characterId as VtuberCharacterId
+      const nextCharacter = VTUBER_CHARACTERS[nextCharacterId]
+
+      setSelectedCharacterId(nextCharacterId)
+      setCharacterBubbleText(nextCharacter.introText ?? INITIAL_BUBBLE_TEXT)
+      setCharacterBubbleSequence((currentSequence) => currentSequence + 1)
+      setSpeakingBatchId(0)
     }
   }
 

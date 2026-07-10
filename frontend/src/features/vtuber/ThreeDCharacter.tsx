@@ -16,8 +16,10 @@ type ThreeDCharacterProps = {
   character: VtuberCharacterConfig
   danceTriggerId?: number
   displayState: VtuberDisplayState
+  greetingSpeechTriggerId?: number
   motionKey?: VtuberMotionKey | null
   onBubbleAnchorChange?: (anchor: ThreeDScreenAnchor | null) => void
+  onHelpWaveStart?: () => void
   motionTriggerId?: number
   onRenderStatusChange?: (status: VtuberCharacterRenderStatus) => void
   statusLabel: string
@@ -1134,8 +1136,10 @@ function ThreeDCharacter({
   character,
   danceTriggerId = 0,
   displayState,
+  greetingSpeechTriggerId = 0,
   motionKey = null,
   onBubbleAnchorChange,
+  onHelpWaveStart,
   motionTriggerId = 0,
   onRenderStatusChange,
   statusLabel,
@@ -1158,7 +1162,9 @@ function ThreeDCharacter({
   const lastBubbleAnchorRef = useRef<ThreeDScreenAnchor | null>(null)
   const manualMotionUntilRef = useRef(0)
   const onBubbleAnchorChangeRef = useRef(onBubbleAnchorChange)
+  const onHelpWaveStartRef = useRef(onHelpWaveStart)
   const proceduralMotionRef = useRef<ProceduralMotion | null>(null)
+  const handledGreetingSpeechTriggerIdRef = useRef(0)
   const requestedDanceTriggerIdRef = useRef(0)
   const [renderStatus, setRenderStatus] = useState<RenderStatus>('loading')
 
@@ -1169,6 +1175,10 @@ function ThreeDCharacter({
   useEffect(() => {
     onBubbleAnchorChangeRef.current = onBubbleAnchorChange
   }, [onBubbleAnchorChange])
+
+  useEffect(() => {
+    onHelpWaveStartRef.current = onHelpWaveStart
+  }, [onHelpWaveStart])
 
   useEffect(() => {
     onRenderStatusChange?.(renderStatus)
@@ -1227,6 +1237,42 @@ function ThreeDCharacter({
       startedAt: now,
     }
   }, [motionKey, motionTriggerId, renderStatus])
+
+  useEffect(() => {
+    if (
+      greetingSpeechTriggerId === 0 ||
+      greetingSpeechTriggerId <= handledGreetingSpeechTriggerIdRef.current ||
+      renderStatus !== 'ready'
+    ) {
+      return
+    }
+
+    handledGreetingSpeechTriggerIdRef.current = greetingSpeechTriggerId
+    activeMotionBlendRef.current = null
+    const action =
+      findAnimationActionByAssetKey(animationActionsRef.current, 'talkHandOnHip') ??
+      findAnimationActionByAssetKey(animationActionsRef.current, 'talkHandRaised') ??
+      findAnimationActionForMotionKey(animationActionsRef.current, 'guide-success')
+
+    if (!action) {
+      return
+    }
+
+    playAction(action, animationActionsRef.current, 'once', {
+      fadeSeconds: MANUAL_ACTION_FADE_SECONDS,
+    })
+    proceduralMotionRef.current = null
+    const now = window.performance.now() / 1000
+    const durationSeconds = Math.max(action.getClip().duration, 0.8)
+    const handoffAt = now + transitionHandoffDelay(durationSeconds)
+    manualMotionUntilRef.current = handoffAt
+    autoMotionRuntimeRef.current = {
+      ...autoMotionRuntimeRef.current,
+      endsAt: now + durationSeconds,
+      nextAt: handoffAt,
+      phase: 'manual',
+    }
+  }, [greetingSpeechTriggerId, renderStatus])
 
   useEffect(() => {
     let isDisposed = false
@@ -1621,6 +1667,7 @@ function ThreeDCharacter({
           timeScale: HELP_REQUEST_WAVE_TIME_SCALE,
         })
       ) {
+        onHelpWaveStartRef.current?.()
         return
       }
 
@@ -1824,6 +1871,7 @@ function ThreeDCharacter({
             timeScale: HELP_REQUEST_WAVE_TIME_SCALE,
           })
         ) {
+          onHelpWaveStartRef.current?.()
           return
         }
 

@@ -10,7 +10,35 @@ vi.mock('../../features/vtuber/Live2DCharacter', () => ({
 }))
 
 vi.mock('../../features/vtuber/ThreeDCharacter', () => ({
-  default: () => <div data-testid="three-character" />,
+  default: ({
+    greetingSpeechTriggerId,
+    onHelpWaveStart,
+    onRenderStatusChange,
+  }: {
+    greetingSpeechTriggerId?: number
+    onHelpWaveStart?: () => void
+    onRenderStatusChange?: (status: 'ready') => void
+  }) => (
+    <div
+      data-testid="three-character"
+      data-greeting-speech-trigger-id={greetingSpeechTriggerId ?? 0}
+    >
+      <button
+        type="button"
+        data-testid="three-character-ready"
+        onClick={() => onRenderStatusChange?.('ready')}
+      >
+        Ready
+      </button>
+      <button
+        type="button"
+        data-testid="three-character-help-wave"
+        onClick={() => onHelpWaveStart?.()}
+      >
+        Help wave
+      </button>
+    </div>
+  ),
 }))
 
 const defaultProps = {
@@ -159,6 +187,48 @@ describe('VtuberChatbotShell', () => {
     expect(onCharacterChange).toHaveBeenCalledWith('rikane')
   })
 
+  it('says the default chat greeting and triggers a speech motion when the character is ready', async () => {
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        characterBubbleText="캐릭터 소개 문구"
+        messages={[
+          {
+            id: 'message-1',
+            role: 'assistant',
+            text: '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.',
+          },
+        ]}
+      />,
+    )
+    const character = container.querySelector<HTMLElement>('[data-testid="three-character"]')
+    const readyButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="three-character-ready"]',
+    )
+    const bubbleText = container.querySelector<HTMLElement>('.vtuber-character-bubble p')
+
+    fireEvent.click(readyButton!)
+
+    await waitFor(() => {
+      expect(bubbleText?.textContent).toBe('필요한 굿즈를 찾을 때 여기에서 도와드릴게요.')
+      expect(character?.getAttribute('data-greeting-speech-trigger-id')).toBe('1')
+    })
+  })
+
+  it('shows a greeting bubble when a seated 3D helper starts waving', async () => {
+    const { container } = renderShell()
+    const character = container.querySelector<HTMLButtonElement>(
+      '[data-testid="three-character-help-wave"]',
+    )
+    const bubbleText = container.querySelector<HTMLElement>('.vtuber-character-bubble p')
+
+    fireEvent.click(character!)
+
+    await waitFor(() => {
+      expect(bubbleText?.textContent).toBe('안녕? 뭐 찾는거 있어?')
+    })
+  })
+
   it('docks the mini chat to the cart left without inheriting the cart width', async () => {
     vi.stubGlobal(
       'ResizeObserver',
@@ -273,7 +343,7 @@ describe('VtuberChatbotShell', () => {
 
     await waitFor(() => {
       expect(sidebar?.getAttribute('data-chat-collapsed')).toBe('true')
-      expect(sidebar?.style.left).toBe('853px')
+      expect(sidebar?.style.left).toBe('737px')
     })
     expect(sidebar?.style.right).toBe('auto')
     expect(sidebar?.style.width).toBe('')

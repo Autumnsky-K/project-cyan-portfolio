@@ -2785,7 +2785,7 @@ def test_client_ws_sends_initial_messages():
 
     assert greeting == {
         "type": "full-text",
-        "text": "안녕! Hiena에요! 당신의 쇼핑을 도와줄게요!\n원하시는 상품이 있으면 말해주세요!\n추천이랑 카트 담기까지 모두 해드릴게요!",
+        "text": "안녕하세요. 필요한 굿즈를 찾을 때 여기에서 도와드릴게요.\n원하시는 상품이 있으면 말씀해주세요.\n추천과 카트 담기까지 도와드릴게요.",
         "actions": [],
     }
 

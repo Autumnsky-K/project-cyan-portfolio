@@ -59,27 +59,46 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
   default: ({
     authNotice,
     characterBubbleText,
+    characterOptions,
     inputPlaceholder,
     isSendDisabled,
     messages,
     motionKey,
     motionTriggerId,
+    onCharacterChange,
     onSendMessage,
+    selectedCharacterId,
   }: {
     authNotice?: { message: string; actionLabel: string; onAction: () => void } | null
     characterBubbleText: string
+    characterOptions?: ReadonlyArray<{ id: string; name: string }>
     inputPlaceholder: string
     isSendDisabled: boolean
     messages?: Array<{ role: string; text: string }>
     motionKey?: string | null
     motionTriggerId?: number
+    onCharacterChange?: (characterId: string) => void
     onSendMessage: (message: string) => boolean | Promise<boolean>
+    selectedCharacterId?: string
   }) => (
     <div>
       <p aria-label="mock character bubble">{characterBubbleText}</p>
       <p aria-label="mock input placeholder">{inputPlaceholder}</p>
       <p aria-label="mock motion key">{motionKey ?? 'none'}</p>
       <p aria-label="mock motion trigger">{motionTriggerId ?? 0}</p>
+      <p aria-label="mock selected character">{selectedCharacterId ?? 'none'}</p>
+      <div aria-label="mock character switcher">
+        {characterOptions?.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            aria-label={`switch ${option.name}`}
+            onClick={() => onCharacterChange?.(option.id)}
+          >
+            {option.name}
+          </button>
+        ))}
+      </div>
       <div aria-label="mock conversation messages">
         {messages?.map((message) => (
           <p key={`${message.role}:${message.text}`}>
@@ -149,6 +168,32 @@ describe('VtuberChatbot auth notice', () => {
       expect(screen.getByText('user:테스트 질문')).toBeTruthy()
     })
     expect(mocks.sendText).toHaveBeenCalledWith('테스트 질문', null)
+  })
+
+  it('uses hard-coded character intro text when switching characters', async () => {
+    renderChatbot()
+
+    expect(screen.getByLabelText('mock character bubble').textContent).toBe(
+      '안녕하세요, Manase입니다. 차분하게 취향에 맞는 굿즈를 찾아드릴게요.',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch Hiena' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock selected character').textContent).toBe('hiena')
+      expect(screen.getByLabelText('mock character bubble').textContent).toBe(
+        '안녕하세요, Hiena입니다. 필요한 굿즈를 빠르게 찾아보고 추천까지 도와드릴게요.',
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'switch Rikane 10K' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock selected character').textContent).toBe('rikane')
+      expect(screen.getByLabelText('mock character bubble').textContent).toBe(
+        '안녕하세요, Rikane입니다. 분위기에 맞는 굿즈를 함께 살펴보고 안내해드릴게요.',
+      )
+    })
   })
 
   it('keeps member chat sending disabled until the chat session is ready', async () => {

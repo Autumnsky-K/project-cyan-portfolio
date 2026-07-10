@@ -73,21 +73,120 @@ const CHATBOT_SETTINGS_STORAGE_KEY = 'project-cyan.vtuber-chatbot.settings'
 const DESKTOP_DRAG_MIN_WIDTH = 721
 const DRAG_CLICK_TOLERANCE_PX = 4
 const CHARACTER_BUBBLE_VISIBLE_MS = 5000
-const DEFAULT_CHARACTER_GREETING = '안녕! 궁금한거 있어?'
+const CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS = 1300
+const CHARACTER_BUBBLE_TYPEWRITER_INTERVAL_MS = 14
+const CHARACTER_BUBBLE_MAX_LINE_LENGTH = 28
+const CHARACTER_BUBBLE_LINES_PER_SEGMENT = 3
+const DEFAULT_CHARACTER_GREETING = '안녕하세요. 필요한 굿즈를 편하게 물어봐 주세요.'
+const DEFAULT_LOAD_READY_GREETING = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
+const HELP_WAVE_GREETING = '안녕? 뭐 찾는거 있어?'
 const CART_PANEL_SELECTOR = '.goods-cart-side-panel'
 const CART_PANEL_GAP_PX = 16
 const CHAT_SIDEBAR_MIN_HEIGHT_PX = 208
 const CHAT_SIDEBAR_MAX_HEIGHT_PX = 512
-const CHAT_SIDEBAR_DEFAULT_WIDTH_PX = 304
+const CHAT_SIDEBAR_DEFAULT_WIDTH_PX = 420
 const CHAT_SIDEBAR_VIEWPORT_MARGIN_PX = 16
 const CHAT_SIDEBAR_COLLAPSED_BOTTOM_PX = 16
 const CHARACTER_BUBBLE_ANCHOR_THRESHOLD_PX = 2
 const CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX = 8
 const THREE_DRAG_HORIZONTAL_OVERFLOW_PX = 560
+const VTUBER_FONT_PRELOADS = [
+  {
+    family: 'VtuberGyuriDiary',
+    href: '/vtuber/fonts/nanum-gyuri-diary.ttf',
+    type: 'font/ttf',
+    weight: 900,
+    sizePx: 21,
+  },
+  {
+    family: 'VtuberMoonOrbit',
+    href: '/vtuber/fonts/nanum-moon-orbit.ttf',
+    type: 'font/ttf',
+    weight: 900,
+    sizePx: 21,
+  },
+  {
+    family: 'VtuberFutureTree',
+    href: '/vtuber/fonts/nanum-future-tree.ttf',
+    type: 'font/ttf',
+    weight: 900,
+    sizePx: 21,
+  },
+  {
+    family: 'VtuberUserMonaS',
+    href: '/vtuber/fonts/mona-s-12-text-kr.woff2',
+    type: 'font/woff2',
+    weight: 900,
+    sizePx: 19,
+  },
+] as const
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   isChatCollapsed: false,
   position: null,
+}
+
+let vtuberFontLoadPromise: Promise<void> | null = null
+
+function getDocumentFontSet(): FontFaceSet | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return (document as Document & { fonts?: FontFaceSet }).fonts ?? null
+}
+
+function buildFontLoadSpec(font: (typeof VTUBER_FONT_PRELOADS)[number]): string {
+  return `${font.weight} ${font.sizePx}px "${font.family}"`
+}
+
+function ensureVtuberFontsPreloaded(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  VTUBER_FONT_PRELOADS.forEach((font) => {
+    const hasPreload = Array.from(
+      document.head.querySelectorAll<HTMLLinkElement>('link[rel="preload"][as="font"]'),
+    ).some((link) => link.href.endsWith(font.href))
+
+    if (hasPreload) {
+      return
+    }
+
+    const preloadLink = document.createElement('link')
+    preloadLink.rel = 'preload'
+    preloadLink.href = font.href
+    preloadLink.as = 'font'
+    preloadLink.type = font.type
+    preloadLink.crossOrigin = 'anonymous'
+    document.head.appendChild(preloadLink)
+  })
+}
+
+function loadVtuberFonts(): Promise<void> {
+  if (typeof document === 'undefined') {
+    return Promise.resolve()
+  }
+
+  if (vtuberFontLoadPromise) {
+    return vtuberFontLoadPromise
+  }
+
+  ensureVtuberFontsPreloaded()
+  const fontSet = getDocumentFontSet()
+
+  if (!fontSet?.load) {
+    return Promise.resolve()
+  }
+
+  vtuberFontLoadPromise = Promise.all(
+    VTUBER_FONT_PRELOADS.map((font) => fontSet.load(buildFontLoadSpec(font))),
+  )
+    .then(() => undefined)
+    .catch(() => undefined)
+
+  return vtuberFontLoadPromise
 }
 
 function buildVisibleCharacterBubbleText({
@@ -124,6 +223,81 @@ function buildVisibleCharacterBubbleText({
   }
 
   return DEFAULT_CHARACTER_GREETING
+}
+
+function splitBubbleLine(line: string): string[] {
+  const trimmedLine = line.trim()
+
+  if (!trimmedLine) {
+    return []
+  }
+
+  const lines: string[] = []
+  let remainingLine = trimmedLine
+
+  while (remainingLine.length > CHARACTER_BUBBLE_MAX_LINE_LENGTH) {
+    const preferredBreakIndex = remainingLine.lastIndexOf(
+      ' ',
+      CHARACTER_BUBBLE_MAX_LINE_LENGTH,
+    )
+    const breakIndex = preferredBreakIndex >= CHARACTER_BUBBLE_MAX_LINE_LENGTH * 0.45
+      ? preferredBreakIndex
+      : CHARACTER_BUBBLE_MAX_LINE_LENGTH
+
+    lines.push(remainingLine.slice(0, breakIndex).trim())
+    remainingLine = remainingLine.slice(breakIndex).trim()
+  }
+
+  if (remainingLine) {
+    lines.push(remainingLine)
+  }
+
+  return lines
+}
+
+function splitCharacterBubbleText(text: string): string[] {
+  const trimmedText = text.trim()
+
+  if (!trimmedText) {
+    return [DEFAULT_CHARACTER_GREETING]
+  }
+
+  const visibleLines = trimmedText
+    .split(/\n+/)
+    .flatMap((line) => {
+      const trimmedLine = line.trim()
+
+      if (trimmedLine.length <= CHARACTER_BUBBLE_MAX_LINE_LENGTH) {
+        return [trimmedLine]
+      }
+
+      return trimmedLine
+        .split(/(?<=[.!?。！？요다죠니다까])\s+/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+    })
+    .flatMap(splitBubbleLine)
+    .filter(Boolean)
+
+  if (!visibleLines.length) {
+    return [trimmedText]
+  }
+
+  const segments: string[] = []
+
+  for (
+    let lineIndex = 0;
+    lineIndex < visibleLines.length;
+    lineIndex += CHARACTER_BUBBLE_LINES_PER_SEGMENT
+  ) {
+    segments.push(
+      visibleLines
+        .slice(lineIndex, lineIndex + CHARACTER_BUBBLE_LINES_PER_SEGMENT)
+        .join('\n'),
+    )
+  }
+
+  return segments
 }
 
 function loadChatbotSettings(): ChatbotSettings {
@@ -202,6 +376,8 @@ function VtuberChatbotShell({
   const characterBubbleRef = useRef<HTMLDivElement>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<DragState | null>(null)
+  const observedCharacterBubbleSequenceRef = useRef(characterBubbleSequence)
+  const readyGreetingCharacterRef = useRef<string | null>(null)
   const removeDragListenersRef = useRef<(() => void) | null>(null)
   const [settings, setSettings] = useState<ChatbotSettings>(loadChatbotSettings)
   const [isDesktopViewport, setIsDesktopViewport] = useState(isDesktopDragViewport)
@@ -211,8 +387,16 @@ function VtuberChatbotShell({
   const [characterBubbleAnchor, setCharacterBubbleAnchor] =
     useState<CharacterBubbleAnchor | null>(null)
   const [isCharacterBubbleVisible, setIsCharacterBubbleVisible] = useState(true)
+  const [characterBubbleSegmentIndex, setCharacterBubbleSegmentIndex] = useState(0)
+  const [characterBubbleVisibleLength, setCharacterBubbleVisibleLength] = useState(0)
   const [characterBubbleNudgeX, setCharacterBubbleNudgeX] = useState(0)
+  const [interactionBubbleText, setInteractionBubbleText] = useState('')
+  const [interactionBubbleSequence, setInteractionBubbleSequence] = useState(0)
   const [dragDanceTriggerId, setDragDanceTriggerId] = useState(0)
+  const [greetingSpeechTriggerId, setGreetingSpeechTriggerId] = useState(0)
+  const [areCustomFontsReady, setAreCustomFontsReady] = useState(
+    () => typeof document === 'undefined',
+  )
   const [sidebarDockStyle, setSidebarDockStyle] = useState<CSSProperties | undefined>(undefined)
   const [message, setMessage] = useState('')
   const trimmedMessage = message.trim()
@@ -223,11 +407,37 @@ function VtuberChatbotShell({
       : undefined,
     [character.renderMode],
   )
-  const visibleCharacterBubbleText = buildVisibleCharacterBubbleText({
+  const defaultAssistantGreeting =
+    messages.find((conversationMessage) => conversationMessage.role === 'assistant')
+      ?.text.trim() || DEFAULT_LOAD_READY_GREETING
+  const visibleCharacterBubbleText = interactionBubbleText || buildVisibleCharacterBubbleText({
     characterRenderStatus,
     displayState,
     fallbackText: characterBubbleText,
   })
+  const characterBubbleSegments = useMemo(
+    () => splitCharacterBubbleText(visibleCharacterBubbleText),
+    [visibleCharacterBubbleText],
+  )
+  const visibleCharacterBubbleSegment =
+    characterBubbleSegments[
+      Math.min(characterBubbleSegmentIndex, characterBubbleSegments.length - 1)
+    ] ?? visibleCharacterBubbleText
+  const typedCharacterBubbleSegment = visibleCharacterBubbleSegment.slice(
+    0,
+    characterBubbleVisibleLength,
+  )
+  const characterBubbleKind =
+    interactionBubbleText
+      ? 'speech'
+      : displayState === 'thinking' ||
+    displayState === 'connecting' ||
+    displayState === 'error' ||
+    characterRenderStatus === 'fallback'
+      ? 'thought'
+      : 'speech'
+  const shouldShowCharacterBubble =
+    isCharacterBubbleVisible && characterRenderStatus !== 'loading'
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
     '--vtuber-bubble-anchor-left': characterBubbleAnchor
@@ -259,6 +469,20 @@ function VtuberChatbotShell({
       }
     : undefined
 
+  useEffect(() => {
+    let isActive = true
+
+    void loadVtuberFonts().then(() => {
+      if (isActive) {
+        setAreCustomFontsReady(true)
+      }
+    })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
   const handleCharacterBubbleAnchorChange = useCallback((
     nextAnchor: CharacterBubbleAnchor | null,
   ) => {
@@ -280,6 +504,35 @@ function VtuberChatbotShell({
     })
   }, [])
 
+  const handleHelpWaveStart = useCallback(() => {
+    setInteractionBubbleText(HELP_WAVE_GREETING)
+    setInteractionBubbleSequence((currentSequence) => currentSequence + 1)
+    setCharacterBubbleSegmentIndex(0)
+    setCharacterBubbleVisibleLength(0)
+    setIsCharacterBubbleVisible(true)
+  }, [])
+
+  const handleCharacterRenderStatusChange = useCallback((
+    nextRenderStatus: VtuberCharacterRenderStatus,
+  ) => {
+    setCharacterRenderStatus(nextRenderStatus)
+
+    if (
+      nextRenderStatus !== 'ready' ||
+      readyGreetingCharacterRef.current === character.id
+    ) {
+      return
+    }
+
+    readyGreetingCharacterRef.current = character.id
+    setInteractionBubbleText(defaultAssistantGreeting)
+    setInteractionBubbleSequence((currentSequence) => currentSequence + 1)
+    setCharacterBubbleSegmentIndex(0)
+    setCharacterBubbleVisibleLength(0)
+    setIsCharacterBubbleVisible(true)
+    setGreetingSpeechTriggerId((currentTriggerId) => currentTriggerId + 1)
+  }, [character.id, defaultAssistantGreeting])
+
   useEffect(() => {
     window.localStorage.setItem(
       CHATBOT_SETTINGS_STORAGE_KEY,
@@ -290,7 +543,18 @@ function VtuberChatbotShell({
   useEffect(() => {
     setCharacterBubbleAnchor(null)
     setCharacterBubbleNudgeX(0)
+    readyGreetingCharacterRef.current = null
+    setInteractionBubbleText('')
   }, [character.id, character.renderMode])
+
+  useEffect(() => {
+    if (observedCharacterBubbleSequenceRef.current === characterBubbleSequence) {
+      return
+    }
+
+    observedCharacterBubbleSequenceRef.current = characterBubbleSequence
+    setInteractionBubbleText('')
+  }, [characterBubbleSequence])
 
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null
@@ -407,10 +671,68 @@ function VtuberChatbotShell({
 
     const timerId = window.setTimeout(() => {
       setIsCharacterBubbleVisible(false)
-    }, CHARACTER_BUBBLE_VISIBLE_MS)
+    }, Math.max(
+      CHARACTER_BUBBLE_VISIBLE_MS,
+      characterBubbleSegments.length * CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS + 1200,
+    ))
 
     return () => window.clearTimeout(timerId)
-  }, [characterBubbleSequence, visibleCharacterBubbleText])
+  }, [
+    characterBubbleSegments.length,
+    characterBubbleSequence,
+    interactionBubbleSequence,
+    visibleCharacterBubbleText,
+  ])
+
+  useEffect(() => {
+    setCharacterBubbleSegmentIndex(0)
+  }, [characterBubbleSequence, interactionBubbleSequence, visibleCharacterBubbleText])
+
+  useEffect(() => {
+    if (characterBubbleSegments.length <= 1 || !isCharacterBubbleVisible) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setCharacterBubbleSegmentIndex((currentIndex) => {
+        if (currentIndex >= characterBubbleSegments.length - 1) {
+          window.clearInterval(timerId)
+          return currentIndex
+        }
+
+        return currentIndex + 1
+      })
+    }, CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS)
+
+    return () => window.clearInterval(timerId)
+  }, [characterBubbleSegments.length, isCharacterBubbleVisible, visibleCharacterBubbleText])
+
+  useEffect(() => {
+    setCharacterBubbleVisibleLength(0)
+  }, [characterBubbleSegmentIndex, interactionBubbleSequence, visibleCharacterBubbleSegment])
+
+  useEffect(() => {
+    if (!isCharacterBubbleVisible || !visibleCharacterBubbleSegment) {
+      return undefined
+    }
+
+    if (characterBubbleVisibleLength >= visibleCharacterBubbleSegment.length) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      setCharacterBubbleVisibleLength((currentLength) => Math.min(
+        visibleCharacterBubbleSegment.length,
+        currentLength + 1,
+      ))
+    }, CHARACTER_BUBBLE_TYPEWRITER_INTERVAL_MS)
+
+    return () => window.clearTimeout(timerId)
+  }, [
+    characterBubbleVisibleLength,
+    isCharacterBubbleVisible,
+    visibleCharacterBubbleSegment,
+  ])
 
   useEffect(() => {
     function updateCharacterBubbleNudge() {
@@ -448,7 +770,7 @@ function VtuberChatbotShell({
     characterBubbleNudgeX,
     isCharacterBubbleVisible,
     settings.position,
-    visibleCharacterBubbleText,
+    typedCharacterBubbleSegment,
   ])
 
   useEffect(() => {
@@ -750,6 +1072,7 @@ function VtuberChatbotShell({
       data-motion-key={motionKey ?? undefined}
       data-render-mode={character.renderMode ?? 'live2d'}
       data-position-mode={shouldUseCustomPosition ? 'custom' : 'default'}
+      data-fonts-ready={areCustomFontsReady}
       style={chatbotStyle}
     >
       <>
@@ -761,12 +1084,21 @@ function VtuberChatbotShell({
               ref={characterBubbleRef}
               className="vtuber-character-bubble"
               data-anchor-mode={characterBubbleAnchorMode}
+              data-bubble-kind={characterBubbleKind}
               data-display-state={displayState}
-              data-is-visible={isCharacterBubbleVisible}
+              data-is-visible={shouldShowCharacterBubble}
               aria-live="polite"
               style={characterBubbleStyle}
             >
-              <p>{visibleCharacterBubbleText}</p>
+              <p
+                className="vtuber-character-bubble-measure"
+                aria-hidden="true"
+              >
+                {visibleCharacterBubbleSegment}
+              </p>
+              <p className="vtuber-character-bubble-text">
+                {typedCharacterBubbleSegment}
+              </p>
               <span className="vtuber-sr-only" aria-live="polite">
                 표시 상태: {statusLabel}. 준비된 동작: {actionsCount}개.
               </span>
@@ -782,10 +1114,12 @@ function VtuberChatbotShell({
                   character={character}
                   displayState={displayState}
                   danceTriggerId={dragDanceTriggerId}
+                  greetingSpeechTriggerId={greetingSpeechTriggerId}
                   motionKey={motionKey}
                   motionTriggerId={motionTriggerId}
                   onBubbleAnchorChange={handleCharacterBubbleAnchorChange}
-                  onRenderStatusChange={setCharacterRenderStatus}
+                  onHelpWaveStart={handleHelpWaveStart}
+                  onRenderStatusChange={handleCharacterRenderStatusChange}
                   statusLabel={statusLabel}
                 />
               ) : (
@@ -795,7 +1129,7 @@ function VtuberChatbotShell({
                   displayState={displayState}
                   motionKey={motionKey}
                   motionTriggerId={motionTriggerId}
-                  onRenderStatusChange={setCharacterRenderStatus}
+                  onRenderStatusChange={handleCharacterRenderStatusChange}
                   statusLabel={statusLabel}
                 />
               )}

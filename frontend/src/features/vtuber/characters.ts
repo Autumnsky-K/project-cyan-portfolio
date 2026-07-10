@@ -15,6 +15,7 @@ const rikaneAnimationUrl = (fileName: string) => animationUrl(RIKANE_THREE_ROOT,
 export const VTUBER_CHARACTERS = {
   manase: {
     id: 'manase',
+    introText: '안녕하세요, Manase입니다. 차분하게 취향에 맞는 굿즈를 찾아드릴게요.',
     name: 'Manase',
     renderMode: 'three3d',
     modelUrl: '/live2d/cyan/model.model3.json',
@@ -68,6 +69,7 @@ export const VTUBER_CHARACTERS = {
   },
   hiena: {
     id: 'hiena',
+    introText: '안녕하세요, Hiena입니다. 필요한 굿즈를 빠르게 찾아보고 추천까지 도와드릴게요.',
     name: 'Hiena',
     renderMode: 'three3d',
     modelUrl: '/live2d/cyan/model.model3.json',
@@ -117,6 +119,7 @@ export const VTUBER_CHARACTERS = {
   },
   rikane: {
     id: 'rikane',
+    introText: '안녕하세요, Rikane입니다. 분위기에 맞는 굿즈를 함께 살펴보고 안내해드릴게요.',
     name: 'Rikane',
     renderMode: 'three3d',
     modelUrl: '/live2d/cyan/model.model3.json',

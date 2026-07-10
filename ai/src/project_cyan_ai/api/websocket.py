@@ -125,7 +125,7 @@ async def client_ws(websocket: WebSocket):
 
     if not await send_websocket_json(
         websocket,
-        FullTextMessage(text="안녕! Hiena에요! 당신의 쇼핑을 도와줄게요!\n원하시는 상품이 있으면 말해주세요!\n추천이랑 카트 담기까지 모두 해드릴게요!").model_dump(),
+        FullTextMessage(text="안녕하세요. 필요한 굿즈를 찾을 때 여기에서 도와드릴게요.\n원하시는 상품이 있으면 말씀해주세요.\n추천과 카트 담기까지 도와드릴게요.").model_dump(),
     ):
         return
     if not await send_websocket_json(
