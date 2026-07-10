@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Button from '../../shared/components/Button'
 import AsyncState from '../../shared/components/AsyncState'
 import {
+  type ArtistOption,
+  type CurrentMember,
   getArtistOptions,
   getCurrentMember,
   getFavoriteArtistIds,
@@ -14,9 +16,9 @@ function LikePage() {
   const location = useLocation()
   const navigate = useNavigate()
   const isEditMode = location.pathname === '/likes/artists'
-  const [member, setMember] = useState(null)
-  const [artists, setArtists] = useState([])
-  const [selectedArtistIds, setSelectedArtistIds] = useState([])
+  const [member, setMember] = useState<CurrentMember | null>(null)
+  const [artists, setArtists] = useState<ArtistOption[]>([])
+  const [selectedArtistIds, setSelectedArtistIds] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -64,7 +66,7 @@ function LikePage() {
     }
   }, [navigate])
 
-  const toggleArtist = (artistId) => {
+  const toggleArtist = (artistId: number) => {
     setSelectedArtistIds((currentArtistIds) =>
       currentArtistIds.includes(artistId)
         ? currentArtistIds.filter((currentArtistId) => currentArtistId !== artistId)
@@ -93,7 +95,7 @@ function LikePage() {
 
   const handleActionButtonClick = () => {
     if (isEditMode || hasSelectedArtists) {
-      handleSave()
+      void handleSave()
       return
     }
 
@@ -140,12 +142,13 @@ function LikePage() {
 
               return (
                 <button
-                  className={`artist-option ${isSelected ? 'is-selected' : ''}`}
+                  className={`artist-option ${artist.imageUrl ? 'has-image' : ''} ${isSelected ? 'is-selected' : ''}`}
                   type="button"
                   key={artist.artistId}
                   onClick={() => toggleArtist(artist.artistId)}
                   aria-pressed={isSelected}
                 >
+                  {artist.imageUrl && <img src={artist.imageUrl} alt="" />}
                   <strong>{artist.name}</strong>
                 </button>
               )

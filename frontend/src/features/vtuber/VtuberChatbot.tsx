@@ -67,6 +67,8 @@ function VtuberChatbot(): ReactElement {
   const [isAwaitingResponse, setIsAwaitingResponse] = useState(false)
   const [speakingBatchId, setSpeakingBatchId] = useState(0)
   const [chatSessionId, setChatSessionId] = useState<number | null>(null)
+  const [chatSessionOwnerId, setChatSessionOwnerId] = useState<string | null>(null)
+  const [chatSessionErrorUserId, setChatSessionErrorUserId] = useState<string | null>(null)
   const [chatAccessToken, setChatAccessToken] = useState<string | null>(null)
   const [chatAuthStatus, setChatAuthStatus] = useState<ChatAuthStatus>('anonymous')
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
@@ -118,6 +120,8 @@ function VtuberChatbot(): ReactElement {
       window.setTimeout(() => {
         if (active && !isAuthenticated) {
           setChatSessionId(null)
+          setChatSessionOwnerId(null)
+          setChatSessionErrorUserId(null)
           setChatAccessToken(null)
         }
       }, 0)
@@ -136,6 +140,8 @@ function VtuberChatbot(): ReactElement {
         }
 
         setChatSessionId(session.sessionId)
+        setChatSessionOwnerId(authUserId)
+        setChatSessionErrorUserId(null)
       })
       .catch(() => {
         if (!active) {
@@ -143,6 +149,8 @@ function VtuberChatbot(): ReactElement {
         }
 
         setChatSessionId(null)
+        setChatSessionOwnerId(null)
+        setChatSessionErrorUserId(authUserId)
       })
 
     return () => {
@@ -365,6 +373,13 @@ function VtuberChatbot(): ReactElement {
   }, [actionBatchId, actions, addCartItem, navigate])
 
   async function handleSendMessage(message: string): Promise<boolean> {
+    const hasMemberChatSession =
+      chatSessionId !== null && chatSessionOwnerId === authUserId
+
+    if (isAuthenticated && !hasMemberChatSession) {
+      return false
+    }
+
     const freshToken = await ensureFreshChatToken()
 
     if (!freshToken.canSend) {
@@ -402,6 +417,17 @@ function VtuberChatbot(): ReactElement {
   })
   const selectedCharacter =
     VTUBER_CHARACTERS[selectedCharacterId] ?? DEFAULT_VTUBER_CHARACTER
+  const hasMemberChatSession =
+    chatSessionId !== null && chatSessionOwnerId === authUserId
+  const hasChatSessionError =
+    isAuthenticated && chatSessionErrorUserId === authUserId
+  const isChatSessionUnavailable =
+    isAuthenticated && !hasMemberChatSession
+  const inputPlaceholder = hasChatSessionError
+    ? '대화 세션을 만들지 못했어요. 새로고침 후 다시 시도해 주세요.'
+    : isChatSessionUnavailable
+      ? '대화 세션을 준비하는 중이에요...'
+      : '굿즈를 물어보세요'
   const motionKey = metadata.behavior?.motionKey ?? null
   const authRequiredMessage = metadata.authRequired && metadata.authReason
     ? AUTH_REQUIRED_MESSAGES[metadata.authReason]
@@ -429,8 +455,12 @@ function VtuberChatbot(): ReactElement {
       character={selectedCharacter}
       characterOptions={VTUBER_CHARACTER_OPTIONS}
       displayState={displayState}
+      inputPlaceholder={inputPlaceholder}
       isSendDisabled={
-        connectionStatus !== 'open' || isAwaitingResponse || authLoading
+        connectionStatus !== 'open' ||
+        isAwaitingResponse ||
+        authLoading ||
+        isChatSessionUnavailable
       }
       messages={conversationMessages}
       motionKey={motionKey}

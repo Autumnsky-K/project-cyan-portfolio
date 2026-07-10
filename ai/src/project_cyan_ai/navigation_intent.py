@@ -17,6 +17,22 @@ CART_CURRENT_TEXT = "이미 장바구니에 있어요."
 GOODS_TERMS = ("굿즈", "상품")
 LIST_TERMS = ("목록", "리스트", "페이지")
 CART_TERMS = ("장바구니", "카트")
+PAYMENT_TERMS = ("결제", "checkout", "체크아웃")
+PAYMENT_ACTION_TERMS = (
+    "하자",
+    "하러",
+    "할게",
+    "할래",
+    "해줘",
+    "해주세요",
+    "진행",
+    "시작",
+    "넘어",
+    "이동",
+    "가줘",
+    "가자",
+    "페이지",
+)
 BACK_TERMS = ("뒤로", "이전 화면", "이전화면")
 NAVIGATION_PATTERNS = (
     re.compile(r"(?:로|으로)\s*가(?:줘|주세요|자|요)?"),
@@ -84,6 +100,8 @@ def build_navigation_response(
 def deterministic_destination(normalized: str, current_path: str | None) -> str | None:
     if any(term in normalized for term in RECOMMENDATION_TERMS):
         return None
+    if has_payment_navigation_intent(normalized):
+        return CART_PATH
     if not has_navigation_cue(normalized):
         return None
     if any(term in normalized for term in CART_TERMS):
@@ -115,6 +133,13 @@ def is_navigation_intent_candidate(text: str) -> bool:
 
 def has_navigation_cue(normalized: str) -> bool:
     return any(pattern.search(normalized) for pattern in NAVIGATION_PATTERNS)
+
+
+def has_payment_navigation_intent(normalized: str) -> bool:
+    return any(term in normalized for term in PAYMENT_TERMS) and (
+        has_navigation_cue(normalized)
+        or any(term in normalized for term in PAYMENT_ACTION_TERMS)
+    )
 
 
 def destination_response(destination: str, current_path: str | None) -> FullTextMessage:

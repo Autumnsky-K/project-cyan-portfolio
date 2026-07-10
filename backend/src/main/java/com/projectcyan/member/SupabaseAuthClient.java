@@ -52,7 +52,7 @@ public class SupabaseAuthClient {
 				response.get("email") == null ? request.email() : response.get("email").toString()
 			);
 		} catch (RestClientResponseException exception) {
-			throw new SupabaseAuthException(authErrorMessage(exception), exception.getStatusCode().value());
+			throw authException(exception);
 		}
 	}
 
@@ -64,8 +64,8 @@ public class SupabaseAuthClient {
 				.headers(this::applyAuthHeaders)
 				.retrieve()
 				.toBodilessEntity();
-		} catch (RestClientResponseException ignored) {
-			// Signup returns the original DB error; auth cleanup failure should not hide it.
+		} catch (RestClientResponseException exception) {
+			throw authException(exception);
 		}
 	}
 
@@ -82,7 +82,7 @@ public class SupabaseAuthClient {
 				.retrieve()
 				.toBodilessEntity();
 		} catch (RestClientResponseException exception) {
-			throw new SupabaseAuthException(authErrorMessage(exception), exception.getStatusCode().value());
+			throw authException(exception);
 		}
 	}
 
@@ -101,8 +101,16 @@ public class SupabaseAuthClient {
 		return properties.getProjectUrl().replaceAll("/+$", "") + "/auth/v1" + path;
 	}
 
-	private String authErrorMessage(RestClientResponseException exception) {
+	private SupabaseAuthException authException(RestClientResponseException exception) {
 		String responseBody = exception.getResponseBodyAsString();
+		return new SupabaseAuthException(
+			authErrorMessage(responseBody),
+			exception.getStatusCode().value(),
+			responseBody
+		);
+	}
+
+	private String authErrorMessage(String responseBody) {
 		if (!StringUtils.hasText(responseBody)) {
 			return "Supabase Auth request failed.";
 		}

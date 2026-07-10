@@ -102,7 +102,7 @@ function PaymentSuccess() {
   const items = order?.items || []
 
   return (
-    <main className="page store-page">
+    <div className="page store-page">
       <section className="store-section payment-result">
         <p className="result-eyebrow">결제 결과</p>
         <h1>주문이 완료되었습니다</h1>
@@ -136,7 +136,7 @@ function PaymentSuccess() {
           )}
         </div>
         <div className="payment-actions">
-          <Link className="button-link" to="/mypage">
+          <Link className="button-link" to="/mypage#orders">
             주문 내역 보기
           </Link>
           <Link className="button-link" to="/cart">
@@ -151,7 +151,7 @@ function PaymentSuccess() {
           </details>
         )}
       </section>
-    </main>
+    </div>
   )
 }
 

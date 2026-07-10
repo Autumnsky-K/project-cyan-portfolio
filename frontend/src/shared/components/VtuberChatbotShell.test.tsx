@@ -24,6 +24,7 @@ const defaultProps = {
   characterBubbleSequence: 1,
   characterBubbleText: 'Need goods?',
   displayState: 'ready' as const,
+  inputPlaceholder: '굿즈를 물어보세요',
   isSendDisabled: false,
   messages: [
     {

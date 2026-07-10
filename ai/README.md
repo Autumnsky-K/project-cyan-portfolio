@@ -125,6 +125,14 @@ LLM provider는 응답 안의 `[ACTION:...]` 태그를 파싱해 WebSocket 응�
 PROJECT_CYAN_SPRING_API_URL=http://localhost:8080/api
 ```
 
+Cloud Run 같은 배포 환경에서는 `localhost` fallback이 AI 컨테이너 자기 자신을 가리키므로, Spring 백엔드의 실제 서비스 URL을 반드시 설정합니다. 상품 tool 호출도 같은 백엔드를 보도록 `PROJECT_CYAN_GOODS_API_BASE_URL`을 함께 설정합니다.
+
+```env
+PROJECT_CYAN_SPRING_API_URL=https://<backend-cloud-run-url>/api
+PROJECT_CYAN_GOODS_API_BASE_URL=https://<backend-cloud-run-url>/api
+PROJECT_CYAN_INTERNAL_SERVICE_TOKEN=<shared-internal-token>
+```
+
 Spring이 응답하지 않으면 기존 provider 응답으로 fallback합니다. Spring이 상품 후보를 반환하면 AI는 해당 응답에 포함된 `goodsId`의 ACTION만 전달합니다.
 
 Spring이 생성한 TSV 카탈로그 스냅샷을 사용하려면 metadata URL을 설정합니다. AI 서버는 Spring에서 최신 `catalogUrl`을 받아 TSV를 읽고, 후보를 먼저 좁힌 뒤 LLM provider에 전달합니다.

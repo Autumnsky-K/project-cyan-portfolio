@@ -92,6 +92,34 @@ TEN_THOUSAND_WON_PATTERN = re.compile(r"(\d+)\s*만\s*원")
 WON_PATTERN = re.compile(r"(\d[\d,]*)\s*원")
 GOODS_PATH_PATTERN = re.compile(r"^/goods/(\d+)$")
 GOODS_SELECTOR_PATTERN = re.compile(r"data-goods-id=['\"](\d+)['\"]")
+EXPLICIT_GOODS_NAME_PATTERNS = (
+    re.compile(r"\[([^\[\]]{2,80})\]"),
+    re.compile(r"「([^」]{2,80})」"),
+    re.compile(r"『([^』]{2,80})』"),
+    re.compile(r"\"([^\"]{2,80})\""),
+    re.compile(r"'([^']{2,80})'"),
+)
+DIRECT_GOODS_LOOKUP_TERMS = ("보여", "열어", "찾아", "있어")
+EXPLICIT_NAVIGATION_TARGET_TERMS = (
+    "굿즈 페이지",
+    "상품 페이지",
+    "목록",
+    "리스트",
+    "장바구니",
+    "카트",
+    "뒤로",
+    "이전 화면",
+    "이전화면",
+)
+DIRECT_GOODS_LOOKUP_SUFFIX_PATTERN = re.compile(
+    r"\s*(?:"
+    r"상품|굿즈|페이지|상세|상세\s*페이지|"
+    r"보여줘|보여주세요|보여|열어줘|열어주세요|열어|"
+    r"찾아줘|찾아주세요|찾아|있는지|있어|있나요|"
+    r"로\s*가줘|로\s*가주세요|으로\s*가줘|으로\s*가주세요|"
+    r"이동해줘|이동해주세요|이동"
+    r")+\s*$"
+)
 UNQUALIFIED_ALL_RECOMMENDATION_KEYWORDS = ("전부", "모두", "전체")
 FOLLOW_UP_EMPTY_TEXT = "담을 상품을 찾지 못했어요. 먼저 추천받을 상품을 알려주세요."
 FOLLOW_UP_AMBIGUOUS_TEXT = "추천한 상품이 여러 개라서 어떤 상품을 담을지 모르겠어요. 1번 2번처럼 번호로 알려주세요."
@@ -225,6 +253,15 @@ class HttpSemanticGoodsCatalogClient:
         category_name: str | None = None,
         artist_name: str | None = None,
     ) -> list[dict[str, Any]] | None:
+        exact_matches = self.search_exact_name_candidates(
+            text,
+            favorite_artists=favorite_artists,
+            category_name=category_name,
+            artist_name=artist_name,
+        )
+        if exact_matches:
+            return exact_matches
+
         query_embedding = self.embeddings_client.embed(text)
         if query_embedding is None:
             return None
@@ -262,6 +299,69 @@ class HttpSemanticGoodsCatalogClient:
         content = response_payload.get("content") if isinstance(response_payload, dict) else None
         return content if isinstance(content, list) else []
 
+    def search_exact_name_candidates(
+        self,
+        text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        for query in exact_goods_name_queries(text):
+            candidates = self.fetch_keyword_candidates(
+                query,
+                favorite_artists=favorite_artists,
+                category_name=category_name,
+                artist_name=artist_name,
+            )
+            matches = [
+                candidate
+                for candidate in candidates
+                if normalized_goods_name(candidate.get("name")) == normalized_goods_name(query)
+            ]
+            if matches:
+                return matches
+        return []
+
+    def fetch_keyword_candidates(
+        self,
+        query_text: str,
+        favorite_artists: list[dict[str, Any]] | None = None,
+        category_name: str | None = None,
+        artist_name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query: dict[str, Any] = {
+            "q": query_text,
+            "page": 0,
+            "size": 10,
+            "sort": "relevance,desc",
+        }
+        max_price = extract_max_price(query_text)
+        if max_price is not None:
+            query["maxPrice"] = max_price
+        if category_name:
+            query["categoryName"] = category_name
+        if artist_name:
+            query["artistName"] = artist_name
+        preferred_artist_ids = favorite_artist_ids(favorite_artists)
+        if preferred_artist_ids:
+            query["preferredArtistIds"] = ",".join(
+                str(artist_id) for artist_id in preferred_artist_ids
+            )
+
+        request = Request(
+            f"{self.spring_api_url}/goods/recommendation-candidates?{urlencode(query)}",
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (HTTPError, TimeoutError, URLError, OSError, ValueError):
+            return []
+
+        content = payload.get("content") if isinstance(payload, dict) else None
+        return content if isinstance(content, list) else []
+
 
 def build_semantic_or_fallback_goods_catalog_client(
     spring_api_url: str,
@@ -279,6 +379,41 @@ def build_semantic_or_fallback_goods_catalog_client(
         model=openai_embeddings_model,
     )
     return HttpSemanticGoodsCatalogClient(spring_api_url, embeddings_client)
+
+
+def exact_goods_name_queries(text: str) -> list[str]:
+    queries: list[str] = []
+    for pattern in EXPLICIT_GOODS_NAME_PATTERNS:
+        for match in pattern.finditer(text):
+            add_unique_query(queries, match.group(1))
+
+    normalized_text = re.sub(r"\s+", " ", text.strip())
+    if any(term in normalized_text for term in DIRECT_GOODS_LOOKUP_TERMS):
+        direct_query = DIRECT_GOODS_LOOKUP_SUFFIX_PATTERN.sub("", normalized_text).strip()
+        direct_query = strip_wrapping_punctuation(direct_query)
+        add_unique_query(queries, direct_query)
+
+    return queries
+
+
+def add_unique_query(queries: list[str], value: str) -> None:
+    query = strip_wrapping_punctuation(value)
+    if len(normalized_goods_name(query)) < 2:
+        return
+    if normalized_goods_name(query) in {normalized_goods_name(item) for item in queries}:
+        return
+    queries.append(query)
+
+
+def strip_wrapping_punctuation(value: str) -> str:
+    return value.strip().strip("[](){}<>「」『』'\"`“”‘’").strip()
+
+
+def normalized_goods_name(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return re.sub(r"[\W_]+", "", normalized, flags=re.UNICODE)
 
 
 class TsvGoodsCatalogClient:
@@ -428,9 +563,14 @@ class CatalogGroundedChatResponseProvider:
                     recalled_candidates
                 )
             return recall_response
-        navigation_response = build_navigation_response(text, context, self.delegate)
-        if navigation_response is not None:
-            return navigation_response
+        current_goods_cart_response = build_current_goods_cart_response(text, context)
+        if current_goods_cart_response is not None:
+            return current_goods_cart_response
+        prioritizes_product_lookup = should_prioritize_product_lookup(text)
+        if not prioritizes_product_lookup:
+            navigation_response = build_navigation_response(text, context, self.delegate)
+            if navigation_response is not None:
+                return navigation_response
         follow_up_response = build_follow_up_cart_response(
             text,
             self.recent_recommendation_candidates,
@@ -438,7 +578,7 @@ class CatalogGroundedChatResponseProvider:
         if follow_up_response is not None:
             return follow_up_response
 
-        if not has_product_intent(text):
+        if not has_product_intent(text) and not prioritizes_product_lookup:
             return self.delegate.build_response(
                 self._with_instruction(
                     self._personalized_text(text, personalization_context),
@@ -582,6 +722,20 @@ def append_recommendation_history_turn(
 
 def has_product_intent(text: str) -> bool:
     return any(keyword in text for keyword in PRODUCT_INTENT_KEYWORDS)
+
+
+def should_prioritize_product_lookup(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text.strip().lower())
+    if any(term in normalized for term in EXPLICIT_NAVIGATION_TARGET_TERMS):
+        return False
+    queries = exact_goods_name_queries(text)
+    if not queries:
+        return False
+    generic_queries = {
+        normalized_goods_name(term)
+        for term in GENERIC_RECOMMENDATION_TERMS
+    }
+    return any(normalized_goods_name(query) not in generic_queries for query in queries)
 
 
 def parse_goods_catalog_tsv(raw_tsv: str) -> list[dict[str, Any]]:
@@ -1037,6 +1191,36 @@ def build_follow_up_cart_response(
         text=response_text,
         actions=[AddToCartAction(goodsId=str(candidate["goodsId"])) for candidate in selection],
     )
+
+
+def build_current_goods_cart_response(
+    text: str,
+    context: dict[str, Any] | Any | None,
+) -> FullTextMessage | None:
+    normalized_text = re.sub(r"\s+", " ", text.strip().lower())
+    if not is_cart_add_text(normalized_text):
+        return None
+
+    goods_id = current_goods_id_from_context(context)
+    if goods_id is None:
+        return None
+
+    return FullTextMessage(
+        text="현재 보고 있는 상품을 장바구니에 담을게요.",
+        actions=[AddToCartAction(goodsId=goods_id)],
+    )
+
+
+def current_goods_id_from_context(context: dict[str, Any] | Any | None) -> str | None:
+    current_path = (
+        context.get("currentPath")
+        if isinstance(context, dict)
+        else getattr(context, "currentPath", None) if context is not None else None
+    )
+    if not isinstance(current_path, str):
+        return None
+    match = GOODS_PATH_PATTERN.match(current_path)
+    return match.group(1) if match else None
 
 
 def build_numbered_follow_up_response(

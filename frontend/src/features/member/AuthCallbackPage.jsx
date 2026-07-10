@@ -21,6 +21,17 @@ function getReturnTo() {
     : '/mypage'
 }
 
+function isFirstOAuthLoginSession(session) {
+  const createdAt = Date.parse(session?.user?.created_at ?? '')
+  const lastSignInAt = Date.parse(session?.user?.last_sign_in_at ?? '')
+
+  if (!Number.isFinite(createdAt) || !Number.isFinite(lastSignInAt)) {
+    return false
+  }
+
+  return Math.abs(lastSignInAt - createdAt) < 5000
+}
+
 function AuthCallbackPage() {
   const navigate = useNavigate()
   const hasStarted = useRef(false)
@@ -46,8 +57,9 @@ function AuthCallbackPage() {
         }
 
         if (code) {
-          await exchangeAuthCodeForSession(code)
-          navigate(getReturnTo(), { replace: true })
+          const session = await exchangeAuthCodeForSession(code)
+          const returnTo = getReturnTo()
+          navigate(isFirstOAuthLoginSession(session) ? '/like' : returnTo, { replace: true })
           return
         }
 

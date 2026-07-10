@@ -26,6 +26,63 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
 
+      - name: Verify Cloud Run config
+        env:
+          SERVICE_NAME: project-cyan-ai
+          REGION: asia-northeast3
+          REQUIRED_ENV_NAMES: >-
+            PROJECT_CYAN_SPRING_API_URL
+            PROJECT_CYAN_GOODS_API_BASE_URL
+            PROJECT_CYAN_INTERNAL_SERVICE_TOKEN
+        run: |
+          set -euo pipefail
+          config_file="$(mktemp)"
+          trap 'rm -f "$config_file"' EXIT
+
+          gcloud run services describe "$SERVICE_NAME" \
+            --region "$REGION" \
+            --format=json > "$config_file"
+
+          python3 - "$config_file" $REQUIRED_ENV_NAMES <<'PY'
+          import json
+          import sys
+
+          config_path = sys.argv[1]
+          required_names = sys.argv[2:]
+
+          with open(config_path, encoding="utf-8") as config:
+              service = json.load(config)
+
+          knative_template_spec = (
+              service.get("spec", {})
+              .get("template", {})
+              .get("spec", {})
+          )
+          v2_template = service.get("template", {})
+          containers = (
+              knative_template_spec.get("containers")
+              or v2_template.get("containers")
+              or []
+          )
+          configured_names = {
+              env.get("name")
+              for container in containers
+              for env in (container.get("env") or [])
+              if env.get("name")
+          }
+          missing_names = [
+              name for name in required_names if name not in configured_names
+          ]
+
+          if missing_names:
+              print("Missing Cloud Run env/secret bindings:")
+              for name in missing_names:
+                  print(f"- {name}")
+              sys.exit(1)
+
+          print(f"Verified {len(required_names)} Cloud Run env/secret bindings.")
+          PY
+
       - name: Build and Push
         run: |
           docker build --platform linux/amd64 \

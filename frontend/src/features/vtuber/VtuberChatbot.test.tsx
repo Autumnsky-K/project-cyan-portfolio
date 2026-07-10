@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   actionBatchId: 0,
   latestText: '응답',
   metadata: {} as Record<string, unknown>,
+  createVirtualChatSession: vi.fn(),
   getSession: vi.fn(),
   sendText: vi.fn(() => true),
 }))
@@ -39,7 +40,7 @@ vi.mock('../cart/useCart', () => ({
 }))
 
 vi.mock('../../api/virtualChat', () => ({
-  createVirtualChatSession: vi.fn(async () => ({ sessionId: 77 })),
+  createVirtualChatSession: mocks.createVirtualChatSession,
 }))
 
 vi.mock('../../api/supabaseClient', () => ({
@@ -58,6 +59,8 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
   default: ({
     authNotice,
     characterBubbleText,
+    inputPlaceholder,
+    isSendDisabled,
     messages,
     motionKey,
     motionTriggerId,
@@ -65,6 +68,8 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
   }: {
     authNotice?: { message: string; actionLabel: string; onAction: () => void } | null
     characterBubbleText: string
+    inputPlaceholder: string
+    isSendDisabled: boolean
     messages?: Array<{ role: string; text: string }>
     motionKey?: string | null
     motionTriggerId?: number
@@ -72,6 +77,7 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
   }) => (
     <div>
       <p aria-label="mock character bubble">{characterBubbleText}</p>
+      <p aria-label="mock input placeholder">{inputPlaceholder}</p>
       <p aria-label="mock motion key">{motionKey ?? 'none'}</p>
       <p aria-label="mock motion trigger">{motionTriggerId ?? 0}</p>
       <div aria-label="mock conversation messages">
@@ -84,6 +90,7 @@ vi.mock('../../shared/components/VtuberChatbotShell', () => ({
       <button
         type="button"
         aria-label="mock send message"
+        disabled={isSendDisabled}
         onClick={() => {
           void onSendMessage('테스트 질문')
         }}
@@ -124,6 +131,8 @@ describe('VtuberChatbot auth notice', () => {
     mocks.actionBatchId = 0
     mocks.latestText = '응답'
     mocks.metadata = {}
+    mocks.createVirtualChatSession.mockReset()
+    mocks.createVirtualChatSession.mockResolvedValue({ sessionId: 77 })
     mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
     mocks.sendText.mockClear()
     mocks.sendText.mockReturnValue(true)
@@ -140,6 +149,65 @@ describe('VtuberChatbot auth notice', () => {
       expect(screen.getByText('user:테스트 질문')).toBeTruthy()
     })
     expect(mocks.sendText).toHaveBeenCalledWith('테스트 질문', null)
+  })
+
+  it('keeps member chat sending disabled until the chat session is ready', async () => {
+    mocks.authState = {
+      authLoading: false,
+      authUserId: 'member-1',
+      isAuthenticated: true,
+    }
+    mocks.getSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'fresh-token',
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        },
+      },
+      error: null,
+    })
+    mocks.createVirtualChatSession.mockReturnValue(new Promise(() => {}))
+
+    renderChatbot()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock input placeholder').textContent).toBe(
+        '대화 세션을 준비하는 중이에요...',
+      )
+    })
+    const sendButton = screen.getByRole('button', {
+      name: 'mock send message',
+    }) as HTMLButtonElement
+    expect(sendButton.disabled).toBe(true)
+
+    fireEvent.click(sendButton)
+
+    expect(mocks.sendText).not.toHaveBeenCalled()
+  })
+
+  it('keeps member chat sending disabled when chat session creation fails', async () => {
+    mocks.authState = {
+      authLoading: false,
+      authUserId: 'member-1',
+      isAuthenticated: true,
+    }
+    mocks.createVirtualChatSession.mockRejectedValue(new Error('session failed'))
+
+    renderChatbot()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock input placeholder').textContent).toBe(
+        '대화 세션을 만들지 못했어요. 새로고침 후 다시 시도해 주세요.',
+      )
+    })
+    const sendButton = screen.getByRole('button', {
+      name: 'mock send message',
+    }) as HTMLButtonElement
+    expect(sendButton.disabled).toBe(true)
+
+    fireEvent.click(sendButton)
+
+    expect(mocks.sendText).not.toHaveBeenCalled()
   })
 
   it('sends the same assistant response to the character bubble and chat history', async () => {
