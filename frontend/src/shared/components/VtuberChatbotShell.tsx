@@ -73,7 +73,7 @@ const CHATBOT_SETTINGS_STORAGE_KEY = 'project-cyan.vtuber-chatbot.settings'
 const DESKTOP_DRAG_MIN_WIDTH = 721
 const DRAG_CLICK_TOLERANCE_PX = 4
 const CHARACTER_BUBBLE_VISIBLE_MS = 5000
-const CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS = 1300
+const CHARACTER_BUBBLE_SEGMENT_HOLD_MS = 500
 const CHARACTER_BUBBLE_TYPEWRITER_INTERVAL_MS = 14
 const CHARACTER_BUBBLE_MAX_LINE_LENGTH = 28
 const CHARACTER_BUBBLE_LINES_PER_SEGMENT = 3
@@ -298,6 +298,18 @@ function splitCharacterBubbleText(text: string): string[] {
   }
 
   return segments
+}
+
+function calculateCharacterBubbleVisibleMs(segments: string[]): number {
+  const segmentPlaybackMs = segments.reduce(
+    (totalMs, segment) =>
+      totalMs +
+      segment.length * CHARACTER_BUBBLE_TYPEWRITER_INTERVAL_MS +
+      CHARACTER_BUBBLE_SEGMENT_HOLD_MS,
+    0,
+  )
+
+  return Math.max(CHARACTER_BUBBLE_VISIBLE_MS, segmentPlaybackMs + 1200)
 }
 
 function loadChatbotSettings(): ChatbotSettings {
@@ -671,14 +683,11 @@ function VtuberChatbotShell({
 
     const timerId = window.setTimeout(() => {
       setIsCharacterBubbleVisible(false)
-    }, Math.max(
-      CHARACTER_BUBBLE_VISIBLE_MS,
-      characterBubbleSegments.length * CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS + 1200,
-    ))
+    }, calculateCharacterBubbleVisibleMs(characterBubbleSegments))
 
     return () => window.clearTimeout(timerId)
   }, [
-    characterBubbleSegments.length,
+    characterBubbleSegments,
     characterBubbleSequence,
     interactionBubbleSequence,
     visibleCharacterBubbleText,
@@ -689,23 +698,29 @@ function VtuberChatbotShell({
   }, [characterBubbleSequence, interactionBubbleSequence, visibleCharacterBubbleText])
 
   useEffect(() => {
-    if (characterBubbleSegments.length <= 1 || !isCharacterBubbleVisible) {
+    if (
+      characterBubbleSegments.length <= 1 ||
+      !isCharacterBubbleVisible ||
+      characterBubbleSegmentIndex >= characterBubbleSegments.length - 1 ||
+      characterBubbleVisibleLength < visibleCharacterBubbleSegment.length
+    ) {
       return undefined
     }
 
-    const timerId = window.setInterval(() => {
+    const timerId = window.setTimeout(() => {
       setCharacterBubbleSegmentIndex((currentIndex) => {
-        if (currentIndex >= characterBubbleSegments.length - 1) {
-          window.clearInterval(timerId)
-          return currentIndex
-        }
-
-        return currentIndex + 1
+        return Math.min(currentIndex + 1, characterBubbleSegments.length - 1)
       })
-    }, CHARACTER_BUBBLE_SEGMENT_VISIBLE_MS)
+    }, CHARACTER_BUBBLE_SEGMENT_HOLD_MS)
 
-    return () => window.clearInterval(timerId)
-  }, [characterBubbleSegments.length, isCharacterBubbleVisible, visibleCharacterBubbleText])
+    return () => window.clearTimeout(timerId)
+  }, [
+    characterBubbleSegmentIndex,
+    characterBubbleSegments.length,
+    characterBubbleVisibleLength,
+    isCharacterBubbleVisible,
+    visibleCharacterBubbleSegment,
+  ])
 
   useEffect(() => {
     setCharacterBubbleVisibleLength(0)

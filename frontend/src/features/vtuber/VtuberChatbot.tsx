@@ -26,6 +26,8 @@ import {
 } from './types'
 
 const INITIAL_BUBBLE_TEXT = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
+const LEGACY_SERVER_GREETING_TEXT =
+  '안녕하세요. 필요한 굿즈를 찾을 때 여기에서 도와드릴게요.\n원하시는 상품이 있으면 말씀해주세요.\n추천과 카트 담기까지 도와드릴게요.'
 const SPEAKING_STATE_DURATION_MS = 2400
 const DEFAULT_GUIDE_ID = 1
 const TOKEN_REFRESH_SKEW_MS = 60_000
@@ -55,6 +57,22 @@ function isSessionExpiring(session: ChatSessionSnapshot): boolean {
   const expiresAtMs = sessionExpiresAtMs(session)
 
   return expiresAtMs !== null && expiresAtMs <= Date.now() + TOKEN_REFRESH_SKEW_MS
+}
+
+function normalizeConversationText(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+const NORMALIZED_LEGACY_SERVER_GREETING_TEXT =
+  normalizeConversationText(LEGACY_SERVER_GREETING_TEXT)
+
+function isLegacyServerGreeting(text: string): boolean {
+  return normalizeConversationText(text) === NORMALIZED_LEGACY_SERVER_GREETING_TEXT
 }
 
 function VtuberChatbot(): ReactElement {
@@ -98,21 +116,32 @@ function VtuberChatbot(): ReactElement {
     role: VtuberConversationRole,
     text: string,
   ) => {
-    const trimmedText = text.trim()
+    const trimmedText = normalizeConversationText(text)
 
     if (!trimmedText) {
       return
     }
 
     conversationMessageIdRef.current += 1
-    setConversationMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: `${role}-${Date.now()}-${conversationMessageIdRef.current}`,
-        role,
-        text: trimmedText,
-      },
-    ])
+    setConversationMessages((currentMessages) => {
+      const previousMessage = currentMessages[currentMessages.length - 1]
+
+      if (
+        previousMessage?.role === role &&
+        normalizeConversationText(previousMessage.text) === trimmedText
+      ) {
+        return currentMessages
+      }
+
+      return [
+        ...currentMessages,
+        {
+          id: `${role}-${Date.now()}-${conversationMessageIdRef.current}`,
+          role,
+          text: trimmedText,
+        },
+      ]
+    })
   }, [])
 
   useEffect(() => {
@@ -345,11 +374,19 @@ function VtuberChatbot(): ReactElement {
       return
     }
 
+    const normalizedLatestText = normalizeConversationText(latestText)
+    const shouldIgnoreConnectionGreeting = isLegacyServerGreeting(normalizedLatestText)
+
     setIsAwaitingResponse(false)
+
+    if (!normalizedLatestText || shouldIgnoreConnectionGreeting) {
+      return
+    }
+
     setSpeakingBatchId(actionBatchId)
-    setCharacterBubbleText(latestText)
+    setCharacterBubbleText(normalizedLatestText)
     setCharacterBubbleSequence((currentSequence) => currentSequence + 1)
-    appendConversationMessage('assistant', latestText)
+    appendConversationMessage('assistant', normalizedLatestText)
 
     const speakingTimerId = window.setTimeout(() => {
       setSpeakingBatchId((currentBatchId) =>

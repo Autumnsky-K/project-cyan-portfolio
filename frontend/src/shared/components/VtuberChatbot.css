@@ -426,7 +426,7 @@
   font-weight: 900;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
+  white-space: pre-line;
   word-break: normal;
 }
 
@@ -865,10 +865,10 @@
   font-family: var(--vtuber-user-font), var(--sans);
   font-synthesis-weight: auto;
   font-weight: 900;
-  font-size: 18.5px;
+  font-size: 15.5px;
   line-height: 1.55;
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
+  white-space: pre-line;
 }
 
 .vtuber-message.is-assistant p {
@@ -1180,7 +1180,7 @@
   }
 
   .vtuber-message p {
-    font-size: 18.5px;
+    font-size: 15.5px;
   }
 
   .vtuber-form {

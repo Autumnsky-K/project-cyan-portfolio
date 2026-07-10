@@ -6,6 +6,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import VtuberChatbot from './VtuberChatbot'
 
+const LEGACY_SERVER_GREETING_TEXT =
+  '안녕하세요. 필요한 굿즈를 찾을 때 여기에서 도와드릴게요.\n원하시는 상품이 있으면 말씀해주세요.\n추천과 카트 담기까지 도와드릴게요.'
+
 const mocks = vi.hoisted(() => ({
   authState: {
     authLoading: false,
@@ -168,6 +171,38 @@ describe('VtuberChatbot auth notice', () => {
       expect(screen.getByText('user:테스트 질문')).toBeTruthy()
     })
     expect(mocks.sendText).toHaveBeenCalledWith('테스트 질문', null)
+  })
+
+  it('does not append the legacy connection greeting as a chat reply', () => {
+    mocks.actionBatchId = 1
+    mocks.latestText = LEGACY_SERVER_GREETING_TEXT
+
+    renderChatbot()
+
+    expect(
+      screen.queryByText(`assistant:${LEGACY_SERVER_GREETING_TEXT}`),
+    ).toBeNull()
+    expect(
+      screen.getByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
+    ).toBeTruthy()
+  })
+
+  it('removes empty response lines before showing assistant messages', async () => {
+    mocks.actionBatchId = 1
+    mocks.latestText = '추천드릴게요.\n\n- 아크릴 키링 — 14,000원\n\n\n- 포토카드 — 10,000원\n\n원하시면 다시 골라드릴게요.'
+
+    renderChatbot()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('mock character bubble').textContent).toBe(
+        '추천드릴게요.\n- 아크릴 키링 — 14,000원\n- 포토카드 — 10,000원\n원하시면 다시 골라드릴게요.',
+      )
+      expect(
+        screen.getByLabelText('mock conversation messages').textContent,
+      ).toContain(
+        'assistant:추천드릴게요.\n- 아크릴 키링 — 14,000원\n- 포토카드 — 10,000원\n원하시면 다시 골라드릴게요.',
+      )
+    })
   })
 
   it('uses hard-coded character intro text when switching characters', async () => {
