@@ -16,12 +16,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 public class AdminGoodsReviewPageController {
 
+	private static final String DEFAULT_FRONTEND_PREVIEW_BASE_URL = "https://project-cyan.autumnsky1562.workers.dev";
+
 	private final AdminGoodsReviewService adminGoodsReviewService;
 	private final String frontendPreviewBaseUrl;
 
 	public AdminGoodsReviewPageController(
 		AdminGoodsReviewService adminGoodsReviewService,
-		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
+		@Value("${project-cyan.frontend.preview-base-url:" + DEFAULT_FRONTEND_PREVIEW_BASE_URL + "}") String frontendPreviewBaseUrl
 	) {
 		this.adminGoodsReviewService = adminGoodsReviewService;
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
@@ -80,7 +82,7 @@ public class AdminGoodsReviewPageController {
 
 	private static String trimTrailingSlash(String value) {
 		if (value == null || value.isBlank()) {
-			return "http://localhost:5173";
+			return DEFAULT_FRONTEND_PREVIEW_BASE_URL;
 		}
 		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}

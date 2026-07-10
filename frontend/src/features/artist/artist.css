@@ -1888,6 +1888,7 @@ body:has(.artist-page)::-webkit-scrollbar {
   min-height: min(430px, calc(100svh - 190px));
   padding: 0;
   overflow: visible;
+  pointer-events: auto;
 }
 
 .artist-compact-deck-stack {
@@ -1897,6 +1898,7 @@ body:has(.artist-page)::-webkit-scrollbar {
   height: auto;
   min-height: inherit;
   overflow: visible;
+  pointer-events: auto;
 }
 
 .artist-compact-card {
@@ -1910,6 +1912,7 @@ body:has(.artist-page)::-webkit-scrollbar {
   overflow: visible;
   color: #ffffff;
   opacity: var(--artist-compact-opacity);
+  pointer-events: auto;
   text-decoration: none;
   transform:
     translate3d(calc(-50% + var(--artist-compact-x)), calc(-50% + var(--artist-compact-y)), 0)
@@ -2061,6 +2064,12 @@ body:has(.artist-page)::-webkit-scrollbar {
     position: relative;
     z-index: 12;
     max-width: min(440px, calc(100vw - 44px));
+    pointer-events: none;
+  }
+
+  .artist-group-profile .artist-shop-actions,
+  .artist-group-profile .artist-shop-actions * {
+    pointer-events: auto;
   }
 
   .artist-group-stage {
@@ -2073,7 +2082,7 @@ body:has(.artist-page)::-webkit-scrollbar {
     place-items: end center;
     overflow: visible;
     padding: 0 12px 28px;
-    pointer-events: none;
+    pointer-events: auto;
     transform: translateY(-76px);
   }
 

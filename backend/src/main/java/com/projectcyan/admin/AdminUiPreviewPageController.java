@@ -20,11 +20,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class AdminUiPreviewPageController {
 
 	private static final Pattern REACT_ROUTE_PATTERN = Pattern.compile("<Route\\s+path=\"([^\"]+)\"");
+	private static final String DEFAULT_FRONTEND_PREVIEW_BASE_URL = "https://project-cyan.autumnsky1562.workers.dev";
 
 	private final String frontendPreviewBaseUrl;
 
 	public AdminUiPreviewPageController(
-		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
+		@Value("${project-cyan.frontend.preview-base-url:" + DEFAULT_FRONTEND_PREVIEW_BASE_URL + "}") String frontendPreviewBaseUrl
 	) {
 		this.frontendPreviewBaseUrl = trimTrailingSlash(frontendPreviewBaseUrl);
 	}
@@ -128,7 +129,7 @@ public class AdminUiPreviewPageController {
 
 	private static String trimTrailingSlash(String value) {
 		if (value == null || value.isBlank()) {
-			return "http://localhost:5173";
+			return DEFAULT_FRONTEND_PREVIEW_BASE_URL;
 		}
 		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}

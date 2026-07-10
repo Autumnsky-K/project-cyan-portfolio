@@ -1,4 +1,14 @@
-import { type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { fetchCmsArtists, fetchCmsPage, type CmsArtistProfile, type CmsPage } from '../../api/cms'
@@ -200,35 +210,35 @@ const fallbackDigitalDrops: HomeDigitalDrop[] = [
     typeLabel: 'Voice',
     artistName: 'Project Cyan',
     priceLabel: 'COMING SOON',
-    href: null,
+    href: '/goods?tags=Voice',
   },
   {
     name: 'Wallpaper Signal Set',
     typeLabel: 'Download',
     artistName: 'Project Cyan',
     priceLabel: 'COMING SOON',
-    href: null,
+    href: '/goods?tags=Download',
   },
   {
     name: 'Live Ticket Code',
     typeLabel: 'Ticket',
     artistName: 'Project Cyan',
     priceLabel: 'COMING SOON',
-    href: null,
+    href: '/goods?tags=Ticket',
   },
   {
     name: 'AR Sticker Drop',
     typeLabel: 'AR',
     artistName: 'Project Cyan',
     priceLabel: 'COMING SOON',
-    href: null,
+    href: '/goods?tags=AR',
   },
   {
     name: 'Member Signal Pass',
     typeLabel: 'Pass',
     artistName: 'Project Cyan',
     priceLabel: 'COMING SOON',
-    href: null,
+    href: '/goods?tags=Pass',
   },
 ]
 
@@ -513,6 +523,34 @@ function useAdaptiveArtistTextColors(imageUrls: Array<string | null>) {
   return colorsByUrl
 }
 
+function usePreloadImages(imageUrls: Array<string | null | undefined>, limit = 24) {
+  const imageUrlKey = useMemo(
+    () => Array.from(new Set(imageUrls.filter((url): url is string => Boolean(url)))).slice(0, limit).join('\n'),
+    [imageUrls, limit],
+  )
+
+  useEffect(() => {
+    if (!imageUrlKey || typeof Image === 'undefined') {
+      return
+    }
+
+    const images = imageUrlKey.split('\n').map((url) => {
+      const image = new Image()
+      const priorityImage = image as HTMLImageElement & { fetchPriority?: 'high' }
+      image.decoding = 'async'
+      priorityImage.fetchPriority = 'high'
+      image.src = url
+      return image
+    })
+
+    return () => {
+      images.forEach((image) => {
+        image.src = ''
+      })
+    }
+  }, [imageUrlKey])
+}
+
 function wrapDeckIndex(index: number, count: number) {
   if (!count) {
     return 0
@@ -767,6 +805,25 @@ function buildHomeCubeRail(cards: HomeCubeCard[], seed: number) {
   return entries.slice(0, targetCount)
 }
 
+const HOME_DIAGONAL_RAIL_CYCLE_COUNT = 3
+
+function buildHomeDiagonalProductRail(items: GoodsSummary[]) {
+  const targetCycleItemCount = Math.max(24, items.length)
+  const primaryCycleIndex = Math.floor(HOME_DIAGONAL_RAIL_CYCLE_COUNT / 2)
+  const cycleItems = Array.from({ length: targetCycleItemCount }, (_, index) => ({
+    item: items[index % items.length],
+    itemIndex: index,
+  }))
+
+  return Array.from({ length: HOME_DIAGONAL_RAIL_CYCLE_COUNT }).flatMap((_, cycleIndex) => (
+    cycleItems.map(({ item, itemIndex }) => ({
+      isPrimaryCycle: cycleIndex === primaryCycleIndex,
+      item,
+      key: `${cycleIndex}-${itemIndex}-${item.goodsId}`,
+    }))
+  ))
+}
+
 function HomeCubeTile({ card, isClone }: { card: HomeCubeCard; isClone: boolean }) {
   const content = (
     <>
@@ -790,51 +847,284 @@ function HomeCubeTile({ card, isClone }: { card: HomeCubeCard; isClone: boolean 
   )
 }
 
-function setAnimationPlaybackRate(element: HTMLElement | null, playbackRate: number) {
-  element?.getAnimations().forEach((animation) => {
-    animation.updatePlaybackRate(playbackRate)
-  })
+function railLoopWidth(element: HTMLElement | null, cycleCount: number) {
+  if (!element) {
+    return 0
+  }
+
+  const loopWidth = element.scrollWidth / cycleCount
+  if (!Number.isFinite(loopWidth) || loopWidth <= 0) {
+    return 0
+  }
+
+  return loopWidth
 }
 
-function useSlowerHoverAnimation<T extends HTMLElement>(hoverPlaybackRate = 0.28) {
-  const elementRef = useRef<T | null>(null)
+function normalizeRailOffset(offset: number, element: HTMLElement | null, cycleCount: number) {
+  const loopWidth = railLoopWidth(element, cycleCount)
+  if (!loopWidth) {
+    return offset
+  }
 
-  useEffect(() => () => {
-    setAnimationPlaybackRate(elementRef.current, 1)
-  }, [])
+  const wrappedOffset = offset % loopWidth
+  if (wrappedOffset > loopWidth / 2) {
+    return wrappedOffset - loopWidth
+  }
+  if (wrappedOffset < -loopWidth / 2) {
+    return wrappedOffset + loopWidth
+  }
+
+  return wrappedOffset
+}
+
+function railDragThreshold(element: HTMLElement | null) {
+  const fallbackThreshold = 64
+  if (!element) {
+    return fallbackThreshold
+  }
+
+  const card = element.querySelector<HTMLElement>('.home-diagonal-product-link, .home-cube-card')
+  const cardWidth = card?.getBoundingClientRect().width ?? 0
+  if (!Number.isFinite(cardWidth) || cardWidth <= 0) {
+    return fallbackThreshold
+  }
+
+  return Math.max(48, Math.min(120, cardWidth * 0.33))
+}
+
+function parseCssTimeToMs(value: string) {
+  const firstTime = value.split(',')[0]?.trim() ?? ''
+  const match = firstTime.match(/^(-?\d*\.?\d+)(ms|s)$/)
+  if (!match) {
+    return 0
+  }
+
+  const amount = Number(match[1])
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return 0
+  }
+
+  return match[2] === 's' ? amount * 1000 : amount
+}
+
+function useDraggableInfiniteRail<T extends HTMLElement>({
+  cycleCount = 2,
+  hoverPlaybackRate = 0.28,
+}: {
+  cycleCount?: number
+  hoverPlaybackRate?: number
+} = {}) {
+  const elementRef = useRef<T | null>(null)
+  const railStateRef = useRef({
+    active: false,
+    baseDurationMs: 0,
+    hover: false,
+    lastX: 0,
+    moved: false,
+    offsetX: 0,
+    pointerId: -1,
+    pressed: false,
+    startX: 0,
+    suppressClick: false,
+  })
+
+  const setRailLoopMetrics = useCallback(() => {
+    const element = elementRef.current
+    const loopWidth = railLoopWidth(element, cycleCount)
+    if (!element || !loopWidth) {
+      return
+    }
+
+    const startX = cycleCount >= 3 ? -loopWidth : 0
+    element.style.setProperty('--home-rail-start-x', `${startX.toFixed(2)}px`)
+    element.style.setProperty('--home-rail-end-x', `${(startX - loopWidth).toFixed(2)}px`)
+  }, [cycleCount])
+
+  function setRailOffset(offset: number) {
+    setRailLoopMetrics()
+    const normalizedOffset = normalizeRailOffset(offset, elementRef.current, cycleCount)
+    railStateRef.current.offsetX = normalizedOffset
+    elementRef.current?.style.setProperty('--home-rail-drag-x', `${normalizedOffset.toFixed(2)}px`)
+  }
+
+  function setRailPlaybackRate() {
+    const element = elementRef.current
+    if (!element) {
+      return
+    }
+
+    if (!railStateRef.current.baseDurationMs) {
+      railStateRef.current.baseDurationMs = parseCssTimeToMs(getComputedStyle(element).animationDuration)
+    }
+
+    element.dataset.railDragging = railStateRef.current.active ? 'true' : 'false'
+    element.style.setProperty('--home-rail-play-state', railStateRef.current.active ? 'paused' : 'running')
+
+    if (railStateRef.current.active) {
+      return
+    }
+
+    if (railStateRef.current.hover && railStateRef.current.baseDurationMs) {
+      element.style.setProperty('--home-rail-active-duration', `${railStateRef.current.baseDurationMs / hoverPlaybackRate}ms`)
+      return
+    }
+
+    element.style.removeProperty('--home-rail-active-duration')
+  }
+
+  function finishRailPointer(event: ReactPointerEvent<T>) {
+    const state = railStateRef.current
+    if (!state.pressed || state.pointerId !== event.pointerId) {
+      return
+    }
+
+    const wasActive = state.active
+    const wasMoved = state.moved
+    state.active = false
+    state.moved = false
+    state.pressed = false
+    state.pointerId = -1
+    state.suppressClick = wasMoved
+    setRailPlaybackRate()
+
+    if (wasActive) {
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        // Pointer capture can already be released by the browser after cancellation.
+      }
+    }
+
+    if (wasMoved) {
+      window.setTimeout(() => {
+        railStateRef.current.suppressClick = false
+      }, 240)
+    }
+  }
+
+  useEffect(() => {
+    setRailLoopMetrics()
+
+    const element = elementRef.current
+    const resetElement = () => {
+      delete element?.dataset.railDragging
+      element?.style.removeProperty('--home-rail-play-state')
+      element?.style.removeProperty('--home-rail-active-duration')
+      element?.style.removeProperty('--home-rail-start-x')
+      element?.style.removeProperty('--home-rail-end-x')
+    }
+
+    if (!element || typeof ResizeObserver === 'undefined') {
+      return resetElement
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      setRailLoopMetrics()
+    })
+    resizeObserver.observe(element)
+
+    return () => {
+      resizeObserver.disconnect()
+      resetElement()
+    }
+  }, [setRailLoopMetrics])
 
   return {
     ref: elementRef,
-    onPointerEnter: () => setAnimationPlaybackRate(elementRef.current, hoverPlaybackRate),
-    onPointerLeave: () => setAnimationPlaybackRate(elementRef.current, 1),
+    onClickCapture: (event: MouseEvent<T>) => {
+      if (!railStateRef.current.suppressClick) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      railStateRef.current.suppressClick = false
+    },
+    onDragStart: (event: ReactDragEvent<T>) => {
+      event.preventDefault()
+    },
+    onPointerCancel: finishRailPointer,
+    onPointerDown: (event: ReactPointerEvent<T>) => {
+      if (!event.isPrimary || event.button !== 0) {
+        return
+      }
+
+      railStateRef.current.active = false
+      railStateRef.current.lastX = event.clientX
+      railStateRef.current.moved = false
+      railStateRef.current.pointerId = event.pointerId
+      railStateRef.current.pressed = true
+      railStateRef.current.startX = event.clientX
+      railStateRef.current.suppressClick = false
+    },
+    onPointerEnter: () => {
+      railStateRef.current.hover = true
+      setRailPlaybackRate()
+    },
+    onPointerLeave: (event: ReactPointerEvent<T>) => {
+      railStateRef.current.hover = false
+      finishRailPointer(event)
+      setRailPlaybackRate()
+    },
+    onPointerMove: (event: ReactPointerEvent<T>) => {
+      const state = railStateRef.current
+      if (!state.pressed || state.pointerId !== event.pointerId) {
+        return
+      }
+
+      const totalDeltaX = event.clientX - state.startX
+      if (!state.active && Math.abs(totalDeltaX) > railDragThreshold(elementRef.current)) {
+        state.active = true
+        state.moved = true
+        setRailPlaybackRate()
+
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId)
+        } catch {
+          // Pointer capture is best-effort for browser compatibility.
+        }
+      }
+
+      if (state.active) {
+        const deltaX = event.clientX - state.lastX
+        if (Math.abs(deltaX) > 0) {
+          setRailOffset(state.offsetX + deltaX)
+        }
+        event.preventDefault()
+      }
+
+      state.lastX = event.clientX
+    },
+    onPointerUp: finishRailPointer,
   }
 }
 
 function HomeDiagonalProductRail({ items }: { items: GoodsSummary[] }) {
-  const railHoverProps = useSlowerHoverAnimation<HTMLDivElement>()
+  const railInteractionProps = useDraggableInfiniteRail<HTMLDivElement>({
+    cycleCount: HOME_DIAGONAL_RAIL_CYCLE_COUNT,
+  })
 
   if (!items.length) {
     return null
   }
 
-  const repeatedGroups = ['first', 'second', 'third']
+  const railItems = buildHomeDiagonalProductRail(items)
 
   return (
     <div className="home-diagonal-product-viewport" aria-label="Physical goods diagonal product rail">
       <div className="home-diagonal-product-track">
-        <div className="home-diagonal-product-rail" {...railHoverProps}>
-          {repeatedGroups.map((groupId) => (
-            <div className="home-diagonal-product-sequence" key={groupId}>
-              {items.map((item, index) => (
-                <Link
-                  className="home-diagonal-product-link"
-                  key={`${groupId}-${item.goodsId}-${index}`}
-                  to={`/goods/${item.goodsId}`}
-                >
-                  {item.imageUrl ? <img src={item.imageUrl} alt={item.name} /> : <span>{item.categoryName ?? 'Goods'}</span>}
-                </Link>
-              ))}
-            </div>
+        <div className="home-diagonal-product-rail" {...railInteractionProps}>
+          {railItems.map(({ isPrimaryCycle, item, key }) => (
+            <Link
+              aria-hidden={isPrimaryCycle ? undefined : true}
+              className="home-diagonal-product-link"
+              draggable={false}
+              key={key}
+              tabIndex={isPrimaryCycle ? undefined : -1}
+              to={`/goods/${item.goodsId}`}
+            >
+              {item.imageUrl ? <img draggable={false} src={item.imageUrl} alt={item.name} /> : <span>{item.categoryName ?? 'Goods'}</span>}
+            </Link>
           ))}
         </div>
       </div>
@@ -843,9 +1133,9 @@ function HomeDiagonalProductRail({ items }: { items: GoodsSummary[] }) {
 }
 
 function HomeCubeShowcase({ cards }: { cards: HomeCubeCard[] }) {
-  const seedRef = useRef(Math.random())
-  const railHoverProps = useSlowerHoverAnimation<HTMLDivElement>()
-  const railCards = useMemo(() => cards.length ? buildHomeCubeRail(cards, seedRef.current) : [], [cards])
+  const [railSeed] = useState(() => Math.random())
+  const railInteractionProps = useDraggableInfiniteRail<HTMLDivElement>()
+  const railCards = useMemo(() => cards.length ? buildHomeCubeRail(cards, railSeed) : [], [cards, railSeed])
   const railDuration = `${Math.max(38, Math.min(120, railCards.length * 1.6))}s`
 
   if (!cards.length) {
@@ -854,7 +1144,7 @@ function HomeCubeShowcase({ cards }: { cards: HomeCubeCard[] }) {
 
   return (
     <div className="home-cube-showcase" aria-label="Digital goods cube showcase">
-      <div className="home-cube-grid" style={{ '--home-cube-rail-duration': railDuration } as CSSProperties} {...railHoverProps}>
+      <div className="home-cube-grid" style={{ '--home-cube-rail-duration': railDuration } as CSSProperties} {...railInteractionProps}>
         {[0, 1].map((cycleIndex) => (
           <div className="home-cube-sequence" key={`cycle-${cycleIndex}`} aria-hidden={cycleIndex === 0 ? undefined : true}>
             {railCards.map((entry, index) => (
@@ -1149,6 +1439,16 @@ function HomePage() {
 
   const digitalGoods = useMemo(() => (goodsDiscovery.digitalGoods ?? []).slice(0, 6), [goodsDiscovery.digitalGoods])
 
+  const homeRailImageUrls = useMemo(
+    () => [
+      ...physicalGoods.map((item) => item.imageUrl),
+      ...digitalGoods.map((item) => item.imageUrl),
+    ],
+    [digitalGoods, physicalGoods],
+  )
+
+  usePreloadImages(homeRailImageUrls)
+
   const physicalGoodsHref = useMemo(
     () => buildGroupsFilterHref('categories', goodsDiscovery.physicalCategories) ?? '/goods',
     [goodsDiscovery.physicalCategories],
@@ -1192,7 +1492,7 @@ function HomePage() {
         title: item.name,
         eyebrow: item.categoryName ?? 'Digital',
         meta: formatPrice(item.price),
-        href: `/goods/${item.goodsId}`,
+        href: buildGoodsFilterHref('artists', [item.artistId]) ?? goodsFilterHref(item, 'digital'),
         imageUrl: item.imageUrl,
       }))
     }
