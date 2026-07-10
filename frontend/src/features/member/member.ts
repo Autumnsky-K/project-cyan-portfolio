@@ -47,9 +47,6 @@ export interface OrderSummary {
   price: number
   imageUrl: string
   description: string
-  deliveryAction: string
-  confirmAction: string
-  reviewAction: string
 }
 
 export interface ArtistOption {
@@ -469,9 +466,6 @@ async function getMyPageOrders(memberId: number): Promise<OrderSummary[]> {
         orderedAt ? `${orderedAt} 주문` : null,
         firstItem?.quantity ? `${firstItem.quantity}개` : null,
       ].filter(Boolean).join(' · '),
-      deliveryAction: '배송조회',
-      confirmAction: '구매확정',
-      reviewAction: '리뷰작성',
     }
   })
 }

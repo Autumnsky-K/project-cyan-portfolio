@@ -810,41 +810,6 @@
   height: 198px;
 }
 
-.mypage-order-card .mypage-item-body {
-  display: flex;
-  flex-direction: column;
-}
-
-.mypage-order-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: auto;
-  padding-top: 12px;
-}
-
-.mypage-order-actions button {
-  min-height: 30px;
-  padding: 0 8px;
-  border: 1px solid #666666;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #666666;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 900;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.mypage-order-actions button:hover,
-.mypage-order-actions button:focus,
-.mypage-order-actions button:active {
-  border-color: #666666;
-  background: #eeeeee;
-  color: #666666;
-}
-
 .mypage-item-card h3 {
   display: -webkit-box;
   min-height: 38px;
