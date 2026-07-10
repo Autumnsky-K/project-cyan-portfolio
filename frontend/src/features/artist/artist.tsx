@@ -454,6 +454,14 @@ function ArtistCompactDeck({ ariaLabel, className = '', items }: { ariaLabel: st
             </>
           )
 
+          if (item.href?.startsWith('/')) {
+            return (
+              <Link className="artist-compact-card" key={item.key} style={style} to={item.href}>
+                {content}
+              </Link>
+            )
+          }
+
           return item.href ? (
             <a className="artist-compact-card" href={item.href} key={item.key} style={style}>
               {content}
@@ -538,6 +546,7 @@ function toGroupDeckItems(group: ArtistGroupPanel): ArtistCompactDeckItem[] {
       groupName: 'GROUP',
       signal: group.stationCode,
       imageUrl: group.heroImageUrl || representative?.imageUrl || null,
+      href: representative ? createArtistGoodsPath(representative) : group.goodsPath,
       accentColor: group.accentColor,
       glowColor: group.glowColor,
     }]
@@ -549,6 +558,7 @@ function toGroupDeckItems(group: ArtistGroupPanel): ArtistCompactDeckItem[] {
     groupName: artist.groupName || group.groupName,
     signal: artist.stationCode,
     imageUrl: artist.imageUrl,
+    href: createArtistGoodsPath(artist),
     accentColor: artist.accentColor,
     glowColor: artist.glowColor,
   }))
