@@ -49,18 +49,6 @@ function getItemMeta(item) {
   return formatPrice(item.price) ?? item.status ?? ''
 }
 
-function getDeliveryLabel(item) {
-  if (item.status?.includes('배송 완료')) {
-    return '배송완료'
-  }
-
-  if (item.status?.includes('배송중')) {
-    return '배송중'
-  }
-
-  return '준비중'
-}
-
 function formatPhoneNumber(value) {
   const digits = value.replace(/\D/g, '').slice(0, 11)
 
@@ -128,11 +116,6 @@ function OrderHistoryCard({ item }) {
         <h3>{item.name}</h3>
         {item.status && <p className="mypage-item-meta">{item.status}</p>}
         <p>{item.description}</p>
-        <div className="mypage-order-actions" aria-label={`${item.name} 구매 작업`}>
-          <button type="button">{getDeliveryLabel(item)}</button>
-          <button type="button">{item.confirmAction ?? '구매확정'}</button>
-          <button type="button">{item.reviewAction ?? '리뷰작성'}</button>
-        </div>
       </div>
     </article>
   )
