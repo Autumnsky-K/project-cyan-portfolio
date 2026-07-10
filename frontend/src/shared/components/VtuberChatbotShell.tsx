@@ -3,6 +3,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -78,7 +79,6 @@ const CHARACTER_BUBBLE_TYPEWRITER_INTERVAL_MS = 14
 const CHARACTER_BUBBLE_MAX_LINE_LENGTH = 28
 const CHARACTER_BUBBLE_LINES_PER_SEGMENT = 3
 const DEFAULT_CHARACTER_GREETING = '안녕하세요. 필요한 굿즈를 편하게 물어봐 주세요.'
-const DEFAULT_LOAD_READY_GREETING = '필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'
 const HELP_WAVE_GREETING = '안녕? 뭐 찾는거 있어?'
 const CART_PANEL_SELECTOR = '.goods-cart-side-panel'
 const CART_PANEL_GAP_PX = 16
@@ -300,6 +300,50 @@ function splitCharacterBubbleText(text: string): string[] {
   return segments
 }
 
+function renderInlineFormattedText(text: string): ReactNode[] {
+  const formattedParts: ReactNode[] = []
+  let currentIndex = 0
+  let partIndex = 0
+
+  while (currentIndex < text.length) {
+    const markerStartIndex = text.indexOf('**', currentIndex)
+
+    if (markerStartIndex === -1) {
+      formattedParts.push(text.slice(currentIndex))
+      break
+    }
+
+    if (markerStartIndex > currentIndex) {
+      formattedParts.push(text.slice(currentIndex, markerStartIndex))
+    }
+
+    const markerEndIndex = text.indexOf('**', markerStartIndex + 2)
+    const underlinedText = markerEndIndex === -1
+      ? text.slice(markerStartIndex + 2)
+      : text.slice(markerStartIndex + 2, markerEndIndex)
+
+    if (underlinedText) {
+      formattedParts.push(
+        <span
+          key={`underline-${partIndex}`}
+          className="vtuber-inline-underline"
+        >
+          {underlinedText}
+        </span>,
+      )
+      partIndex += 1
+    }
+
+    if (markerEndIndex === -1) {
+      break
+    }
+
+    currentIndex = markerEndIndex + 2
+  }
+
+  return formattedParts
+}
+
 function calculateCharacterBubbleVisibleMs(segments: string[]): number {
   const segmentPlaybackMs = segments.reduce(
     (totalMs, segment) =>
@@ -421,7 +465,7 @@ function VtuberChatbotShell({
   )
   const defaultAssistantGreeting =
     messages.find((conversationMessage) => conversationMessage.role === 'assistant')
-      ?.text.trim() || DEFAULT_LOAD_READY_GREETING
+      ?.text.trim() || ''
   const visibleCharacterBubbleText = interactionBubbleText || buildVisibleCharacterBubbleText({
     characterRenderStatus,
     displayState,
@@ -448,8 +492,16 @@ function VtuberChatbotShell({
     characterRenderStatus === 'fallback'
       ? 'thought'
       : 'speech'
+  const shouldSuppressReadyFallbackBubble =
+    !interactionBubbleText &&
+    characterRenderStatus === 'ready' &&
+    displayState === 'ready' &&
+    messages.length === 0 &&
+    characterBubbleSequence === 0
   const shouldShowCharacterBubble =
-    isCharacterBubbleVisible && characterRenderStatus !== 'loading'
+    isCharacterBubbleVisible &&
+    characterRenderStatus !== 'loading' &&
+    !shouldSuppressReadyFallbackBubble
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
     '--vtuber-bubble-anchor-left': characterBubbleAnchor
@@ -537,6 +589,10 @@ function VtuberChatbotShell({
     }
 
     readyGreetingCharacterRef.current = character.id
+    if (!defaultAssistantGreeting) {
+      return
+    }
+
     setInteractionBubbleText(defaultAssistantGreeting)
     setInteractionBubbleSequence((currentSequence) => currentSequence + 1)
     setCharacterBubbleSegmentIndex(0)
@@ -1109,10 +1165,10 @@ function VtuberChatbotShell({
                 className="vtuber-character-bubble-measure"
                 aria-hidden="true"
               >
-                {visibleCharacterBubbleSegment}
+                {renderInlineFormattedText(visibleCharacterBubbleSegment)}
               </p>
               <p className="vtuber-character-bubble-text">
-                {typedCharacterBubbleSegment}
+                {renderInlineFormattedText(typedCharacterBubbleSegment)}
               </p>
               <span className="vtuber-sr-only" aria-live="polite">
                 표시 상태: {statusLabel}. 준비된 동작: {actionsCount}개.
@@ -1225,7 +1281,7 @@ function VtuberChatbotShell({
                     key={conversationMessage.id}
                     className={`vtuber-message is-${conversationMessage.role}`}
                   >
-                    <p>{conversationMessage.text}</p>
+                    <p>{renderInlineFormattedText(conversationMessage.text)}</p>
                   </article>
                 ))}
               </div>

@@ -34,8 +34,9 @@
   --vtuber-soft: #fcfaff;
   --vtuber-panel: rgb(253 250 255 / 46%);
   --vtuber-panel-strong: rgb(253 250 255 / 60%);
+  --vtuber-character-bubble-bg: rgb(253 250 255 / 50%);
   --vtuber-bubble-bg: rgb(253 250 255 / 78%);
-  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(253 250 255 / 62%), rgb(246 237 255 / 46%));
+  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(253 250 255 / 67%), rgb(246 237 255 / 51%));
   --vtuber-assistant-message-border: rgb(222 210 234 / 42%);
   --vtuber-assistant-message-color: #111111;
   --vtuber-user-message-color: #111111;
@@ -44,13 +45,16 @@
   --vtuber-user-font: 'VtuberUserMonaS';
   --vtuber-action-purple: #b300ff;
   --vtuber-chat-theme-bg: url('/vtuber/cyan-chat-canny-theme.png');
+  --vtuber-chat-theme-opacity: 0.55;
+  --vtuber-chat-theme-mask-position: center 10px;
+  --vtuber-chat-theme-mask-size: auto 96%;
   --vtuber-accent-rgb: 204 51 255;
   --vtuber-action-rgb: 179 0 255;
   --vtuber-accent: #cc33ff;
   --vtuber-warm: #cc33ff;
   --vtuber-danger: #9b2c2c;
   --vtuber-sky: #2b6cb0;
-  --vtuber-user-message-bg: linear-gradient(135deg, rgb(190 132 255 / 66%), rgb(221 112 255 / 56%));
+  --vtuber-user-message-bg: linear-gradient(135deg, rgb(190 132 255 / 71%), rgb(221 112 255 / 61%));
   --vtuber-cart-panel-width: 304px;
   --vtuber-cart-panel-gap: 22px;
   --vtuber-cart-panel-right: max(
@@ -107,8 +111,9 @@
   --vtuber-soft: #fffdf4;
   --vtuber-panel: rgb(255 253 244 / 50%);
   --vtuber-panel-strong: rgb(255 253 244 / 64%);
+  --vtuber-character-bubble-bg: rgb(255 253 244 / 50%);
   --vtuber-bubble-bg: rgb(255 252 224 / 82%);
-  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(255 253 232 / 70%), rgb(255 241 150 / 34%));
+  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(255 253 232 / 75%), rgb(255 241 150 / 39%));
   --vtuber-assistant-message-border: rgb(255 216 77 / 40%);
   --vtuber-character-dialog-rgb: 255 210 26;
   --vtuber-character-font: 'VtuberMoonOrbit';
@@ -118,7 +123,7 @@
   --vtuber-action-rgb: 217 155 0;
   --vtuber-accent: #ffd21a;
   --vtuber-warm: #ffd21a;
-  --vtuber-user-message-bg: linear-gradient(135deg, rgb(255 210 26 / 74%), rgb(255 233 96 / 64%));
+  --vtuber-user-message-bg: linear-gradient(135deg, rgb(255 210 26 / 79%), rgb(255 233 96 / 69%));
 }
 
 .vtuber-chatbot[data-character-id='rikane'] {
@@ -126,8 +131,9 @@
   --vtuber-soft: #fff9f4;
   --vtuber-panel: rgb(255 249 244 / 50%);
   --vtuber-panel-strong: rgb(255 249 244 / 64%);
+  --vtuber-character-bubble-bg: rgb(255 249 244 / 50%);
   --vtuber-bubble-bg: rgb(255 246 238 / 82%);
-  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(255 247 239 / 70%), rgb(255 185 120 / 34%));
+  --vtuber-assistant-message-bg: linear-gradient(135deg, rgb(255 247 239 / 75%), rgb(255 185 120 / 39%));
   --vtuber-assistant-message-border: rgb(255 179 109 / 42%);
   --vtuber-character-dialog-rgb: 255 106 0;
   --vtuber-character-font: 'VtuberFutureTree';
@@ -137,7 +143,7 @@
   --vtuber-action-rgb: 255 106 0;
   --vtuber-accent: #ff6a00;
   --vtuber-warm: #ff6a00;
-  --vtuber-user-message-bg: linear-gradient(135deg, rgb(255 106 0 / 72%), rgb(255 161 64 / 60%));
+  --vtuber-user-message-bg: linear-gradient(135deg, rgb(255 106 0 / 77%), rgb(255 161 64 / 65%));
 }
 
 .vtuber-chatbot[data-render-mode='three3d'][data-position-mode='default'] {
@@ -346,7 +352,7 @@
 .vtuber-character-bubble[data-bubble-kind='speech'] {
   border: 1px solid rgb(var(--vtuber-accent-rgb) / 30%);
   border-radius: 18px 22px 22px 20px;
-  background: var(--vtuber-panel);
+  background: var(--vtuber-character-bubble-bg);
   box-shadow: 0 12px 28px rgb(0 0 0 / 12%);
 }
 
@@ -359,7 +365,7 @@
   height: 14px;
   border-right: 1px solid rgb(var(--vtuber-accent-rgb) / 30%);
   border-bottom: 1px solid rgb(var(--vtuber-accent-rgb) / 30%);
-  background: var(--vtuber-panel);
+  background: var(--vtuber-character-bubble-bg);
   transform: rotate(45deg);
 }
 
@@ -436,6 +442,12 @@
 
 .vtuber-character-bubble-text {
   position: relative;
+}
+
+.vtuber-inline-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
 .vtuber-live2d {
@@ -684,16 +696,16 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: rgb(var(--vtuber-accent-rgb) / 34%);
-  opacity: 0.3;
+  background-color: rgb(var(--vtuber-accent-rgb) / 48%);
+  opacity: var(--vtuber-chat-theme-opacity);
   -webkit-mask-image: var(--vtuber-chat-theme-bg);
-  -webkit-mask-position: center bottom;
+  -webkit-mask-position: var(--vtuber-chat-theme-mask-position);
   -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: cover;
+  -webkit-mask-size: var(--vtuber-chat-theme-mask-size);
   mask-image: var(--vtuber-chat-theme-bg);
-  mask-position: center bottom;
+  mask-position: var(--vtuber-chat-theme-mask-position);
   mask-repeat: no-repeat;
-  mask-size: cover;
+  mask-size: var(--vtuber-chat-theme-mask-size);
 }
 
 .vtuber-chat-sidebar > * {
@@ -865,7 +877,7 @@
   font-family: var(--vtuber-user-font), var(--sans);
   font-synthesis-weight: auto;
   font-weight: 900;
-  font-size: 15.5px;
+  font-size: 11.5px;
   line-height: 1.55;
   overflow-wrap: anywhere;
   white-space: pre-line;
@@ -1180,7 +1192,7 @@
   }
 
   .vtuber-message p {
-    font-size: 15.5px;
+    font-size: 11.5px;
   }
 
   .vtuber-form {

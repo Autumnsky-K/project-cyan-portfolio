@@ -160,10 +160,12 @@ describe('VtuberChatbot auth notice', () => {
     mocks.sendText.mockReturnValue(true)
   })
 
-  it('passes chat history messages to the shell and appends sent user messages', async () => {
+  it('starts without a default assistant message and appends sent user messages', async () => {
     renderChatbot()
 
-    expect(screen.getByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.')).toBeTruthy()
+    expect(
+      screen.queryByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
+    ).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'mock send message' }))
 
@@ -183,8 +185,8 @@ describe('VtuberChatbot auth notice', () => {
       screen.queryByText(`assistant:${LEGACY_SERVER_GREETING_TEXT}`),
     ).toBeNull()
     expect(
-      screen.getByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
-    ).toBeTruthy()
+      screen.queryByText('assistant:필요한 굿즈를 찾을 때 여기에서 도와드릴게요.'),
+    ).toBeNull()
   })
 
   it('removes empty response lines before showing assistant messages', async () => {

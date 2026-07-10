@@ -155,6 +155,26 @@ describe('VtuberChatbotShell', () => {
     expect(container.querySelectorAll('.vtuber-message-author')).toHaveLength(0)
   })
 
+  it('renders markdown-style emphasis as underlined text without marker characters', () => {
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        messages={[
+          {
+            id: 'message-1',
+            role: 'assistant',
+            text: '추천 상품은 **히에나 우산**입니다.',
+          },
+        ]}
+      />,
+    )
+    const underlinedText = container.querySelector<HTMLElement>('.vtuber-inline-underline')
+
+    expect(container.textContent).toContain('추천 상품은 히에나 우산입니다.')
+    expect(container.textContent).not.toContain('**')
+    expect(underlinedText?.textContent).toBe('히에나 우산')
+  })
+
   it('renders traffic-light character buttons and reports character changes', () => {
     const onCharacterChange = vi.fn()
     const { container } = render(
@@ -212,6 +232,29 @@ describe('VtuberChatbotShell', () => {
     await waitFor(() => {
       expect(bubbleText?.textContent).toBe('필요한 굿즈를 찾을 때 여기에서 도와드릴게요.')
       expect(character?.getAttribute('data-greeting-speech-trigger-id')).toBe('1')
+    })
+  })
+
+  it('does not show a default ready greeting before any conversation exists', async () => {
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        characterBubbleSequence={0}
+        characterBubbleText="캐릭터 소개 문구"
+        messages={[]}
+      />,
+    )
+    const character = container.querySelector<HTMLElement>('[data-testid="three-character"]')
+    const readyButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="three-character-ready"]',
+    )
+    const bubble = container.querySelector<HTMLElement>('.vtuber-character-bubble')
+
+    fireEvent.click(readyButton!)
+
+    await waitFor(() => {
+      expect(bubble?.getAttribute('data-is-visible')).toBe('false')
+      expect(character?.getAttribute('data-greeting-speech-trigger-id')).toBe('0')
     })
   })
 

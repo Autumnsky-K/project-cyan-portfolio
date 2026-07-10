@@ -96,13 +96,7 @@ function VtuberChatbot(): ReactElement {
   const [characterBubbleSequence, setCharacterBubbleSequence] = useState(0)
   const [selectedCharacterId, setSelectedCharacterId] =
     useState<VtuberCharacterId>(DEFAULT_VTUBER_CHARACTER_ID)
-  const [conversationMessages, setConversationMessages] = useState<VtuberConversationMessage[]>([
-    {
-      id: 'assistant-initial',
-      role: 'assistant',
-      text: INITIAL_BUBBLE_TEXT,
-    },
-  ])
+  const [conversationMessages, setConversationMessages] = useState<VtuberConversationMessage[]>([])
   const { actionBatchId, actions, connectionStatus, latestText, metadata, sendText } =
     useVtuberWebSocket(
       INITIAL_BUBBLE_TEXT,
