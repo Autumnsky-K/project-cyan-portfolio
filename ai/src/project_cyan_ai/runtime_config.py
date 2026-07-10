@@ -10,7 +10,17 @@ from urllib.request import Request, urlopen
 
 PipelineMode = Literal["faithful18", "optimized"]
 DEFAULT_CONFIG_CACHE_TTL_SECONDS = 30
-DEFAULT_MOTION_KEYS = ("idle", "wave", "point", "nod", "shake-head")
+DEFAULT_MOTION_KEYS = (
+    "idle",
+    "wave",
+    "point",
+    "nod",
+    "shake-head",
+    "hook-blocked",
+    "search-miss",
+    "guide-success",
+    "cart-add",
+)
 
 DEFAULT_LOGIC_FUNCTIONS = "\n".join(
     ["step\tname\tdescription"]
@@ -32,6 +42,10 @@ DEFAULT_MOTION_LIST = "\n".join(
         "point\t상품 가리키기\t2d,3d\tpoint\t추천\tfalse\t30\t자산 없으면 idle",
         "nod\t고개 끄덕이기\t2d,3d\tnod\t확인\tfalse\t40\t자산 없으면 idle",
         "shake-head\t고개 젓기\t2d,3d\tshake_head\t오류\tfalse\t50\t자산 없으면 idle",
+        "hook-blocked\tHook 차단 반응\t3d\teventConfused\t욕설/영문/특수문자 Hook 차단\tfalse\t60\t3D는 우울 회전 모션",
+        "search-miss\t검색 실패 안내\t3d\ttalkHandRaised\t검색결과 없음/의도 파악 실패\tfalse\t70\t3D는 손을 올리고 말하는 모션",
+        "guide-success\t안내 성공 발화\t3d\ttalkHandOnHip,eventConfident\t추천/검색/이동 안내 성공\tfalse\t80\t3D는 hip 계열 2개 중 랜덤",
+        "cart-add\t장바구니 이벤트\t3d\teventSecretDeal\t장바구니 담기\tfalse\t90\t3D는 Scheming Hand Rub",
     ]
 )
 

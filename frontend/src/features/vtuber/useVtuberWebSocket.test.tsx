@@ -88,7 +88,7 @@ describe('useVtuberWebSocket', () => {
           actions: [],
           metadata: {
             behavior: {
-              motionKey: 'nod',
+              motionKey: 'cart-add',
               source: 'llm',
             },
           },
@@ -97,7 +97,7 @@ describe('useVtuberWebSocket', () => {
     })
 
     expect(result.current.metadata.behavior).toEqual({
-      motionKey: 'nod',
+      motionKey: 'cart-add',
       source: 'llm',
     })
   })

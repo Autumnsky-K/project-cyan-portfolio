@@ -42,6 +42,7 @@ MOTION_INSTRUCTION = (
     "허용되지 않은 키는 만들지 마세요."
 )
 LATENCY_BUDGET_MS = 5000
+SYSTEM_MOTION_KEYS = {"hook-blocked", "search-miss", "guide-success", "cart-add"}
 _latency_lock = Lock()
 _latencies: dict[str, deque[int]] = defaultdict(lambda: deque(maxlen=200))
 
@@ -72,14 +73,20 @@ def _record_latency(mode: str, duration_ms: int) -> dict[str, Any]:
     }
 
 
+def _effective_motion_keys(config: RuntimeConfig) -> set[str]:
+    return config.allowed_motion_keys | SYSTEM_MOTION_KEYS
+
+
 def _fallback_motion(response: FullTextMessage, *, blocked: bool = False) -> str:
-    if blocked or response.type == "error":
-        return "shake-head"
+    if blocked:
+        return "hook-blocked"
+    if response.type == "error":
+        return "search-miss"
     action_types = {action.type for action in response.actions}
     if "addToCart" in action_types:
-        return "nod"
+        return "cart-add"
     if action_types.intersection({"navigate", "highlight", "showRecommendations"}):
-        return "point"
+        return "guide-success"
     return "idle"
 
 
@@ -96,14 +103,26 @@ def apply_behavior_metadata(
         if isinstance(proposed_behavior, dict)
         else ""
     )
-    if config.config_version <= 0 and not proposed_key:
+    if config.config_version <= 0 and not proposed_key and not blocked and not response.actions:
         return response
-    allowed = config.allowed_motion_keys
-    if proposed_key in allowed:
+    allowed = _effective_motion_keys(config)
+    system_motion_key = _fallback_motion(response, blocked=blocked)
+    should_force_system_motion = (
+        blocked or response.type == "error" or bool(response.actions)
+    ) and system_motion_key != "idle"
+
+    if should_force_system_motion and system_motion_key in allowed:
+        motion_key = system_motion_key
+        source = "fallback"
+    elif proposed_key in allowed:
         motion_key = proposed_key
-        source = "llm"
+        source = (
+            str(proposed_behavior.get("source") or "").strip()
+            if isinstance(proposed_behavior, dict)
+            else ""
+        ) or "llm"
     else:
-        motion_key = _fallback_motion(response, blocked=blocked)
+        motion_key = system_motion_key
         if motion_key not in allowed:
             motion_key = "idle"
         source = "fallback"
@@ -263,7 +282,7 @@ class BehaviorEngine:
         add_step(11, [_line("function-output", f"Spring 검색 q={normalized_text}")], started)
 
         persona = config.setting("persona", fallback="친근하고 간결한 쇼핑 도우미")
-        motion_keys = ",".join(sorted(config.allowed_motion_keys))
+        motion_keys = ",".join(sorted(_effective_motion_keys(config)))
         response_instruction = (
             f"응답 페르소나: {persona}\n{MOTION_INSTRUCTION}\n허용 motionKey: {motion_keys}"
         )

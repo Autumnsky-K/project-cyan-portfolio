@@ -7,7 +7,13 @@ import { useCartAuthSession } from '../cart/useCartAuthSession'
 import VtuberChatbotShell from '../../shared/components/VtuberChatbotShell'
 import { useCart } from '../cart/useCart'
 import { executeVtuberActions } from './actions/executeVtuberActions'
-import { DEFAULT_VTUBER_CHARACTER } from './characters'
+import {
+  DEFAULT_VTUBER_CHARACTER,
+  DEFAULT_VTUBER_CHARACTER_ID,
+  VTUBER_CHARACTERS,
+  VTUBER_CHARACTER_OPTIONS,
+  type VtuberCharacterId,
+} from './characters'
 import {
   deriveVtuberDisplayState,
   VTUBER_DISPLAY_STATE_LABELS,
@@ -66,6 +72,8 @@ function VtuberChatbot(): ReactElement {
   const [chatTokenExpiresAt, setChatTokenExpiresAt] = useState<number | null>(null)
   const [characterBubbleText, setCharacterBubbleText] = useState('')
   const [characterBubbleSequence, setCharacterBubbleSequence] = useState(0)
+  const [selectedCharacterId, setSelectedCharacterId] =
+    useState<VtuberCharacterId>(DEFAULT_VTUBER_CHARACTER_ID)
   const [conversationMessages, setConversationMessages] = useState<VtuberConversationMessage[]>([
     {
       id: 'assistant-initial',
@@ -381,11 +389,19 @@ function VtuberChatbot(): ReactElement {
     navigate('/login', { state: { from: returnTo } })
   }
 
+  function handleCharacterChange(characterId: string) {
+    if (characterId in VTUBER_CHARACTERS) {
+      setSelectedCharacterId(characterId as VtuberCharacterId)
+    }
+  }
+
   const displayState = deriveVtuberDisplayState({
     connectionStatus,
     isAwaitingResponse,
     isSpeaking: speakingBatchId > 0,
   })
+  const selectedCharacter =
+    VTUBER_CHARACTERS[selectedCharacterId] ?? DEFAULT_VTUBER_CHARACTER
   const motionKey = metadata.behavior?.motionKey ?? null
   const authRequiredMessage = metadata.authRequired && metadata.authReason
     ? AUTH_REQUIRED_MESSAGES[metadata.authReason]
@@ -410,7 +426,8 @@ function VtuberChatbot(): ReactElement {
       authNotice={authNotice}
       characterBubbleText={characterBubbleText}
       characterBubbleSequence={characterBubbleSequence}
-      character={DEFAULT_VTUBER_CHARACTER}
+      character={selectedCharacter}
+      characterOptions={VTUBER_CHARACTER_OPTIONS}
       displayState={displayState}
       isSendDisabled={
         connectionStatus !== 'open' || isAwaitingResponse || authLoading
@@ -418,7 +435,9 @@ function VtuberChatbot(): ReactElement {
       messages={conversationMessages}
       motionKey={motionKey}
       motionTriggerId={actionBatchId}
+      onCharacterChange={handleCharacterChange}
       onSendMessage={handleSendMessage}
+      selectedCharacterId={selectedCharacterId}
       statusLabel={VTUBER_DISPLAY_STATE_LABELS[displayState]}
     />
   )

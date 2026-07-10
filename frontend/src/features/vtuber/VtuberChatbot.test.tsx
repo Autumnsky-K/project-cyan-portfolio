@@ -159,14 +159,14 @@ describe('VtuberChatbot auth notice', () => {
     mocks.latestText = '장바구니에 담았어요.'
     mocks.metadata = {
       behavior: {
-        motionKey: 'nod',
+        motionKey: 'cart-add',
         source: 'llm',
       },
     }
     renderChatbot()
 
     await waitFor(() => {
-      expect(screen.getByLabelText('mock motion key').textContent).toBe('nod')
+      expect(screen.getByLabelText('mock motion key').textContent).toBe('cart-add')
     })
     expect(screen.getByLabelText('mock motion trigger').textContent).toBe('2')
   })

@@ -3,13 +3,16 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 
 import {
   type VtuberCharacterRenderStatus,
+  type VtuberCharacterOption,
   type VtuberCharacterConfig,
   type VtuberConversationMessage,
   type VtuberDisplayState,
@@ -30,18 +33,26 @@ type VtuberChatbotProps = {
   characterBubbleText: string
   characterBubbleSequence: number
   character: VtuberCharacterConfig
+  characterOptions?: readonly VtuberCharacterOption[]
   displayState: VtuberDisplayState
   isSendDisabled: boolean
   messages: VtuberConversationMessage[]
   motionKey: VtuberMotionKey | null
   motionTriggerId: number
+  onCharacterChange?: (characterId: string) => void
   onSendMessage: (message: string) => boolean | Promise<boolean>
+  selectedCharacterId?: string
   statusLabel: string
 }
 
 type ChatbotPosition = {
   x: number
   y: number
+}
+
+type CharacterBubbleAnchor = {
+  left: number
+  top: number
 }
 
 type ChatbotSettings = {
@@ -69,7 +80,9 @@ const CHAT_SIDEBAR_MAX_HEIGHT_PX = 512
 const CHAT_SIDEBAR_DEFAULT_WIDTH_PX = 304
 const CHAT_SIDEBAR_VIEWPORT_MARGIN_PX = 16
 const CHAT_SIDEBAR_COLLAPSED_BOTTOM_PX = 16
+const CHARACTER_BUBBLE_ANCHOR_THRESHOLD_PX = 2
 const CHARACTER_BUBBLE_VIEWPORT_MARGIN_PX = 8
+const THREE_DRAG_HORIZONTAL_OVERFLOW_PX = 560
 
 const DEFAULT_CHATBOT_SETTINGS: ChatbotSettings = {
   isChatCollapsed: false,
@@ -146,12 +159,15 @@ function loadChatbotSettings(): ChatbotSettings {
 function clampChatbotPosition(
   position: ChatbotPosition,
   element: HTMLElement,
+  options: { horizontalOverflowPx?: number } = {},
 ): ChatbotPosition {
-  const maxX = Math.max(0, window.innerWidth - element.offsetWidth)
+  const horizontalOverflowPx = options.horizontalOverflowPx ?? 0
+  const minX = -horizontalOverflowPx
+  const maxX = Math.max(minX, window.innerWidth - element.offsetWidth + horizontalOverflowPx)
   const maxY = Math.max(0, window.innerHeight - element.offsetHeight)
 
   return {
-    x: Math.min(Math.max(0, position.x), maxX),
+    x: Math.min(Math.max(minX, position.x), maxX),
     y: Math.min(Math.max(0, position.y), maxY),
   }
 }
@@ -169,12 +185,15 @@ function VtuberChatbotShell({
   characterBubbleText,
   characterBubbleSequence,
   character,
+  characterOptions = [],
   displayState,
   isSendDisabled,
   messages,
   motionKey,
   motionTriggerId,
+  onCharacterChange,
   onSendMessage,
+  selectedCharacterId = character.id,
   statusLabel,
 }: VtuberChatbotProps): ReactElement {
   const chatbotRef = useRef<HTMLElement>(null)
@@ -187,12 +206,21 @@ function VtuberChatbotShell({
   const [isDragging, setIsDragging] = useState(false)
   const [characterRenderStatus, setCharacterRenderStatus] =
     useState<VtuberCharacterRenderStatus>('loading')
+  const [characterBubbleAnchor, setCharacterBubbleAnchor] =
+    useState<CharacterBubbleAnchor | null>(null)
   const [isCharacterBubbleVisible, setIsCharacterBubbleVisible] = useState(true)
   const [characterBubbleNudgeX, setCharacterBubbleNudgeX] = useState(0)
+  const [dragDanceTriggerId, setDragDanceTriggerId] = useState(0)
   const [sidebarDockStyle, setSidebarDockStyle] = useState<CSSProperties | undefined>(undefined)
   const [message, setMessage] = useState('')
   const trimmedMessage = message.trim()
   const shouldUseCustomPosition = isDesktopViewport && settings.position !== null
+  const chatbotClampOptions = useMemo(
+    () => character.renderMode === 'three3d'
+      ? { horizontalOverflowPx: THREE_DRAG_HORIZONTAL_OVERFLOW_PX }
+      : undefined,
+    [character.renderMode],
+  )
   const visibleCharacterBubbleText = buildVisibleCharacterBubbleText({
     characterRenderStatus,
     displayState,
@@ -200,7 +228,26 @@ function VtuberChatbotShell({
   })
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
+    '--vtuber-bubble-anchor-left': characterBubbleAnchor
+      ? `${characterBubbleAnchor.left}px`
+      : undefined,
+    '--vtuber-bubble-anchor-top': characterBubbleAnchor
+      ? `${characterBubbleAnchor.top}px`
+      : undefined,
   } as CSSProperties
+  const characterBubbleAnchorMode = character.renderMode === 'three3d'
+    ? 'screen'
+    : 'stack'
+  const characterDragZoneStyle = {
+    '--vtuber-drag-zone-anchor-left': characterBubbleAnchor
+      ? `${characterBubbleAnchor.left + 8}px`
+      : undefined,
+    '--vtuber-drag-zone-anchor-top': characterBubbleAnchor
+      ? `${Math.max(8, characterBubbleAnchor.top + 42)}px`
+      : undefined,
+  } as CSSProperties
+  const characterDragZoneAnchorMode =
+    character.renderMode === 'three3d' && characterBubbleAnchor ? 'screen' : 'fallback'
   const chatbotStyle: CSSProperties | undefined = shouldUseCustomPosition
     ? {
         bottom: 'auto',
@@ -210,12 +257,38 @@ function VtuberChatbotShell({
       }
     : undefined
 
+  const handleCharacterBubbleAnchorChange = useCallback((
+    nextAnchor: CharacterBubbleAnchor | null,
+  ) => {
+    setCharacterBubbleAnchor((currentAnchor) => {
+      if (!currentAnchor && !nextAnchor) {
+        return currentAnchor
+      }
+
+      if (
+        currentAnchor &&
+        nextAnchor &&
+        Math.abs(currentAnchor.left - nextAnchor.left) < CHARACTER_BUBBLE_ANCHOR_THRESHOLD_PX &&
+        Math.abs(currentAnchor.top - nextAnchor.top) < CHARACTER_BUBBLE_ANCHOR_THRESHOLD_PX
+      ) {
+        return currentAnchor
+      }
+
+      return nextAnchor
+    })
+  }, [])
+
   useEffect(() => {
     window.localStorage.setItem(
       CHATBOT_SETTINGS_STORAGE_KEY,
       JSON.stringify(settings),
     )
   }, [settings])
+
+  useEffect(() => {
+    setCharacterBubbleAnchor(null)
+    setCharacterBubbleNudgeX(0)
+  }, [character.id, character.renderMode])
 
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null
@@ -407,6 +480,7 @@ function VtuberChatbotShell({
         const clampedPosition = clampChatbotPosition(
           currentSettings.position,
           chatbotElement,
+          chatbotClampOptions,
         )
 
         if (
@@ -423,7 +497,7 @@ function VtuberChatbotShell({
     window.addEventListener('resize', handleResize)
 
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  }, [chatbotClampOptions])
 
   useEffect(() => {
     return () => {
@@ -442,7 +516,11 @@ function VtuberChatbotShell({
       return
     }
 
-    const clampedPosition = clampChatbotPosition(settings.position, chatbotElement)
+    const clampedPosition = clampChatbotPosition(
+      settings.position,
+      chatbotElement,
+      chatbotClampOptions,
+    )
 
     if (
       clampedPosition.x !== settings.position.x ||
@@ -453,7 +531,7 @@ function VtuberChatbotShell({
         position: clampedPosition,
       }))
     }
-  }, [settings.position, shouldUseCustomPosition])
+  }, [chatbotClampOptions, settings.position, shouldUseCustomPosition])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -483,7 +561,11 @@ function VtuberChatbotShell({
       return {
         ...currentSettings,
         isChatCollapsed: false,
-        position: clampChatbotPosition(currentSettings.position, chatbotElement),
+        position: clampChatbotPosition(
+          currentSettings.position,
+          chatbotElement,
+          chatbotClampOptions,
+        ),
       }
     })
   }
@@ -511,6 +593,7 @@ function VtuberChatbotShell({
         y: event.clientY - dragStateRef.current.offsetY,
       },
       chatbotElement,
+      chatbotClampOptions,
     )
 
     setSettings((currentSettings) => ({
@@ -528,6 +611,10 @@ function VtuberChatbotShell({
     setIsDragging(false)
 
     return didMove
+  }
+
+  function requestDragDance() {
+    setDragDanceTriggerId((currentTriggerId) => currentTriggerId + 1)
   }
 
   function startDragging(
@@ -558,7 +645,9 @@ function VtuberChatbotShell({
     }
 
     function handleWindowPointerUp() {
-      stopDragging()
+      if (stopDragging()) {
+        requestDragDance()
+      }
     }
 
     removeDragListenersRef.current?.()
@@ -626,7 +715,9 @@ function VtuberChatbotShell({
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
 
-    if (!didMove) {
+    if (didMove) {
+      requestDragDance()
+    } else {
       event.preventDefault()
       clickThroughCharacter(event)
     }
@@ -667,6 +758,7 @@ function VtuberChatbotShell({
             <div
               ref={characterBubbleRef}
               className="vtuber-character-bubble"
+              data-anchor-mode={characterBubbleAnchorMode}
               data-display-state={displayState}
               data-is-visible={isCharacterBubbleVisible}
               aria-live="polite"
@@ -681,22 +773,22 @@ function VtuberChatbotShell({
             <div
               className="vtuber-stage"
               aria-label={`${character.name} 캐릭터 영역`}
-              onPointerDown={handleCharacterPointerDown}
-              onPointerMove={handleDragPointerMove}
-              onPointerUp={handleCharacterPointerUp}
-              onPointerCancel={handleCharacterPointerCancel}
             >
               {character.renderMode === 'three3d' ? (
                 <ThreeDCharacter
+                  key={character.id}
                   character={character}
                   displayState={displayState}
+                  danceTriggerId={dragDanceTriggerId}
                   motionKey={motionKey}
                   motionTriggerId={motionTriggerId}
+                  onBubbleAnchorChange={handleCharacterBubbleAnchorChange}
                   onRenderStatusChange={setCharacterRenderStatus}
                   statusLabel={statusLabel}
                 />
               ) : (
                 <Live2DCharacter
+                  key={character.id}
                   character={character}
                   displayState={displayState}
                   motionKey={motionKey}
@@ -706,6 +798,17 @@ function VtuberChatbotShell({
                 />
               )}
             </div>
+
+            <div
+              className="vtuber-character-drag-zone"
+              data-anchor-mode={characterDragZoneAnchorMode}
+              aria-label={`${character.name} 캐릭터 드래그 영역`}
+              style={characterDragZoneStyle}
+              onPointerDown={handleCharacterPointerDown}
+              onPointerMove={handleDragPointerMove}
+              onPointerUp={handleCharacterPointerUp}
+              onPointerCancel={handleCharacterPointerCancel}
+            />
           </div>
 
           <section
@@ -717,8 +820,36 @@ function VtuberChatbotShell({
           >
             {settings.isChatCollapsed ? null : (
               <header className="vtuber-chat-sidebar-header">
-                <strong>{character.name}</strong>
-                <span>쇼핑 도우미</span>
+                {characterOptions.length > 1 && onCharacterChange ? (
+                  <div
+                    className="vtuber-character-switcher"
+                    role="radiogroup"
+                    aria-label="캐릭터 선택"
+                  >
+                    {characterOptions.map((option) => {
+                      const isSelected = option.id === selectedCharacterId
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className="vtuber-character-switcher-button"
+                          data-character-option-id={option.id}
+                          data-selected={isSelected}
+                          aria-checked={isSelected}
+                          aria-label={`${option.name} ${option.colorLabel}`}
+                          onClick={() => onCharacterChange(option.id)}
+                          role="radio"
+                          title={option.name}
+                        />
+                      )
+                    })}
+                  </div>
+                ) : null}
+                <div className="vtuber-chat-title">
+                  <strong>{character.name}</strong>
+                  <span>쇼핑 도우미</span>
+                </div>
                 <IconButton
                   className="vtuber-chat-toggle-button"
                   icon={<span className="vtuber-minimize-icon" />}

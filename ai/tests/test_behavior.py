@@ -1,8 +1,8 @@
-from project_cyan_ai.behavior import BehaviorEngine
+from project_cyan_ai.behavior import BehaviorEngine, apply_behavior_metadata
 from project_cyan_ai.goods_catalog import CatalogGroundedChatResponseProvider
 from project_cyan_ai.hook_policy import CachedHookPolicyProvider, HookFilter, HookPolicy
 from project_cyan_ai.runtime_config import RuntimeConfig, DEFAULT_LOGIC_FUNCTIONS, DEFAULT_MOTION_LIST
-from project_cyan_ai.schemas.ws import FullTextMessage
+from project_cyan_ai.schemas.ws import AddToCartAction, FullTextMessage, NavigateAction
 
 
 class StaticPolicyClient:
@@ -61,7 +61,10 @@ def test_faithful_engine_returns_eighteen_steps_and_shared_response_contract():
     assert execution.run["candidateGoodsIds"] == [42]
     assert execution.response.metadata["configVersion"] == 12
     assert execution.response.metadata["pipelineMode"] == "faithful18"
-    assert execution.response.metadata["behavior"] == {"motionKey": "point", "source": "llm"}
+    assert execution.response.metadata["behavior"] == {
+        "motionKey": "guide-success",
+        "source": "fallback",
+    }
     assert len(provider.calls) == 2
 
 
@@ -150,3 +153,58 @@ def test_hook_transformations_are_applied_in_priority_order():
 
     assert filter_.transform_text("포카 추천", "input") == ("포토카드 추천", [3])
     assert filter_.filter_output(FullTextMessage(text="좋아요♡")).text == "좋아요"
+
+
+def test_behavior_metadata_maps_hook_block_to_blocked_motion():
+    filter_ = hook_filter(
+        [
+            HookPolicy(
+                hook="input",
+                check="forbiddenWords",
+                threshold="금지어",
+                action="stop",
+                message="요청을 다시 확인해주세요.",
+            ),
+        ]
+    )
+    provider = FakeProvider()
+    grounded = CatalogGroundedChatResponseProvider(provider, FakeCatalogClient())
+
+    execution = BehaviorEngine(provider, grounded, filter_).run("금지어", config())
+
+    assert execution.response.metadata["behavior"] == {
+        "motionKey": "hook-blocked",
+        "source": "fallback",
+    }
+
+
+def test_behavior_metadata_maps_cart_action_to_cart_motion():
+    response = apply_behavior_metadata(
+        FullTextMessage(
+            text="장바구니에 담을게요.",
+            actions=[AddToCartAction(goodsId="42")],
+            metadata={"behavior": {"motionKey": "nod", "source": "llm"}},
+        ),
+        config(),
+    )
+
+    assert response.metadata["behavior"] == {
+        "motionKey": "cart-add",
+        "source": "fallback",
+    }
+
+
+def test_behavior_metadata_maps_navigation_success_to_guide_motion():
+    response = apply_behavior_metadata(
+        FullTextMessage(
+            text="상품으로 이동할게요.",
+            actions=[NavigateAction(path="/goods/42")],
+            metadata={"behavior": {"motionKey": "wave", "source": "llm"}},
+        ),
+        config(),
+    )
+
+    assert response.metadata["behavior"] == {
+        "motionKey": "guide-success",
+        "source": "fallback",
+    }

@@ -2051,3 +2051,37 @@ body:has(.artist-page)::-webkit-scrollbar {
     padding-left: 0;
   }
 }
+
+@media (min-width: 600px) and (max-width: 760px) and (min-height: 600px) {
+  .artist-group-profile {
+    overflow: hidden;
+  }
+
+  .artist-group-profile .artist-group-copy {
+    position: relative;
+    z-index: 12;
+    max-width: min(440px, calc(100vw - 44px));
+  }
+
+  .artist-group-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: grid;
+    grid-column: auto;
+    grid-row: auto;
+    place-items: end center;
+    overflow: visible;
+    padding: 0 12px 28px;
+    pointer-events: none;
+    transform: translateY(-76px);
+  }
+
+  .artist-group-roster.artist-compact-deck {
+    width: min(760px, 118vw);
+    height: min(54svh, 430px);
+    min-height: 360px;
+    margin: 0 auto;
+    overflow: visible;
+  }
+}

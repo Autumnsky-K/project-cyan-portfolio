@@ -235,7 +235,11 @@ public class AdminAiAnimationController {
 			"stand-up\t드러누운 상태에서 일어나기\t3d\tstand_up\t숨김 상태 복귀\tfalse\t50\t예시 모션",
 			"point\t상품 위치 가리키기\t2d,3d\tpoint\t추천/검색 결과\tfalse\t60\t상품 카드 강조",
 			"nod\t고개 끄덕이기\t2d,3d\tnod\t확인/동의\tfalse\t70\t짧은 응답",
-			"shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/품절/범위 밖\tfalse\t80\t짧은 거절"
+			"shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/품절/범위 밖\tfalse\t80\t짧은 거절",
+			"hook-blocked\tHook 차단 반응\t3d\teventConfused\t욕설/영문/특수문자 Hook 차단\tfalse\t90\t우울 회전 모션",
+			"search-miss\t검색 실패 안내\t3d\ttalkHandRaised\t검색결과 없음/의도 파악 실패\tfalse\t100\t손을 올리고 말하는 모션",
+			"guide-success\t안내 성공 발화\t3d\ttalkHandOnHip,eventConfident\t추천/검색/이동 안내 성공\tfalse\t110\thip 계열 2개 중 랜덤",
+			"cart-add\t장바구니 이벤트\t3d\teventSecretDeal\t장바구니 담기\tfalse\t120\tScheming Hand Rub"
 		);
 	}
 

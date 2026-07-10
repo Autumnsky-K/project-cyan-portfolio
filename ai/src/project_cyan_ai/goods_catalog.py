@@ -470,6 +470,7 @@ class CatalogGroundedChatResponseProvider:
             return FullTextMessage(
                 text="조건에 맞는 판매 가능한 상품을 찾지 못했어요.",
                 actions=[],
+                metadata={"behavior": {"motionKey": "search-miss", "source": "system"}},
             )
         recommended_candidates = candidates[:3]
         self.recent_recommendation_candidates = normalize_recent_candidates(

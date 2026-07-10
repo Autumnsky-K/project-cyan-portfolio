@@ -31,6 +31,10 @@ const MOTION_BY_KEY: Record<VtuberMotionKey, string[]> = {
   point: ['point', 'Point', 'TapBody', 'MenuClick'],
   nod: ['nod', 'Nod', 'Yes', 'TapBody'],
   'shake-head': ['shake_head', 'shake-head', 'ShakeHead', 'No', 'TapBody'],
+  'hook-blocked': ['shake_head', 'shake-head', 'ShakeHead', 'No', 'TapBody'],
+  'search-miss': ['question', 'Question', 'TapBody', 'MenuClick'],
+  'guide-success': ['point', 'Point', 'TapBody', 'MenuClick'],
+  'cart-add': ['nod', 'Nod', 'Yes', 'TapBody'],
 }
 
 type Live2DModelModule = typeof import('pixi-live2d-display/cubism4')

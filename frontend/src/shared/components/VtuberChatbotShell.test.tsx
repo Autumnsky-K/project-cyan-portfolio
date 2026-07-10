@@ -126,6 +126,38 @@ describe('VtuberChatbotShell', () => {
     expect(container.querySelectorAll('.vtuber-message-author')).toHaveLength(0)
   })
 
+  it('renders traffic-light character buttons and reports character changes', () => {
+    const onCharacterChange = vi.fn()
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        characterOptions={[
+          { colorLabel: '네온 보라색', id: 'manase', name: 'Manase' },
+          { colorLabel: '선명한 노란색', id: 'hiena', name: 'Hiena' },
+          { colorLabel: '선명한 주황색', id: 'rikane', name: 'Rikane 10K' },
+        ]}
+        onCharacterChange={onCharacterChange}
+        selectedCharacterId="hiena"
+      />,
+    )
+    const buttons = container.querySelectorAll<HTMLButtonElement>(
+      '.vtuber-character-switcher-button',
+    )
+    const hienaButton = container.querySelector<HTMLButtonElement>(
+      '.vtuber-character-switcher-button[data-character-option-id="hiena"]',
+    )
+    const rikaneButton = container.querySelector<HTMLButtonElement>(
+      '.vtuber-character-switcher-button[data-character-option-id="rikane"]',
+    )
+
+    expect(buttons).toHaveLength(3)
+    expect(hienaButton?.getAttribute('data-selected')).toBe('true')
+
+    fireEvent.click(rikaneButton!)
+
+    expect(onCharacterChange).toHaveBeenCalledWith('rikane')
+  })
+
   it('docks the mini chat to the cart left without inheriting the cart width', async () => {
     vi.stubGlobal(
       'ResizeObserver',
@@ -256,17 +288,17 @@ describe('VtuberChatbotShell', () => {
         <VtuberChatbotShell {...defaultProps} />
       </>,
     )
-    const stage = container.querySelector<HTMLElement>('.vtuber-stage')
+    const dragZone = container.querySelector<HTMLElement>('.vtuber-character-drag-zone')
     const behindTarget = container.querySelector<HTMLElement>('[data-testid="behind-target"]')
     vi.spyOn(document, 'elementFromPoint').mockReturnValue(behindTarget)
 
-    fireEvent.pointerDown(stage!, {
+    fireEvent.pointerDown(dragZone!, {
       button: 0,
       clientX: 120,
       clientY: 160,
       pointerId: 1,
     })
-    fireEvent.pointerUp(stage!, {
+    fireEvent.pointerUp(dragZone!, {
       button: 0,
       clientX: 120,
       clientY: 160,
@@ -286,23 +318,23 @@ describe('VtuberChatbotShell', () => {
         <VtuberChatbotShell {...defaultProps} />
       </>,
     )
-    const stage = container.querySelector<HTMLElement>('.vtuber-stage')
+    const dragZone = container.querySelector<HTMLElement>('.vtuber-character-drag-zone')
     const behindTarget = container.querySelector<HTMLElement>('[data-testid="behind-target"]')
     const elementFromPoint = vi.spyOn(document, 'elementFromPoint').mockReturnValue(behindTarget)
 
-    fireEvent.pointerDown(stage!, {
+    fireEvent.pointerDown(dragZone!, {
       button: 0,
       clientX: 120,
       clientY: 160,
       pointerId: 1,
     })
-    fireEvent.pointerMove(stage!, {
+    fireEvent.pointerMove(dragZone!, {
       button: 0,
       clientX: 150,
       clientY: 190,
       pointerId: 1,
     })
-    fireEvent.pointerUp(stage!, {
+    fireEvent.pointerUp(dragZone!, {
       button: 0,
       clientX: 150,
       clientY: 190,

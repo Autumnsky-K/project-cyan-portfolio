@@ -18,6 +18,10 @@ export const VTUBER_MOTION_KEYS = [
   'point',
   'nod',
   'shake-head',
+  'hook-blocked',
+  'search-miss',
+  'guide-success',
+  'cart-add',
 ] as const
 
 export type VtuberMotionKey = (typeof VTUBER_MOTION_KEYS)[number]
@@ -28,6 +32,23 @@ export type VtuberConversationMessage = {
   text: string
 }
 
+export type VtuberThreeAutoMotionConfig = {
+  helpRequest?: string
+  intro?: string
+  standIdle: string[]
+  solo: string[]
+  sit?: {
+    enter: string
+    idle: string
+    exit: string
+  }
+}
+
+export type VtuberThreeMotionLibrary = {
+  clips: Record<string, string>
+  auto?: VtuberThreeAutoMotionConfig
+}
+
 export type VtuberCharacterConfig = {
   id: string
   name: string
@@ -35,6 +56,13 @@ export type VtuberCharacterConfig = {
   renderMode?: 'live2d' | 'three3d'
   threeModelUrl?: string
   threeTextureUrl?: string
+  threeMotionLibrary?: VtuberThreeMotionLibrary
+}
+
+export type VtuberCharacterOption = {
+  colorLabel: string
+  id: string
+  name: string
 }
 
 export type VtuberClientTextInputMessage = {

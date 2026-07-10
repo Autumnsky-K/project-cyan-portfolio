@@ -162,6 +162,10 @@ public class AdminAiPageController {
 			"motion\tstand-up\t드러누운 상태에서 일어나기\t숨김/대기 후 복귀 예시",
 			"motion\tnod\t고개 끄덕이기\t확인/동의",
 			"motion\tshake-head\t고개 젓기\t불가/품절/범위 밖",
+			"motion\thook-blocked\tHook 차단 반응\t욕설/영문/특수문자 Hook 차단",
+			"motion\tsearch-miss\t검색 실패 안내\t검색결과 없음/의도 파악 실패",
+			"motion\tguide-success\t안내 성공 발화\t추천/검색/이동 안내 성공",
+			"motion\tcart-add\t장바구니 이벤트\t장바구니 담기",
 			"responseContract\tfields\ttext,actions,metadata.behavior\tWebSocket 최종 필드"
 		);
 	}
@@ -173,7 +177,11 @@ public class AdminAiPageController {
 			"wave\t손 흔들기\t2d,3d\twave\t인사\tfalse\t20\t자산 없으면 idle",
 			"point\t상품 위치 가리키기\t2d,3d\tpoint\t추천\tfalse\t30\t자산 없으면 idle",
 			"nod\t고개 끄덕이기\t2d,3d\tnod\t확인\tfalse\t40\t자산 없으면 idle",
-			"shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/오류\tfalse\t50\t자산 없으면 idle"
+			"shake-head\t고개 젓기\t2d,3d\tshake_head\t불가/오류\tfalse\t50\t자산 없으면 idle",
+			"hook-blocked\tHook 차단 반응\t3d\teventConfused\t욕설/영문/특수문자 Hook 차단\tfalse\t60\t우울 회전 모션",
+			"search-miss\t검색 실패 안내\t3d\ttalkHandRaised\t검색결과 없음/의도 파악 실패\tfalse\t70\t손을 올리고 말하는 모션",
+			"guide-success\t안내 성공 발화\t3d\ttalkHandOnHip,eventConfident\t추천/검색/이동 안내 성공\tfalse\t80\thip 계열 2개 중 랜덤",
+			"cart-add\t장바구니 이벤트\t3d\teventSecretDeal\t장바구니 담기\tfalse\t90\tScheming Hand Rub"
 		);
 	}
 
