@@ -258,6 +258,26 @@ describe('VtuberChatbotShell', () => {
     })
   })
 
+  it('keeps the status thought bubble visible while the character is still loading', async () => {
+    const { container } = render(
+      <VtuberChatbotShell
+        {...defaultProps}
+        characterBubbleSequence={0}
+        displayState="thinking"
+        messages={[]}
+      />,
+    )
+    const bubble = container.querySelector<HTMLElement>('.vtuber-character-bubble')
+    const bubbleText = container.querySelector<HTMLElement>('.vtuber-character-bubble p')
+
+    expect(bubble?.getAttribute('data-bubble-kind')).toBe('thought')
+    expect(bubble?.getAttribute('data-is-visible')).toBe('true')
+
+    await waitFor(() => {
+      expect(bubbleText?.textContent).toBe('생각 주머니를\n뒤적이는 중...')
+    })
+  })
+
   it('uses an explicit ready greeting without needing an initial chat message', async () => {
     const onReadyGreeting = vi.fn()
     const { container } = render(

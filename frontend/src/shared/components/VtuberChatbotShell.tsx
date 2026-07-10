@@ -200,14 +200,6 @@ function buildVisibleCharacterBubbleText({
   displayState: VtuberDisplayState
   fallbackText: string
 }): string {
-  if (characterRenderStatus === 'loading') {
-    return '주섬주섬 옷 입는 중...'
-  }
-
-  if (characterRenderStatus === 'fallback') {
-    return '거울 앞에서 옷매무새를 다시 고치는 중...'
-  }
-
   if (displayState === 'connecting') {
     return '낮잠에서 깨는 중...'
   }
@@ -218,6 +210,14 @@ function buildVisibleCharacterBubbleText({
 
   if (displayState === 'error') {
     return '잠깐 길을\n다시 찾는 중...'
+  }
+
+  if (characterRenderStatus === 'loading') {
+    return '주섬주섬 옷 입는 중...'
+  }
+
+  if (characterRenderStatus === 'fallback') {
+    return '거울 앞에서 옷매무새를 다시 고치는 중...'
   }
 
   if (fallbackText.trim()) {
@@ -497,14 +497,23 @@ function VtuberChatbotShell({
     characterRenderStatus === 'fallback'
       ? 'thought'
       : 'speech'
+  const isStatusThoughtBubble =
+    !interactionBubbleText &&
+    (
+      displayState === 'thinking' ||
+      displayState === 'connecting' ||
+      displayState === 'error' ||
+      characterRenderStatus === 'fallback'
+    )
   const shouldSuppressReadyFallbackBubble =
     !interactionBubbleText &&
+    !isStatusThoughtBubble &&
     characterRenderStatus === 'ready' &&
     displayState === 'ready' &&
     characterBubbleSequence === 0
   const shouldShowCharacterBubble =
     isCharacterBubbleVisible &&
-    characterRenderStatus !== 'loading' &&
+    (characterRenderStatus !== 'loading' || isStatusThoughtBubble) &&
     !shouldSuppressReadyFallbackBubble
   const characterBubbleStyle = {
     '--vtuber-bubble-nudge-x': `${characterBubbleNudgeX}px`,
