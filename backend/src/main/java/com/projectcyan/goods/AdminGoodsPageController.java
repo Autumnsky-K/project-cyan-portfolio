@@ -36,6 +36,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class AdminGoodsPageController {
 
 	private static final int PAGE_SIZE = 12;
+	private static final String DEFAULT_FRONTEND_PREVIEW_BASE_URL = "https://project-cyan.autumnsky1562.workers.dev";
 	private static final List<String> SALES_STATUSES = List.of("ON_SALE", "SOLD_OUT", "HIDDEN", "DISCONTINUED");
 	private static final Map<String, String> SALES_STATUS_LABELS = Map.of(
 		"ON_SALE", "판매중",
@@ -61,7 +62,7 @@ public class AdminGoodsPageController {
 		SupabaseStorageService supabaseStorageService,
 		AdminGoodsImportService adminGoodsImportService,
 		DigitalGoodsAssetStatusService digitalGoodsAssetStatusService,
-		@Value("${project-cyan.frontend.preview-base-url:http://localhost:5173}") String frontendPreviewBaseUrl
+		@Value("${project-cyan.frontend.preview-base-url:" + DEFAULT_FRONTEND_PREVIEW_BASE_URL + "}") String frontendPreviewBaseUrl
 	) {
 		this.goodsService = goodsService;
 		this.adminGoodsService = adminGoodsService;
@@ -666,7 +667,7 @@ public class AdminGoodsPageController {
 
 	private static String trimTrailingSlash(String value) {
 		if (value == null || value.isBlank()) {
-			return "http://localhost:5173";
+			return DEFAULT_FRONTEND_PREVIEW_BASE_URL;
 		}
 		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
