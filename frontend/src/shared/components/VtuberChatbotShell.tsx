@@ -213,11 +213,11 @@ function buildVisibleCharacterBubbleText({
   }
 
   if (displayState === 'thinking') {
-    return '생각 주머니를 뒤적이는 중...'
+    return '생각 주머니를\n뒤적이는 중...'
   }
 
   if (displayState === 'error') {
-    return '잠깐 길을 다시 찾는 중...'
+    return '잠깐 길을\n다시 찾는 중...'
   }
 
   if (fallbackText.trim()) {
