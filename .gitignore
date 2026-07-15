@@ -65,6 +65,7 @@ out/
 
 # 개인 오버라이드
 *.local.md
+.claude/
 
 *.zip
 *.7z
