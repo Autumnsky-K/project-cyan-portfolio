@@ -154,6 +154,35 @@ cd ai && uv run fastapi dev src/project_cyan_ai/main.py --host 127.0.0.1 --port 
 
 Windows 환경은 이번 루트 개발 서버 통합 범위에 포함하지 않았습니다. Windows에서 같은 흐름이 필요하면 `cross-env` 또는 별도 PowerShell 스크립트를 추가하는 후속 작업으로 다룹니다.
 
+### Docker Compose 기반 로컬 멀티 컨테이너 개발 환경
+
+Docker Compose로 프론트엔드, 백엔드, AI 서버를 각각 별도 컨테이너로 실행할 수 있습니다.
+DB/Auth/Storage는 로컬 컨테이너로 띄우지 않고 기존처럼 원격 Supabase를 사용합니다.
+
+먼저 각 예시 파일을 복사한 뒤 실제 로컬 값을 채웁니다. 비밀값이 들어가는 `.env.docker` 파일은 커밋하지 않습니다.
+
+```bash
+cp frontend/.env.docker.example frontend/.env.docker
+cp backend/.env.docker.example backend/.env.docker
+cp ai/.env.docker.example ai/.env.docker
+```
+
+그 다음 루트에서 아래 명령을 실행합니다.
+
+```bash
+docker compose up --build
+```
+
+기본 접속 주소는 다음과 같습니다.
+
+```text
+Frontend: http://localhost:5173
+Backend:  http://localhost:8080
+AI:       http://localhost:8000
+```
+
+Compose 내부 서버 간 통신은 서비스 이름을 사용합니다. 예를 들어 AI 서버는 Spring API를 `http://backend:8080/api`로 호출하고, 브라우저에서 접속하는 WebSocket URL은 `ws://localhost:8000/client-ws`를 유지합니다.
+
 ## 로컬 설정과 보안
 
 실제 secret, API key, Supabase/Kakao/OpenAI 키, token, password, private server URL은 커밋하지 않습니다. 로컬 비밀값이나 개인 서버 주소는 필요한 경우 `.env` 또는 `.env.local`에만 보관하고, 해당 파일은 커밋하지 않습니다. `frontend/.env.development`에는 커밋 가능한 로컬 기본값만 둡니다.

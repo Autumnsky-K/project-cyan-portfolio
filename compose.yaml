@@ -1,0 +1,56 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    env_file:
+      - path: ./frontend/.env.docker
+        required: false
+    environment:
+      DEV_PROXY_TARGET: http://backend:8080
+      VITE_API_BASE_URL: /api
+      VITE_VTUBER_WS_URL: ws://localhost:8000/client-ws
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    depends_on:
+      - backend
+      - ai
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    env_file:
+      - path: ./backend/.env.docker
+        required: false
+    environment:
+      FRONTEND_BASE_URL: http://localhost:5173
+      PROJECT_CYAN_AI_SERVICE_URL: http://ai:8000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/workspace
+      - backend-gradle-cache:/home/gradle/.gradle
+
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile.dev
+    env_file:
+      - path: ./ai/.env.docker
+        required: false
+    environment:
+      PROJECT_CYAN_SPRING_API_URL: http://backend:8080/api
+      PROJECT_CYAN_GOODS_API_BASE_URL: http://backend:8080/api
+      PROJECT_CYAN_GOODS_CATALOG_METADATA_URL: http://backend:8080/api/ai/goods-catalog/latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ai/src:/app/src
+
+volumes:
+  frontend-node-modules:
+  backend-gradle-cache:

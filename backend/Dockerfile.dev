@@ -1,0 +1,15 @@
+FROM eclipse-temurin:21-jdk-alpine
+
+WORKDIR /workspace
+
+ENV GRADLE_USER_HOME=/home/gradle/.gradle
+
+COPY gradlew settings.gradle build.gradle ./
+COPY gradle ./gradle
+RUN ./gradlew dependencies --configuration runtimeClasspath --no-daemon > /dev/null
+
+COPY src ./src
+
+EXPOSE 8080
+
+CMD ["./gradlew", "bootRun", "--no-daemon"]
