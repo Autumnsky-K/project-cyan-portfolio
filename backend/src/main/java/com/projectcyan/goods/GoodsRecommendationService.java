@@ -284,11 +284,21 @@ public class GoodsRecommendationService {
 			matchedFields.add("artistName");
 		}
 		if (goods.getArtist() != null
+			&& !context.explicitArtistName().isBlank()
+			&& normalize(goods.getArtist().getArtistName()).equals(context.explicitArtistName())) {
+			matchedFields.add("artistName");
+		}
+		if (goods.getArtist() != null
 			&& goods.getArtist().getArtistGroup() != null
 			&& context.groupIds().contains(goods.getArtist().getArtistGroup().getGroupId())) {
 			matchedFields.add("artistGroup");
 		}
 		if (goods.getCategory() != null && context.categoryIds().contains(goods.getCategory().getCategoryId())) {
+			matchedFields.add("categoryName");
+		}
+		if (goods.getCategory() != null
+			&& !context.explicitCategoryName().isBlank()
+			&& normalize(goods.getCategory().getCategoryName()).equals(context.explicitCategoryName())) {
 			matchedFields.add("categoryName");
 		}
 		if (isPreferredArtist(goods, preferredArtistIds)) {
@@ -367,7 +377,15 @@ public class GoodsRecommendationService {
 		for (String tag : splitCommaSeparated(tags)) {
 			tagNames.add(normalize(tag));
 		}
-		return new SearchContext(expandedTerms, artistIds, groupIds, categoryIds, tagNames);
+		return new SearchContext(
+			expandedTerms,
+			artistIds,
+			groupIds,
+			categoryIds,
+			tagNames,
+			normalize(artistName),
+			normalize(categoryName)
+		);
 	}
 
 	private ScoredGoods score(
@@ -393,12 +411,24 @@ public class GoodsRecommendationService {
 			matchedFields.add("artistName");
 		}
 		if (goods.getArtist() != null
+			&& !context.explicitArtistName().isBlank()
+			&& normalize(goods.getArtist().getArtistName()).equals(context.explicitArtistName())) {
+			score += 100;
+			matchedFields.add("artistName");
+		}
+		if (goods.getArtist() != null
 			&& goods.getArtist().getArtistGroup() != null
 			&& context.groupIds().contains(goods.getArtist().getArtistGroup().getGroupId())) {
 			score += 100;
 			matchedFields.add("artistGroup");
 		}
 		if (goods.getCategory() != null && context.categoryIds().contains(goods.getCategory().getCategoryId())) {
+			score += 80;
+			matchedFields.add("categoryName");
+		}
+		if (goods.getCategory() != null
+			&& !context.explicitCategoryName().isBlank()
+			&& normalize(goods.getCategory().getCategoryName()).equals(context.explicitCategoryName())) {
 			score += 80;
 			matchedFields.add("categoryName");
 		}
@@ -480,10 +510,23 @@ public class GoodsRecommendationService {
 				return false;
 			}
 		}
+		if (context.artistIds().isEmpty()
+			&& context.groupIds().isEmpty()
+			&& !context.explicitArtistName().isBlank()
+			&& (goods.getArtist() == null
+				|| !normalize(goods.getArtist().getArtistName()).equals(context.explicitArtistName()))) {
+			return false;
+		}
 		if (!context.categoryIds().isEmpty()) {
 			if (goods.getCategory() == null || !context.categoryIds().contains(goods.getCategory().getCategoryId())) {
 				return false;
 			}
+		}
+		if (context.categoryIds().isEmpty()
+			&& !context.explicitCategoryName().isBlank()
+			&& (goods.getCategory() == null
+				|| !normalize(goods.getCategory().getCategoryName()).equals(context.explicitCategoryName()))) {
+			return false;
 		}
 		if (!context.tagNames().isEmpty()) {
 			boolean matchesTag = goods.getTags().stream()
@@ -673,7 +716,9 @@ public class GoodsRecommendationService {
 		Set<Long> artistIds,
 		Set<Long> groupIds,
 		Set<Long> categoryIds,
-		Set<String> tagNames
+		Set<String> tagNames,
+		String explicitArtistName,
+		String explicitCategoryName
 	) {
 		boolean hasSearchTerms() {
 			return !terms.isEmpty()

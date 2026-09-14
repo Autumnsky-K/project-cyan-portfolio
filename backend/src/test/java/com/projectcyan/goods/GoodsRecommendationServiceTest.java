@@ -508,6 +508,46 @@ class GoodsRecommendationServiceTest {
 	}
 
 	@Test
+	void findSemanticCandidatesHardFiltersExplicitArtistWithoutAliasRow() {
+		Goods requestedArtist = goods(
+			20L, "콜롬비나 미니 인형", 29_000, "ON_SALE",
+			3L, "콜롬비나", null, null, 1L, "Plush", "PLUSH"
+		);
+		Goods otherArtist = goods(
+			21L, "다른 미니 인형", 29_000, "ON_SALE",
+			4L, "다른 아티스트", null, null, 1L, "Plush", "PLUSH"
+		);
+		GoodsStock requestedArtistStock = new GoodsStock(requestedArtist, 5);
+		GoodsStock otherArtistStock = new GoodsStock(otherArtist, 5);
+		when(goodsRepository.findAllForRecommendation()).thenReturn(List.of(requestedArtist, otherArtist));
+		when(goodsStockRepository.findByGoodsIdIn(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of(requestedArtistStock, otherArtistStock));
+		when(searchAliasRepository.findMatches(org.mockito.ArgumentMatchers.anyCollection()))
+			.thenReturn(List.of());
+		when(goodsEmbeddingRepository.findNearestByCandidateIds(
+			org.mockito.ArgumentMatchers.anyCollection(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		)).thenReturn(List.of(new GoodsEmbeddingSimilarityRow(20L, 0.1)));
+
+		PageResponse<GoodsRecommendationResponse> response = service.findSemanticCandidates(
+			new SemanticSearchRequest(List.of(0.1f), "Plush", "콜롬비나", 30_000, null, null, 10)
+		);
+
+		org.mockito.ArgumentCaptor<java.util.Collection<Long>> candidateIdsCaptor =
+			org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
+		verify(goodsEmbeddingRepository).findNearestByCandidateIds(
+			candidateIdsCaptor.capture(),
+			org.mockito.ArgumentMatchers.any(float[].class),
+			org.mockito.ArgumentMatchers.anyInt()
+		);
+		assertThat(candidateIdsCaptor.getValue()).containsExactly(20L);
+		assertThat(response.content())
+			.extracting(GoodsRecommendationResponse::goodsId)
+			.containsExactly(20L);
+	}
+
+	@Test
 	void findSemanticCandidatesExcludesIneligibleGoodsFromCandidateIds() {
 		Goods available = goods(
 			20L, "Artist A Lightstick", 45_000, "ON_SALE",
