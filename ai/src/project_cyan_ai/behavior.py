@@ -103,7 +103,7 @@ def apply_behavior_metadata(
         if isinstance(proposed_behavior, dict)
         else ""
     )
-    if config.config_version <= 0 and not proposed_key and not blocked and not response.actions:
+    if config.config_version <= 0 and not proposed_key:
         return response
     allowed = _effective_motion_keys(config)
     system_motion_key = _fallback_motion(response, blocked=blocked)

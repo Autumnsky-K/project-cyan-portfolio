@@ -13,6 +13,12 @@ from project_cyan_ai.favorite_artists import favorite_artist_ids
 from project_cyan_ai.goods_filter_extraction import GoodsFilterExtractionProvider
 from project_cyan_ai.navigation_intent import build_navigation_response
 from project_cyan_ai.personalization_context import build_personalized_prompt
+from project_cyan_ai.recommendation_policy import (
+    RecommendationDisposition,
+    evaluate_recommendation_request,
+    explicitly_requests_alternative,
+    should_suppress_candidate_defaults,
+)
 from project_cyan_ai.providers.chat_response import (
     ChatResponseProvider,
     MockChatResponseProvider,
@@ -99,7 +105,7 @@ EXPLICIT_GOODS_NAME_PATTERNS = (
     re.compile(r"\"([^\"]{2,80})\""),
     re.compile(r"'([^']{2,80})'"),
 )
-DIRECT_GOODS_LOOKUP_TERMS = ("보여", "열어", "찾아", "있어")
+DIRECT_GOODS_LOOKUP_TERMS = ("보여", "열어", "찾아", "있어", "추천")
 EXPLICIT_NAVIGATION_TARGET_TERMS = (
     "굿즈 페이지",
     "상품 페이지",
@@ -116,6 +122,7 @@ DIRECT_GOODS_LOOKUP_SUFFIX_PATTERN = re.compile(
     r"상품|굿즈|페이지|상세|상세\s*페이지|"
     r"보여줘|보여주세요|보여|열어줘|열어주세요|열어|"
     r"찾아줘|찾아주세요|찾아|있는지|있어|있나요|"
+    r"추천해줘|추천해주세요|추천|"
     r"로\s*가줘|로\s*가주세요|으로\s*가줘|으로\s*가주세요|"
     r"이동해줘|이동해주세요|이동"
     r")+\s*$"
@@ -227,6 +234,14 @@ class HttpGoodsCatalogClient:
         content = payload.get("content") if isinstance(payload, dict) else None
         return content if isinstance(content, list) else []
 
+    def find_exact_goods(self, text: str) -> dict[str, Any] | None:
+        return find_exact_public_goods(
+            self.spring_api_url,
+            text,
+            self.timeout_seconds,
+            self.search_candidates,
+        )
+
 
 def build_runtime_goods_catalog_client(spring_api_url: str) -> HttpGoodsCatalogClient:
     """Build the single catalog source shared by admin trace and client chat."""
@@ -256,8 +271,8 @@ class HttpSemanticGoodsCatalogClient:
         exact_matches = self.search_exact_name_candidates(
             text,
             favorite_artists=favorite_artists,
-            category_name=category_name,
-            artist_name=artist_name,
+            category_name=None,
+            artist_name=None,
         )
         if exact_matches:
             return exact_matches
@@ -298,6 +313,59 @@ class HttpSemanticGoodsCatalogClient:
 
         content = response_payload.get("content") if isinstance(response_payload, dict) else None
         return content if isinstance(content, list) else []
+
+    def find_exact_goods(self, text: str) -> dict[str, Any] | None:
+        return find_exact_public_goods(
+            self.spring_api_url,
+            text,
+            self.timeout_seconds,
+            self.fetch_keyword_candidates,
+        )
+
+    def recover_explicit_filters(
+        self,
+        text: str,
+        category_name: str | None = None,
+        artist_name: str | None = None,
+    ) -> dict[str, str | None]:
+        candidates = self.fetch_keyword_candidates(text, category_name=category_name)
+        evidenced_artist_names = {
+            str(candidate.get("artistName")).strip()
+            for candidate in candidates
+            if candidate.get("artistName")
+            and any(
+                field in {"artistName", "artistGroup"}
+                for field in candidate.get("matchedFields", [])
+            )
+        }
+        normalized_requested_artist = normalized_goods_name(artist_name)
+        if normalized_requested_artist:
+            validated_artist_names = {
+                candidate_artist
+                for candidate_artist in evidenced_artist_names
+                if normalized_goods_name(candidate_artist) == normalized_requested_artist
+            }
+        else:
+            validated_artist_names = evidenced_artist_names
+        evidenced_category_names = {
+            str(candidate.get("categoryName")).strip()
+            for candidate in candidates
+            if candidate.get("categoryName")
+            and "categoryName" in candidate.get("matchedFields", [])
+        }
+        validated_category_name = (
+            next(iter(evidenced_category_names))
+            if len(evidenced_category_names) == 1
+            else None
+        )
+        return {
+            "categoryName": validated_category_name,
+            "artistName": (
+                next(iter(validated_artist_names))
+                if len(validated_artist_names) == 1
+                else None
+            ),
+        }
 
     def search_exact_name_candidates(
         self,
@@ -391,7 +459,8 @@ def exact_goods_name_queries(text: str) -> list[str]:
     if any(term in normalized_text for term in DIRECT_GOODS_LOOKUP_TERMS):
         direct_query = DIRECT_GOODS_LOOKUP_SUFFIX_PATTERN.sub("", normalized_text).strip()
         direct_query = strip_wrapping_punctuation(direct_query)
-        add_unique_query(queries, direct_query)
+        if extract_max_price(direct_query) is None and " 중 " not in direct_query:
+            add_unique_query(queries, direct_query)
 
     return queries
 
@@ -414,6 +483,48 @@ def normalized_goods_name(value: object) -> str:
         return ""
     normalized = unicodedata.normalize("NFKC", value).casefold()
     return re.sub(r"[\W_]+", "", normalized, flags=re.UNICODE)
+
+
+def find_exact_public_goods(
+    spring_api_url: str,
+    text: str,
+    timeout_seconds: float,
+    eligible_search,
+) -> dict[str, Any] | None:
+    for query_text in exact_goods_name_queries(text):
+        query = urlencode(
+            {"q": query_text, "page": 0, "size": 20, "sort": "goodsName,asc"}
+        )
+        request = Request(
+            f"{spring_api_url.rstrip('/')}/goods?{query}",
+            headers={"Accept": "application/json"},
+            method="GET",
+        )
+        try:
+            with urlopen(request, timeout=timeout_seconds) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (HTTPError, TimeoutError, URLError, OSError, ValueError):
+            continue
+        content = payload.get("content") if isinstance(payload, dict) else None
+        public_matches = [
+            candidate
+            for candidate in content or []
+            if isinstance(candidate, dict)
+            and normalized_goods_name(candidate.get("name"))
+            == normalized_goods_name(query_text)
+        ]
+        if not public_matches:
+            continue
+        match = dict(public_matches[0])
+        eligible_matches = eligible_search(query_text)
+        match["available"] = any(
+            normalized_goods_name(candidate.get("name"))
+            == normalized_goods_name(query_text)
+            for candidate in eligible_matches or []
+            if isinstance(candidate, dict)
+        )
+        return match
+    return None
 
 
 class TsvGoodsCatalogClient:
@@ -544,6 +655,18 @@ class CatalogGroundedChatResponseProvider:
         personalization_context: dict[str, Any] | None = None,
         response_instruction: str = "",
     ) -> FullTextMessage:
+        decision = evaluate_recommendation_request(text)
+        if decision.disposition is RecommendationDisposition.REFUSE:
+            return FullTextMessage(
+                text="요청하신 작업은 상품 후보와 허용된 기능을 벗어나 수행할 수 없어요.",
+                actions=[],
+            )
+        if decision.disposition is RecommendationDisposition.CLARIFY:
+            return FullTextMessage(
+                text="어떤 상품을 찾으시나요? 아티스트, 상품 종류, 예산 중 하나 이상을 알려주세요.",
+                actions=[],
+            )
+
         if not self.recent_recommendation_candidates:
             self.recent_recommendation_candidates = recent_candidates_from_context(context)
         numbered_follow_up_response = build_numbered_follow_up_response(
@@ -566,7 +689,13 @@ class CatalogGroundedChatResponseProvider:
         current_goods_cart_response = build_current_goods_cart_response(text, context)
         if current_goods_cart_response is not None:
             return current_goods_cart_response
-        prioritizes_product_lookup = should_prioritize_product_lookup(text)
+        prioritizes_product_lookup = (
+            should_prioritize_product_lookup(text)
+            or (
+                decision.disposition is RecommendationDisposition.ALLOW
+                and "productKind" in decision.specificity_signals
+            )
+        )
         if not prioritizes_product_lookup:
             navigation_response = build_navigation_response(text, context, self.delegate)
             if navigation_response is not None:
@@ -587,11 +716,31 @@ class CatalogGroundedChatResponseProvider:
                 context,
             )
 
+        exact_lookup = getattr(self.catalog_client, "find_exact_goods", None)
+        exact_goods = exact_lookup(text) if callable(exact_lookup) else None
+        if (
+            exact_goods is not None
+            and not exact_goods.get("available", False)
+            and not explicitly_requests_alternative(text)
+        ):
+            return FullTextMessage(
+                text=f"{exact_goods.get('name', '요청하신 상품')}은(는) 현재 품절이라 추천할 수 없어요.",
+                actions=[],
+                metadata={"behavior": {"motionKey": "search-miss", "source": "system"}},
+            )
+
         extracted_filters = (
             self.filter_extraction_provider.extract_filters(text)
             if self.filter_extraction_provider is not None
             else {}
         )
+        recover_filters = getattr(self.catalog_client, "recover_explicit_filters", None)
+        if callable(recover_filters):
+            extracted_filters = recover_filters(
+                text,
+                category_name=extracted_filters.get("categoryName"),
+                artist_name=extracted_filters.get("artistName"),
+            )
         candidates = self.catalog_client.search_candidates(
             text,
             favorite_artists,
@@ -636,6 +785,11 @@ class CatalogGroundedChatResponseProvider:
             for candidate in recommended_candidates
             if candidate.get("goodsId") is not None
         }
+        if not response.actions and should_suppress_candidate_defaults(
+            response.text,
+            recommended_candidates,
+        ):
+            return FullTextMessage(text=response.text, actions=[], metadata=response.metadata)
         return FullTextMessage(
             text=response.text,
             actions=merge_candidate_actions(
