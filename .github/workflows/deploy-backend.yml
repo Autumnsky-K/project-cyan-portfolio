@@ -9,6 +9,7 @@ on:
 
 jobs:
   deploy:
+    if: github.repository == 'Autumnsky-K/project-cyan'
     runs-on: ubuntu-latest
 
     steps:

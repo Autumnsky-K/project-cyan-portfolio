@@ -6,9 +6,12 @@ on:
       - dev
     paths:
       - 'ai/**'
+      - '!ai/evaluation/**'
+      - '!ai/**/*.md'
 
 jobs:
   deploy:
+    if: github.repository == 'Autumnsky-K/project-cyan'
     runs-on: ubuntu-latest
 
     steps:
